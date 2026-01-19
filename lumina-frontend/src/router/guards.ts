@@ -4,6 +4,7 @@
 import type { Router } from 'vue-router'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
+import { getToken } from '@/utils'
 
 // 配置 NProgress
 NProgress.configure({ showSpinner: false })
@@ -20,7 +21,7 @@ export function setupRouterGuards(router: Router) {
 
     // 检查是否需要认证
     if (to.meta?.requiresAuth !== false) {
-      const token = localStorage.getItem('lumina_token')
+      const token = getToken()
       if (!token) {
         next({
           path: '/login',

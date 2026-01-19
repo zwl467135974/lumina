@@ -38,6 +38,11 @@ public class ExecuteResult implements Serializable {
     private Long duration;
 
     /**
+     * 时间戳（毫秒）
+     */
+    private Long timestamp;
+
+    /**
      * Token 使用量
      */
     private TokenUsage tokenUsage;
@@ -78,6 +83,7 @@ public class ExecuteResult implements Serializable {
         ExecuteResult executeResult = new ExecuteResult();
         executeResult.setSuccess(true);
         executeResult.setResult(result);
+        executeResult.setTimestamp(System.currentTimeMillis());
         return executeResult;
     }
 
@@ -88,6 +94,7 @@ public class ExecuteResult implements Serializable {
         ExecuteResult executeResult = new ExecuteResult();
         executeResult.setSuccess(false);
         executeResult.setError(error);
+        executeResult.setTimestamp(System.currentTimeMillis());
         return executeResult;
     }
 }

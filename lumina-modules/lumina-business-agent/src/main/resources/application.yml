@@ -1,0 +1,73 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: lumina-agent-service
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: dev
+        group: LUMINA_GROUP
+
+  # 数据源配置
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: root
+      password: root123
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.lumina.*.infrastructure.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# Lumina Agent 配置
+lumina:
+  agent:
+    # LLM 配置
+    llm:
+      # API Key (可选,不配置则使用模拟模式)
+      api-key: ${LLM_API_KEY:}
+      # 模型名称 (gpt-3.5-turbo, gpt-4, dashscope-qwen-turbo 等)
+      model: ${LLM_MODEL:gpt-3.5-turbo}
+      # API Base URL
+      base-url: ${LLM_BASE_URL:https://api.openai.com/v1}
+      # 温度参数
+      temperature: ${LLM_TEMPERATURE:0.7}
+      # 最大 Token 数
+      max-tokens: ${LLM_MAX_TOKENS:2000}
+
+# 日志配置
+logging:
+  level:
+    io.lumina: DEBUG
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

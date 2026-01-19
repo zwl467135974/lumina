@@ -18,10 +18,7 @@
 
     <!-- 子模块按需添加 -->
     <modules>
-        <!-- 示例：业务模块和 Agent 模块
-        <module>lumina-business-order</module>
-        <module>lumina-agent-customer</module>
-        -->
+        <module>lumina-business-agent</module>
     </modules>
 
 </project>

@@ -20,11 +20,19 @@ spring:
 
     gateway:
       routes:
-        # 示例路由配置
+        # Agent 服务路由
         - id: lumina-agent-route
           uri: lb://lumina-agent-service
           predicates:
             - Path=/api/v1/agents/**
+          filters:
+            - StripPrefix=0
+
+        # 认证服务路由
+        - id: lumina-auth-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/auth/**
           filters:
             - StripPrefix=0
 
@@ -37,6 +45,9 @@ spring:
 
       # 全局配置
       default-filters:
+        # JWT 认证过滤器
+        - name: JwtAuthentication
+        # 重试配置
         - name: Retry
           args:
             retries: 3
