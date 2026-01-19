@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.lumina</groupId>
+        <artifactId>lumina</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>lumina-modules</artifactId>
+    <packaging>pom</packaging>
+    <name>Lumina Modules</name>
+    <description>Lumina Business Modules Aggregator</description>
+
+    <!-- 子模块按需添加 -->
+    <modules>
+        <!-- 示例：业务模块和 Agent 模块
+        <module>lumina-business-order</module>
+        <module>lumina-agent-customer</module>
+        -->
+    </modules>
+
+</project>
