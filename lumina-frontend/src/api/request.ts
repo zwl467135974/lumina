@@ -3,6 +3,7 @@
  */
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios'
 import { ElMessage } from 'element-plus'
+import { getToken, removeToken } from '@/utils'
 import type { R } from '@/types/api'
 
 // 创建 Axios 实例
@@ -18,7 +19,7 @@ const service: AxiosInstance = axios.create({
 service.interceptors.request.use(
   (config: AxiosRequestConfig) => {
     // 从 localStorage 获取 token
-    const token = localStorage.getItem('lumina_token')
+    const token = getToken()
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
@@ -43,7 +44,7 @@ service.interceptors.response.use(
 
       // 401 未授权，跳转登录
       if (res.code === 401) {
-        localStorage.removeItem('lumina_token')
+        removeToken()
         window.location.href = '/login'
       }
 
@@ -60,7 +61,7 @@ service.interceptors.response.use(
           break
         case 401:
           ElMessage.error('未授权，请重新登录')
-          localStorage.removeItem('lumina_token')
+          removeToken()
           window.location.href = '/login'
           break
         case 403:
