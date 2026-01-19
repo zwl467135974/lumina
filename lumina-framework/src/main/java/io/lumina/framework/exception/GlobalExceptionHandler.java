@@ -63,7 +63,9 @@ public class GlobalExceptionHandler {
             errors.add(new ValidationError(fieldError.getField(), fieldError.getDefaultMessage()));
         }
         log.warn("参数校验失败: {}", errors);
-        return R.<List<ValidationError>>fail(400, "参数校验失败").setData(errors);
+        R<List<ValidationError>> result = R.fail(400, "参数校验失败");
+        result.setData(errors);
+        return result;
     }
 
     /**
@@ -76,7 +78,9 @@ public class GlobalExceptionHandler {
             errors.add(new ValidationError(fieldError.getField(), fieldError.getDefaultMessage()));
         }
         log.warn("参数绑定失败: {}", errors);
-        return R.<List<ValidationError>>fail(400, "参数绑定失败").setData(errors);
+        R<List<ValidationError>> result = R.fail(400, "参数绑定失败");
+        result.setData(errors);
+        return result;
     }
 
     /**
