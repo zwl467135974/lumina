@@ -1,0 +1,82 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: lumina-gateway
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: dev
+        group: LUMINA_GROUP
+
+      config:
+        server-addr: localhost:8848
+        namespace: dev
+        group: LUMINA_GROUP
+        file-extension: yaml
+
+    gateway:
+      routes:
+        # 示例路由配置
+        - id: lumina-agent-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/agents/**
+          filters:
+            - StripPrefix=0
+
+        - id: lumina-business-route
+          uri: lb://lumina-business-service
+          predicates:
+            - Path=/api/v1/business/**
+          filters:
+            - StripPrefix=0
+
+      # 全局配置
+      default-filters:
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET,POST
+            backoff:
+              firstBackoff: 10ms
+              maxBackoff: 50ms
+              factor: 2
+              basedOnPreviousValue: false
+
+  # Redis 配置（用于限流）
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    io.lumina: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true

@@ -1,0 +1,32 @@
+# Agent 配置文件示例
+# 用于配置 Agent 的行为和参数
+
+agent:
+  name: customer-service
+  type: ReAct
+
+  # LLM 配置
+  llm:
+    model-type: dashscope
+    model-name: qwen-max
+    api-key: ${DASHSCOPE_API_KEY}  # 从环境变量读取
+    temperature: 0.7
+    max-tokens: 2000
+
+  # 工具配置
+  tools:
+    enable-all: true
+    # tools:
+    #   - web-search
+    #   - code-executor
+    #   - file-reader
+
+  # 记忆配置
+  memory:
+    type: hash-memory
+    max-size: 100
+
+  # 提示词模板
+  prompt-template: |
+    你是一个专业的客服助手，负责回答用户的问题。
+    请根据用户的问题提供准确、友好的回答。
