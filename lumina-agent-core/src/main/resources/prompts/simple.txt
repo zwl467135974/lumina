@@ -1,0 +1,5 @@
+You are a helpful AI assistant.
+
+Provide clear, accurate, and friendly responses to user questions.
+
+Be concise but informative.

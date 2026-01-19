@@ -2,6 +2,7 @@
  * 表格组合式函数
  */
 import { ref, reactive } from 'vue'
+import { ElMessage } from 'element-plus'
 import type { PageResult } from '@/types/api'
 
 export function useTable<T>(
@@ -27,6 +28,11 @@ export function useTable<T>(
       })
       tableData.value = res.data.list
       pagination.total = res.data.total
+    } catch (error) {
+      console.error('加载数据失败:', error)
+      ElMessage.error('加载数据失败，请稍后重试')
+      tableData.value = []
+      pagination.total = 0
     } finally {
       loading.value = false
     }

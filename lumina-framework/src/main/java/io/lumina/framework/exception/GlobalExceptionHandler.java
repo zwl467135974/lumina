@@ -5,6 +5,7 @@ import io.lumina.common.exception.BaseException;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.exception.SystemException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -81,6 +82,42 @@ public class GlobalExceptionHandler {
         R<List<ValidationError>> result = R.fail(400, "参数绑定失败");
         result.setData(errors);
         return result;
+    }
+
+    /**
+     * 参数异常
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public R<Void> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("参数异常: {}", e.getMessage());
+        return R.fail(400, "参数错误: " + e.getMessage());
+    }
+
+    /**
+     * 空指针异常
+     */
+    @ExceptionHandler(NullPointerException.class)
+    public R<Void> handleNullPointerException(NullPointerException e) {
+        log.error("空指针异常", e);
+        return R.fail(500, "系统内部错误，请联系管理员");
+    }
+
+    /**
+     * 类型转换异常
+     */
+    @ExceptionHandler(ClassCastException.class)
+    public R<Void> handleClassCastException(ClassCastException e) {
+        log.error("类型转换异常: {}", e.getMessage(), e);
+        return R.fail(500, "数据类型错误");
+    }
+
+    /**
+     * 数据库访问异常
+     */
+    @ExceptionHandler(DataAccessException.class)
+    public R<Void> handleDataAccessException(DataAccessException e) {
+        log.error("数据库访问异常: {}", e.getMessage(), e);
+        return R.fail(500, "数据库操作失败，请稍后重试");
     }
 
     /**

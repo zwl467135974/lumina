@@ -135,8 +135,8 @@
 
             <!-- AgentScope Java SDK -->
             <dependency>
-                <groupId>com.alibaba.agentscope</groupId>
-                <artifactId>agentscope-java</artifactId>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope</artifactId>
                 <version>${agentscope.version}</version>
             </dependency>
 
