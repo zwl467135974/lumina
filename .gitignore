@@ -1,0 +1,70 @@
+############################
+# 操作系统通用忽略
+############################
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+############################
+# IDE / 编辑器
+############################
+.idea/
+.vscode/
+*.iml
+*.log
+*.swp
+*.swo
+*.tmp
+~$*
+
+############################
+# Node / 前端相关
+############################
+node_modules/
+dist/
+build/
+coverage/
+.cache/
+.parcel-cache/
+.turbo/
+
+############################
+# Java / Maven / Gradle
+############################
+target/
+out/
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
+*.class
+
+############################
+# Python（如有）
+############################
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+############################
+# 项目相关自定义
+############################
+# Cursor / Claude 等本地配置
+.cursor/
+.claude/
+
+# 日志与临时文件
+logs/
+*.log.*
+tmp/
+temp/
+
+
