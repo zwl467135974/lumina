@@ -34,6 +34,11 @@
 **触发条件**: 处理 JSON 序列化、创建 DTO、配置 Jackson 时
 **包含内容**: Jackson 使用、注解规范、日期格式化
 
+### 7. lumina_git_commit
+**用途**: Git Commit 信息生成规范
+**触发条件**: 生成 Git 暂存区变更的提交信息时
+**包含内容**: Commit 信息格式规范、变更分析步骤、常见场景示例
+
 ## 使用方法
 
 ### 在 Cursor / Claude Code 中使用
