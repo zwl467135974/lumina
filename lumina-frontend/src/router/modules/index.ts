@@ -48,6 +48,27 @@ export const agentRoutes: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'create',
+        name: 'AgentCreate',
+        component: () => import('@/views/agent/form.vue'),
+        meta: {
+          title: '创建 Agent',
+          requiresAuth: true,
+          permissions: ['agent:create']
+        }
+      },
+      {
+        path: 'edit/:id',
+        name: 'AgentEdit',
+        component: () => import('@/views/agent/form.vue'),
+        meta: {
+          title: '编辑 Agent',
+          requiresAuth: true,
+          permissions: ['agent:update'],
+          hidden: true
+        }
+      },
+      {
         path: 'detail/:id',
         name: 'AgentDetail',
         component: () => import('@/views/agent/detail.vue'),
@@ -79,7 +100,38 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         component: () => import('@/views/system/user.vue'),
         meta: {
           title: '用户管理',
-          requiresAuth: true
+          requiresAuth: true,
+          permissions: ['user:view']
+        }
+      },
+      {
+        path: 'role',
+        name: 'SystemRole',
+        component: () => import('@/views/system/role.vue'),
+        meta: {
+          title: '角色管理',
+          requiresAuth: true,
+          permissions: ['role:view']
+        }
+      },
+      {
+        path: 'permission',
+        name: 'SystemPermission',
+        component: () => import('@/views/system/permission.vue'),
+        meta: {
+          title: '权限管理',
+          requiresAuth: true,
+          permissions: ['permission:view']
+        }
+      },
+      {
+        path: 'tenant',
+        name: 'SystemTenant',
+        component: () => import('@/views/system/tenant.vue'),
+        meta: {
+          title: '租户管理',
+          requiresAuth: true,
+          permissions: ['tenant:view']
         }
       }
     ]

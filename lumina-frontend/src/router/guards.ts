@@ -4,7 +4,7 @@
 import type { Router } from 'vue-router'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
-import { getToken } from '@/utils'
+import { useUserStore, usePermissionStore } from '@/stores'
 
 // 配置 NProgress
 NProgress.configure({ showSpinner: false })
@@ -21,13 +21,24 @@ export function setupRouterGuards(router: Router) {
 
     // 检查是否需要认证
     if (to.meta?.requiresAuth !== false) {
-      const token = getToken()
-      if (!token) {
+      const userStore = useUserStore()
+      const permissionStore = usePermissionStore()
+
+      if (!userStore.isLoggedIn) {
         next({
           path: '/login',
           query: { redirect: to.fullPath }
         })
         return
+      }
+
+      // 检查权限
+      if (to.meta?.permissions && to.meta.permissions.length > 0) {
+        const hasPermission = permissionStore.hasPermission(to.meta.permissions)
+        if (!hasPermission) {
+          next('/404')
+          return
+        }
       }
     }
 

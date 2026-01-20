@@ -28,4 +28,10 @@ export const useAppStore = defineStore('app', () => {
     toggleSidebar,
     setDevice
   }
+}, {
+  persist: {
+    key: 'lumina-app',
+    storage: localStorage,
+    paths: ['sidebarCollapsed', 'device']
+  }
 })
