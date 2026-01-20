@@ -232,11 +232,149 @@ public class EnhancedToolManager implements IToolManager {
     }
 
     /**
-     * 解析参数（简单实现，TODO: 支持 JSON Schema）
+     * 解析参数（支持 JSON Schema）
+     *
+     * @param params JSON 格式的参数字符串
+     * @param method 目标方法
+     * @return 解析后的参数数组
      */
     private Object[] parseParameters(String params, Method method) {
-        // TODO: 根据 JSON Schema 解析参数
-        // 目前返回空数组，适用于无参数方法
-        return new Object[0];
+        if (params == null || params.trim().isEmpty() || "{}".equals(params.trim())) {
+            return new Object[0];
+        }
+
+        try {
+            // 使用 Jackson 解析 JSON
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<String, Object> paramMap = objectMapper.readValue(params,
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+
+            // 获取方法参数类型
+            Class<?>[] paramTypes = method.getParameterTypes();
+            if (paramTypes.length == 0) {
+                return new Object[0];
+            }
+
+            // 如果只有一个参数且类型是Map或Object，直接传递
+            if (paramTypes.length == 1) {
+                Class<?> paramType = paramTypes[0];
+                if (Map.class.isAssignableFrom(paramType) || Object.class.equals(paramType)) {
+                    return new Object[]{paramMap};
+                }
+                // 其他类型，尝试转换
+                return new Object[]{convertParameter(paramMap, paramType, objectMapper)};
+            }
+
+            // 多个参数，按参数名匹配
+            Object[] args = new Object[paramTypes.length];
+            java.lang.reflect.Parameter[] parameters = method.getParameters();
+
+            for (int i = 0; i < parameters.length; i++) {
+                String paramName = parameters[i].getName();
+                Class<?> paramType = paramTypes[i];
+
+                if (paramMap.containsKey(paramName)) {
+                    Object value = paramMap.get(paramName);
+                    args[i] = convertParameter(value, paramType, objectMapper);
+                } else {
+                    // 参数不存在，使用默认值或null
+                    args[i] = getDefaultValue(paramType);
+                }
+            }
+
+            return args;
+        } catch (Exception e) {
+            log.error("解析参数失败: {}", params, e);
+            return new Object[0];
+        }
+    }
+
+    /**
+     * 转换参数类型
+     *
+     * @param value 原始值
+     * @param targetType 目标类型
+     * @param ObjectMapper ObjectMapper实例
+     * @return 转换后的值
+     */
+    private Object convertParameter(Object value, Class<?> targetType,
+                                   com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+        if (value == null) {
+            return getDefaultValue(targetType);
+        }
+
+        // 如果类型已经匹配，直接返回
+        if (targetType.isInstance(value)) {
+            return value;
+        }
+
+        try {
+            // 基本类型转换
+            if (targetType == String.class) {
+                return value.toString();
+            } else if (targetType == Integer.class || targetType == int.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).intValue();
+                }
+                return Integer.parseInt(value.toString());
+            } else if (targetType == Long.class || targetType == long.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).longValue();
+                }
+                return Long.parseLong(value.toString());
+            } else if (targetType == Double.class || targetType == double.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).doubleValue();
+                }
+                return Double.parseDouble(value.toString());
+            } else if (targetType == Float.class || targetType == float.class) {
+                if (value instanceof Number) {
+                    return ((Number) value).floatValue();
+                }
+                return Float.parseFloat(value.toString());
+            } else if (targetType == Boolean.class || targetType == boolean.class) {
+                if (value instanceof Boolean) {
+                    return value;
+                }
+                return Boolean.parseBoolean(value.toString());
+            } else if (Map.class.isAssignableFrom(targetType)) {
+                return objectMapper.convertValue(value, Map.class);
+            } else if (List.class.isAssignableFrom(targetType)) {
+                return objectMapper.convertValue(value, List.class);
+            } else {
+                // 复杂对象，使用 Jackson 转换
+                return objectMapper.convertValue(value, targetType);
+            }
+        } catch (Exception e) {
+            log.warn("参数类型转换失败: {} -> {}", value.getClass(), targetType, e);
+            return getDefaultValue(targetType);
+        }
+    }
+
+    /**
+     * 获取类型的默认值
+     *
+     * @param type 类型
+     * @return 默认值
+     */
+    private Object getDefaultValue(Class<?> type) {
+        if (type == boolean.class) {
+            return false;
+        } else if (type == int.class) {
+            return 0;
+        } else if (type == long.class) {
+            return 0L;
+        } else if (type == float.class) {
+            return 0.0f;
+        } else if (type == double.class) {
+            return 0.0d;
+        } else if (type == char.class) {
+            return '\0';
+        } else if (type == short.class) {
+            return (short) 0;
+        } else if (type == byte.class) {
+            return (byte) 0;
+        }
+        return null;
     }
 }

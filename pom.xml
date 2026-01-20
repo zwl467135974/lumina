@@ -12,7 +12,7 @@
 
     <name>Lumina Framework</name>
     <description>Lumina AI Agent Platform Framework</description>
-    <url>https://github.com/lumina-framework/lumina</url>
+    <url>https://github.com/zwl467135974/lumina</url>
 
     <modules>
         <module>lumina-common</module>
