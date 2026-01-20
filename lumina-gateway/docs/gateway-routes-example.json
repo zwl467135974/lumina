@@ -1,0 +1,65 @@
+[
+  {
+    "id": "dynamic-base-service-route",
+    "predicates": [
+      {
+        "name": "Path",
+        "args": {
+          "_genkey_0": "/api/v1/base/**"
+        }
+      }
+    ],
+    "filters": [
+      {
+        "name": "StripPrefix",
+        "args": {
+          "_genkey_0": "0"
+        }
+      }
+    ],
+    "uri": "lb://lumina-business-base",
+    "order": 0
+  },
+  {
+    "id": "dynamic-agent-service-route",
+    "predicates": [
+      {
+        "name": "Path",
+        "args": {
+          "_genkey_0": "/api/v1/agents/**"
+        }
+      }
+    ],
+    "filters": [
+      {
+        "name": "StripPrefix",
+        "args": {
+          "_genkey_0": "0"
+        }
+      }
+    ],
+    "uri": "lb://lumina-agent-service",
+    "order": 1
+  },
+  {
+    "id": "dynamic-business-service-route",
+    "predicates": [
+      {
+        "name": "Path",
+        "args": {
+          "_genkey_0": "/api/v1/business/**"
+        }
+      }
+    ],
+    "filters": [
+      {
+        "name": "StripPrefix",
+        "args": {
+          "_genkey_0": "0"
+        }
+      }
+    ],
+    "uri": "lb://lumina-business-service",
+    "order": 2
+  }
+]

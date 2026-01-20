@@ -1,0 +1,6 @@
+io.lumina.framework.config.JacksonConfig
+io.lumina.framework.config.MyBatisPlusConfig
+io.lumina.framework.config.RedisConfig
+io.lumina.framework.config.WebMvcConfig
+io.lumina.framework.config.SpringDocConfig
+io.lumina.framework.cache.RedisCacheManager
