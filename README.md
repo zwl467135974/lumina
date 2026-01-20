@@ -106,7 +106,7 @@ lumina-frontend/
 #### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-username/lumina.git
+git clone https://github.com/zwl467135974/lumina.git
 cd lumina
 ```
 
@@ -505,8 +505,8 @@ npm install
 
 ## 联系方式
 
-- 项目主页：[https://github.com/your-username/lumina](https://github.com/your-username/lumina)
-- 问题反馈：[Issues](https://github.com/your-username/lumina/issues)
+- 项目主页：[https://github.com/zwl467135974/lumina](https://github.com/zwl467135974/lumina)
+- 问题反馈：[Issues](https://github.com/zwl467135974/lumina/issues)
 
 ---
 

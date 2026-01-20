@@ -133,7 +133,7 @@ lumina-insights       // 监控分析(洞察之光)
 - **官网**: lumina.dev 或 lumina-framework.org
 - **文档**: docs.lumina.dev
 - **社区**: community.lumina.dev
-- **GitHub**: github.com/lumina-framework
+- **GitHub**: https://github.com/zwl467135974/lumina
 
 ---
 
