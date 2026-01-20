@@ -20,6 +20,42 @@ spring:
 
     gateway:
       routes:
+        # Base 服务路由（优先级高）
+        - id: lumina-base-auth-route
+          uri: lb://lumina-business-base
+          predicates:
+            - Path=/api/v1/base/auth/**
+          filters:
+            - StripPrefix=0
+
+        - id: lumina-base-users-route
+          uri: lb://lumina-business-base
+          predicates:
+            - Path=/api/v1/base/users/**
+          filters:
+            - StripPrefix=0
+
+        - id: lumina-base-roles-route
+          uri: lb://lumina-business-base
+          predicates:
+            - Path=/api/v1/base/roles/**
+          filters:
+            - StripPrefix=0
+
+        - id: lumina-base-permissions-route
+          uri: lb://lumina-business-base
+          predicates:
+            - Path=/api/v1/base/permissions/**
+          filters:
+            - StripPrefix=0
+
+        - id: lumina-base-tenants-route
+          uri: lb://lumina-business-base
+          predicates:
+            - Path=/api/v1/base/tenants/**
+          filters:
+            - StripPrefix=0
+
         # Agent 服务路由
         - id: lumina-agent-route
           uri: lb://lumina-agent-service
@@ -28,13 +64,13 @@ spring:
           filters:
             - StripPrefix=0
 
-        # 认证服务路由
+        # 兼容旧认证服务路由（重定向到 Base 服务）
         - id: lumina-auth-route
-          uri: lb://lumina-agent-service
+          uri: lb://lumina-business-base
           predicates:
             - Path=/api/v1/auth/**
           filters:
-            - StripPrefix=0
+            - RewritePath=/api/v1/auth/(?<segment>.*), /api/v1/base/auth/${segment}
 
         - id: lumina-business-route
           uri: lb://lumina-business-service
@@ -71,6 +107,21 @@ spring:
         max-wait: -1ms
         max-idle: 8
         min-idle: 0
+
+# Lumina 配置
+lumina:
+  jwt:
+    # JWT 密钥（生产环境必须修改为复杂的随机字符串）
+    secret-key: lumina-secret-key-for-jwt-token-generation-must-be-long-enough
+    # Token 过期时间（毫秒，默认 7 天 = 604800000 毫秒）
+    expiration: 604800000
+  # 白名单路径（不需要认证的路径）
+  whitelist:
+    paths:
+      - /api/v1/auth/login
+      - /api/v1/base/auth/login
+      - /actuator/health
+      - /actuator/info
 
 # 日志配置
 logging:

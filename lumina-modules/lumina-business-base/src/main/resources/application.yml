@@ -1,0 +1,48 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: lumina-business-base
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: dev
+        group: LUMINA_GROUP
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      username: root
+      password: root123
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.lumina.base.infrastructure.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# Lumina 配置
+lumina:
+  jwt:
+    # JWT 密钥（生产环境必须修改为复杂的随机字符串）
+    secret-key: lumina-secret-key-for-jwt-token-generation-must-be-long-enough
+    # Token 过期时间（毫秒，默认 7 天 = 604800000 毫秒）
+    expiration: 604800000
+
+logging:
+  level:
+    io.lumina: DEBUG
+    org.springframework: INFO
