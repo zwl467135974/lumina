@@ -14,11 +14,15 @@ import io.lumina.agent.manager.EnhancedToolManager;
 import io.lumina.agent.manager.MemoryManager;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.tool.ToolDefinition;
+import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /**
  * Agent 执行引擎默认实现
@@ -194,20 +198,48 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     /**
      * 注册工具到 AgentScope Toolkit
      *
-     * <p>注意：AgentScope 工具需要通过 @Tool 注解在方法上定义。
-     * 目前暂时不注册动态工具，后续可以通过工具工厂模式实现。
+     * <p>将 EnhancedToolManager 管理的工具动态适配为 AgentTool 并注册到 Toolkit。
+     * 支持从 @AgentTool 注解扫描的工具自动注册。
      */
     private void registerToolsToToolkit(Toolkit toolkit) {
-        // TODO: 实现动态工具注册
-        // AgentScope 工具需要通过 @Tool 注解定义，不能动态注册
-        // 可以通过以下方式实现：
-        // 1. 创建工具工厂，为每个 ToolDefinition 生成对应的工具类
-        // 2. 使用反射动态创建工具实例
-        // 3. 或者要求业务模块提供符合 AgentScope 规范的工具类
-        if (enhancedToolManager != null) {
-            int toolCount = enhancedToolManager.getAllTools().size();
-            log.info("检测到 {} 个工具，但暂未注册到 AgentScope（需要工具类实现）", toolCount);
+        if (enhancedToolManager == null) {
+            log.debug("EnhancedToolManager 未配置，跳过工具注册");
+            return;
         }
+
+        List<ToolDefinition> tools = enhancedToolManager.getAllTools();
+        if (tools == null || tools.isEmpty()) {
+            log.info("未发现可注册的工具");
+            return;
+        }
+
+        int registeredCount = 0;
+        for (ToolDefinition toolDef : tools) {
+            try {
+                // 跳过未启用的工具
+                if (!toolDef.isEnabled()) {
+                    log.debug("跳过未启用的工具: {}", toolDef.getName());
+                    continue;
+                }
+
+                // 创建 AgentTool 适配器
+                ToolDefinitionToAgentToolAdapter adapter = 
+                        new ToolDefinitionToAgentToolAdapter(toolDef);
+
+                // 注册到 Toolkit
+                toolkit.registerAgentTool(adapter);
+
+                registeredCount++;
+                log.info("工具已注册到 AgentScope Toolkit: {} (分类: {})", 
+                        toolDef.getName(), 
+                        toolDef.getCategory() != null ? toolDef.getCategory() : "default");
+
+            } catch (Exception e) {
+                log.error("注册工具失败: {}", toolDef.getName(), e);
+            }
+        }
+
+        log.info("工具注册完成: 共 {} 个工具，成功注册 {} 个", tools.size(), registeredCount);
     }
 
     /**
