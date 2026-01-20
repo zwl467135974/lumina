@@ -19,6 +19,7 @@
     <!-- 子模块按需添加 -->
     <modules>
         <module>lumina-business-agent</module>
+        <module>lumina-business-base</module>
     </modules>
 
 </project>

@@ -28,6 +28,11 @@ public class LoginUser implements Serializable {
     private String username;
 
     /**
+     * 租户 ID
+     */
+    private Long tenantId;
+
+    /**
      * 昵称
      */
     private String nickname;

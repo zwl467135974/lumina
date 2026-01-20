@@ -2,7 +2,9 @@ package io.lumina.gateway.filter;
 
 import io.lumina.common.core.LoginUser;
 import io.lumina.common.util.JwtUtil;
+import io.lumina.gateway.config.WhitelistConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +23,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private WhitelistConfig whitelistConfig;
+
     public JwtAuthenticationFilter() {
         super(Config.class);
     }
@@ -30,8 +38,9 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         return (exchange, chain) -> {
             String path = exchange.getRequest().getURI().getPath();
 
-            // 跳过登录接口的认证
-            if (path.contains("/api/v1/auth/login")) {
+            // 检查白名单（支持配置文件配置）
+            if (whitelistConfig.isWhitelisted(path)) {
+                log.debug("路径在白名单中，跳过认证: path={}", path);
                 return chain.filter(exchange);
             }
 
@@ -49,20 +58,22 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
 
             try {
                 // 验证 token
-                if (!JwtUtil.validateToken(token)) {
+                if (!jwtUtil.validateToken(token)) {
                     log.warn("Token 验证失败: path={}", path);
                     exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                     return exchange.getResponse().setComplete();
                 }
 
                 // 解析 token 获取用户信息
-                LoginUser loginUser = JwtUtil.parseTokenToLoginUser(token);
+                LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
 
                 // 将用户信息添加到请求 header，传递给下游服务
                 exchange.getRequest().mutate()
                         .header("X-User-Id", String.valueOf(loginUser.getUserId()))
                         .header("X-Username", loginUser.getUsername())
-                        .header("X-Role", loginUser.getRole() != null ? loginUser.getRole() : "")
+                        .header("X-Tenant-Id", loginUser.getTenantId() != null ? String.valueOf(loginUser.getTenantId()) : "0")
+                        .header("X-Roles", loginUser.getRoles() != null ? String.join(",", loginUser.getRoles()) : "")
+                        .header("X-Permissions", loginUser.getPermissions() != null ? String.join(",", loginUser.getPermissions()) : "")
                         .build();
 
                 log.debug("JWT 认证成功: username={}, path={}", loginUser.getUsername(), path);

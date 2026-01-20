@@ -2,10 +2,11 @@ package io.lumina.common.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import io.lumina.common.core.LoginUser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -21,23 +22,26 @@ import java.util.Map;
  * @since 1.0.0
  */
 @Slf4j
+@Component
 public class JwtUtil {
 
     /**
-     * JWT 密钥（生产环境应从配置文件读取）
+     * JWT 密钥（从配置文件读取）
      */
-    private static final String SECRET_KEY = "lumina-secret-key-for-jwt-token-generation-must-be-long-enough";
+    @Value("${lumina.jwt.secret-key:lumina-secret-key-for-jwt-token-generation-must-be-long-enough}")
+    private String secretKey;
 
     /**
-     * Token 过期时间（7天）
+     * Token 过期时间（从配置文件读取，默认 7 天）
      */
-    private static final long EXPIRATION_TIME = 7 * 24 * 60 * 60 * 1000;
+    @Value("${lumina.jwt.expiration:604800000}")
+    private long expirationTime;
 
     /**
      * 生成密钥
      */
-    private static SecretKey getSignKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    private SecretKey getSignKey() {
+        return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -48,8 +52,8 @@ public class JwtUtil {
      * @param expiration 过期时间（毫秒）
      * @return JWT Token
      */
-    public static String generateToken(String subject, Map<String, Object> claims, Long expiration) {
-        long exp = expiration != null ? expiration : EXPIRATION_TIME;
+    public String generateToken(String subject, Map<String, Object> claims, Long expiration) {
+        long exp = expiration != null ? expiration : expirationTime;
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + exp);
 
@@ -65,15 +69,15 @@ public class JwtUtil {
     /**
      * 生成 Token（使用默认过期时间）
      */
-    public static String generateToken(String subject, Map<String, Object> claims) {
-        return generateToken(subject, claims, EXPIRATION_TIME);
+    public String generateToken(String subject, Map<String, Object> claims) {
+        return generateToken(subject, claims, expirationTime);
     }
 
     /**
      * 生成 Token（无自定义声明）
      */
-    public static String generateToken(String subject) {
-        return generateToken(subject, null, EXPIRATION_TIME);
+    public String generateToken(String subject) {
+        return generateToken(subject, null, expirationTime);
     }
 
     /**
@@ -82,7 +86,7 @@ public class JwtUtil {
      * @param token JWT Token
      * @return Claims
      */
-    public static Claims parseToken(String token) {
+    public Claims parseToken(String token) {
         try {
             return Jwts.parser()
                     .verifyWith(getSignKey())
@@ -101,7 +105,7 @@ public class JwtUtil {
      * @param token JWT Token
      * @return 是否有效
      */
-    public static boolean validateToken(String token) {
+    public boolean validateToken(String token) {
         try {
             Claims claims = parseToken(token);
             Date expiration = claims.getExpiration();
@@ -117,7 +121,7 @@ public class JwtUtil {
      * @param token JWT Token
      * @return 主题
      */
-    public static String getSubject(String token) {
+    public String getSubject(String token) {
         Claims claims = parseToken(token);
         return claims.getSubject();
     }
@@ -129,7 +133,7 @@ public class JwtUtil {
      * @param key  声明键
      * @return 声明值
      */
-    public static Object getClaim(String token, String key) {
+    public Object getClaim(String token, String key) {
         Claims claims = parseToken(token);
         return claims.get(key);
     }
@@ -140,11 +144,11 @@ public class JwtUtil {
      * @param token 旧的 Token
      * @return 新的 Token
      */
-    public static String refreshToken(String token) {
+    public String refreshToken(String token) {
         Claims claims = parseToken(token);
         String subject = claims.getSubject();
         Map<String, Object> newClaims = claims;
-        return generateToken(subject, newClaims, EXPIRATION_TIME);
+        return generateToken(subject, newClaims, expirationTime);
     }
 
     /**
@@ -153,7 +157,7 @@ public class JwtUtil {
      * @param token JWT Token
      * @return 过期时间
      */
-    public static Date getExpiration(String token) {
+    public Date getExpiration(String token) {
         Claims claims = parseToken(token);
         return claims.getExpiration();
     }
@@ -164,7 +168,7 @@ public class JwtUtil {
      * @param token JWT Token
      * @return 是否即将过期
      */
-    public static boolean isTokenExpiringSoon(String token) {
+    public boolean isTokenExpiringSoon(String token) {
         try {
             Date expiration = getExpiration(token);
             long timeToExpire = expiration.getTime() - System.currentTimeMillis();
@@ -180,7 +184,7 @@ public class JwtUtil {
      * @param token JWT Token
      * @return LoginUser
      */
-    public static LoginUser parseTokenToLoginUser(String token) {
+    public LoginUser parseTokenToLoginUser(String token) {
         Claims claims = parseToken(token);
 
         LoginUser loginUser = new LoginUser();
@@ -194,12 +198,26 @@ public class JwtUtil {
 
         loginUser.setUsername(claims.getSubject());
 
+        // 提取租户 ID
+        Object tenantId = claims.get("tenantId");
+        if (tenantId instanceof Number) {
+            loginUser.setTenantId(((Number) tenantId).longValue());
+        }
+
         // 提取角色信息
-        Object role = claims.get("role");
-        if (role instanceof String) {
-            loginUser.setRole((String) role);
-        } else if (role instanceof String[]) {
-            loginUser.setRoles((String[]) role);
+        Object roles = claims.get("roles");
+        if (roles instanceof String[]) {
+            loginUser.setRoles((String[]) roles);
+        } else if (roles instanceof java.util.Collection) {
+            loginUser.setRoles(((java.util.Collection<?>) roles).toArray(new String[0]));
+        }
+
+        // 提取权限信息
+        Object permissions = claims.get("permissions");
+        if (permissions instanceof String[]) {
+            loginUser.setPermissions((String[]) permissions);
+        } else if (permissions instanceof java.util.Collection) {
+            loginUser.setPermissions(((java.util.Collection<?>) permissions).toArray(new String[0]));
         }
 
         // 提取其他信息
