@@ -78,3 +78,161 @@ export interface LoginVO {
   token: string
   userInfo: UserInfo
 }
+
+export interface UserVO {
+  userId: number
+  username: string
+  nickname?: string
+  email?: string
+  phone?: string
+  avatar?: string
+  status: number
+  tenantId?: number
+  tenantName?: string
+  roles?: RoleVO[]
+  createTime: string
+  updateTime: string
+}
+
+export interface CreateUserDTO {
+  username: string
+  password: string
+  nickname?: string
+  email?: string
+  phone?: string
+  roleIds?: number[]
+}
+
+export interface UpdateUserDTO {
+  nickname?: string
+  email?: string
+  phone?: string
+  status?: number
+  roleIds?: number[]
+}
+
+export interface QueryUserDTO {
+  username?: string
+  nickname?: string
+  email?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+export interface ResetPasswordDTO {
+  userId: number
+  newPassword: string
+}
+
+/**
+ * 角色相关类型
+ */
+export interface RoleVO {
+  roleId: number
+  roleName: string
+  roleCode: string
+  description?: string
+  status: number
+  permissions?: PermissionVO[]
+  createTime: string
+  updateTime: string
+}
+
+export interface CreateRoleDTO {
+  roleName: string
+  roleCode: string
+  description?: string
+  permissionIds?: number[]
+}
+
+export interface UpdateRoleDTO {
+  roleName?: string
+  description?: string
+  status?: number
+  permissionIds?: number[]
+}
+
+export interface QueryRoleDTO {
+  roleName?: string
+  roleCode?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+/**
+ * 权限相关类型
+ */
+export interface PermissionVO {
+  permissionId: number
+  permissionName: string
+  permissionCode: string
+  resourcePath: string
+  description?: string
+  parentId?: number
+  children?: PermissionVO[]
+  createTime: string
+  updateTime: string
+}
+
+export interface CreatePermissionDTO {
+  permissionName: string
+  permissionCode: string
+  resourcePath: string
+  description?: string
+  parentId?: number
+}
+
+export interface UpdatePermissionDTO {
+  permissionName?: string
+  resourcePath?: string
+  description?: string
+  parentId?: number
+}
+
+export interface QueryPermissionDTO {
+  permissionName?: string
+  permissionCode?: string
+  resourcePath?: string
+  parentId?: number
+}
+
+/**
+ * 租户相关类型
+ */
+export interface TenantVO {
+  tenantId: number
+  tenantName: string
+  tenantCode: string
+  contact?: string
+  phone?: string
+  email?: string
+  status: number
+  createTime: string
+  updateTime: string
+}
+
+export interface CreateTenantDTO {
+  tenantName: string
+  tenantCode: string
+  contact?: string
+  phone?: string
+  email?: string
+}
+
+export interface UpdateTenantDTO {
+  tenantName?: string
+  contact?: string
+  phone?: string
+  email?: string
+  status?: number
+}
+
+export interface QueryTenantDTO {
+  tenantName?: string
+  tenantCode?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}

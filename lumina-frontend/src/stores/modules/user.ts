@@ -2,13 +2,18 @@
  * 用户状态管理
  */
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { UserInfo } from '@/types/api'
 import { login as loginApi, getUserInfo, logout as logoutApi } from '@/api/modules/user'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref<string>(localStorage.getItem('lumina_token') || '')
+  const token = ref<string>('')
   const userInfo = ref<UserInfo | null>(null)
+
+  /**
+   * 是否已登录
+   */
+  const isLoggedIn = computed(() => !!token.value)
 
   /**
    * 登录
@@ -17,7 +22,6 @@ export const useUserStore = defineStore('user', () => {
     const res = await loginApi({ username, password })
     token.value = res.data.token
     userInfo.value = res.data.userInfo
-    localStorage.setItem('lumina_token', res.data.token)
   }
 
   /**
@@ -37,15 +41,21 @@ export const useUserStore = defineStore('user', () => {
     } finally {
       token.value = ''
       userInfo.value = null
-      localStorage.removeItem('lumina_token')
     }
   }
 
   return {
     token,
     userInfo,
+    isLoggedIn,
     login,
     getUserInfoAction,
     logout
+  }
+}, {
+  persist: {
+    key: 'lumina-user',
+    storage: localStorage,
+    paths: ['token', 'userInfo']
   }
 })
