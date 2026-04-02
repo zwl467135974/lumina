@@ -31,6 +31,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     /**
      * Domain -> DO 转换
      */
@@ -82,7 +85,7 @@ public class UserServiceImpl implements UserService {
         claims.put("username", user.getUsername());
         claims.put("role", user.getRole());
 
-        String token = JwtUtil.generateToken(user.getUsername(), claims);
+        String token = jwtUtil.generateToken(user.getUsername(), claims);
 
         // 构建响应
         LoginVO loginVO = new LoginVO();
@@ -92,7 +95,7 @@ public class UserServiceImpl implements UserService {
         loginVO.setUsername(user.getUsername());
         loginVO.setRealName(user.getRealName());
         loginVO.setRole(user.getRole());
-        loginVO.setExpiration(System.currentTimeMillis() + JwtUtil.EXPIRATION_TIME);
+        loginVO.setExpiration(System.currentTimeMillis() + JwtUtil.DEFAULT_EXPIRATION_TIME);
 
         log.info("用户登录成功: userId={}, username={}", user.getUserId(), user.getUsername());
 

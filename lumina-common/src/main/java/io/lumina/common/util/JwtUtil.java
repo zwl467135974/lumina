@@ -37,6 +37,8 @@ public class JwtUtil {
     @Value("${lumina.jwt.expiration:604800000}")
     private long expirationTime;
 
+    public static final long DEFAULT_EXPIRATION_TIME = 604800000L;
+
     /**
      * 生成密钥
      */

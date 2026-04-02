@@ -23,12 +23,6 @@
             <artifactId>lumina-common</artifactId>
         </dependency>
 
-        <!-- Lumina Framework -->
-        <dependency>
-            <groupId>io.lumina</groupId>
-            <artifactId>lumina-framework</artifactId>
-        </dependency>
-
         <!-- Spring Cloud Gateway -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

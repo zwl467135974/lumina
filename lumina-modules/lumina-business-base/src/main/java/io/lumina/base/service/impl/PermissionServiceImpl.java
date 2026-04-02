@@ -1,5 +1,8 @@
 package io.lumina.base.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import io.lumina.base.api.dto.permission.CreatePermissionDTO;
+import io.lumina.base.api.dto.permission.UpdatePermissionDTO;
 import io.lumina.base.api.vo.permission.PermissionVO;
 import io.lumina.base.infrastructure.entity.PermissionDO;
 import io.lumina.base.infrastructure.mapper.PermissionMapper;
@@ -15,12 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 权限服务实现
- *
- * @author Lumina Team
- * @since 1.0.0
- */
 @Slf4j
 @Service
 public class PermissionServiceImpl implements PermissionService {
@@ -30,21 +27,24 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createPermission(String permissionCode, String permissionName, Long parentId, Integer permissionType) {
-        log.info("创建权限: permissionCode={}", permissionCode);
+    public Long createPermission(CreatePermissionDTO dto) {
+        log.info("创建权限: permissionCode={}", dto.getPermissionCode());
 
-        // 1. 验证权限编码唯一性
-        List<PermissionDO> existing = permissionMapper.selectByCode(permissionCode);
+        List<PermissionDO> existing = permissionMapper.selectByCode(dto.getPermissionCode());
         if (!existing.isEmpty()) {
             throw new BusinessException("权限编码已存在");
         }
 
-        // 2. 创建权限
         PermissionDO permissionDO = new PermissionDO();
-        permissionDO.setPermissionCode(permissionCode);
-        permissionDO.setPermissionName(permissionName);
-        permissionDO.setParentId(parentId != null ? parentId : 0L);
-        permissionDO.setPermissionType(permissionType);
+        permissionDO.setPermissionCode(dto.getPermissionCode());
+        permissionDO.setPermissionName(dto.getPermissionName());
+        permissionDO.setParentId(dto.getParentId() != null ? dto.getParentId() : 0L);
+        permissionDO.setPermissionType(dto.getPermissionType());
+        permissionDO.setPath(dto.getPath());
+        permissionDO.setComponent(dto.getComponent());
+        permissionDO.setIcon(dto.getIcon());
+        permissionDO.setSortOrder(dto.getSortOrder());
+        permissionDO.setVisible(dto.getVisible());
         permissionDO.setStatus(1);
 
         permissionMapper.insert(permissionDO);
@@ -55,16 +55,36 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Boolean updatePermission(Long permissionId, String permissionName) {
-        PermissionDO permissionDO = permissionMapper.selectById(permissionId);
+    public Boolean updatePermission(UpdatePermissionDTO dto) {
+        PermissionDO permissionDO = permissionMapper.selectById(dto.getPermissionId());
         if (permissionDO == null) {
             throw new BusinessException("权限不存在");
         }
 
-        permissionDO.setPermissionName(permissionName);
-        int result = permissionMapper.updateById(permissionDO);
+        if (dto.getPermissionName() != null) {
+            permissionDO.setPermissionName(dto.getPermissionName());
+        }
+        if (dto.getPath() != null) {
+            permissionDO.setPath(dto.getPath());
+        }
+        if (dto.getComponent() != null) {
+            permissionDO.setComponent(dto.getComponent());
+        }
+        if (dto.getIcon() != null) {
+            permissionDO.setIcon(dto.getIcon());
+        }
+        if (dto.getSortOrder() != null) {
+            permissionDO.setSortOrder(dto.getSortOrder());
+        }
+        if (dto.getVisible() != null) {
+            permissionDO.setVisible(dto.getVisible());
+        }
+        if (dto.getStatus() != null) {
+            permissionDO.setStatus(dto.getStatus());
+        }
 
-        log.info("权限更新成功: permissionId={}", permissionId);
+        int result = permissionMapper.updateById(permissionDO);
+        log.info("权限更新成功: permissionId={}", dto.getPermissionId());
         return result > 0;
     }
 
@@ -101,9 +121,16 @@ public class PermissionServiceImpl implements PermissionService {
         return vo;
     }
 
-    /**
-     * 构建权限树
-     */
+    @Override
+    public List<PermissionVO> listByType(Integer permissionType) {
+        List<PermissionDO> list = permissionMapper.selectList(
+                new LambdaQueryWrapper<PermissionDO>()
+                        .eq(PermissionDO::getPermissionType, permissionType)
+                        .eq(PermissionDO::getDeleted, 0)
+        );
+        return list.stream().map(this::toVO).collect(Collectors.toList());
+    }
+
     private List<PermissionVO> buildTree(List<PermissionDO> permissions, Long parentId) {
         List<PermissionVO> tree = new ArrayList<>();
 

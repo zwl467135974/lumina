@@ -39,4 +39,7 @@ public interface PermissionMapper extends BaseMapper<PermissionDO> {
      */
     @Select("SELECT * FROM lumina_permission WHERE deleted = 0 ORDER BY parent_id, sort_order")
     List<PermissionDO> selectAllPermissions();
+
+    @Select("SELECT * FROM lumina_permission WHERE permission_code = #{permissionCode} AND deleted = 0")
+    List<PermissionDO> selectByCode(@Param("permissionCode") String permissionCode);
 }

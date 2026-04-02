@@ -1,6 +1,6 @@
 package io.lumina.base.api.dto;
 
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 
 /**
  * 登录请求 DTO
