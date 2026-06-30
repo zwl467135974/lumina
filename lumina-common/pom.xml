@@ -62,6 +62,18 @@
             <artifactId>spring-web</artifactId>
         </dependency>
 
+        <!-- Spring Context（@Component 等 stereotype 注解） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <!-- SLF4J API（@Slf4j 日志门面，编译期） -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

@@ -54,9 +54,9 @@
         <nacos.version>3.1.1</nacos.version>
 
         <!-- 工具库 -->
-        <jackson.version>2.20.1</jackson.version>
+        <jackson.version>2.17.2</jackson.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
-        <guava.version>33.5.0</guava.version>
+        <guava.version>33.5.0-jre</guava.version>
         <lombok.version>1.18.34</lombok.version>
 
         <!-- 安全认证 -->
@@ -140,12 +140,7 @@
                 <version>${agentscope.version}</version>
             </dependency>
 
-            <!-- Project Reactor -->
-            <dependency>
-                <groupId>io.projectreactor</groupId>
-                <artifactId>reactor-core</artifactId>
-                <version>${project-reactor.version}</version>
-            </dependency>
+            <!-- Project Reactor：版本由 spring-boot-dependencies BOM 管理（父 pom 不再覆盖）-->
 
             <!-- DashScope SDK -->
             <dependency>
