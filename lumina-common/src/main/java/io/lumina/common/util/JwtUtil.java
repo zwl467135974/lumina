@@ -26,9 +26,9 @@ import java.util.Map;
 public class JwtUtil {
 
     /**
-     * JWT 密钥（从配置文件读取）
+     * JWT 密钥（从配置文件/环境变量读取；默认值仅供开发，生产必须由 LUMINA_JWT_SECRET 覆盖）
      */
-    @Value("${lumina.jwt.secret-key:lumina-secret-key-for-jwt-token-generation-must-be-long-enough}")
+    @Value("${lumina.jwt.secret-key:dev-only-secret-please-change-for-production-use-at-least-32-chars}")
     private String secretKey;
 
     /**

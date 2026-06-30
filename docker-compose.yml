@@ -7,10 +7,10 @@ services:
     container_name: lumina-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: lumina_root_password
-      MYSQL_DATABASE: lumina
-      MYSQL_USER: lumina
-      MYSQL_PASSWORD: lumina_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-lumina_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lumina}
+      MYSQL_USER: ${MYSQL_USER:-lumina}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-lumina_password}
       TZ: Asia/Shanghai
     ports:
       - "3306:3306"
@@ -38,7 +38,7 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes --requirepass lumina_redis_password
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-lumina_redis_password}
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -59,11 +59,11 @@ services:
       MYSQL_SERVICE_PORT: 3306
       MYSQL_SERVICE_DB_NAME: nacos_config
       MYSQL_SERVICE_USER: root
-      MYSQL_SERVICE_PASSWORD: lumina_root_password
+      MYSQL_SERVICE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-lumina_root_password}
       JVM_XMS: 512m
       JVM_XMX: 512m
       NACOS_AUTH_ENABLE: true
-      NACOS_AUTH_TOKEN: SecretKey012345678901234567890123456789012345678901234567890123456789
+      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:-SecretKey012345678901234567890123456789012345678901234567890123456789}
       NACOS_AUTH_IDENTITY_KEY: nacos
       NACOS_AUTH_IDENTITY_VALUE: nacos
     ports:
@@ -96,10 +96,10 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
       SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: lumina_redis_password
-      LUMINA_JWT_SECRET_KEY: lumina-secret-key-for-jwt-token-generation-must-be-long-enough
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-lumina_redis_password}
+      LUMINA_JWT_SECRET: ${LUMINA_JWT_SECRET:-dev-only-secret-please-change-for-production-use-at-least-32-chars}
       JAVA_OPTS: -Xms512m -Xmx512m
     volumes:
       - ./logs/gateway:/app/logs
@@ -131,11 +131,11 @@ services:
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
       SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lumina?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-      SPRING_DATASOURCE_USERNAME: lumina
-      SPRING_DATASOURCE_PASSWORD: lumina_password
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: lumina_redis_password
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-lumina}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-lumina_password}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-lumina_redis_password}
       JAVA_OPTS: -Xms512m -Xmx512m
     volumes:
       - ./logs/business-base:/app/logs
@@ -169,11 +169,11 @@ services:
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
       SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lumina?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-      SPRING_DATASOURCE_USERNAME: lumina
-      SPRING_DATASOURCE_PASSWORD: lumina_password
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: lumina_redis_password
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-lumina}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-lumina_password}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-lumina_redis_password}
       JAVA_OPTS: -Xms512m -Xmx512m
     volumes:
       - ./logs/agent-service:/app/logs

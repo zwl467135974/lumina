@@ -14,9 +14,9 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     druid:
       driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-      username: root
-      password: root123
+      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+      username: ${SPRING_DATASOURCE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_PASSWORD:root123}
       initial-size: 5
       min-idle: 5
       max-active: 20
@@ -37,8 +37,8 @@ mybatis-plus:
 # Lumina 配置
 lumina:
   jwt:
-    # JWT 密钥（生产环境必须修改为复杂的随机字符串）
-    secret-key: lumina-secret-key-for-jwt-token-generation-must-be-long-enough
+    # JWT 密钥（生产环境必须通过环境变量 LUMINA_JWT_SECRET 设置足够长的随机串）
+    secret-key: ${LUMINA_JWT_SECRET:dev-only-secret-please-change-for-production-use-at-least-32-chars}
     # Token 过期时间（毫秒，默认 7 天 = 604800000 毫秒）
     expiration: 604800000
 
