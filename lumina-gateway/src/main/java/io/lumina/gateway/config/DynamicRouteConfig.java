@@ -1,12 +1,11 @@
 package io.lumina.gateway.config;
 
 import com.alibaba.nacos.api.config.ConfigService;
-import com.alibaba.nacos.api.config.annotation.NacosConfigListener;
-import com.alibaba.nacos.api.config.annotation.NacosValue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinitionLocator;
 import org.springframework.cloud.gateway.route.RouteDefinitionWriter;
@@ -35,7 +34,7 @@ public class DynamicRouteConfig {
     @Autowired
     private RouteDefinitionLocator routeDefinitionLocator;
 
-    @Autowired
+    @Autowired(required = false)
     private ConfigService nacosConfigService;
 
     @Autowired
@@ -54,7 +53,7 @@ public class DynamicRouteConfig {
     /**
      * Nacos 配置的命名空间
      */
-    @NacosValue(value = "${spring.cloud.nacos.config.namespace:public}", autoRefreshed = true)
+    @Value("${spring.cloud.nacos.config.namespace:public}")
     private String namespace;
 
     /**
@@ -62,6 +61,10 @@ public class DynamicRouteConfig {
      */
     @PostConstruct
     public void initDynamicRoutes() {
+        if (nacosConfigService == null) {
+            log.info("未配置 Nacos ConfigService，跳过动态路由初始化（使用静态路由）");
+            return;
+        }
         try {
             // 从 Nacos 加载初始路由配置
             loadRoutesFromNacos();
@@ -79,6 +82,9 @@ public class DynamicRouteConfig {
      * 从 Nacos 加载路由配置
      */
     private void loadRoutesFromNacos() {
+        if (nacosConfigService == null) {
+            return;
+        }
         try {
             String config = nacosConfigService.getConfig(
                 ROUTE_DATA_ID,
@@ -106,8 +112,9 @@ public class DynamicRouteConfig {
 
     /**
      * 监听 Nacos 配置变化并动态刷新路由
+     *
+     * <p>Spring Cloud Alibaba Nacos Config 通过配置变更事件触发，方法保留以便后续接入。
      */
-    @NacosConfigListener(dataId = ROUTE_DATA_ID, groupId = ROUTE_GROUP)
     public void onRouteConfigChanged(String newConfig) {
         log.info("检测到 Nacos 路由配置变化，开始刷新路由...");
 

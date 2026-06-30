@@ -12,7 +12,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * @author Lumina Team
  * @since 1.0.0
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "io.lumina")
 @EnableDiscoveryClient
 public class LuminaGatewayApplication {
 
