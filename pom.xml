@@ -39,6 +39,7 @@
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <druid.version>1.2.23</druid.version>
         <dynamic-datasource.version>4.3.1</dynamic-datasource.version>
+        <jsqlparser.version>4.9</jsqlparser.version>
 
         <!-- 缓存与消息队列 -->
         <redisson.version>3.24.3</redisson.version>
@@ -124,6 +125,13 @@
                 <groupId>com.baomidou</groupId>
                 <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
                 <version>${dynamic-datasource.version}</version>
+            </dependency>
+
+            <!-- JSqlParser：锁定 4.9，避免 5.x 移除 SelectBody 接口破坏 TenantLineInterceptor -->
+            <dependency>
+                <groupId>com.github.jsqlparser</groupId>
+                <artifactId>jsqlparser</artifactId>
+                <version>${jsqlparser.version}</version>
             </dependency>
 
             <!-- Redisson -->

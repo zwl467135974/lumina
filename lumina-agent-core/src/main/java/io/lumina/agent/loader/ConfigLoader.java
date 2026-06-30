@@ -1,7 +1,6 @@
 package io.lumina.agent.loader;
 
 import com.alibaba.nacos.api.config.ConfigService;
-import com.alibaba.nacos.api.config.annotation.NacosConfigListener;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -161,17 +160,14 @@ public class ConfigLoader {
     /**
      * 监听 Nacos 配置变化并热更新
      *
-     * @param dataId 配置文件的 Data ID
+     * <p>Spring Cloud Alibaba Nacos Config 通过 {@code @RefreshScope} + {@code @EventListener}
+     * 实现配置刷新，方法保留以便后续接入配置变更事件。
+     *
      * @param config 新的配置内容
+     * @param businessType 业务类型
      */
-    @NacosConfigListener(dataIds = {
-        "agent-config-${businessType}.yaml"
-    }, groupId = "${lumina.agent.config.nacos.group:AGENT_GROUP}")
-    public void onConfigChanged(String config) {
+    public void onConfigChanged(String config, String businessType) {
         try {
-            // 从 dataId 中提取 businessType
-            String businessType = extractBusinessTypeFromDataId();
-
             if (businessType != null) {
                 AgentConfig newConfig = yamlMapper.readValue(config, AgentConfig.class);
 
@@ -188,17 +184,6 @@ public class ConfigLoader {
         } catch (Exception e) {
             log.error("配置热更新失败", e);
         }
-    }
-
-    /**
-     * 从 dataId 中提取 businessType
-     *
-     * @return businessType
-     */
-    private String extractBusinessTypeFromDataId() {
-        // 这里可以实现自定义逻辑，从 dataId 中提取业务类型
-        // 例如：agent-config-customer.yaml -> customer
-        return null;
     }
 
     /**

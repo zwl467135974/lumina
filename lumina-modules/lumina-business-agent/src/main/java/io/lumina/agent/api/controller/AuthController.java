@@ -4,6 +4,7 @@ import io.lumina.agent.api.dto.LoginDTO;
 import io.lumina.agent.api.vo.LoginVO;
 import io.lumina.agent.service.UserService;
 import io.lumina.common.core.R;
+import io.lumina.common.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -25,6 +26,9 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     /**
      * 用户登录
@@ -55,7 +59,7 @@ public class AuthController {
 
         // 验证并解析 token
         try {
-            io.lumina.common.core.LoginUser loginUser = io.lumina.common.util.JwtUtil.parseTokenToLoginUser(token);
+            io.lumina.common.core.LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
 
             return R.success(loginUser);
         } catch (Exception e) {

@@ -164,7 +164,7 @@ public class AgentServiceImpl implements AgentService {
         pageResult.setTotal(doPage.getTotal());
         pageResult.setPageNum(pageNum);
         pageResult.setPageSize(pageSize);
-        pageResult.setPages(doPage.getPages());
+        pageResult.setPages((int) doPage.getPages());
 
         return pageResult;
     }

@@ -36,6 +36,9 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     /**
      * 用户登录
      */
@@ -79,7 +82,7 @@ public class AuthController {
 
         // 验证并解析 token
         try {
-            LoginUser loginUser = JwtUtil.parseTokenToLoginUser(token);
+            LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
 
             return R.success(loginUser);
         } catch (Exception e) {

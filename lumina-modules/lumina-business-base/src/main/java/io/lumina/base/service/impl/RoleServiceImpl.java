@@ -10,6 +10,7 @@ import io.lumina.base.api.vo.role.RoleVO;
 import io.lumina.base.infrastructure.entity.PermissionDO;
 import io.lumina.base.infrastructure.entity.RoleDO;
 import io.lumina.base.infrastructure.entity.RolePermissionDO;
+import io.lumina.base.infrastructure.entity.UserRoleDO;
 import io.lumina.base.infrastructure.mapper.PermissionMapper;
 import io.lumina.base.infrastructure.mapper.RoleMapper;
 import io.lumina.base.infrastructure.mapper.RolePermissionMapper;

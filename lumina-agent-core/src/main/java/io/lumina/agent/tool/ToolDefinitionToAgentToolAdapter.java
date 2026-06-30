@@ -87,7 +87,7 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                                 ? resultString.substring(0, 200) + "..." 
                                 : resultString);
 
-                return ToolResultBlock.success(resultString);
+                return ToolResultBlock.text(resultString);
 
             } catch (Exception e) {
                 log.error("工具执行失败: {}", getName(), e);

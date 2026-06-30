@@ -119,19 +119,21 @@ public class TenantLineInterceptor implements InnerInterceptor {
 
     /**
      * 处理 SELECT 语句
+     *
+     * <p>适配 JSqlParser 4.9+：Select 直接作为 PlainSelect/SetOperationList 的父类型，
+     * 不再经过 SelectBody 中间层。
      */
     private void processSelect(Select select, Long tenantId) {
-        SelectBody selectBody = select.getSelectBody();
-        if (selectBody instanceof PlainSelect) {
-            PlainSelect plainSelect = (PlainSelect) selectBody;
+        if (select instanceof PlainSelect) {
+            PlainSelect plainSelect = (PlainSelect) select;
             addTenantCondition(plainSelect.getWhere(), plainSelect, tenantId);
-        } else if (selectBody instanceof SetOperationList) {
+        } else if (select instanceof SetOperationList) {
             // 处理 UNION 等集合操作
-            SetOperationList setOperationList = (SetOperationList) selectBody;
-            List<SelectBody> selects = setOperationList.getSelects();
-            for (SelectBody selectBodyItem : selects) {
-                if (selectBodyItem instanceof PlainSelect) {
-                    PlainSelect plainSelect = (PlainSelect) selectBodyItem;
+            SetOperationList setOperationList = (SetOperationList) select;
+            List<Select> selects = setOperationList.getSelects();
+            for (Select selectItem : selects) {
+                if (selectItem instanceof PlainSelect) {
+                    PlainSelect plainSelect = (PlainSelect) selectItem;
                     addTenantCondition(plainSelect.getWhere(), plainSelect, tenantId);
                 }
             }

@@ -3,8 +3,8 @@ package io.lumina.agent.engine.impl;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.formatter.dashscope.DashScopeChatFormatter;
 import io.agentscope.core.memory.InMemoryMemory;
+import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.DashScopeChatModel;
-import io.agentscope.core.model.Msg;
 import io.agentscope.core.tool.Toolkit;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
@@ -130,7 +130,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     .build();
 
             // 执行 Agent（阻塞等待结果）
-            Msg response = agent.call(message).block();
+            Msg response = agent.call(List.of(message)).block();
 
             if (response != null && response.getTextContent() != null) {
                 return response.getTextContent();
@@ -171,7 +171,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         if (llmConfig.getTemperature() != null) {
             modelBuilder.defaultOptions(
                     io.agentscope.core.model.GenerateOptions.builder()
-                            .temperature(llmConfig.getTemperature().floatValue())
+                            .temperature(llmConfig.getTemperature().doubleValue())
                             .maxTokens(llmConfig.getMaxTokens())
                             .build());
         }

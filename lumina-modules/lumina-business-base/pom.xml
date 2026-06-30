@@ -30,6 +30,12 @@
             <artifactId>lumina-framework</artifactId>
         </dependency>
 
+        <!-- Lumina Agent Core（BaseToolProvider 提供 @AgentTool 工具，需依赖 agent-core） -->
+        <dependency>
+            <groupId>io.lumina</groupId>
+            <artifactId>lumina-agent-core</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

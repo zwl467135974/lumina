@@ -14,7 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * @since 1.0.0
  */
 @Configuration
-public class BaseWebMvcConfig implements WebMvcConfigurer {
+public class WebMvcConfig implements WebMvcConfigurer {
 
     @Autowired
     private TenantIsolationInterceptor tenantIsolationInterceptor;

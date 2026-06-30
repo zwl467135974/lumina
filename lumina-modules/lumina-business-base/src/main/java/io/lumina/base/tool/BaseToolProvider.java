@@ -52,7 +52,7 @@ public class BaseToolProvider {
             dto.setRealName(realName);
             dto.setEmail(email);
             dto.setPhone(phone);
-            dto.setRoleIds(new ArrayList<>()); // 默认无角色
+            dto.setRoleIds(new Long[0]); // 默认无角色
 
             // 2. 调用服务
             Long userId = userService.createUser(dto);
