@@ -3,12 +3,13 @@ package io.lumina.agent.manager;
 import io.lumina.agent.tool.ToolDefinition;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,9 +41,14 @@ public class EnhancedToolManager implements IToolManager {
     private ApplicationContext applicationContext;
 
     /**
-     * 初始化时自动扫描工具
+     * 应用就绪后自动扫描工具
+     *
+     * <p>使用 {@link EventListener}({@link ApplicationReadyEvent}) 而非 {@code @PostConstruct}，
+     * 避免在 bean 初始化阶段通过 {@code applicationContext.getBeansWithAnnotation} 急切触发
+     * Controller bean 创建，从而引入与 {@code AgentController → AgentServiceImpl →
+     * DefaultAgentExecutionEngine → EnhancedToolManager} 的循环依赖。
      */
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void scanAndRegisterTools() {
         log.info("开始扫描 Agent 工具...");
 
