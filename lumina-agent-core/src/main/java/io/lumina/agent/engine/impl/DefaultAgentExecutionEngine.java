@@ -1,10 +1,9 @@
 package io.lumina.agent.engine.impl;
 
 import io.agentscope.core.ReActAgent;
-import io.agentscope.core.formatter.dashscope.DashScopeChatFormatter;
 import io.agentscope.core.memory.InMemoryMemory;
 import io.agentscope.core.message.Msg;
-import io.agentscope.core.model.DashScopeChatModel;
+import io.agentscope.core.model.Model;
 import io.agentscope.core.tool.Toolkit;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
@@ -13,6 +12,7 @@ import io.lumina.agent.loader.PromptLoader;
 import io.lumina.agent.manager.EnhancedToolManager;
 import io.lumina.agent.manager.MemoryManager;
 import io.lumina.agent.model.AgentConfig;
+import io.lumina.agent.model.ChatModelFactory;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
@@ -44,6 +44,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
     @Autowired(required = false)
     private EnhancedToolManager enhancedToolManager;
+
+    @Autowired
+    private ChatModelFactory chatModelFactory;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -161,24 +164,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             llmConfig.setMaxTokens(agentProperties.getLlm().getMaxTokens());
         }
 
-        // 构建 DashScope 模型
-        DashScopeChatModel.Builder modelBuilder = DashScopeChatModel.builder()
-                .apiKey(llmConfig.getApiKey() != null ? llmConfig.getApiKey() : getApiKey())
-                .modelName(llmConfig.getModelName() != null ? llmConfig.getModelName() : agentProperties.getLlm().getModel())
-                .stream(agentProperties.getLlm().getStream())
-                .enableThinking(agentProperties.getLlm().getEnableThinking());
-
-        if (llmConfig.getTemperature() != null) {
-            modelBuilder.defaultOptions(
-                    io.agentscope.core.model.GenerateOptions.builder()
-                            .temperature(llmConfig.getTemperature().doubleValue())
-                            .maxTokens(llmConfig.getMaxTokens())
-                            .build());
-        }
-
-        DashScopeChatModel model = modelBuilder
-                .formatter(new DashScopeChatFormatter())
-                .build();
+        // 构建模型（按 modelType 路由到 DashScope/OpenAI/Anthropic/Ollama）
+        Model model = chatModelFactory.create(llmConfig, agentProperties.getLlm(), getApiKey());
 
         // 构建工具集
         Toolkit toolkit = new Toolkit();

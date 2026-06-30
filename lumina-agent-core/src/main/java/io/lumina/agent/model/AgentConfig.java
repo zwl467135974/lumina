@@ -85,6 +85,11 @@ public class AgentConfig implements Serializable {
          * 最大 Token 数
          */
         private Integer maxTokens;
+
+        /**
+         * API Base URL（OpenAI 兼容 API、Ollama 本地模型等场景使用）
+         */
+        private String baseUrl;
     }
 
     /**
