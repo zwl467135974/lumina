@@ -32,8 +32,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public R<Void> handleBusinessException(BusinessException e) {
-        log.warn("业务异常: {}", e.getMessage());
-        return R.fail(e.getCode(), e.getMessage());
+        log.warn("业务异常: errCode={}, msg={}", e.getErrorCode(), e.getMessage());
+        return e.getErrorCode() != null
+                ? R.fail(e.getErrorCode(), e.getMessage())
+                : R.fail(e.getCode(), e.getMessage());
     }
 
     /**
@@ -41,8 +43,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(SystemException.class)
     public R<Void> handleSystemException(SystemException e) {
-        log.error("系统异常: {}", e.getMessage(), e);
-        return R.fail(e.getCode(), e.getMessage());
+        log.error("系统异常: errCode={}, msg={}", e.getErrorCode(), e.getMessage(), e);
+        return e.getErrorCode() != null
+                ? R.fail(e.getErrorCode(), e.getMessage())
+                : R.fail(e.getCode(), e.getMessage());
     }
 
     /**
@@ -50,8 +54,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BaseException.class)
     public R<Void> handleBaseException(BaseException e) {
-        log.error("异常: {}", e.getMessage(), e);
-        return R.fail(e.getCode(), e.getMessage());
+        log.error("异常: errCode={}, msg={}", e.getErrorCode(), e.getMessage(), e);
+        return e.getErrorCode() != null
+                ? R.fail(e.getErrorCode(), e.getMessage())
+                : R.fail(e.getCode(), e.getMessage());
     }
 
     /**

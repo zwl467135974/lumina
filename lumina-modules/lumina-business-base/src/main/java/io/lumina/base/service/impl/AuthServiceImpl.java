@@ -10,6 +10,7 @@ import io.lumina.base.infrastructure.mapper.UserMapper;
 import io.lumina.base.infrastructure.mapper.RoleMapper;
 import io.lumina.base.infrastructure.mapper.PermissionMapper;
 import io.lumina.base.service.AuthService;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.JwtUtil;
@@ -55,17 +56,17 @@ public class AuthServiceImpl implements AuthService {
         UserDO userDO = userMapper.selectByTenantIdAndUsername(tenantId, loginDTO.getUsername());
 
         if (userDO == null) {
-            throw new BusinessException("用户名或密码错误");
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
         // 3. 验证密码（使用 BCrypt 加密验证）
         if (!PasswordUtil.verify(loginDTO.getPassword(), userDO.getPassword())) {
-            throw new BusinessException("用户名或密码错误");
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
         // 4. 检查用户状态
         if (userDO.getStatus() == 0) {
-            throw new BusinessException("用户已被禁用");
+            throw new BusinessException(ErrorCode.USER_DISABLED);
         }
 
         // 5. 转换为领域模型
@@ -79,7 +80,7 @@ public class AuthServiceImpl implements AuthService {
                 .collect(Collectors.toList());
 
         if (roles.isEmpty()) {
-            throw new BusinessException("用户没有有效的角色");
+            throw new BusinessException(ErrorCode.LOGIN_FAILED, "用户没有有效的角色");
         }
 
         user.setRoles(roles);

@@ -9,6 +9,7 @@ import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.service.AgentService;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
@@ -129,7 +130,7 @@ public class AgentServiceImpl implements AgentService {
         AgentDO agentDO = agentMapper.selectById(agentId);
 
         if (agentDO == null) {
-            throw new BusinessException("Agent 不存在: id=" + agentId);
+            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存在: id=" + agentId);
         }
 
         return toDomain(agentDO);
@@ -178,7 +179,7 @@ public class AgentServiceImpl implements AgentService {
 
         // 检查状态
         if (!agent.isActive()) {
-            throw new BusinessException("Agent 未启用，无法执行任务");
+            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
 
         // 构建配置
@@ -194,7 +195,7 @@ public class AgentServiceImpl implements AgentService {
         );
 
         if (!result.getSuccess()) {
-            throw new BusinessException("Agent 执行失败: " + result.getError());
+            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
         }
 
         log.info("Agent 执行成功: id={}", agentId);

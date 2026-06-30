@@ -4,6 +4,7 @@ import io.lumina.agent.api.dto.CreateAgentDTO;
 import io.lumina.agent.api.vo.AgentVO;
 import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.service.AgentService;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
@@ -148,7 +149,7 @@ public class AgentController {
         log.info("执行 Agent: id={}, task={}", id, task);
 
         if (task == null || task.trim().isEmpty()) {
-            throw new BusinessException("任务描述不能为空");
+            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
         }
 
         String result = agentService.executeAgent(id, task);

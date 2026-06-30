@@ -1,5 +1,7 @@
 package io.lumina.common.exception;
 
+import io.lumina.common.core.ErrorCode;
+
 /**
  * 业务异常
  *
@@ -22,6 +24,18 @@ public class BusinessException extends BaseException {
 
     public BusinessException(String msg, Throwable cause) {
         super(400, msg, cause);
+    }
+
+    public BusinessException(ErrorCode errorCode) {
+        super(errorCode);
+    }
+
+    public BusinessException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
+    }
+
+    public BusinessException(ErrorCode errorCode, Throwable cause) {
+        super(errorCode, cause);
     }
 
     /**

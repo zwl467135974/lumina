@@ -9,6 +9,13 @@ import java.io.Serializable;
  *
  * <p>封装所有 API 响应结果，统一响应格式。
  *
+ * <p>字段说明：
+ * <ul>
+ *   <li>{@link #code}：HTTP 状态码（200 成功，4xx/5xx 失败），前端据此判断 {@link #isSuccess()}</li>
+ *   <li>{@link #errCode}：业务错误码（成功为 0，失败为 {@link ErrorCode#getCode()}），前端可据此精确区分业务场景</li>
+ *   <li>{@link #msg}、{@link #data}、{@link #timestamp}：消息、数据、时间戳</li>
+ * </ul>
+ *
  * @param <T> 数据类型
  * @author Lumina Team
  * @since 1.0.0
@@ -19,7 +26,7 @@ public class R<T> implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 响应码
+     * 响应码（HTTP 状态码）
      */
     private Integer code;
 
@@ -32,6 +39,11 @@ public class R<T> implements Serializable {
      * 响应数据
      */
     private T data;
+
+    /**
+     * 业务错误码（成功为 0，失败为 {@link ErrorCode#getCode()}）
+     */
+    private Integer errCode;
 
     /**
      * 时间戳
@@ -53,35 +65,57 @@ public class R<T> implements Serializable {
      * 成功响应（无数据）
      */
     public static <T> R<T> success() {
-        return new R<>(200, "操作成功", null);
+        return success(null);
     }
 
     /**
      * 成功响应（有数据）
      */
     public static <T> R<T> success(T data) {
-        return new R<>(200, "操作成功", data);
+        return success("操作成功", data);
     }
 
     /**
      * 成功响应（自定义消息）
      */
     public static <T> R<T> success(String msg, T data) {
-        return new R<>(200, msg, data);
+        R<T> r = new R<>(200, msg, data);
+        r.errCode = 0;
+        return r;
     }
 
     /**
-     * 失败响应
+     * 失败响应（按错误码）
+     */
+    public static <T> R<T> fail(ErrorCode errorCode) {
+        R<T> r = new R<>(errorCode.getHttpStatus(), errorCode.getMessage(), null);
+        r.errCode = errorCode.getCode();
+        return r;
+    }
+
+    /**
+     * 失败响应（按错误码，覆盖默认消息）
+     */
+    public static <T> R<T> fail(ErrorCode errorCode, String message) {
+        R<T> r = new R<>(errorCode.getHttpStatus(), message, null);
+        r.errCode = errorCode.getCode();
+        return r;
+    }
+
+    /**
+     * 失败响应（兼容旧用法：直接指定 code/msg）
      */
     public static <T> R<T> fail(Integer code, String msg) {
-        return new R<>(code, msg, null);
+        R<T> r = new R<>(code, msg, null);
+        r.errCode = code;
+        return r;
     }
 
     /**
      * 失败响应（默认 500）
      */
     public static <T> R<T> fail(String msg) {
-        return new R<>(500, msg, null);
+        return fail(500, msg);
     }
 
     /**

@@ -1,5 +1,7 @@
 package io.lumina.common.exception;
 
+import io.lumina.common.core.ErrorCode;
+
 /**
  * 系统异常
  *
@@ -26,6 +28,18 @@ public class SystemException extends BaseException {
 
     public SystemException(Throwable cause) {
         super(500, "系统异常", cause);
+    }
+
+    public SystemException(ErrorCode errorCode) {
+        super(errorCode);
+    }
+
+    public SystemException(ErrorCode errorCode, String message) {
+        super(errorCode, message);
+    }
+
+    public SystemException(ErrorCode errorCode, Throwable cause) {
+        super(errorCode, cause);
     }
 
     /**
