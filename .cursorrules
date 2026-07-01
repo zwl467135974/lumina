@@ -41,6 +41,21 @@
 - **路径**: `skills/lumina_git_commit/SKILL.md`
 - **触发条件**: 生成 Git 暂存区变更的提交信息时
 
+### 8. lumina_testing
+- **用途**: 测试规范（单元/集成）
+- **路径**: `skills/lumina_testing/SKILL.md`
+- **触发条件**: 编写测试、创建测试类、验证业务逻辑时
+
+### 9. lumina_observability
+- **用途**: 可观测性规范（日志/审计/指标）
+- **路径**: `skills/lumina_observability/SKILL.md`
+- **触发条件**: 添加日志、审计标注、指标埋点时
+
+### 10. lumina_conversation
+- **用途**: 会话与记忆管理规范
+- **路径**: `skills/lumina_conversation/SKILL.md`
+- **触发条件**: 处理多轮对话、记忆管理、流式输出时
+
 ## 技能包使用说明
 
 1. **自动识别**: AI 助手应根据用户请求和代码上下文自动识别需要使用的技能包
