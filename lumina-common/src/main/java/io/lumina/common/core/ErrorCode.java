@@ -77,6 +77,10 @@ public enum ErrorCode {
     AGENT_CONFIG_ERROR(500, 20004, "Agent 配置错误"),
     AGENT_TASK_EMPTY(400, 20005, "任务描述不能为空"),
 
+    // ==================== 会话 21000-21999 ====================
+    CONVERSATION_NOT_FOUND(404, 21001, "会话不存在"),
+    CONVERSATION_AGENT_MISMATCH(400, 21002, "会话与 Agent 不匹配"),
+
     ;
 
     /**

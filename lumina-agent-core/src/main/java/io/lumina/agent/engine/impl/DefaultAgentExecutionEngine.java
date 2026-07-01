@@ -6,6 +6,7 @@ import io.agentscope.core.agent.StreamOptions;
 import io.agentscope.core.memory.InMemoryMemory;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.Model;
+import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.tool.Toolkit;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -45,6 +47,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private final PromptLoader promptLoader;
     private final MemoryManager memoryManager;
     private final LuminaAgentProperties agentProperties;
+
+    /**
+     * 上下文窗口大小（加载最近 N 条历史记忆构建多轮上下文）
+     */
+    private static final int CONTEXT_WINDOW = 20;
 
     @Autowired(required = false)
     private EnhancedToolManager enhancedToolManager;
@@ -67,17 +74,17 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     @Override
-    public Mono<ExecuteResult> execute(String businessType, String task, AgentConfig config) {
-        return Mono.fromCallable(() -> executeSync(businessType, task, config))
+    public Mono<ExecuteResult> execute(String businessType, String task, AgentConfig config, String conversationId) {
+        return Mono.fromCallable(() -> executeSync(businessType, task, config, conversationId))
                 .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic());
     }
 
     @Override
-    public ExecuteResult executeSync(String businessType, String task, AgentConfig config) {
+    public ExecuteResult executeSync(String businessType, String task, AgentConfig config, String conversationId) {
         long startTime = System.currentTimeMillis();
 
         try {
-            log.info("开始执行 Agent: businessType={}, task={}", businessType, task);
+            log.info("开始执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
 
             // 加载配置
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
@@ -91,8 +98,17 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 填充提示词
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
+            // 构建上下文消息（含历史记忆）
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt);
+
             // 执行 Agent
-            String result = executeAgentWithAgentScope(agentConfig, prompt);
+            String result = executeAgentWithAgentScope(agentConfig, contextMessages);
+
+            // 保存对话记忆（Redis 热记忆）
+            if (conversationId != null) {
+                memoryManager.addMemory(conversationId, "user", task);
+                memoryManager.addMemory(conversationId, "assistant", result);
+            }
 
             long duration = System.currentTimeMillis() - startTime;
 
@@ -119,8 +135,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     @Override
-    public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config) {
-        log.info("开始流式执行 Agent: businessType={}, task={}", businessType, task);
+    public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId) {
+        log.info("开始流式执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
         try {
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
 
@@ -131,8 +147,10 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             }
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
+            // 构建上下文消息（含历史记忆）
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt);
+
             ReActAgent agent = createReActAgent(agentConfig);
-            Msg message = Msg.builder().textContent(prompt).build();
 
             // 流式选项：增量输出，包含推理片段与行动片段
             StreamOptions options = StreamOptions.builder()
@@ -141,8 +159,22 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     .includeActingChunk(true)
                     .build();
 
-            return agent.stream(List.of(message), options)
+            // 累积最终回复内容（用于流结束后保存记忆）
+            StringBuilder finalResponse = new StringBuilder();
+
+            return agent.stream(contextMessages, options)
                     .map(this::toStreamChunk)
+                    .doOnNext(chunk -> {
+                        if ("FINAL".equals(chunk.type())) {
+                            finalResponse.append(chunk.content());
+                        }
+                    })
+                    .doOnComplete(() -> {
+                        if (conversationId != null && finalResponse.length() > 0) {
+                            memoryManager.addMemory(conversationId, "user", task);
+                            memoryManager.addMemory(conversationId, "assistant", finalResponse.toString());
+                        }
+                    })
                     .onErrorResume(e -> {
                         log.error("流式执行失败: businessType={}", businessType, e);
                         return Flux.just(new StreamChunk("ERROR", e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
@@ -151,6 +183,31 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             log.error("构建流式 Agent 失败: businessType={}", businessType, e);
             return Flux.just(new StreamChunk("ERROR", e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
         }
+    }
+
+    /**
+     * 构建上下文消息列表（加载历史记忆 + 当前用户输入）
+     *
+     * @param conversationId 会话 ID（null 则无历史，仅当前输入）
+     * @param currentPrompt  当前用户提示词（已填充模板）
+     * @return AgentScope Msg 列表
+     */
+    private List<Msg> buildContextMessages(String conversationId, String currentPrompt) {
+        List<Msg> messages = new ArrayList<>();
+
+        if (conversationId != null) {
+            List<MemoryManager.Memory> history = memoryManager.getRecentMemories(conversationId, CONTEXT_WINDOW);
+            for (MemoryManager.Memory m : history) {
+                MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
+                        : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
+                messages.add(Msg.builder().role(role).textContent(m.content()).build());
+            }
+            log.debug("加载历史记忆: conversationId={}, 条数={}", conversationId, history.size());
+        }
+
+        // 追加当前用户消息
+        messages.add(Msg.builder().role(MsgRole.USER).textContent(currentPrompt).build());
+        return messages;
     }
 
     /**
@@ -170,21 +227,16 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      *
      * <p>集成 AgentScope Java SDK 实现 ReAct Agent 执行。
      */
-    private String executeAgentWithAgentScope(AgentConfig config, String prompt) {
+    private String executeAgentWithAgentScope(AgentConfig config, List<Msg> messages) {
         log.info("Agent 配置: name={}, type={}", config.getAgentName(), config.getAgentType());
-        log.info("Agent 提示词: {}", prompt);
+        log.info("Agent 上下文消息数: {}", messages.size());
 
         try {
             // 创建 AgentScope ReActAgent
             ReActAgent agent = createReActAgent(config);
 
-            // 构建消息
-            Msg message = Msg.builder()
-                    .textContent(prompt)
-                    .build();
-
             // 执行 Agent（阻塞等待结果）
-            Msg response = agent.call(List.of(message)).block();
+            Msg response = agent.call(messages).block();
 
             if (response != null && response.getTextContent() != null) {
                 return response.getTextContent();
@@ -195,8 +247,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
         } catch (Exception e) {
             log.error("AgentScope 执行失败: {}", e.getMessage(), e);
-            // 降级到模拟响应
-            return generateMockResponse(prompt);
+            // 降级到模拟响应（取最后一条用户消息文本）
+            String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
+            return generateMockResponse(lastUserText);
         }
     }
 

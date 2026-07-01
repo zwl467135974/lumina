@@ -145,18 +145,21 @@ public class AgentController {
 
     /**
      * 执行 Agent
+     *
+     * @param conversationId 会话 UUID（可选，传入则启用多轮上下文）
      */
     @PostMapping("/{id}/execute")
     public R<String> executeAgent(
             @PathVariable("id") Long id,
-            @RequestParam String task) {
-        log.info("执行 Agent: id={}, task={}", id, task);
+            @RequestParam String task,
+            @RequestParam(required = false) String conversationId) {
+        log.info("执行 Agent: id={}, task={}, conversationId={}", id, task, conversationId);
 
         if (task == null || task.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
         }
 
-        String result = agentService.executeAgent(id, task);
+        String result = agentService.executeAgent(id, task, conversationId);
 
         return R.success(result);
     }
@@ -166,18 +169,21 @@ public class AgentController {
      *
      * <p>每个 SSE 事件的 event 字段为片段类型（REASONING_CHUNK/ACTING_CHUNK/FINAL/ERROR），
      * data 字段为 {@link StreamChunk} JSON。
+     *
+     * @param conversationId 会话 UUID（可选，传入则启用多轮上下文）
      */
     @PostMapping(value = "/{id}/execute/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<StreamChunk>> executeAgentStream(
             @PathVariable("id") Long id,
-            @RequestParam String task) {
-        log.info("流式执行 Agent: id={}, task={}", id, task);
+            @RequestParam String task,
+            @RequestParam(required = false) String conversationId) {
+        log.info("流式执行 Agent: id={}, task={}, conversationId={}", id, task, conversationId);
 
         if (task == null || task.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
         }
 
-        return agentService.executeAgentStream(id, task)
+        return agentService.executeAgentStream(id, task, conversationId)
                 .map(chunk -> ServerSentEvent.<StreamChunk>builder()
                         .id(String.valueOf(System.nanoTime()))
                         .event(chunk.type())

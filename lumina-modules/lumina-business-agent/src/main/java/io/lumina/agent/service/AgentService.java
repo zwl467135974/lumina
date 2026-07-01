@@ -57,20 +57,29 @@ public interface AgentService {
     PageResult<Agent> pageAgents(String agentName, String agentType, Integer pageNum, Integer pageSize);
 
     /**
-     * 执行 Agent 任务
+     * 执行 Agent 任务（带会话上下文）
      *
-     * @param agentId Agent ID
-     * @param task    任务描述
+     * @param agentId          Agent ID
+     * @param task             任务描述
+     * @param conversationUuid 会话 UUID（null 表示无会话上下文，即单轮无状态）
      * @return 执行结果
      */
-    String executeAgent(Long agentId, String task);
+    String executeAgent(Long agentId, String task, String conversationUuid);
 
     /**
-     * 流式执行 Agent 任务（逐片段返回，用于 SSE 打字机效果）
+     * 流式执行 Agent 任务（带会话上下文）
      *
-     * @param agentId Agent ID
-     * @param task    任务描述
-     * @return 流式片段流
+     * @param conversationUuid 会话 UUID（null 表示无会话上下文）
      */
-    Flux<StreamChunk> executeAgentStream(Long agentId, String task);
+    Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid);
+
+    /** 兼容重载：执行 Agent（无会话上下文） */
+    default String executeAgent(Long agentId, String task) {
+        return executeAgent(agentId, task, null);
+    }
+
+    /** 兼容重载：流式执行 Agent（无会话上下文） */
+    default Flux<StreamChunk> executeAgentStream(Long agentId, String task) {
+        return executeAgentStream(agentId, task, null);
+    }
 }

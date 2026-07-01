@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.infrastructure.entity.AgentDO;
+import io.lumina.agent.infrastructure.entity.ConversationDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.service.AgentService;
+import io.lumina.agent.service.ConversationService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
@@ -40,6 +42,9 @@ public class AgentServiceImpl implements AgentService {
 
     @Autowired
     private AgentMapper agentMapper;
+
+    @Autowired
+    private ConversationService conversationService;
 
     /**
      * Domain -> DO 转换
@@ -173,8 +178,8 @@ public class AgentServiceImpl implements AgentService {
     }
 
     @Override
-    public String executeAgent(Long agentId, String task) {
-        log.info("执行 Agent: id={}, task={}", agentId, task);
+    public String executeAgent(Long agentId, String task, String conversationUuid) {
+        log.info("执行 Agent: id={}, task={}, conversation={}", agentId, task, conversationUuid);
 
         // 查询 Agent
         Agent agent = getAgentById(agentId);
@@ -189,15 +194,29 @@ public class AgentServiceImpl implements AgentService {
         config.setAgentName(agent.getAgentName());
         config.setAgentType(agent.getAgentType());
 
-        // 执行 Agent
+        // 会话上下文校验 + 保存用户消息到数据库
+        String sessionId = resolveConversation(conversationUuid, agentId);
+        if (sessionId != null) {
+            conversationService.saveMessage(sessionId, "user", task, 0, null);
+        }
+
+        // 执行 Agent（引擎加载历史记忆 + 保存到 Redis）
         ExecuteResult result = agentExecutionEngine.executeSync(
                 agent.getAgentType().toLowerCase(),
                 task,
-                config
+                config,
+                sessionId
         );
 
         if (!result.getSuccess()) {
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
+        }
+
+        // 保存助手回复到数据库
+        if (sessionId != null) {
+            Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
+            conversationService.saveMessage(sessionId, "assistant", result.getResult(), tokenCount, result.getDuration());
+            conversationService.incrementMessageCount(sessionId, 2);
         }
 
         log.info("Agent 执行成功: id={}", agentId);
@@ -205,8 +224,8 @@ public class AgentServiceImpl implements AgentService {
     }
 
     @Override
-    public Flux<StreamChunk> executeAgentStream(Long agentId, String task) {
-        log.info("流式执行 Agent: id={}, task={}", agentId, task);
+    public Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid) {
+        log.info("流式执行 Agent: id={}, task={}, conversation={}", agentId, task, conversationUuid);
 
         if (task == null || task.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
@@ -225,10 +244,49 @@ public class AgentServiceImpl implements AgentService {
         config.setAgentName(agent.getAgentName());
         config.setAgentType(agent.getAgentType());
 
+        // 会话上下文校验 + 保存用户消息到数据库
+        String sessionId = resolveConversation(conversationUuid, agentId);
+        if (sessionId != null) {
+            conversationService.saveMessage(sessionId, "user", task, 0, null);
+        }
+
+        final String sid = sessionId;
+        StringBuilder fullResponse = new StringBuilder();
+
         return agentExecutionEngine.executeStream(
                 agent.getAgentType().toLowerCase(),
                 task,
-                config
-        );
+                config,
+                sid
+        )
+        .doOnNext(chunk -> {
+            if ("FINAL".equals(chunk.type())) {
+                fullResponse.append(chunk.content());
+            }
+        })
+        .doOnComplete(() -> {
+            if (sid != null && fullResponse.length() > 0) {
+                conversationService.saveMessage(sid, "assistant", fullResponse.toString(), 0, null);
+                conversationService.incrementMessageCount(sid, 2);
+            }
+        });
+    }
+
+    /**
+     * 解析会话：校验 UUID 归属 Agent，返回会话标识（用作记忆 Key）
+     *
+     * @param conversationUuid 会话 UUID（null 则返回 null）
+     * @param agentId          当前 Agent ID
+     * @return 会话 UUID，或 null（无会话上下文）
+     */
+    private String resolveConversation(String conversationUuid, Long agentId) {
+        if (conversationUuid == null || conversationUuid.isEmpty()) {
+            return null;
+        }
+        ConversationDO conv = conversationService.getByUuid(conversationUuid);
+        if (!conv.getAgentId().equals(agentId)) {
+            throw new BusinessException(ErrorCode.CONVERSATION_AGENT_MISMATCH);
+        }
+        return conv.getConversationUuid();
     }
 }

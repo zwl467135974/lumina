@@ -81,11 +81,14 @@ export function executeAgent(id: number, task: string) {
  * @param cb    回调（onChunk 必填，onError/onClose 可选）
  * @returns AbortController（调用 .abort() 中断流式）
  */
-export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks): AbortController {
+export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks, conversationId?: string): AbortController {
   const controller = new AbortController()
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''
   const token = getToken()
-  const url = `${baseURL}/api/v1/agents/${id}/execute/stream?task=${encodeURIComponent(task)}`
+  let url = `${baseURL}/api/v1/agents/${id}/execute/stream?task=${encodeURIComponent(task)}`
+  if (conversationId) {
+    url += `&conversationId=${encodeURIComponent(conversationId)}`
+  }
 
   fetchEventSource(url, {
     method: 'POST',
