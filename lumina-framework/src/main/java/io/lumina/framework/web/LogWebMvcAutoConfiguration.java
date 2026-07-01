@@ -21,9 +21,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class LogWebMvcAutoConfiguration implements WebMvcConfigurer {
 
     private final LogContextInterceptor logContextInterceptor;
+    private final ApiDeprecationInterceptor apiDeprecationInterceptor;
 
-    public LogWebMvcAutoConfiguration(LogContextInterceptor logContextInterceptor) {
+    public LogWebMvcAutoConfiguration(LogContextInterceptor logContextInterceptor,
+                                      ApiDeprecationInterceptor apiDeprecationInterceptor) {
         this.logContextInterceptor = logContextInterceptor;
+        this.apiDeprecationInterceptor = apiDeprecationInterceptor;
     }
 
     @Override
@@ -31,5 +34,9 @@ public class LogWebMvcAutoConfiguration implements WebMvcConfigurer {
         registry.addInterceptor(logContextInterceptor)
                 .addPathPatterns("/api/**")
                 .order(10);
+        // API 废弃响应头注入（order=20，在日志之后）
+        registry.addInterceptor(apiDeprecationInterceptor)
+                .addPathPatterns("/api/**")
+                .order(20);
     }
 }
