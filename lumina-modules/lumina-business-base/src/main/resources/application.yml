@@ -20,6 +20,12 @@ spring:
       initial-size: 5
       min-idle: 5
       max-active: 20
+  flyway:
+    # 数据库版本化迁移（base 服务负责 schema，其他服务不引入 flyway 依赖）
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
