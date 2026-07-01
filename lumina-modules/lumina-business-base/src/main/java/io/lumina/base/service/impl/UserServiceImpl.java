@@ -153,9 +153,8 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.USER_IS_ADMIN, "不能删除系统管理员");
         }
 
-        // 4. 逻辑删除
-        userDO.setDeleted(1);
-        int result = userMapper.updateById(userDO);
+        // 4. 逻辑删除（deleteById 自动处理 @TableLogic 字段，updateById 会忽略逻辑删除字段）
+        int result = userMapper.deleteById(userId);
 
         log.info("用户删除成功: userId={}", userId);
         return result > 0;

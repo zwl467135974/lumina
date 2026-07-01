@@ -30,7 +30,8 @@ public class TenantLineHandlerImpl implements TenantLineHandler {
      */
     private static final List<String> IGNORE_TABLES = Arrays.asList(
         "lumina_permission",           // 权限表是全局的
-        "lumina_role_permission",      // 角色权限关联表
+        "lumina_role_permission",      // 角色权限关联表（无 tenant_id 列）
+        "lumina_user_role",            // 用户角色关联表（无 tenant_id 列）
         "lumina_tenant"                // 租户表本身
     );
 

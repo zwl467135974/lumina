@@ -1,0 +1,27 @@
+spring:
+  # 本地 MySQL（Druid 配置在 druid 子节点，覆盖密码即可，url/username 默认指向 lumina_dev/root）
+  datasource:
+    druid:
+      password: 123456
+
+  # 本地 Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # 禁用 Nacos（测试环境无 Nacos）
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
+
+# JWT 测试密钥
+lumina:
+  jwt:
+    secret-key: test-secret-key-for-integration-test-at-least-32-chars-long
+    expiration: 604800000
