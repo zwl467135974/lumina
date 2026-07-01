@@ -28,7 +28,7 @@ a {
   text-decoration: none;
 
   &:hover {
-    color: lighten(var(--el-color-primary), 10%);
+    color: var(--el-color-primary-light-3);
   }
 }
 

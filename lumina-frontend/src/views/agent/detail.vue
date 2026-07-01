@@ -19,6 +19,14 @@
         <el-descriptions-item label="更新时间">{{ updateTime }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
+
+    <el-card class="chat-card" shadow="never">
+      <template #header>
+        <span>💬 对话执行</span>
+      </template>
+      <agent-chat v-if="agentId && status === 1" :agent-id="agentId" />
+      <el-alert v-else-if="agentId && status !== 1" title="Agent 未启用，无法对话" type="warning" :closable="false" />
+    </el-card>
   </div>
 </template>
 
@@ -27,6 +35,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAgent, type AgentVO } from '@/api/modules/agent'
 import PageHeader from '@/components/common/PageHeader.vue'
+import AgentChat from '@/components/agent/AgentChat.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -72,5 +81,9 @@ onMounted(() => {
 <style scoped lang="scss">
 .agent-detail-page {
   // 样式
+}
+
+.chat-card {
+  margin-top: 16px;
 }
 </style>

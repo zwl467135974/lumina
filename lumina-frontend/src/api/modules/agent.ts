@@ -2,8 +2,31 @@
  * Agent 相关 API
  */
 import request from '../request'
+import { fetchEventSource } from '@microsoft/fetch-event-source'
+import { getToken } from '@/utils'
 import type { R, PageResult } from '@/types/api'
 import type { AgentVO, CreateAgentDTO, UpdateAgentDTO, QueryAgentDTO } from '@/types/api'
+
+/**
+ * 流式输出片段
+ */
+export interface StreamChunk {
+  /** 片段类型：REASONING_CHUNK / ACTING_CHUNK / FINAL / ERROR 等 */
+  type: string
+  /** 片段文本内容 */
+  content: string
+  /** 是否为最后一片 */
+  last: boolean
+}
+
+/**
+ * 流式执行回调
+ */
+export interface StreamCallbacks {
+  onChunk: (chunk: StreamChunk) => void
+  onError?: (err: Error) => void
+  onClose?: () => void
+}
 
 /**
  * 创建 Agent
@@ -45,4 +68,58 @@ export function deleteAgent(id: number) {
  */
 export function executeAgent(id: number, task: string) {
   return request.post<R<string>>(`/api/v1/agents/${id}/execute`, { task })
+}
+
+/**
+ * 流式执行 Agent（SSE，逐片段回调）
+ *
+ * <p>因原生 EventSource 仅支持 GET 且无法携带 Authorization Header，
+ * 这里使用 @microsoft/fetch-event-source 以 POST 方式订阅 SSE。
+ *
+ * @param id    Agent ID
+ * @param task  任务描述
+ * @param cb    回调（onChunk 必填，onError/onClose 可选）
+ * @returns AbortController（调用 .abort() 中断流式）
+ */
+export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks): AbortController {
+  const controller = new AbortController()
+  const baseURL = import.meta.env.VITE_API_BASE_URL || ''
+  const token = getToken()
+  const url = `${baseURL}/api/v1/agents/${id}/execute/stream?task=${encodeURIComponent(task)}`
+
+  fetchEventSource(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'text/event-stream',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    signal: controller.signal,
+    // 避免浏览器在 401/403 时自动重试
+    openWhenHidden: true,
+    async onopen(response) {
+      if (!response.ok) {
+        throw new Error(`流式连接失败: ${response.status} ${response.statusText}`)
+      }
+    },
+    onmessage(ev) {
+      // ev.event = 片段类型，ev.data = StreamChunk JSON
+      let chunk: StreamChunk
+      try {
+        chunk = JSON.parse(ev.data) as StreamChunk
+      } catch {
+        chunk = { type: ev.event || 'CHUNK', content: ev.data, last: false }
+      }
+      cb.onChunk(chunk)
+    },
+    onerror(err) {
+      cb.onError?.(err instanceof Error ? err : new Error(String(err)))
+      // 抛出以阻止自动重连
+      throw err
+    },
+    onclose() {
+      cb.onClose?.()
+    }
+  })
+
+  return controller
 }
