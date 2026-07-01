@@ -2,6 +2,8 @@ package io.lumina.agent.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.rag.Knowledge;
 import io.agentscope.core.rag.model.Document;
 import io.agentscope.core.rag.model.RetrieveConfig;
@@ -10,6 +12,7 @@ import io.agentscope.core.rag.reader.ReaderInput;
 import io.agentscope.core.rag.reader.SplitStrategy;
 import io.agentscope.core.rag.reader.TextReader;
 import io.agentscope.core.rag.reader.WordReader;
+import io.agentscope.core.rag.store.VDBStoreBase;
 import io.lumina.agent.infrastructure.entity.KnowledgeDocumentDO;
 import io.lumina.agent.infrastructure.mapper.KnowledgeDocumentMapper;
 import io.lumina.agent.service.KnowledgeService;
@@ -33,6 +36,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Autowired(required = false)
     private Knowledge knowledge;
 
+    @Autowired(required = false)
+    private VDBStoreBase embeddingStore;
+
     @Autowired
     private KnowledgeDocumentMapper documentMapper;
 
@@ -44,6 +50,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Value("${lumina.rag.retrieve.score-threshold:0.3}")
     private double scoreThreshold;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public String uploadDocument(MultipartFile file, Long agentId) {
@@ -79,6 +87,15 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                 knowledge.addDocuments(docs).block();
             }
 
+            List<String> vectorDocIds = new ArrayList<>();
+            if (docs != null) {
+                for (Document d : docs) {
+                    if (d.getId() != null) {
+                        vectorDocIds.add(d.getId());
+                    }
+                }
+            }
+
             KnowledgeDocumentDO doc = new KnowledgeDocumentDO();
             doc.setDocumentUuid(uuid);
             doc.setTenantId(BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L);
@@ -86,6 +103,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             doc.setTitle(filename);
             doc.setFormat(format);
             doc.setChunkCount(docs != null ? docs.size() : 0);
+            doc.setVectorDocIds(objectMapper.writeValueAsString(vectorDocIds));
             doc.setFileSize(file.getSize());
             doc.setStatus(1);
             documentMapper.insert(doc);
@@ -127,8 +145,32 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         wrapper.eq(KnowledgeDocumentDO::getDocumentUuid, uuid);
         KnowledgeDocumentDO doc = documentMapper.selectOne(wrapper);
         if (doc == null) return;
+
+        removeVectorDocuments(doc.getVectorDocIds());
+
         documentMapper.deleteById(doc.getDocumentId());
         log.info("文档已删除: uuid={}", uuid);
+    }
+
+    private void removeVectorDocuments(String vectorDocIdsJson) {
+        if (embeddingStore == null || vectorDocIdsJson == null || vectorDocIdsJson.isBlank()) {
+            return;
+        }
+        try {
+            List<String> ids = objectMapper.readValue(vectorDocIdsJson, new TypeReference<List<String>>() {});
+            for (String id : ids) {
+                try {
+                    Boolean ok = embeddingStore.delete(id).block();
+                    if (Boolean.TRUE.equals(ok)) {
+                        log.info("向量文档已删除: id={}", id);
+                    }
+                } catch (Exception e) {
+                    log.warn("删除向量文档失败: id={}", id, e);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析向量文档ID列表失败: {}", vectorDocIdsJson, e);
+        }
     }
 
     @Override

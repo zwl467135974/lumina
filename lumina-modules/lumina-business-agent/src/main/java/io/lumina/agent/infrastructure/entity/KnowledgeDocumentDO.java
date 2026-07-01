@@ -23,6 +23,8 @@ public class KnowledgeDocumentDO implements Serializable {
     private String format;
     @TableField("chunk_count")
     private Integer chunkCount;
+    @TableField("vector_doc_ids")
+    private String vectorDocIds;
     @TableField("file_size")
     private Long fileSize;
     @TableField("status")
