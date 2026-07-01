@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getAgent, type AgentVO } from '@/api/modules/agent'
+import { getAgent } from '@/api/modules/agent'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AgentChat from '@/components/agent/AgentChat.vue'
 

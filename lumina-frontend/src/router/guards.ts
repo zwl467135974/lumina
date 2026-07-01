@@ -11,7 +11,7 @@ NProgress.configure({ showSpinner: false })
 
 export function setupRouterGuards(router: Router) {
   // 前置守卫
-  router.beforeEach((to, from, next) => {
+  router.beforeEach((to, _from, next) => {
     NProgress.start()
 
     // 设置页面标题
@@ -33,8 +33,9 @@ export function setupRouterGuards(router: Router) {
       }
 
       // 检查权限
-      if (to.meta?.permissions && to.meta.permissions.length > 0) {
-        const hasPermission = permissionStore.hasPermission(to.meta.permissions)
+      const permissions = to.meta?.permissions as string[] | undefined
+      if (permissions && permissions.length > 0) {
+        const hasPermission = permissionStore.hasPermission(permissions)
         if (!hasPermission) {
           next('/404')
           return

@@ -2,7 +2,7 @@
  * 权限状态管理
  */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useUserStore } from './user'
 
 export const usePermissionStore = defineStore('permission', () => {

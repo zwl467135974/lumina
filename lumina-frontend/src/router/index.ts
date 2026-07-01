@@ -3,11 +3,10 @@
  */
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import type { AppRouteRecordRaw } from '@/types/router'
 import { basicRoutes, agentRoutes, systemRoutes } from './modules'
 import { setupRouterGuards } from './guards'
 
-const routes: RouteRecordRaw[] = [
+const routes = [
   {
     path: '/',
     redirect: '/agent/list'
@@ -22,7 +21,7 @@ const routes: RouteRecordRaw[] = [
     path: '/:pathMatch(.*)*',
     redirect: '/404'
   }
-]
+] as RouteRecordRaw[]
 
 const router = createRouter({
   history: createWebHistory(),

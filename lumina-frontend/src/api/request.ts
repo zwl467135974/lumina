@@ -1,7 +1,7 @@
 /**
  * Axios 请求封装
  */
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError } from 'axios'
+import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { ElMessage } from 'element-plus'
 import { getToken, removeToken } from '@/utils'
 import type { R } from '@/types/api'
@@ -17,7 +17,7 @@ const service: AxiosInstance = axios.create({
 
 // 请求拦截器
 service.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     // 从 localStorage 获取 token
     const token = getToken()
     if (token && config.headers) {
@@ -37,7 +37,8 @@ service.interceptors.response.use(
 
     // 统一响应格式处理
     if (res.code === 200) {
-      return res
+      // 拦截器剥离 AxiosResponse 外壳，直接返回 R；类型用断言对齐
+      return res as unknown as AxiosResponse
     } else {
       // 业务错误处理
       ElMessage.error(res.msg || '请求失败')
@@ -83,4 +84,26 @@ service.interceptors.response.use(
   }
 )
 
-export default service
+/**
+ * HTTP 请求封装
+ *
+ * 响应拦截器已剥离 AxiosResponse 外壳，直接返回后端统一响应体 R<T>。
+ * 这里通过泛型 T 对齐类型：调用方约定 T 为 R<X>（如 request.get<R<AgentVO>>），
+ * 避免 axios 默认 AxiosResponse 包装导致的类型错位。
+ */
+const http = {
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return service.get(url, config) as unknown as Promise<T>
+  },
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return service.post(url, data, config) as unknown as Promise<T>
+  },
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return service.put(url, data, config) as unknown as Promise<T>
+  },
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return service.delete(url, config) as unknown as Promise<T>
+  }
+}
+
+export default http
