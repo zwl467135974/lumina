@@ -18,6 +18,8 @@ import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ChatModelFactory;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.model.StreamChunk;
+import io.lumina.agent.monitor.ToolCircuitBreaker;
+import io.lumina.agent.monitor.ToolInvocationRecorder;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +57,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
     @Autowired(required = false)
     private EnhancedToolManager enhancedToolManager;
+
+    @Autowired(required = false)
+    private ToolInvocationRecorder toolInvocationRecorder;
+
+    @Autowired(required = false)
+    private ToolCircuitBreaker toolCircuitBreaker;
 
     @Autowired
     private ChatModelFactory chatModelFactory;
@@ -313,9 +321,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     continue;
                 }
 
-                // 创建 AgentTool 适配器
-                ToolDefinitionToAgentToolAdapter adapter = 
-                        new ToolDefinitionToAgentToolAdapter(toolDef);
+                // 创建 AgentTool 适配器（注入可观测组件：调用记录 + 熔断器）
+                ToolDefinitionToAgentToolAdapter adapter =
+                        new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker);
 
                 // 注册到 Toolkit
                 toolkit.registerAgentTool(adapter);
