@@ -216,6 +216,38 @@ services:
       gateway:
         condition: service_healthy
 
+  # Prometheus 监控（指标抓取与存储）
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: lumina-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    networks:
+      - lumina-network
+
+  # Grafana 可视化仪表盘
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: lumina-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - lumina-network
+    depends_on:
+      - prometheus
+
 # 数据卷定义
 volumes:
   mysql-data:
@@ -225,6 +257,10 @@ volumes:
   nacos-data:
     driver: local
   nacos-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
     driver: local
 
 # 网络定义

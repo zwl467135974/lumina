@@ -64,6 +64,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Autowired(required = false)
     private ToolCircuitBreaker toolCircuitBreaker;
 
+    @Autowired(required = false)
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
     @Autowired
     private ChatModelFactory chatModelFactory;
 
@@ -122,6 +125,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             log.info("Agent 执行成功: businessType={}, duration={}ms", businessType, duration);
 
+            recordTimer("agent.execution.duration", businessType, "success", duration);
+
             ExecuteResult executeResult = ExecuteResult.success(result);
             executeResult.setDuration(duration);
 
@@ -130,6 +135,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("Agent 执行失败: businessType={}, error={}", businessType, e.getMessage(), e);
+
+            recordTimer("agent.execution.duration", businessType, "failure", duration);
 
             ExecuteResult executeResult = ExecuteResult.failure(e.getMessage());
             executeResult.setDuration(duration);
@@ -140,6 +147,21 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Override
     public String getEngineName() {
         return "DefaultAgentExecutionEngine";
+    }
+
+    /**
+     * 记录执行耗时指标到 Micrometer（Prometheus 抓取）
+     *
+     * @param metric     指标名（如 agent.execution.duration）
+     * @param type       业务类型（tag）
+     * @param result     执行结果 success/failure（tag）
+     * @param durationMs 耗时毫秒
+     */
+    private void recordTimer(String metric, String type, String result, long durationMs) {
+        if (meterRegistry != null) {
+            meterRegistry.timer(metric, "type", type, "result", result)
+                    .record(java.time.Duration.ofMillis(durationMs));
+        }
     }
 
     @Override
@@ -323,7 +345,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
                 // 创建 AgentTool 适配器（注入可观测组件：调用记录 + 熔断器）
                 ToolDefinitionToAgentToolAdapter adapter =
-                        new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker);
+                        new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker, meterRegistry);
 
                 // 注册到 Toolkit
                 toolkit.registerAgentTool(adapter);

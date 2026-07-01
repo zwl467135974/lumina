@@ -29,6 +29,12 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- Micrometer Core（指标埋点：Timer/Counter，运行时由 framework 的 actuator 提供 MeterRegistry） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+
         <!-- AgentScope Java SDK -->
         <dependency>
             <groupId>io.agentscope</groupId>

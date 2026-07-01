@@ -1,0 +1,29 @@
+# Prometheus 抓取配置
+global:
+  scrape_interval: 15s          # 抓取间隔
+  evaluation_interval: 15s      # 规则评估间隔
+
+scrape_configs:
+  # Gateway 网关
+  - job_name: 'lumina-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['gateway:8080']
+        labels:
+          service: 'gateway'
+
+  # Business Base 基础服务
+  - job_name: 'lumina-base'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['business-base:8081']
+        labels:
+          service: 'base'
+
+  # Agent Service Agent 服务
+  - job_name: 'lumina-agent'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['agent-service:8082']
+        labels:
+          service: 'agent'

@@ -29,18 +29,21 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
     private final ObjectMapper objectMapper;
     private final ToolInvocationRecorder recorder;
     private final ToolCircuitBreaker circuitBreaker;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private Map<String, Object> parametersSchema;
 
     public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition) {
-        this(toolDefinition, null, null);
+        this(toolDefinition, null, null, null);
     }
 
     public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition,
                                             ToolInvocationRecorder recorder,
-                                            ToolCircuitBreaker circuitBreaker) {
+                                            ToolCircuitBreaker circuitBreaker,
+                                            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.toolDefinition = toolDefinition;
         this.recorder = recorder;
         this.circuitBreaker = circuitBreaker;
+        this.meterRegistry = meterRegistry;
         this.objectMapper = new ObjectMapper();
         this.parametersSchema = parseParametersSchema(toolDefinition);
     }
@@ -140,6 +143,14 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
      */
     private void doRecord(String toolName, String input, String output,
                           String error, long duration, boolean success) {
+        // Micrometer 指标（Prometheus 抓取，直方图/百分位）
+        if (meterRegistry != null) {
+            meterRegistry.timer("tool.invocation.duration",
+                    "name", toolName,
+                    "result", success ? "success" : "failure")
+                    .record(java.time.Duration.ofMillis(duration));
+        }
+        // 内存记录（工具监控页查询）
         if (recorder != null) {
             if (success) {
                 recorder.record(ToolInvocationRecord.success(
