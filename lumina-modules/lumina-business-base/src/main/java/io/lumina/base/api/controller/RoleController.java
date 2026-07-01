@@ -8,6 +8,7 @@ import io.lumina.base.api.dto.role.UpdateRoleDTO;
 import io.lumina.base.api.vo.role.RoleVO;
 import io.lumina.base.service.RoleService;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -34,6 +35,7 @@ public class RoleController {
     /**
      * 创建角色
      */
+    @Audit(module = "role", action = "CREATE")
     @PostMapping
     public R<Long> createRole(@Valid @RequestBody CreateRoleDTO dto) {
         log.info("创建角色请求: roleCode={}", dto.getRoleCode());
@@ -44,6 +46,7 @@ public class RoleController {
     /**
      * 更新角色
      */
+    @Audit(module = "role", action = "UPDATE")
     @PutMapping("/{roleId}")
     public R<Boolean> updateRole(@PathVariable Long roleId, @Valid @RequestBody UpdateRoleDTO dto) {
         log.info("更新角色请求: roleId={}", roleId);
@@ -55,6 +58,7 @@ public class RoleController {
     /**
      * 删除角色
      */
+    @Audit(module = "role", action = "DELETE")
     @DeleteMapping("/{roleId}")
     public R<Boolean> deleteRole(@PathVariable Long roleId) {
         log.info("删除角色请求: roleId={}", roleId);

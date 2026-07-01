@@ -6,6 +6,7 @@ import io.lumina.base.service.AuthService;
 import io.lumina.common.core.R;
 import io.lumina.common.core.LoginUser;
 import io.lumina.common.util.JwtUtil;
+import io.lumina.framework.audit.annotation.Audit;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -42,6 +43,7 @@ public class AuthController {
     /**
      * 用户登录
      */
+    @Audit(module = "auth", action = "LOGIN", description = "用户登录")
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "使用用户名和密码登录，成功后返回JWT Token")
     @ApiResponses({
@@ -94,6 +96,7 @@ public class AuthController {
     /**
      * 用户登出
      */
+    @Audit(module = "auth", action = "LOGOUT")
     @PostMapping("/logout")
     @Operation(summary = "用户登出", description = "用户退出登录，Token 将失效")
     @ApiResponses({

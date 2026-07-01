@@ -7,6 +7,7 @@ import io.lumina.base.api.dto.tenant.UpdateTenantDTO;
 import io.lumina.base.api.vo.tenant.TenantVO;
 import io.lumina.base.service.TenantService;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -32,6 +33,7 @@ public class TenantController {
     /**
      * 创建租户
      */
+    @Audit(module = "tenant", action = "CREATE")
     @PostMapping
     public R<Long> createTenant(@Valid @RequestBody CreateTenantDTO dto) {
         log.info("创建租户请求: tenantCode={}", dto.getTenantCode());
@@ -42,6 +44,7 @@ public class TenantController {
     /**
      * 更新租户
      */
+    @Audit(module = "tenant", action = "UPDATE")
     @PutMapping("/{tenantId}")
     public R<Boolean> updateTenant(@PathVariable Long tenantId, @Valid @RequestBody UpdateTenantDTO dto) {
         log.info("更新租户请求: tenantId={}", tenantId);
@@ -53,6 +56,7 @@ public class TenantController {
     /**
      * 删除租户
      */
+    @Audit(module = "tenant", action = "DELETE")
     @DeleteMapping("/{tenantId}")
     public R<Boolean> deleteTenant(@PathVariable Long tenantId) {
         log.info("删除租户请求: tenantId={}", tenantId);

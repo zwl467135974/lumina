@@ -5,6 +5,7 @@ import io.lumina.base.api.dto.permission.UpdatePermissionDTO;
 import io.lumina.base.api.vo.permission.PermissionVO;
 import io.lumina.base.service.PermissionService;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -41,6 +42,7 @@ public class PermissionController {
     /**
      * 创建权限
      */
+    @Audit(module = "permission", action = "CREATE")
     @PostMapping
     public R<Long> createPermission(@Valid @RequestBody CreatePermissionDTO dto) {
         log.info("创建权限请求: permissionCode={}", dto.getPermissionCode());
@@ -51,6 +53,7 @@ public class PermissionController {
     /**
      * 更新权限
      */
+    @Audit(module = "permission", action = "UPDATE")
     @PutMapping("/{permissionId}")
     public R<Boolean> updatePermission(@PathVariable Long permissionId, @Valid @RequestBody UpdatePermissionDTO dto) {
         log.info("更新权限请求: permissionId={}", permissionId);
@@ -62,6 +65,7 @@ public class PermissionController {
     /**
      * 删除权限
      */
+    @Audit(module = "permission", action = "DELETE")
     @DeleteMapping("/{permissionId}")
     public R<Boolean> deletePermission(@PathVariable Long permissionId) {
         log.info("删除权限请求: permissionId={}", permissionId);

@@ -6,6 +6,7 @@ import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.service.AgentService;
 import io.lumina.common.core.ErrorCode;
+import io.lumina.framework.audit.annotation.Audit;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
@@ -41,6 +42,7 @@ public class AgentController {
     /**
      * 创建 Agent
      */
+    @Audit(module = "agent", action = "CREATE", description = "创建Agent")
     @PostMapping
     public R<AgentVO> createAgent(@Valid @RequestBody CreateAgentDTO dto) {
         log.info("创建 Agent: {}", dto.getAgentName());
@@ -62,6 +64,7 @@ public class AgentController {
     /**
      * 更新 Agent
      */
+    @Audit(module = "agent", action = "UPDATE", description = "更新Agent")
     @PutMapping("/{id}")
     public R<AgentVO> updateAgent(
             @PathVariable("id") Long id,
@@ -85,6 +88,7 @@ public class AgentController {
     /**
      * 删除 Agent
      */
+    @Audit(module = "agent", action = "DELETE", description = "删除Agent")
     @DeleteMapping("/{id}")
     public R<Void> deleteAgent(@PathVariable("id") Long id) {
         log.info("删除 Agent: id={}", id);
@@ -148,6 +152,7 @@ public class AgentController {
      *
      * @param conversationId 会话 UUID（可选，传入则启用多轮上下文）
      */
+    @Audit(module = "agent", action = "EXECUTE", description = "执行Agent")
     @PostMapping("/{id}/execute")
     public R<String> executeAgent(
             @PathVariable("id") Long id,

@@ -11,6 +11,7 @@ import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.UserService;
 import io.lumina.common.core.R;
 import io.lumina.common.core.BaseContext;
+import io.lumina.framework.audit.annotation.Audit;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -46,6 +47,7 @@ public class UserController {
     /**
      * 创建用户
      */
+    @Audit(module = "user", action = "CREATE")
     @PostMapping
     @RequirePermission("system:user:create")
     @Operation(summary = "创建用户", description = "创建新的用户账户，支持分配初始角色")
@@ -66,6 +68,7 @@ public class UserController {
     /**
      * 更新用户
      */
+    @Audit(module = "user", action = "UPDATE")
     @PutMapping("/{userId}")
     @RequirePermission("system:user:update")
     @Operation(summary = "更新用户", description = "更新用户基本信息，不包括密码")
@@ -88,6 +91,7 @@ public class UserController {
     /**
      * 删除用户
      */
+    @Audit(module = "user", action = "DELETE")
     @DeleteMapping("/{userId}")
     @RequirePermission("system:user:delete")
     @Operation(summary = "删除用户", description = "删除指定用户，此操作不可恢复")
