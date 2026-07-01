@@ -12,12 +12,14 @@ import io.lumina.agent.service.AgentService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.agent.model.StreamChunk;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -200,5 +202,33 @@ public class AgentServiceImpl implements AgentService {
 
         log.info("Agent 执行成功: id={}", agentId);
         return result.getResult();
+    }
+
+    @Override
+    public Flux<StreamChunk> executeAgentStream(Long agentId, String task) {
+        log.info("流式执行 Agent: id={}, task={}", agentId, task);
+
+        if (task == null || task.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
+        }
+
+        // 查询 Agent
+        Agent agent = getAgentById(agentId);
+
+        // 检查状态
+        if (!agent.isActive()) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
+        }
+
+        // 构建配置
+        AgentConfig config = new AgentConfig();
+        config.setAgentName(agent.getAgentName());
+        config.setAgentType(agent.getAgentType());
+
+        return agentExecutionEngine.executeStream(
+                agent.getAgentType().toLowerCase(),
+                task,
+                config
+        );
     }
 }

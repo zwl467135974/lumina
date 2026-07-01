@@ -3,6 +3,7 @@ package io.lumina.agent.api.controller;
 import io.lumina.agent.api.dto.CreateAgentDTO;
 import io.lumina.agent.api.vo.AgentVO;
 import io.lumina.agent.domain.model.Agent;
+import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.service.AgentService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
@@ -12,8 +13,11 @@ import io.lumina.common.util.CollectionUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -155,5 +159,29 @@ public class AgentController {
         String result = agentService.executeAgent(id, task);
 
         return R.success(result);
+    }
+
+    /**
+     * 流式执行 Agent（SSE，逐片段返回，用于打字机效果）
+     *
+     * <p>每个 SSE 事件的 event 字段为片段类型（REASONING_CHUNK/ACTING_CHUNK/FINAL/ERROR），
+     * data 字段为 {@link StreamChunk} JSON。
+     */
+    @PostMapping(value = "/{id}/execute/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<StreamChunk>> executeAgentStream(
+            @PathVariable("id") Long id,
+            @RequestParam String task) {
+        log.info("流式执行 Agent: id={}, task={}", id, task);
+
+        if (task == null || task.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
+        }
+
+        return agentService.executeAgentStream(id, task)
+                .map(chunk -> ServerSentEvent.<StreamChunk>builder()
+                        .id(String.valueOf(System.nanoTime()))
+                        .event(chunk.type())
+                        .data(chunk)
+                        .build());
     }
 }

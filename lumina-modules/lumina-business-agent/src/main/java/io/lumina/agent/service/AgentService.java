@@ -1,7 +1,9 @@
 package io.lumina.agent.service;
 
 import io.lumina.agent.domain.model.Agent;
+import io.lumina.agent.model.StreamChunk;
 import io.lumina.common.core.PageResult;
+import reactor.core.publisher.Flux;
 
 /**
  * Agent 服务接口
@@ -62,4 +64,13 @@ public interface AgentService {
      * @return 执行结果
      */
     String executeAgent(Long agentId, String task);
+
+    /**
+     * 流式执行 Agent 任务（逐片段返回，用于 SSE 打字机效果）
+     *
+     * @param agentId Agent ID
+     * @param task    任务描述
+     * @return 流式片段流
+     */
+    Flux<StreamChunk> executeAgentStream(Long agentId, String task);
 }

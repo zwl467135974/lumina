@@ -1,6 +1,8 @@
 package io.lumina.agent.engine.impl;
 
 import io.agentscope.core.ReActAgent;
+import io.agentscope.core.agent.Event;
+import io.agentscope.core.agent.StreamOptions;
 import io.agentscope.core.memory.InMemoryMemory;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.Model;
@@ -14,12 +16,14 @@ import io.lumina.agent.manager.MemoryManager;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ChatModelFactory;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -112,6 +116,53 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Override
     public String getEngineName() {
         return "DefaultAgentExecutionEngine";
+    }
+
+    @Override
+    public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config) {
+        log.info("开始流式执行 Agent: businessType={}, task={}", businessType, task);
+        try {
+            AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
+
+            // 加载并填充提示词
+            String promptTemplate = agentConfig.getPromptTemplate();
+            if (promptTemplate == null || promptTemplate.isEmpty()) {
+                promptTemplate = promptLoader.loadPrompt(businessType);
+            }
+            String prompt = promptLoader.fillTemplate(promptTemplate, task);
+
+            ReActAgent agent = createReActAgent(agentConfig);
+            Msg message = Msg.builder().textContent(prompt).build();
+
+            // 流式选项：增量输出，包含推理片段与行动片段
+            StreamOptions options = StreamOptions.builder()
+                    .incremental(true)
+                    .includeReasoningChunk(true)
+                    .includeActingChunk(true)
+                    .build();
+
+            return agent.stream(List.of(message), options)
+                    .map(this::toStreamChunk)
+                    .onErrorResume(e -> {
+                        log.error("流式执行失败: businessType={}", businessType, e);
+                        return Flux.just(new StreamChunk("ERROR", e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
+                    });
+        } catch (Exception e) {
+            log.error("构建流式 Agent 失败: businessType={}", businessType, e);
+            return Flux.just(new StreamChunk("ERROR", e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
+        }
+    }
+
+    /**
+     * 将 AgentScope Event 转换为 StreamChunk
+     */
+    private StreamChunk toStreamChunk(Event event) {
+        String type = event.getType() != null ? event.getType().name() : "CHUNK";
+        String content = "";
+        if (event.getMessage() != null && event.getMessage().getTextContent() != null) {
+            content = event.getMessage().getTextContent();
+        }
+        return new StreamChunk(type, content, event.isLast());
     }
 
     /**
