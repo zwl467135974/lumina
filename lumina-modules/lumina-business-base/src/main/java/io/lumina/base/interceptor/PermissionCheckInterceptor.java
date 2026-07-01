@@ -3,6 +3,7 @@ package io.lumina.base.interceptor;
 import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.annotation.RequireRole;
 import io.lumina.common.core.BaseContext;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -68,7 +69,7 @@ public class PermissionCheckInterceptor implements HandlerInterceptor {
 
         String[] userRoles = BaseContext.getRoles();
         if (userRoles == null || userRoles.length == 0) {
-            throw new BusinessException("没有角色，无权访问");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "没有角色，无权访问");
         }
 
         // 检查是否拥有所需角色
@@ -79,7 +80,7 @@ public class PermissionCheckInterceptor implements HandlerInterceptor {
                 Arrays.stream(requiredRoles).anyMatch(required -> Arrays.stream(userRoles).anyMatch(userRole -> userRole.equals(required)));
 
         if (!hasRole) {
-            throw new BusinessException("角色权限不足，需要角色: " + String.join(", ", requiredRoles));
+            throw new BusinessException(ErrorCode.FORBIDDEN, "角色权限不足，需要角色: " + String.join(", ", requiredRoles));
         }
 
         log.debug("角色校验通过: {}", Arrays.toString(requiredRoles));
@@ -102,7 +103,7 @@ public class PermissionCheckInterceptor implements HandlerInterceptor {
 
         String[] userPermissions = BaseContext.getPermissions();
         if (userPermissions == null || userPermissions.length == 0) {
-            throw new BusinessException("没有权限，无权访问");
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, "没有权限，无权访问");
         }
 
         // 检查是否拥有所需权限
@@ -113,7 +114,7 @@ public class PermissionCheckInterceptor implements HandlerInterceptor {
                 Arrays.stream(requiredPermissions).anyMatch(required -> Arrays.stream(userPermissions).anyMatch(userPermission -> userPermission.equals(required)));
 
         if (!hasPermission) {
-            throw new BusinessException("权限不足，需要权限: " + String.join(", ", requiredPermissions));
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, "权限不足，需要权限: " + String.join(", ", requiredPermissions));
         }
 
         log.debug("权限校验通过: {}", Arrays.toString(requiredPermissions));

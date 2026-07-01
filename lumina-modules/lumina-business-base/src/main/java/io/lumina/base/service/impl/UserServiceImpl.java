@@ -19,6 +19,7 @@ import io.lumina.base.infrastructure.mapper.UserRoleMapper;
 import io.lumina.base.service.UserService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.R;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.PasswordUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -60,7 +61,7 @@ public class UserServiceImpl implements UserService {
         UserDO existingUser = userMapper.selectByTenantIdAndUsername(
                 BaseContext.getTenantId(), dto.getUsername());
         if (existingUser != null) {
-            throw new BusinessException("用户名已存在");
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS);
         }
 
         // 2. 创建用户实体
@@ -99,12 +100,12 @@ public class UserServiceImpl implements UserService {
         // 1. 查询用户
         UserDO userDO = userMapper.selectById(dto.getUserId());
         if (userDO == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!userDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限操作此用户");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作此用户");
         }
 
         // 3. 更新字段
@@ -139,17 +140,17 @@ public class UserServiceImpl implements UserService {
         // 1. 查询用户
         UserDO userDO = userMapper.selectById(userId);
         if (userDO == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!userDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限操作此用户");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作此用户");
         }
 
         // 3. 不能删除系统管理员
         if (userDO.getTenantId() == 0 && "admin".equals(userDO.getUsername())) {
-            throw new BusinessException("不能删除系统管理员");
+            throw new BusinessException(ErrorCode.USER_IS_ADMIN, "不能删除系统管理员");
         }
 
         // 4. 逻辑删除
@@ -167,12 +168,12 @@ public class UserServiceImpl implements UserService {
         // 1. 查询用户
         UserDO userDO = userMapper.selectById(userId);
         if (userDO == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!userDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限查看此用户");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限查看此用户");
         }
 
         // 3. 转换为 VO
@@ -202,7 +203,7 @@ public class UserServiceImpl implements UserService {
         Long tenantId = BaseContext.getTenantId();
         UserDO userDO = userMapper.selectByTenantIdAndUsername(tenantId, username);
         if (userDO == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // 2. 转换为 VO
@@ -274,17 +275,17 @@ public class UserServiceImpl implements UserService {
         // 1. 查询用户
         UserDO userDO = userMapper.selectById(dto.getUserId());
         if (userDO == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!userDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限操作此用户");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作此用户");
         }
 
         // 3. 不能修改系统管理员的角色
         if (userDO.getTenantId() == 0 && "admin".equals(userDO.getUsername())) {
-            throw new BusinessException("不能修改系统管理员的角色");
+            throw new BusinessException(ErrorCode.USER_IS_ADMIN, "不能修改系统管理员的角色");
         }
 
         // 4. 删除旧角色
@@ -297,10 +298,10 @@ public class UserServiceImpl implements UserService {
             // 验证角色存在且属于本租户
             RoleDO roleDO = roleMapper.selectById(roleId);
             if (roleDO == null) {
-                throw new BusinessException("角色不存在: roleId=" + roleId);
+                throw new BusinessException(ErrorCode.ROLE_NOT_FOUND, "角色不存在: roleId=" + roleId);
             }
             if (!roleDO.getTenantId().equals(BaseContext.getTenantId())) {
-                throw new BusinessException("角色不属于本租户: roleId=" + roleId);
+                throw new BusinessException(ErrorCode.ROLE_NOT_IN_TENANT, "角色不属于本租户: roleId=" + roleId);
             }
 
             UserRoleDO userRoleDO = new UserRoleDO();
@@ -320,18 +321,18 @@ public class UserServiceImpl implements UserService {
 
         // 1. 验证密码一致性
         if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
-            throw new BusinessException("两次输入的密码不一致");
+            throw new BusinessException(ErrorCode.PASSWORD_NOT_MATCH);
         }
 
         // 2. 查询用户
         UserDO userDO = userMapper.selectById(dto.getUserId());
         if (userDO == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // 3. 租户隔离验证
         if (!userDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限操作此用户");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作此用户");
         }
 
         // 4. 更新密码

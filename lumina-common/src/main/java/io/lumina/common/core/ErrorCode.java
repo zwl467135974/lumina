@@ -47,12 +47,16 @@ public enum ErrorCode {
     USER_DISABLED(403, 10004, "用户已禁用"),
     PASSWORD_ERROR(400, 10005, "密码错误"),
     PASSWORD_RESET_FAILED(400, 10006, "密码重置失败"),
+    USER_IS_ADMIN(403, 10007, "不能操作系统管理员账户"),
+    PASSWORD_NOT_MATCH(400, 10008, "两次输入的密码不一致"),
 
     // ==================== 角色 11000-11999 ====================
     ROLE_NOT_FOUND(404, 11001, "角色不存在"),
     ROLE_ALREADY_EXISTS(409, 11002, "角色已存在"),
     ROLE_IN_USE(409, 11003, "角色正在使用中，无法删除"),
     ROLE_ASSIGNED_FAILED(400, 11004, "角色分配失败"),
+    SYSTEM_ROLE_PROTECTED(403, 11005, "不能修改或删除系统角色"),
+    ROLE_NOT_IN_TENANT(400, 11006, "角色不属于当前租户"),
 
     // ==================== 权限 12000-12999 ====================
     PERMISSION_NOT_FOUND(404, 12001, "权限不存在"),
@@ -64,6 +68,7 @@ public enum ErrorCode {
     TENANT_NOT_FOUND(404, 13001, "租户不存在"),
     TENANT_ALREADY_EXISTS(409, 13002, "租户已存在"),
     TENANT_DISABLED(403, 13003, "租户已禁用"),
+    TENANT_IN_USE(409, 13004, "租户下存在用户，无法删除"),
 
     // ==================== Agent 20000-20999 ====================
     AGENT_NOT_FOUND(404, 20001, "Agent 不存在"),

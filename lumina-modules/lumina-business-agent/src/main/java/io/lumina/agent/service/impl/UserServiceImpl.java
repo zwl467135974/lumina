@@ -7,6 +7,7 @@ import io.lumina.agent.infrastructure.entity.UserDO;
 import io.lumina.agent.infrastructure.mapper.UserMapper;
 import io.lumina.agent.service.UserService;
 import io.lumina.common.core.LoginUser;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.JwtUtil;
 import io.lumina.common.util.PasswordUtil;
@@ -63,17 +64,17 @@ public class UserServiceImpl implements UserService {
         );
 
         if (userDO == null) {
-            throw new BusinessException("用户名或密码错误");
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
         // 验证密码（使用 BCrypt 加密验证）
         if (!PasswordUtil.verify(loginDTO.getPassword(), userDO.getPassword())) {
-            throw new BusinessException("用户名或密码错误");
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
         // 检查用户状态
         if (userDO.getStatus() == 0) {
-            throw new BusinessException("用户已被禁用");
+            throw new BusinessException(ErrorCode.USER_DISABLED);
         }
 
         // 转换为领域模型
@@ -106,7 +107,7 @@ public class UserServiceImpl implements UserService {
     public User getUserById(Long userId) {
         UserDO userDO = userMapper.selectById(userId);
         if (userDO == null) {
-            throw new BusinessException("用户不存在: id=" + userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在: id=" + userId);
         }
         return toDomain(userDO);
     }
@@ -119,7 +120,7 @@ public class UserServiceImpl implements UserService {
         );
 
         if (userDO == null) {
-            throw new BusinessException("用户不存在: username=" + username);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在: username=" + username);
         }
 
         return toDomain(userDO);

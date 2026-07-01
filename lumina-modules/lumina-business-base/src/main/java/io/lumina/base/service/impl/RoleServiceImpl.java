@@ -16,6 +16,7 @@ import io.lumina.base.infrastructure.mapper.RoleMapper;
 import io.lumina.base.infrastructure.mapper.RolePermissionMapper;
 import io.lumina.base.infrastructure.mapper.UserRoleMapper;
 import io.lumina.base.service.RoleService;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
@@ -61,7 +62,7 @@ public class RoleServiceImpl implements RoleService {
         wrapper.eq(RoleDO::getRoleCode, dto.getRoleCode());
         RoleDO existingRole = roleMapper.selectOne(wrapper);
         if (existingRole != null) {
-            throw new BusinessException("角色编码已存在");
+            throw new BusinessException(ErrorCode.ROLE_ALREADY_EXISTS);
         }
 
         // 2. 创建角色实体
@@ -98,17 +99,17 @@ public class RoleServiceImpl implements RoleService {
         // 1. 查询角色
         RoleDO roleDO = roleMapper.selectById(dto.getRoleId());
         if (roleDO == null) {
-            throw new BusinessException("角色不存在");
+            throw new BusinessException(ErrorCode.ROLE_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!roleDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限操作此角色");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作此角色");
         }
 
         // 3. 不能修改系统角色
         if (roleDO.getTenantId() == 0) {
-            throw new BusinessException("不能修改系统角色");
+            throw new BusinessException(ErrorCode.SYSTEM_ROLE_PROTECTED, "不能修改系统角色");
         }
 
         // 4. 更新字段
@@ -140,17 +141,17 @@ public class RoleServiceImpl implements RoleService {
         // 1. 查询角色
         RoleDO roleDO = roleMapper.selectById(roleId);
         if (roleDO == null) {
-            throw new BusinessException("角色不存在");
+            throw new BusinessException(ErrorCode.ROLE_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!roleDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限操作此角色");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作此角色");
         }
 
         // 3. 不能删除系统角色
         if (roleDO.getTenantId() == 0) {
-            throw new BusinessException("不能删除系统角色");
+            throw new BusinessException(ErrorCode.SYSTEM_ROLE_PROTECTED, "不能删除系统角色");
         }
 
         // 4. 检查是否有用户使用此角色
@@ -158,7 +159,7 @@ public class RoleServiceImpl implements RoleService {
         wrapper.eq(UserRoleDO::getRoleId, roleId);
         Long count = userRoleMapper.selectCount(wrapper);
         if (count > 0) {
-            throw new BusinessException("角色正在使用中，无法删除");
+            throw new BusinessException(ErrorCode.ROLE_IN_USE);
         }
 
         // 5. 删除角色权限关联
@@ -181,12 +182,12 @@ public class RoleServiceImpl implements RoleService {
         // 1. 查询角色
         RoleDO roleDO = roleMapper.selectById(roleId);
         if (roleDO == null) {
-            throw new BusinessException("角色不存在");
+            throw new BusinessException(ErrorCode.ROLE_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!roleDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限查看此角色");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限查看此角色");
         }
 
         // 3. 转换为 VO
@@ -255,17 +256,17 @@ public class RoleServiceImpl implements RoleService {
         // 1. 查询角色
         RoleDO roleDO = roleMapper.selectById(dto.getRoleId());
         if (roleDO == null) {
-            throw new BusinessException("角色不存在");
+            throw new BusinessException(ErrorCode.ROLE_NOT_FOUND);
         }
 
         // 2. 租户隔离验证
         if (!roleDO.getTenantId().equals(BaseContext.getTenantId())) {
-            throw new BusinessException("无权限操作此角色");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权限操作此角色");
         }
 
         // 3. 不能修改系统角色
         if (roleDO.getTenantId() == 0) {
-            throw new BusinessException("不能修改系统角色的权限");
+            throw new BusinessException(ErrorCode.SYSTEM_ROLE_PROTECTED, "不能修改系统角色的权限");
         }
 
         // 4. 删除旧权限

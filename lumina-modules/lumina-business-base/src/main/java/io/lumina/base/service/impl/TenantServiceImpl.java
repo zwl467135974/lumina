@@ -17,6 +17,7 @@ import io.lumina.base.infrastructure.mapper.RolePermissionMapper;
 import io.lumina.base.infrastructure.mapper.TenantMapper;
 import io.lumina.base.infrastructure.mapper.UserMapper;
 import io.lumina.base.service.TenantService;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
@@ -60,7 +61,7 @@ public class TenantServiceImpl implements TenantService {
         LambdaQueryWrapper<TenantDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(TenantDO::getTenantCode, dto.getTenantCode());
         if (tenantMapper.selectCount(wrapper) > 0) {
-            throw new BusinessException("租户编码已存在");
+            throw new BusinessException(ErrorCode.TENANT_ALREADY_EXISTS);
         }
 
         TenantDO tenantDO = new TenantDO();
@@ -130,7 +131,7 @@ public class TenantServiceImpl implements TenantService {
     public Boolean updateTenant(UpdateTenantDTO dto) {
         TenantDO tenantDO = tenantMapper.selectById(dto.getTenantId());
         if (tenantDO == null) {
-            throw new BusinessException("租户不存在");
+            throw new BusinessException(ErrorCode.TENANT_NOT_FOUND);
         }
 
         BeanUtils.copyProperties(dto, tenantDO, "tenantId");
@@ -144,7 +145,7 @@ public class TenantServiceImpl implements TenantService {
         LambdaQueryWrapper<UserDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserDO::getTenantId, tenantId);
         if (userMapper.selectCount(wrapper) > 0) {
-            throw new BusinessException("租户下有用户，无法删除");
+            throw new BusinessException(ErrorCode.TENANT_IN_USE);
         }
 
         TenantDO tenantDO = tenantMapper.selectById(tenantId);
@@ -156,7 +157,7 @@ public class TenantServiceImpl implements TenantService {
     public TenantVO getTenantById(Long tenantId) {
         TenantDO tenantDO = tenantMapper.selectById(tenantId);
         if (tenantDO == null) {
-            throw new BusinessException("租户不存在");
+            throw new BusinessException(ErrorCode.TENANT_NOT_FOUND);
         }
 
         TenantVO vo = new TenantVO();

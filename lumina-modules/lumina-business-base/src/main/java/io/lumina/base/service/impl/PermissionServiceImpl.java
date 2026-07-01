@@ -7,6 +7,7 @@ import io.lumina.base.api.vo.permission.PermissionVO;
 import io.lumina.base.infrastructure.entity.PermissionDO;
 import io.lumina.base.infrastructure.mapper.PermissionMapper;
 import io.lumina.base.service.PermissionService;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -32,7 +33,7 @@ public class PermissionServiceImpl implements PermissionService {
 
         List<PermissionDO> existing = permissionMapper.selectByCode(dto.getPermissionCode());
         if (!existing.isEmpty()) {
-            throw new BusinessException("权限编码已存在");
+            throw new BusinessException(ErrorCode.PERMISSION_ALREADY_EXISTS);
         }
 
         PermissionDO permissionDO = new PermissionDO();
@@ -58,7 +59,7 @@ public class PermissionServiceImpl implements PermissionService {
     public Boolean updatePermission(UpdatePermissionDTO dto) {
         PermissionDO permissionDO = permissionMapper.selectById(dto.getPermissionId());
         if (permissionDO == null) {
-            throw new BusinessException("权限不存在");
+            throw new BusinessException(ErrorCode.PERMISSION_NOT_FOUND);
         }
 
         if (dto.getPermissionName() != null) {
@@ -93,7 +94,7 @@ public class PermissionServiceImpl implements PermissionService {
     public Boolean deletePermission(Long permissionId) {
         PermissionDO permissionDO = permissionMapper.selectById(permissionId);
         if (permissionDO == null) {
-            throw new BusinessException("权限不存在");
+            throw new BusinessException(ErrorCode.PERMISSION_NOT_FOUND);
         }
 
         permissionDO.setDeleted(1);
@@ -113,7 +114,7 @@ public class PermissionServiceImpl implements PermissionService {
     public PermissionVO getPermissionById(Long permissionId) {
         PermissionDO permissionDO = permissionMapper.selectById(permissionId);
         if (permissionDO == null) {
-            throw new BusinessException("权限不存在");
+            throw new BusinessException(ErrorCode.PERMISSION_NOT_FOUND);
         }
 
         PermissionVO vo = new PermissionVO();
