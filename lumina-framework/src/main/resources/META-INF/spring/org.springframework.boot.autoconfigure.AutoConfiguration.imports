@@ -5,3 +5,4 @@ io.lumina.framework.config.WebMvcConfig
 io.lumina.framework.config.SpringDocConfig
 io.lumina.framework.cache.RedisCacheManager
 io.lumina.framework.context.ContextPropagationAutoConfiguration
+io.lumina.framework.web.LogWebMvcAutoConfiguration
