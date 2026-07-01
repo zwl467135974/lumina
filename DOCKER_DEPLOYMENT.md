@@ -6,8 +6,23 @@
 
 - Docker 20.10+
 - Docker Compose 2.0+
-- 至少 4GB 可用内存
+- 至少 4GB 可用内存（含监控栈 Prometheus + Grafana 约 1GB）
 - 至少 10GB 可用磁盘空间
+
+## 监控栈（Prometheus + Grafana）
+
+docker-compose 集成了指标监控，按需启停：
+
+```bash
+docker compose up -d prometheus grafana
+```
+
+| 服务 | 地址 | 说明 |
+|------|------|------|
+| Prometheus | http://localhost:9090 | 指标抓取/存储（保留 7 天） |
+| Grafana | http://localhost:3001 | 仪表盘（admin/admin） |
+
+业务服务启动后 Prometheus 自动抓取 `/actuator/prometheus`。Grafana 添加数据源 `http://prometheus:9090` 即可建仪表盘。
 
 ## 快速开始
 

@@ -21,12 +21,14 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 
 ### 核心特性
 
-- **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、多智能体协作
+- **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、流式输出
 - **微服务架构** - 基于 Spring Cloud Alibaba，支持服务注册、配置管理、负载均衡
 - **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
-- **企业级特性** - 支持多租户、权限管理、审计日志、分布式锁
-- **响应式编程** - 基于 Project Reactor，支持高并发场景
-- **多 LLM 支持** - 支持 DashScope、OpenAI、Claude、Gemini 等主流模型
+- **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
+- **可观测性** - 结构化日志(traceId/MDC) + 审计日志(@Audit AOP) + Micrometer 指标(Prometheus/Grafana)
+- **工程化** - 统一错误码、Flyway 版本迁移、网关限流、API 版本策略、工具调用熔断器
+- **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
+- **多 LLM 支持** - 支持 DashScope、OpenAI、Claude、Ollama 等主流模型
 
 ---
 
@@ -151,15 +153,17 @@ export DASHSCOPE_API_KEY=your_api_key_here
 $env:DASHSCOPE_API_KEY="your_api_key_here"
 ```
 
-#### 4. 初始化数据库
+#### 4. 初始化数据库（Flyway 自动迁移）
+
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V4），**无需手动执行 SQL**：
 
 ```bash
-# 执行建表脚本
-mysql -u root -p lumina_dev < sql/01_create_tables.sql
-
-# 执行初始化数据脚本
-mysql -u root -p lumina_dev < sql/02_init_data.sql
+cd lumina-modules/lumina-business-base
+mvn spring-boot:run
+# 首次启动自动创建表 + 初始 admin 数据
 ```
+
+迁移脚本位于 `lumina-modules/lumina-business-base/src/main/resources/db/migration/`。
 
 **默认管理员账号**：
 - 用户名：`admin`
@@ -513,35 +517,28 @@ npm install
 
 ## 项目状态
 
-### 已完成
+### v1.1 已完成（2026-07-01）
 
-- ✅ 项目基础架构搭建
-- ✅ 核心模块开发（`lumina-common`、`lumina-framework`、`lumina-agent-core`、`lumina-gateway`）
-- ✅ 统一响应和异常体系（全局异常处理 + `R<T>` 统一返回）
-- ✅ 框架配置（MyBatis-Plus、Druid、Redis、Jackson 等基础设施）
-- ✅ Agent 执行引擎实现（集成 AgentScope ReAct Agent、记忆管理器、工具动态注册）
-- ✅ Gateway JWT 认证与权限校验（认证过滤器 + 白名单机制）
-- ✅ Gateway 动态路由（基于 Nacos 的路由加载与自动刷新）
-- ✅ **lumina-business-base 基础业务模块（用户、角色、权限、租户管理）——27 个 API 端点已全部实现**
-- ✅ **多租户 RBAC 权限体系实现（租户隔离拦截器 + SQL 租户字段自动注入）**
-- ✅ **BaseContext 工具类（ThreadLocal 存储用户上下文：租户、用户、角色、权限）**
-- ✅ **权限注解与拦截器（@RequirePermission / @RequireRole + PermissionCheckInterceptor）**
-- ✅ **Agent 工具体系（@AgentTool 注解、EnhancedToolManager、BaseToolProvider 等）**
-- ✅ **数据库脚本和初始化数据（建表、初始化数据、迁移脚本）**
-- ✅ **前端项目（登录、系统管理：用户 / 角色 / 权限 / 租户、Agent 列表与创建 / 编辑页面）**
-- ✅ **前端权限与状态管理（路由守卫、v-permission / v-role 指令、Pinia 状态持久化）**
-- ✅ **Docker 部署与编排（各模块 Dockerfile、docker-compose、一键启动文档）**
+- ✅ 响应式上下文传递（ContextPropagation，跨线程租户隔离）
+- ✅ 敏感配置环境变量化 + Flyway 版本化迁移（V1-V4）
+- ✅ 统一错误码体系（ErrorCode 枚举 + 全量业务迁移）
+- ✅ 流式输出（SSE 端到端）+ 会话与记忆管理（多轮对话/历史回放/Token 用量）
+- ✅ 多模型适配（ChatModelFactory：dashscope/openai/anthropic/ollama）
+- ✅ 工具调用可观测（调用记录/统计/熔断器）
+- ✅ 审计日志（@Audit AOP 声明式留痕，19 个关键方法）
+- ✅ 网关限流（全局+IP 双维度固定窗口）
+- ✅ API 版本策略（@DeprecatedApi + Deprecation/Sunset 响应头）
+- ✅ Micrometer 指标（Prometheus + Grafana）
+- ✅ 测试体系（94 单元 + 6 集成 = 100 测试，集成测试发现修复 2 个租户隔离 bug）
+- ✅ 前端（工具监控页 + 暗色主题 + pnpm build 通过）
 
-### 进行中
+详细发布说明：[V1.1_RELEASE_NOTES.md](docs/V1.1_RELEASE_NOTES.md)
 
-- 🔄 单元测试完善（Service / Controller / 工具类测试用例补齐，目标覆盖率 70%+）
+### 待做
 
-### 计划中
-
-- 📋 补充和优化单元测试与集成测试
-- 📋 性能压测与性能优化
-- 📋 更多示例业务模块（`lumina-business-*`）与 Agent 场景示例
-- 📋 持续完善文档（高级用法、最佳实践、运维指南等）
+- 📋 OpenTelemetry 全链路追踪（Gateway→服务→Agent→工具）
+- 📋 RAG 知识库（向量存储 + Embedding + 检索增强）
+- 📋 运维部署（K8s Helm Chart + 灰度发布 + 备份策略）
 
 ---
 
