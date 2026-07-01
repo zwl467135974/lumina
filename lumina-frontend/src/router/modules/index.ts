@@ -137,3 +137,28 @@ export const systemRoutes: AppRouteRecordRaw[] = [
     ]
   }
 ]
+
+// 监控路由
+export const monitorRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/monitor',
+    name: 'Monitor',
+    redirect: '/monitor/tools',
+    meta: {
+      title: '监控中心',
+      icon: 'Monitor',
+      requiresAuth: true
+    },
+    children: [
+      {
+        path: 'tools',
+        name: 'MonitorTools',
+        component: () => import('@/views/monitor/tools.vue'),
+        meta: {
+          title: '工具监控',
+          requiresAuth: true
+        }
+      }
+    ]
+  }
+]

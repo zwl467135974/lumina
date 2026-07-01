@@ -64,6 +64,22 @@ spring:
           filters:
             - StripPrefix=0
 
+        # Agent 会话路由
+        - id: lumina-agent-conversations-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/conversations/**
+          filters:
+            - StripPrefix=0
+
+        # Agent 工具监控路由
+        - id: lumina-agent-tools-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/tools/**
+          filters:
+            - StripPrefix=0
+
         # 兼容旧认证服务路由（重定向到 Base 服务）
         - id: lumina-auth-route
           uri: lb://lumina-business-base
@@ -123,6 +139,12 @@ lumina:
       - /api/v1/base/auth/login
       - /actuator/health
       - /actuator/info
+
+  # 网关限流配置（固定窗口，每秒重置）
+  gateway:
+    rate-limit:
+      global: 100        # 全局每秒最大请求数
+      per-ip: 20         # 单 IP 每秒最大请求数
 
 # 日志配置
 logging:

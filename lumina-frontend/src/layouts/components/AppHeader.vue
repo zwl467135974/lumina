@@ -7,6 +7,10 @@
       </el-icon>
     </div>
     <div class="header-right">
+      <el-icon class="theme-icon" @click="toggleTheme">
+        <Sunny v-if="isDark" />
+        <Moon v-else />
+      </el-icon>
       <el-dropdown @command="handleCommand">
         <span class="user-dropdown">
           <el-avatar :size="32" :src="userInfo?.avatar">
@@ -26,10 +30,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { Fold, Expand } from '@element-plus/icons-vue'
+import { Fold, Expand, Moon, Sunny } from '@element-plus/icons-vue'
 import { useAppStore, useUserStore } from '@/stores'
 
 const router = useRouter()
@@ -37,6 +41,22 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 
 const userInfo = computed(() => userStore.userInfo)
+
+const isDark = ref(false)
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  document.documentElement.classList.toggle('dark', isDark.value)
+  localStorage.setItem('lumina-theme', isDark.value ? 'dark' : 'light')
+}
+
+onMounted(() => {
+  const saved = localStorage.getItem('lumina-theme')
+  if (saved === 'dark') {
+    isDark.value = true
+    document.documentElement.classList.add('dark')
+  }
+})
 
 const handleCollapse = () => {
   appStore.toggleSidebar()
@@ -66,8 +86,8 @@ const handleCommand = async (command: string) => {
   align-items: center;
   height: 60px;
   padding: 0 20px;
-  background-color: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background-color: var(--el-bg-color);
+  border-bottom: 1px solid var(--el-border-color);
 
   .header-left {
     display: flex;
@@ -85,6 +105,21 @@ const handleCommand = async (command: string) => {
   }
 
   .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .theme-icon {
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--el-text-color-regular);
+      transition: color 0.3s;
+
+      &:hover {
+        color: var(--el-color-primary);
+      }
+    }
+
     .user-dropdown {
       display: flex;
       align-items: center;
@@ -93,7 +128,7 @@ const handleCommand = async (command: string) => {
 
       .username {
         font-size: 14px;
-        color: #333;
+        color: var(--el-text-color-primary);
       }
     }
   }

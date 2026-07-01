@@ -51,7 +51,7 @@ const appStore = useAppStore()
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    background-color: #f5f5f5;
+    background-color: var(--el-bg-color-page);
   }
 }
 
