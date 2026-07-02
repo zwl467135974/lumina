@@ -1,6 +1,5 @@
 # Lumina CI - 编译 + 测试 + 前端构建
 # 触发：Push 到 master / PR
-# 注意：本文件为参考模板，需根据实际 CI 平台（GitHub Actions / Gitee Go / Jenkins）调整
 name: CI
 
 on:
@@ -14,6 +13,36 @@ jobs:
   backend:
     name: Backend Build & Test
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test123
+          MYSQL_DATABASE: lumina_dev
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=3s
+          --health-retries=5
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: test123
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,9 +54,7 @@ jobs:
           cache: 'maven'
 
       - name: Maven Verify
-        run: mvn verify -B -DskipITs
-        # -DskipITs 跳过集成测试（需 MySQL/Redis）
-        # 如需运行集成测试，启动 Testcontainers 或 service container
+        run: mvn verify -B
 
       - name: Upload Test Results
         if: always()
