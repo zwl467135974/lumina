@@ -62,7 +62,7 @@ public class AgentConfig implements Serializable {
         private static final long serialVersionUID = 1L;
 
         /**
-         * 模型类型（如：dashscope、openai、claude）
+         * 模型类型（如：dashscope、openai、anthropic[或claude]、ollama）
          */
         private String modelType;
 

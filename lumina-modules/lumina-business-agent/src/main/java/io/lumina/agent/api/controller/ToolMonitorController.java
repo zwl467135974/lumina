@@ -4,8 +4,10 @@ import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecord;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
 import io.lumina.common.core.R;
+import jakarta.validation.constraints.Min;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
@@ -24,6 +26,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/tools")
+@Validated
 public class ToolMonitorController {
 
     @Autowired(required = false)
@@ -59,11 +62,11 @@ public class ToolMonitorController {
      */
     @GetMapping("/invocations")
     public R<List<ToolInvocationRecord>> invocations(
-            @RequestParam(defaultValue = "50") int limit) {
+            @RequestParam(defaultValue = "50") @Min(1) int limit) {
         if (recorder == null) {
             return R.success(Collections.emptyList());
         }
-        return R.success(recorder.getRecent(limit));
+        return R.success(recorder.getRecent(Math.min(limit, 500)));
     }
 
     /**

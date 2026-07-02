@@ -139,9 +139,12 @@ public class RagKnowledgeFactory {
     }
 
     private String getApiKey() {
-        String apiKey = System.getenv("DASHSCOPE_API_KEY");
+        String apiKey = System.getenv("RAG_EMBEDDING_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             apiKey = agentProperties.getLlm().getApiKey();
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            apiKey = System.getenv("DASHSCOPE_API_KEY");
         }
         return apiKey;
     }

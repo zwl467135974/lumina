@@ -125,7 +125,13 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt);
 
             // 执行 Agent
-            String result = executeAgentWithAgentScope(agentConfig, contextMessages);
+            Msg agentResponse = executeAgentWithAgentScope(agentConfig, contextMessages);
+            String result = agentResponse.getTextContent() != null
+                    ? agentResponse.getTextContent()
+                    : "Agent 执行完成，但未返回有效响应";
+
+            // 提取 Token 使用量
+            ExecuteResult.TokenUsage tokenUsage = extractTokenUsage(agentResponse);
 
             // 保存对话记忆（Redis 热记忆）
             if (conversationId != null) {
@@ -141,6 +147,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             ExecuteResult executeResult = ExecuteResult.success(result);
             executeResult.setDuration(duration);
+            executeResult.setTokenUsage(tokenUsage);
 
             return executeResult;
 
@@ -269,31 +276,52 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * 使用 AgentScope 执行 Agent
      *
      * <p>集成 AgentScope Java SDK 实现 ReAct Agent 执行。
+     *
+     * @return AgentScope 响应 Msg（降级时构造模拟 Msg）
      */
-    private String executeAgentWithAgentScope(AgentConfig config, List<Msg> messages) {
+    private Msg executeAgentWithAgentScope(AgentConfig config, List<Msg> messages) {
         log.info("Agent 配置: name={}, type={}", config.getAgentName(), config.getAgentType());
         log.info("Agent 上下文消息数: {}", messages.size());
 
         try {
-            // 创建 AgentScope ReActAgent
             ReActAgent agent = createReActAgent(config);
 
-            // 执行 Agent（阻塞等待结果）
             Msg response = agent.call(messages).block();
 
-            if (response != null && response.getTextContent() != null) {
-                return response.getTextContent();
+            if (response != null) {
+                return response;
             } else {
                 log.warn("Agent 返回空响应");
-                return "Agent 执行完成，但未返回有效响应";
+                String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
+                return Msg.builder().role(MsgRole.ASSISTANT).textContent(generateMockResponse(lastUserText)).build();
             }
 
         } catch (Exception e) {
             log.error("AgentScope 执行失败: {}", e.getMessage(), e);
-            // 降级到模拟响应（取最后一条用户消息文本）
             String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
-            return generateMockResponse(lastUserText);
+            return Msg.builder().role(MsgRole.ASSISTANT).textContent(generateMockResponse(lastUserText)).build();
         }
+    }
+
+    /**
+     * 从 AgentScope 响应中提取 Token 使用量
+     */
+    private ExecuteResult.TokenUsage extractTokenUsage(Msg response) {
+        try {
+            io.agentscope.core.model.ChatUsage usage = response.getChatUsage();
+            if (usage != null) {
+                ExecuteResult.TokenUsage tokenUsage = new ExecuteResult.TokenUsage();
+                tokenUsage.setPromptTokens(usage.getInputTokens());
+                tokenUsage.setCompletionTokens(usage.getOutputTokens());
+                tokenUsage.setTotalTokens(usage.getTotalTokens());
+                log.debug("Token 使用量: input={}, output={}, total={}",
+                        usage.getInputTokens(), usage.getOutputTokens(), usage.getTotalTokens());
+                return tokenUsage;
+            }
+        } catch (Exception e) {
+            log.debug("提取 Token 使用量失败: {}", e.getMessage());
+        }
+        return null;
     }
 
     /**
@@ -429,12 +457,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     /**
-     * 获取 API Key（优先从环境变量，其次从配置）
+     * 获取 API Key（优先从 Spring 配置 lumina.agent.llm.api-key，兼容 DASHSCOPE_API_KEY 环境变量）
      */
     private String getApiKey() {
-        String apiKey = System.getenv("DASHSCOPE_API_KEY");
+        String apiKey = agentProperties.getLlm().getApiKey();
         if (apiKey == null || apiKey.isEmpty()) {
-            apiKey = agentProperties.getLlm().getApiKey();
+            apiKey = System.getenv("DASHSCOPE_API_KEY");
         }
         if (apiKey == null || apiKey.isEmpty()) {
             log.warn("未配置 LLM API Key，Agent 可能无法正常工作");

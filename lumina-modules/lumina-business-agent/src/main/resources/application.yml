@@ -5,6 +5,12 @@ spring:
   application:
     name: lumina-agent-service
 
+  # 文件上传限制（知识库文档）
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   cloud:
     nacos:
       discovery:

@@ -1,6 +1,8 @@
 package io.lumina.base.api.dto.tenant;
 
 import io.lumina.common.core.BaseDTO;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -32,11 +34,14 @@ public class TenantQueryDTO extends BaseDTO {
     /**
      * 当前页码
      */
+    @Min(value = 1, message = "页码不能小于 1")
     private Integer current = 1;
 
     /**
      * 每页大小
      */
+    @Min(value = 1, message = "每页大小不能小于 1")
+    @Max(value = 100, message = "每页大小不能超过 100")
     private Integer size = 10;
 
     /**

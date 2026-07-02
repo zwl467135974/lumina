@@ -54,6 +54,7 @@ public class ChatModelFactory {
                 model = createOpenAI(config, defaults, apiKey, modelName);
                 break;
             case "anthropic":
+            case "claude":
                 model = createAnthropic(config, defaults, apiKey, modelName);
                 break;
             case "ollama":

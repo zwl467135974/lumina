@@ -22,7 +22,7 @@ import java.lang.reflect.Parameter;
  * 审计日志切面
  *
  * <p>拦截标注 {@link Audit} 的方法，记录执行结果并发布 {@link AuditEvent}，
- * 由审计监听器异步持久化。
+ * 由审计监听器同步持久化（计划在 v1.3 改为异步，见 ROADMAP P1-3）。
  *
  * @author Lumina Team
  * @since 1.1.0
