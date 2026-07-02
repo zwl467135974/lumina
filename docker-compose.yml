@@ -101,16 +101,15 @@ services:
     image: apache/rocketmq:5.3.1
     container_name: lumina-rocketmq-broker
     restart: unless-stopped
-    command: sh mqbroker -n rocketmq-namesrv:9876 --enable-proxy
+    command: sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/conf/broker.conf
     environment:
       JAVA_OPT_EXT: "-server -Xms512m -Xmx512m -Xmn128m"
       NAMESRV_ADDR: "rocketmq-namesrv:9876"
     ports:
       - "10909:10909"
       - "10911:10911"
-      - "8080:8081"
     volumes:
-      - rocketmq-data:/home/rocketmq/store
+      - ./docker/rocketmq/broker.conf:/home/rocketmq/conf/broker.conf
     depends_on:
       - rocketmq-namesrv
     networks:

@@ -6,6 +6,9 @@
 .AppleDouble
 .LSOverride
 
+# 环境变量（含密钥，不提交）
+.env
+
 # Windows
 Thumbs.db
 ehthumbs.db

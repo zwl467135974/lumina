@@ -18,11 +18,6 @@ spring:
       group: lumina-producer
       send-message-timeout: 5000
 
-rocketmq:
-  consumer:
-    knowledge-ingest:
-      enabled: ${MQ_KNOWLEDGE_ASYNC:true}
-
   cloud:
     nacos:
       discovery:
@@ -50,6 +45,12 @@ rocketmq:
       test-on-return: false
       pool-prepared-statements: true
       max-pool-prepared-statement-per-connection-size: 20
+
+# 知识库异步消费开关
+rocketmq:
+  consumer:
+    knowledge-ingest:
+      enabled: ${MQ_KNOWLEDGE_ASYNC:true}
 
 # MyBatis-Plus 配置
 mybatis-plus:
