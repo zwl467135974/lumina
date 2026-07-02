@@ -9,6 +9,7 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import i18n from '@/locales'
 import '@/assets/styles/index.scss'
 import setupDirectives from '@/directives'
 
@@ -21,6 +22,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 app.use(pinia)
 app.use(router)
+app.use(i18n)
 app.use(ElementPlus)
 
 // 注册自定义指令

@@ -7,6 +7,19 @@
       </el-icon>
     </div>
     <div class="header-right">
+      <!-- 语言切换 -->
+      <el-dropdown @command="toggleLang" trigger="click">
+        <span class="lang-switch">
+          {{ currentLang === 'zh-CN' ? '中文' : 'EN' }}
+        </span>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="zh-CN" :class="{ 'is-active': currentLang === 'zh-CN' }">中文</el-dropdown-item>
+            <el-dropdown-item command="en" :class="{ 'is-active': currentLang === 'en' }">English</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+
       <el-icon class="theme-icon" @click="toggleTheme">
         <Sunny v-if="isDark" />
         <Moon v-else />
@@ -20,8 +33,8 @@
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="profile">个人信息</el-dropdown-item>
-            <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+            <el-dropdown-item command="profile">{{ t('header.profile') }}</el-dropdown-item>
+            <el-dropdown-item command="logout" divided>{{ t('header.logout') }}</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -33,12 +46,21 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { Fold, Expand, Moon, Sunny } from '@element-plus/icons-vue'
 import { useAppStore, useUserStore } from '@/stores'
 
 const router = useRouter()
 const appStore = useAppStore()
 const userStore = useUserStore()
+const { locale, t } = useI18n()
+
+const currentLang = computed(() => locale.value)
+
+const toggleLang = (lang: string) => {
+  locale.value = lang
+  localStorage.setItem('lumina-lang', lang)
+}
 
 const userInfo = computed(() => userStore.userInfo)
 
@@ -65,7 +87,7 @@ const handleCollapse = () => {
 const handleCommand = async (command: string) => {
   if (command === 'logout') {
     try {
-      await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      await ElMessageBox.confirm(t('header.logout') + '?', '', {
         type: 'warning'
       })
       await userStore.logout()
@@ -108,6 +130,14 @@ const handleCommand = async (command: string) => {
     display: flex;
     align-items: center;
     gap: 16px;
+
+    .lang-switch {
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--el-text-color-regular);
+      user-select: none;
+      &:hover { color: var(--el-color-primary); }
+    }
 
     .theme-icon {
       font-size: 18px;
