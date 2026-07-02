@@ -10,27 +10,29 @@
       :unique-opened="true"
       router
     >
-      <template v-for="route in menuRoutes" :key="route.path">
-        <el-sub-menu v-if="route.children?.length" :index="route.path">
+      <template v-for="menu in menuList" :key="menu.path">
+        <!-- 有子菜单：展开为子菜单组 -->
+        <el-sub-menu v-if="menu.children?.length" :index="menu.path">
           <template #title>
-            <el-icon v-if="route.meta?.icon">
-              <component :is="route.meta.icon" />
+            <el-icon v-if="menu.icon">
+              <component :is="menu.icon" />
             </el-icon>
-            <span>{{ route.meta?.title }}</span>
+            <span>{{ menu.title }}</span>
           </template>
           <el-menu-item
-            v-for="child in route.children"
+            v-for="child in menu.children"
             :key="child.path"
             :index="child.path"
           >
-            {{ child.meta?.title }}
+            {{ child.title }}
           </el-menu-item>
         </el-sub-menu>
-        <el-menu-item v-else :index="route.path">
-          <el-icon v-if="route.meta?.icon">
-            <component :is="route.meta.icon" />
+        <!-- 无子菜单：单级菜单项 -->
+        <el-menu-item v-else :index="menu.path">
+          <el-icon v-if="menu.icon">
+            <component :is="menu.icon" />
           </el-icon>
-          <template #title>{{ route.meta?.title }}</template>
+          <template #title>{{ menu.title }}</template>
         </el-menu-item>
       </template>
     </el-menu>
@@ -38,18 +40,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAppStore } from '@/stores'
-import { agentRoutes, systemRoutes, knowledgeRoutes } from '@/router/modules'
+import { useAppStore, useUserStore } from '@/stores'
+import type { MenuVO } from '@/api/modules/menu'
 
 const route = useRoute()
 const appStore = useAppStore()
+const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
 
-const menuRoutes = computed(() => {
-  return [...agentRoutes, ...knowledgeRoutes, ...systemRoutes].filter((route) => !route.meta?.hidden)
+/**
+ * 侧边栏菜单列表（来自后端动态下发）
+ */
+const menuList = computed<MenuVO[]>(() => userStore.menus)
+
+/**
+ * 页面刷新时如果 store 有 token 但菜单为空（持久化恢复后），
+ * 重新拉取菜单
+ */
+onMounted(async () => {
+  if (userStore.isLoggedIn && menuList.value.length === 0) {
+    await userStore.loadMenus()
+  }
 })
 </script>
 

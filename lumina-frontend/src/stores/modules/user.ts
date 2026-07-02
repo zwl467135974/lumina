@@ -5,10 +5,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserInfo } from '@/types/api'
 import { login as loginApi, getUserInfo, logout as logoutApi } from '@/api/modules/user'
+import { getUserMenus, type MenuVO } from '@/api/modules/menu'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>('')
   const userInfo = ref<UserInfo | null>(null)
+  const menus = ref<MenuVO[]>([])
 
   /**
    * 是否已登录
@@ -22,6 +24,19 @@ export const useUserStore = defineStore('user', () => {
     const res = await loginApi({ username, password })
     token.value = res.data.token
     userInfo.value = res.data.userInfo
+    await loadMenus()
+  }
+
+  /**
+   * 加载动态菜单
+   */
+  const loadMenus = async () => {
+    try {
+      const res = await getUserMenus()
+      menus.value = res.data || []
+    } catch {
+      menus.value = []
+    }
   }
 
   /**
@@ -30,6 +45,7 @@ export const useUserStore = defineStore('user', () => {
   const getUserInfoAction = async () => {
     const res = await getUserInfo()
     userInfo.value = res.data
+    await loadMenus()
   }
 
   /**
@@ -41,14 +57,17 @@ export const useUserStore = defineStore('user', () => {
     } finally {
       token.value = ''
       userInfo.value = null
+      menus.value = []
     }
   }
 
   return {
     token,
     userInfo,
+    menus,
     isLoggedIn,
     login,
+    loadMenus,
     getUserInfoAction,
     logout
   }
@@ -56,6 +75,6 @@ export const useUserStore = defineStore('user', () => {
   persist: {
     key: 'lumina-user',
     storage: localStorage,
-    paths: ['token', 'userInfo']
+    paths: ['token', 'userInfo', 'menus']
   }
 })
