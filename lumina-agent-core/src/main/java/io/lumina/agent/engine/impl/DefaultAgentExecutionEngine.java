@@ -26,6 +26,7 @@ import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
+import io.micrometer.observation.annotation.Observed;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -101,6 +102,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     @Override
+    @Observed(name = "agent.execute", contextualName = "agent-sync-execution")
     public ExecuteResult executeSync(String businessType, String task, AgentConfig config, String conversationId) {
         long startTime = System.currentTimeMillis();
 
@@ -175,6 +177,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     @Override
+    @Observed(name = "agent.execute.stream", contextualName = "agent-stream-execution")
     public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId) {
         log.info("开始流式执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
         try {

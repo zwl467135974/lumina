@@ -229,6 +229,20 @@ services:
     networks:
       - lumina-network
 
+  # Jaeger 分布式追踪（接收 OTLP，UI 查看调用链）
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: lumina-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"    # Jaeger UI
+      - "4318:4318"      # OTLP HTTP
+      - "4317:4317"      # OTLP gRPC
+    networks:
+      - lumina-network
+
   # Prometheus 监控（指标抓取与存储）
   prometheus:
     image: prom/prometheus:v2.54.1
