@@ -5,7 +5,6 @@ import io.agentscope.core.embedding.dashscope.DashScopeTextEmbedding;
 import io.agentscope.core.rag.Knowledge;
 import io.agentscope.core.rag.knowledge.SimpleKnowledge;
 import io.agentscope.core.rag.store.InMemoryStore;
-import io.agentscope.core.rag.store.QdrantStore;
 import io.agentscope.core.rag.store.VDBStoreBase;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.config.RagProperties;
@@ -117,14 +116,13 @@ public class RagKnowledgeFactory {
                         .dimensions(dims)
                         .build();
             } else {
-                log.info("RAG 使用 Qdrant 向量存储: host={}, collection={}, tls={}",
-                        props.getQdrant().getHost(), props.getQdrant().getCollection(), props.getQdrant().isTls());
-                return QdrantStore.builder()
-                        .location(props.getQdrant().getHost())
-                        .collectionName(props.getQdrant().getCollection())
-                        .dimensions(dims)
-                        .useTransportLayerSecurity(props.getQdrant().isTls())
-                        .build();
+                String qdrantHost = props.getQdrant().getHost();
+                if (qdrantHost.contains(":6334")) {
+                    qdrantHost = qdrantHost.replace(":6334", ":6333");
+                }
+                log.info("RAG 使用 Qdrant 向量存储(REST): host={}, collection={}",
+                        qdrantHost, props.getQdrant().getCollection());
+                return new QdrantRestStore(qdrantHost, props.getQdrant().getCollection(), dims);
             }
         } catch (Exception e) {
             throw new RuntimeException("向量存储初始化失败: " + props.getStoreType(), e);

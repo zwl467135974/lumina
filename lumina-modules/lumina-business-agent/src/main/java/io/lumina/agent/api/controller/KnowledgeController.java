@@ -39,7 +39,7 @@ public class KnowledgeController {
     }
 
     @DeleteMapping("/documents/{uuid}")
-    public R<Void> delete(@PathVariable String uuid) {
+    public R<Void> delete(@PathVariable("uuid") String uuid) {
         knowledgeService.deleteDocument(uuid);
         return R.success();
     }
