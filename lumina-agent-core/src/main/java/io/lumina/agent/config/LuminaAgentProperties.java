@@ -38,7 +38,8 @@ public class LuminaAgentProperties {
         private String model = "qwen-plus";
 
         /**
-         * 模型类型（dashscope/openai/anthropic[或claude]/ollama，默认：dashscope）
+         * 模型类型（dashscope/openai/anthropic[或claude]/ollama，
+         * 或预设: glm/kimi/doubao/minimax/deepseek/yi/qwen，默认：dashscope）
          */
         private String type = "dashscope";
 

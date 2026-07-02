@@ -61,7 +61,12 @@ public class ChatModelFactory {
                 model = createOllama(config, modelName);
                 break;
             default:
-                throw new SystemException(ErrorCode.AGENT_CONFIG_ERROR, "不支持的模型类型: " + type);
+                if (ProviderPresets.isOpenAICompatible(type)) {
+                    model = createOpenAICompatiblePreset(type, config, defaults, apiKey, modelName);
+                    break;
+                }
+                throw new SystemException(ErrorCode.AGENT_CONFIG_ERROR, "不支持的模型类型: " + type
+                    + "。支持: dashscope/openai/anthropic/ollama/glm/kimi/doubao/minimax/deepseek/yi/qwen");
         }
 
         log.info("创建聊天模型: type={}, model={}", type, modelName);
@@ -136,6 +141,33 @@ public class ChatModelFactory {
 
         if (config.getBaseUrl() != null) {
             builder.baseUrl(config.getBaseUrl());
+        }
+        return builder.build();
+    }
+
+    /**
+     * OpenAI 兼容预设 Provider（智谱 GLM / Kimi / 豆包 / Minimax / DeepSeek / Yi / 通义）
+     *
+     * <p>自动填充对应平台的 base-url，用户显式配置 baseUrl 时优先用户值。
+     */
+    private Model createOpenAICompatiblePreset(String presetType, LLMConfig config,
+                                                LuminaAgentProperties.LLMConfig defaults,
+                                                String apiKey, String modelName) {
+        String presetBaseUrl = ProviderPresets.getPresetBaseUrl(presetType);
+        String effectiveBaseUrl = config.getBaseUrl() != null ? config.getBaseUrl() : presetBaseUrl;
+
+        log.info("使用预设 Provider: {} → baseUrl={}", presetType, effectiveBaseUrl);
+
+        OpenAIChatModel.Builder builder = OpenAIChatModel.builder()
+                .apiKey(apiKey)
+                .modelName(modelName)
+                .stream(defaults.getStream())
+                .formatter(new OpenAIChatFormatter());
+
+        builder.baseUrl(effectiveBaseUrl);
+
+        if (config.getTemperature() != null) {
+            builder.generateOptions(buildGenerateOptions(config));
         }
         return builder.build();
     }
