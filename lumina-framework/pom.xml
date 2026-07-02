@@ -96,6 +96,12 @@
             <artifactId>redisson-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- RocketMQ 消息队列 -->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+        </dependency>
+
         <!-- Springdoc OpenAPI -->
         <dependency>
             <groupId>org.springdoc</groupId>

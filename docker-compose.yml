@@ -83,6 +83,53 @@ services:
       mysql:
         condition: service_healthy
 
+  # RocketMQ NameServer
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.3.1
+    container_name: lumina-rocketmq-namesrv
+    restart: unless-stopped
+    command: sh mqnamesrv
+    environment:
+      JAVA_OPT_EXT: "-server -Xms512m -Xmx512m -Xmn128m"
+    ports:
+      - "9876:9876"
+    networks:
+      - lumina-network
+
+  # RocketMQ Broker
+  rocketmq-broker:
+    image: apache/rocketmq:5.3.1
+    container_name: lumina-rocketmq-broker
+    restart: unless-stopped
+    command: sh mqbroker -n rocketmq-namesrv:9876 --enable-proxy
+    environment:
+      JAVA_OPT_EXT: "-server -Xms512m -Xmx512m -Xmn128m"
+      NAMESRV_ADDR: "rocketmq-namesrv:9876"
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+      - "8080:8081"
+    volumes:
+      - rocketmq-data:/home/rocketmq/store
+    depends_on:
+      - rocketmq-namesrv
+    networks:
+      - lumina-network
+
+  # RocketMQ Dashboard（可视化管理）
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:1.0.0
+    container_name: lumina-rocketmq-dashboard
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: "-Drocketmq.namesrv.addr=rocketmq-namesrv:9876"
+    ports:
+      - "9080:8080"
+    depends_on:
+      - rocketmq-namesrv
+    networks:
+      - lumina-network
+
   # Gateway 网关服务
   gateway:
     build:
@@ -290,6 +337,8 @@ volumes:
   grafana-data:
     driver: local
   qdrant-data:
+    driver: local
+  rocketmq-data:
     driver: local
 
 # 网络定义

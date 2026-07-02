@@ -15,14 +15,17 @@ import io.agentscope.core.rag.reader.WordReader;
 import io.agentscope.core.rag.store.VDBStoreBase;
 import io.lumina.agent.infrastructure.entity.KnowledgeDocumentDO;
 import io.lumina.agent.infrastructure.mapper.KnowledgeDocumentMapper;
+import io.lumina.agent.mq.DocumentIngestMessage;
 import io.lumina.agent.service.KnowledgeService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.PageResult;
+import io.lumina.framework.config.RocketMQConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -42,6 +45,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Autowired
     private KnowledgeDocumentMapper documentMapper;
 
+    @Autowired(required = false)
+    private RocketMQTemplate rocketMQTemplate;
+
     @Value("${lumina.rag.reader.chunk-size:512}")
     private int chunkSize;
 
@@ -50,6 +56,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Value("${lumina.rag.retrieve.score-threshold:0.3}")
     private double scoreThreshold;
+
+    @Value("${lumina.rag.storage-path:./data/knowledge}")
+    private String storagePath;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -61,6 +70,57 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         log.info("上传知识文档: filename={}, format={}, size={}", filename, format, file.getSize());
 
+        Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+
+        if (rocketMQTemplate != null) {
+            return uploadAsync(file, agentId, filename, format, uuid, tenantId);
+        } else {
+            log.info("RocketMQ 不可用，降级为同步处理");
+            return uploadSync(file, agentId, filename, format, uuid, tenantId);
+        }
+    }
+
+    /**
+     * 异步上传：保存文件 → 创建 PENDING 记录 → 发送 MQ 消息 → 立即返回
+     */
+    private String uploadAsync(MultipartFile file, Long agentId, String filename,
+                               String format, String uuid, Long tenantId) {
+        try {
+            Path storageDir = Path.of(storagePath);
+            Files.createDirectories(storageDir);
+            Path destFile = storageDir.resolve(uuid + "_" + filename);
+            file.transferTo(destFile.toFile());
+
+            KnowledgeDocumentDO doc = new KnowledgeDocumentDO();
+            doc.setDocumentUuid(uuid);
+            doc.setTenantId(tenantId);
+            doc.setAgentId(agentId);
+            doc.setTitle(filename);
+            doc.setFormat(format);
+            doc.setFileSize(file.getSize());
+            doc.setStatus(0);
+            documentMapper.insert(doc);
+
+            DocumentIngestMessage msg = new DocumentIngestMessage(
+                    uuid, destFile.toAbsolutePath().toString(), format,
+                    agentId, tenantId, chunkSize, overlap);
+
+            rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_KNOWLEDGE_INGEST, msg);
+
+            log.info("文档已提交异步处理: uuid={}", uuid);
+            return uuid;
+
+        } catch (Exception e) {
+            log.error("文档上传失败: {}", filename, e);
+            throw new RuntimeException("文档上传失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 同步上传（降级模式，RocketMQ 不可用时使用）
+     */
+    private String uploadSync(MultipartFile file, Long agentId, String filename,
+                              String format, String uuid, Long tenantId) {
         try {
             Path tempFile = Files.createTempFile("lumina_rag_", "_" + filename);
             file.transferTo(tempFile.toFile());
@@ -98,7 +158,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
             KnowledgeDocumentDO doc = new KnowledgeDocumentDO();
             doc.setDocumentUuid(uuid);
-            doc.setTenantId(BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L);
+            doc.setTenantId(tenantId);
             doc.setAgentId(agentId);
             doc.setTitle(filename);
             doc.setFormat(format);
@@ -108,13 +168,23 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             doc.setStatus(1);
             documentMapper.insert(doc);
 
-            log.info("文档入库成功: uuid={}, chunks={}", uuid, docs != null ? docs.size() : 0);
+            log.info("文档同步入库成功: uuid={}, chunks={}", uuid, docs != null ? docs.size() : 0);
             return uuid;
 
         } catch (Exception e) {
             log.error("文档入库失败: {}", filename, e);
             throw new RuntimeException("文档处理失败: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public KnowledgeDocumentDO getDocumentStatus(String uuid) {
+        LambdaQueryWrapper<KnowledgeDocumentDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(KnowledgeDocumentDO::getDocumentUuid, uuid);
+        wrapper.select(KnowledgeDocumentDO::getDocumentUuid, KnowledgeDocumentDO::getTitle,
+                KnowledgeDocumentDO::getStatus, KnowledgeDocumentDO::getChunkCount,
+                KnowledgeDocumentDO::getFileSize, KnowledgeDocumentDO::getCreateTime);
+        return documentMapper.selectOne(wrapper);
     }
 
     @Override

@@ -56,6 +56,11 @@ public class KnowledgeController {
         return R.success(knowledgeService.listDocuments(agentId, pageNum, pageSize));
     }
 
+    @GetMapping("/documents/{uuid}/status")
+    public R<KnowledgeDocumentDO> status(@PathVariable("uuid") String uuid) {
+        return R.success(knowledgeService.getDocumentStatus(uuid));
+    }
+
     @DeleteMapping("/documents/{uuid}")
     public R<Void> delete(@PathVariable("uuid") String uuid) {
         knowledgeService.deleteDocument(uuid);

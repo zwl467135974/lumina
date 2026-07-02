@@ -42,7 +42,7 @@
 
         <!-- 缓存与消息队列 -->
         <redisson.version>3.24.3</redisson.version>
-
+        <rocketmq-spring.version>2.3.0</rocketmq-spring.version>
         <!-- Agent 核心框架 -->
         <agentscope.version>1.0.7</agentscope.version>
 
@@ -251,6 +251,13 @@
                 <groupId>at.favre.lib</groupId>
                 <artifactId>bcrypt</artifactId>
                 <version>${bcrypt.version}</version>
+            </dependency>
+
+            <!-- RocketMQ Spring Boot Starter -->
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-spring-boot-starter</artifactId>
+                <version>${rocketmq-spring.version}</version>
             </dependency>
 
             <!-- PDF 文档解析（RAG） -->

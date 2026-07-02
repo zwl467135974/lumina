@@ -6,12 +6,14 @@ import io.lumina.framework.audit.event.AuditEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
  * 审计日志事件监听器
  *
- * <p>监听 {@link AuditEvent}（由 AuditAspect 发布），转换为 DO 持久化到审计表。
+ * <p>监听 {@link AuditEvent}（由 AuditAspect 发布），异步持久化到审计表。
+ * 使用 auditExecutor 线程池，不阻塞业务请求线程。
  *
  * @author Lumina Team
  * @since 1.1.0
@@ -23,6 +25,7 @@ public class AuditLogEventListener {
     @Autowired
     private AuditLogMapper auditLogMapper;
 
+    @Async("auditExecutor")
     @EventListener(AuditEvent.class)
     public void onAuditEvent(AuditEvent event) {
         try {

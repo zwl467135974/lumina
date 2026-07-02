@@ -11,6 +11,18 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
+  # RocketMQ 消息队列
+  rocketmq:
+    name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+    producer:
+      group: lumina-producer
+      send-message-timeout: 5000
+
+rocketmq:
+  consumer:
+    knowledge-ingest:
+      enabled: ${MQ_KNOWLEDGE_ASYNC:true}
+
   cloud:
     nacos:
       discovery:

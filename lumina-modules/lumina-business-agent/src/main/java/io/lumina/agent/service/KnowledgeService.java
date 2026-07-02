@@ -9,6 +9,7 @@ import java.util.Map;
 
 public interface KnowledgeService {
     String uploadDocument(MultipartFile file, Long agentId);
+    KnowledgeDocumentDO getDocumentStatus(String uuid);
     PageResult<KnowledgeDocumentDO> listDocuments(Long agentId, Integer pageNum, Integer pageSize);
     void deleteDocument(String uuid);
     List<Map<String, Object>> search(String query, int limit);
