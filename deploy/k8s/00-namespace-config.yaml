@@ -1,0 +1,53 @@
+# Lumina K8s 部署清单（参考模板）
+# 用法: kubectl apply -f deploy/k8s/
+# 注意: 生产环境请用 Helm Chart 参数化部署，此处为静态参考
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lumina
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lumina-config
+  namespace: lumina
+data:
+  # 基础设施
+  MYSQL_HOST: "mysql"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "lumina"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  NACOS_HOST: "nacos"
+  NACOS_PORT: "8848"
+  QDRANT_HOST: "qdrant:6333"
+  # OTel
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4318/v1/traces"
+  OTEL_SAMPLING_PROBABILITY: "0.1"
+  # LLM（按需覆盖）
+  LLM_TYPE: "openai"
+  LLM_MODEL: "deepseek-chat"
+  LLM_BASE_URL: "https://api.deepseek.com/v1"
+  # RAG
+  RAG_ENABLED: "true"
+  RAG_STORE_TYPE: "qdrant"
+  RAG_MODE: "generic"
+  RAG_EMBEDDING_PROVIDER: "openai"
+  RAG_EMBEDDING_BASE_URL: "https://api.siliconflow.cn/v1"
+  RAG_EMBEDDING_MODEL: "BAAI/bge-large-zh-v1.5"
+  RAG_EMBEDDING_DIMENSIONS: "1024"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lumina-secrets
+  namespace: lumina
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: "CHANGE_ME"
+  MYSQL_PASSWORD: "CHANGE_ME"
+  REDIS_PASSWORD: "CHANGE_ME"
+  LUMINA_JWT_SECRET: "CHANGE_ME_AT_LEAST_32_CHARS_LONG"
+  LLM_API_KEY: "CHANGE_ME"
+  RAG_EMBEDDING_API_KEY: "CHANGE_ME"

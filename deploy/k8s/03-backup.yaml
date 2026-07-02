@@ -1,0 +1,43 @@
+# MySQL 定时备份 CronJob（每日 02:00）
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mysql-backup
+  namespace: lumina
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: mysql:8.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  mysqldump -h mysql -u root -p"$MYSQL_ROOT_PASSWORD" \
+                    --single-transaction --routines --triggers \
+                    lumina > /backup/lumina-$(date +%Y%m%d).sql.gz
+              env:
+                - name: MYSQL_ROOT_PASSWORD
+                  valueFrom: { secretKeyRef: { name: lumina-secrets, key: MYSQL_ROOT_PASSWORD } }
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: mysql-backup-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-backup-pvc
+  namespace: lumina
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources: { requests: { storage: 20Gi } }

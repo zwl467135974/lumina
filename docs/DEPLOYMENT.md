@@ -1,0 +1,235 @@
+# Lumina 部署指南
+
+**版本**: v1.2.0
+**更新**: 2026-07-02
+
+---
+
+## 一、环境要求
+
+| 组件 | 版本 | 说明 |
+|------|------|------|
+| Docker | 20+ | 含 Docker Compose |
+| JDK | 21 | 本地开发/构建 |
+| Node.js | 20+ | 前端构建 |
+| pnpm | 10+ | 前端包管理 |
+| Maven | 3.9+ | 后端构建 |
+
+---
+
+## 二、Docker Compose 一键部署（推荐）
+
+### 2.1 克隆 & 配置
+
+```bash
+git clone https://gitee.com/wyler_admin/lumina.git
+cd lumina
+
+# 复制环境变量模板
+cp .env.example .env
+
+# 编辑 .env，填入密钥（必须修改的项见下表）
+vim .env
+```
+
+**必须修改的 `.env` 项**：
+
+| 变量 | 说明 | 示例 |
+|------|------|------|
+| `MYSQL_ROOT_PASSWORD` | MySQL root 密码 | `my_secure_pw` |
+| `MYSQL_PASSWORD` | 应用数据库密码 | `my_app_pw` |
+| `REDIS_PASSWORD` | Redis 密码 | `my_redis_pw` |
+| `LUMINA_JWT_SECRET` | JWT 签名密钥（≥32 字符） | `my-jwt-secret-at-least-32-chars` |
+| `LLM_API_KEY` | LLM API Key | `sk-xxx` |
+| `LLM_TYPE` | LLM 提供商 | `openai`（兼容 DeepSeek） |
+| `LLM_MODEL` | 模型名 | `deepseek-chat` |
+| `LLM_BASE_URL` | API 地址 | `https://api.deepseek.com/v1` |
+| `RAG_EMBEDDING_API_KEY` | Embedding API Key | `sk-xxx`（硅基流动） |
+
+### 2.2 构建镜像
+
+```bash
+# 后端构建
+mvn install -DskipTests
+
+# 前端构建
+cd lumina-frontend && pnpm install && pnpm build && cd ..
+
+# Docker 镜像构建（约 5 分钟）
+docker compose build
+```
+
+### 2.3 启动全部服务
+
+```bash
+docker compose up -d
+```
+
+### 2.4 验证
+
+```bash
+# 检查服务状态
+docker compose ps
+
+# 访问前端
+open http://localhost
+
+# 网关健康检查
+curl http://localhost:8080/actuator/health
+```
+
+---
+
+## 三、端口说明
+
+| 服务 | 端口 | 用途 |
+|------|------|------|
+| 前端 (Nginx) | 80 | Web 界面 |
+| 网关 (Gateway) | 8080 | API 入口 |
+| Business Base | 8081 | 用户/角色/权限/租户 |
+| Agent Service | 8082 | Agent/会话/知识库 |
+| MySQL | 3306 | 数据库 |
+| Redis | 6379 | 缓存/记忆 |
+| Qdrant REST | 6333 | 向量库 REST API / Web UI |
+| Qdrant gRPC | 6334 | 向量库 gRPC |
+| Jaeger UI | 16686 | 分布式追踪 |
+| Prometheus | 9090 | 指标抓取 |
+| Grafana | 3001 | 指标面板（admin/admin） |
+
+---
+
+## 四、RAG 知识库配置
+
+### 4.1 启用 RAG
+
+在 `.env` 中设置：
+
+```bash
+RAG_ENABLED=true
+RAG_STORE_TYPE=qdrant           # memory=开发模式 / qdrant=生产
+RAG_MODE=generic                # generic=自动检索 / agentic=Agent 自主决定
+```
+
+### 4.2 Embedding 配置（硅基流动）
+
+```bash
+RAG_EMBEDDING_PROVIDER=openai
+RAG_EMBEDDING_API_KEY=sk-your-siliconflow-key
+RAG_EMBEDDING_BASE_URL=https://api.siliconflow.cn/v1
+RAG_EMBEDDING_MODEL=BAAI/bge-large-zh-v1.5
+RAG_EMBEDDING_DIMENSIONS=1024
+```
+
+> 硅基流动注册：https://cloud.siliconflow.cn （新用户免费额度）
+
+### 4.3 LLM 配置（DeepSeek）
+
+```bash
+LLM_TYPE=openai                 # DeepSeek 兼容 OpenAI 接口
+LLM_API_KEY=sk-your-deepseek-key
+LLM_MODEL=deepseek-chat
+LLM_BASE_URL=https://api.deepseek.com/v1
+```
+
+---
+
+## 五、本地开发模式
+
+### 5.1 启动基础设施
+
+```bash
+# 只启动 MySQL + Redis + Qdrant + Jaeger
+docker compose up -d mysql redis qdrant jaeger
+```
+
+### 5.2 启动后端服务
+
+```bash
+# Business Base（端口 8082）
+SPRING_DATASOURCE_PASSWORD=123456 \
+SPRING_CLOUD_NACOS_DISCOVERY_ENABLED=false \
+SPRING_CLOUD_NACOS_CONFIG_IMPORT_CHECK_ENABLED=false \
+mvn spring-boot:run -pl lumina-modules/lumina-business-base
+
+# Agent Service（端口 8081，另一个终端）
+LLM_TYPE=openai LLM_API_KEY=sk-xxx LLM_MODEL=deepseek-chat LLM_BASE_URL=https://api.deepseek.com/v1 \
+RAG_ENABLED=true RAG_STORE_TYPE=qdrant \
+RAG_EMBEDDING_PROVIDER=openai RAG_EMBEDDING_API_KEY=sk-xxx \
+RAG_EMBEDDING_BASE_URL=https://api.siliconflow.cn/v1 \
+SPRING_DATASOURCE_PASSWORD=123456 \
+SPRING_CLOUD_NACOS_DISCOVERY_ENABLED=false \
+SPRING_CLOUD_NACOS_CONFIG_IMPORT_CHECK_ENABLED=false \
+mvn spring-boot:run -pl lumina-modules/lumina-business-agent
+```
+
+### 5.3 启动前端
+
+```bash
+cd lumina-frontend
+pnpm install
+pnpm dev
+# 访问 http://localhost:5173
+```
+
+---
+
+## 六、监控与追踪
+
+### Prometheus + Grafana
+
+```bash
+docker compose up -d prometheus grafana
+# Grafana: http://localhost:3001 (admin/admin)
+```
+
+### Jaeger 追踪
+
+```bash
+docker compose up -d jaeger
+# Jaeger UI: http://localhost:16686
+```
+
+---
+
+## 七、K8s 部署（参考）
+
+> K8s 清单为参考模板，需按实际集群环境调整镜像地址、域名、存储类等。
+
+```bash
+# 1. 修改 Secret
+vim deploy/k8s/00-namespace-config.yaml
+
+# 2. 部署
+kubectl apply -f deploy/k8s/
+
+# 3. 检查
+kubectl get pods -n lumina
+```
+
+或使用 Helm：
+
+```bash
+helm install lumina deploy/helm/lumina \
+  --set secrets.llmApiKey=sk-xxx \
+  --set secrets.ragEmbeddingApiKey=sk-xxx \
+  --set ingress.host=lumina.yourdomain.com
+```
+
+---
+
+## 八、常见问题
+
+### Q: 服务启动报 Nacos 连接失败？
+A: 本地开发时禁用 Nacos：设置 `SPRING_CLOUD_NACOS_DISCOVERY_ENABLED=false`。
+
+### Q: RAG 文档上传报 400？
+A: 硅基流动 bge 模型不支持 `dimensions` 参数。本项目已用自定义 `OpenAICompatibleEmbeddingModel` 绕过此限制。
+
+### Q: Qdrant 连接报 SSL/TLS 错误？
+A: 本地 Qdrant 使用明文 gRPC。本项目已改用 REST API（`:6333`），不依赖 gRPC。
+
+### Q: Flyway 迁移失败？
+A: 确保 MySQL 已启动且密码正确。Flyway 在 `business-base` 模块启动时自动执行（V1~V6）。
+
+### Q: 前端菜单为空？
+A: 菜单由后端 API `/api/v1/base/menus` 动态下发，需先登录获取 JWT。通过网关访问时 Gateway 自动解析 JWT 注入 `X-Permissions` 头。

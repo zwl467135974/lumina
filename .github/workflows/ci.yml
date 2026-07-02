@@ -1,0 +1,60 @@
+# Lumina CI - 编译 + 测试 + 前端构建
+# 触发：Push 到 master / PR
+# 注意：本文件为参考模板，需根据实际 CI 平台（GitHub Actions / Gitee Go / Jenkins）调整
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  # ========== 后端：Maven 编译 + 测试 ==========
+  backend:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Maven Verify
+        run: mvn verify -B -DskipITs
+        # -DskipITs 跳过集成测试（需 MySQL/Redis）
+        # 如需运行集成测试，启动 Testcontainers 或 service container
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/target/surefire-reports/*.xml'
+
+  # ========== 前端：TypeScript 类型检查 + Vite 构建 ==========
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install Dependencies
+        working-directory: lumina-frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Type Check & Build
+        working-directory: lumina-frontend
+        run: pnpm build

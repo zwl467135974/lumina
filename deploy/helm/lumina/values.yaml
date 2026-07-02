@@ -1,0 +1,75 @@
+# Lumina Helm Chart 默认配置
+# 用法: helm install lumina deploy/helm/lumina -f values-prod.yaml
+
+# 镜像配置
+image:
+  registry: registry.cn-hangzhou.aliyuncs.com
+  namespace: lumina
+  pullPolicy: IfNotPresent
+  tag: latest
+
+# 全局环境变量
+config:
+  llmType: openai
+  llmModel: deepseek-chat
+  llmBaseUrl: https://api.deepseek.com/v1
+  ragEnabled: "true"
+  ragStoreType: qdrant
+  ragMode: generic
+  ragEmbeddingProvider: openai
+  ragEmbeddingBaseUrl: https://api.siliconflow.cn/v1
+  ragEmbeddingModel: BAAI/bge-large-zh-v1.5
+  ragEmbeddingDimensions: "1024"
+  otelSamplingProbability: "0.1"
+
+# 密钥（生产环境用 --set 或 sealed-secrets 覆盖）
+secrets:
+  mysqlRootPassword: "CHANGE_ME"
+  mysqlPassword: "CHANGE_ME"
+  redisPassword: "CHANGE_ME"
+  jwtSecret: "CHANGE_ME_AT_LEAST_32_CHARS"
+  llmApiKey: "CHANGE_ME"
+  ragEmbeddingApiKey: "CHANGE_ME"
+
+# 服务配置
+gateway:
+  replicas: 2
+  resources: { limits: { cpu: 1000m, memory: 1Gi }, requests: { cpu: 500m, memory: 512Mi } }
+
+businessBase:
+  replicas: 2
+  resources: { limits: { cpu: 1000m, memory: 1Gi }, requests: { cpu: 500m, memory: 512Mi } }
+
+agentService:
+  replicas: 2
+  resources: { limits: { cpu: 2000m, memory: 2Gi }, requests: { cpu: 1000m, memory: 1Gi } }
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    cpuUtilization: 70
+
+frontend:
+  replicas: 2
+  resources: { limits: { cpu: 200m, memory: 256Mi }, requests: { cpu: 100m, memory: 128Mi } }
+
+# 基础设施
+mysql:
+  enabled: true
+  storage: 10Gi
+
+redis:
+  enabled: true
+  storage: 2Gi
+
+qdrant:
+  enabled: true
+  storage: 5Gi
+
+jaeger:
+  enabled: true
+
+# Ingress
+ingress:
+  enabled: true
+  host: lumina.example.com
