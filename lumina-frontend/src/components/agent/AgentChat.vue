@@ -24,6 +24,11 @@
 
       <!-- 右：对话区 -->
       <div class="chat-main">
+        <!-- 调试模式切换 -->
+        <div class="chat-toolbar">
+          <el-switch v-model="debugMode" size="small" active-text="调试" inactive-text="" />
+        </div>
+
         <div ref="messagesRef" class="chat-messages">
           <!-- 历史消息 -->
           <div v-for="msg in historyMessages" :key="msg.messageId" :class="['msg-item', `msg-${msg.role}`]">
@@ -66,6 +71,24 @@
             description="输入任务，开始对话"
             :image-size="60"
           />
+
+          <!-- 调试面板 -->
+          <div v-if="debugMode && eventLog.length > 0" class="debug-panel">
+            <div class="debug-header">调试信息（{{ eventLog.length }} 事件）</div>
+            <div class="debug-stats">
+              <el-tag size="small">总耗时 {{ debugStats.totalMs }}ms</el-tag>
+              <el-tag size="small" type="success">回复 {{ debugStats.finalChars }} 字符</el-tag>
+              <el-tag size="small" type="warning" v-if="debugStats.actingEvents">工具 {{ debugStats.actingEvents }} 次</el-tag>
+              <el-tag size="small" type="info" v-if="debugStats.reasoningEvents">推理 {{ debugStats.reasoningEvents }} 段</el-tag>
+            </div>
+            <div class="debug-timeline">
+              <div v-for="(ev, idx) in eventLog" :key="idx" class="debug-event">
+                <span class="ev-time">+{{ ev.elapsed }}ms</span>
+                <el-tag size="small" :type="eventTagType(ev.type)">{{ ev.type }}</el-tag>
+                <span class="ev-preview">{{ ev.preview }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 输入区 -->
@@ -89,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { streamExecuteAgent, type StreamChunk } from '@/api/modules/agent'
 import {
@@ -117,6 +140,32 @@ const actingText = ref('')
 const finalText = ref('')
 const errorMsg = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
+
+// 调试模式
+const debugMode = ref(false)
+interface DebugEvent { type: string; elapsed: number; preview: string }
+const eventLog = ref<DebugEvent[]>([])
+let streamStartTime = 0
+
+const debugStats = computed(() => {
+  const total = eventLog.value.length > 0
+    ? eventLog.value[eventLog.value.length - 1].elapsed
+    : 0
+  return {
+    totalMs: total,
+    finalChars: finalText.value.length,
+    actingEvents: eventLog.value.filter(e => e.type.includes('ACTING')).length,
+    reasoningEvents: eventLog.value.filter(e => e.type.includes('REASONING')).length
+  }
+})
+
+const eventTagType = (type: string) => {
+  if (type.includes('REASONING')) return 'info'
+  if (type.includes('ACTING')) return 'warning'
+  if (type === 'FINAL') return 'success'
+  if (type === 'ERROR') return 'danger'
+  return ''
+}
 
 let controller: AbortController | null = null
 
@@ -182,10 +231,21 @@ const resetStream = () => {
   actingText.value = ''
   finalText.value = ''
   errorMsg.value = ''
+  eventLog.value = []
 }
 
 const handleChunk = (chunk: StreamChunk) => {
   const content = chunk.content || ''
+
+  // 调试日志
+  if (debugMode.value) {
+    eventLog.value.push({
+      type: chunk.type,
+      elapsed: streamStartTime > 0 ? Date.now() - streamStartTime : 0,
+      preview: content.substring(0, 80).replace(/\n/g, ' ')
+    })
+  }
+
   switch (chunk.type) {
     case 'REASONING_CHUNK':
     case 'POST_REASONING':
@@ -239,6 +299,7 @@ const send = async () => {
   task.value = ''
   resetStream()
   streaming.value = true
+  streamStartTime = Date.now()
 
   controller = streamExecuteAgent(
     props.agentId,
@@ -484,6 +545,64 @@ defineExpose({ resetStream })
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+  }
+}
+
+/* 工具栏 */
+.chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0 8px;
+}
+
+/* 调试面板 */
+.debug-panel {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+  border: 1px solid var(--el-border-color-lighter);
+
+  .debug-header {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .debug-stats {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .debug-timeline {
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+  }
+
+  .debug-event {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--el-border-color-extra-light);
+
+    .ev-time {
+      width: 70px;
+      color: var(--el-text-color-placeholder);
+      flex-shrink: 0;
+    }
+
+    .ev-preview {
+      color: var(--el-text-color-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   }
 }
 </style>
