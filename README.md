@@ -22,13 +22,15 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 ### 核心特性
 
 - **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、流式输出
+- **RAG 知识库** - 文档上传 → 切片 → 向量化 → 检索增强（Qdrant REST + 多 Embedding 提供商）
 - **微服务架构** - 基于 Spring Cloud Alibaba，支持服务注册、配置管理、负载均衡
 - **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
 - **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
-- **可观测性** - 结构化日志(traceId/MDC) + 审计日志(@Audit AOP) + Micrometer 指标(Prometheus/Grafana)
-- **工程化** - 统一错误码、Flyway 版本迁移、网关限流、API 版本策略、工具调用熔断器
+- **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V6)、网关限流、API 版本策略、工具调用熔断器
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
-- **多 LLM 支持** - 支持 DashScope、OpenAI、Claude、Ollama 等主流模型
+- **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
+- **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
 
 ---
 
@@ -155,7 +157,7 @@ $env:DASHSCOPE_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V4），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V6），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -413,6 +415,7 @@ public String executeAgent(String task) {
 ### 快速开始
 
 - [项目 README](README.md) - 项目介绍和快速开始
+- [部署指南](docs/DEPLOYMENT.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
 - [配置说明](docs/CONFIGURATION.md) - JWT、白名单、租户隔离等完整配置
 - [测试指南](TESTING.md) - 测试验证步骤和场景
 - [SQL 使用说明](sql/README.md) - 数据库脚本使用
@@ -517,28 +520,45 @@ npm install
 
 ## 项目状态
 
-### v1.1 已完成（2026-07-01）
+### v1.2.0 已完成（2026-07-02）
 
-- ✅ 响应式上下文传递（ContextPropagation，跨线程租户隔离）
-- ✅ 敏感配置环境变量化 + Flyway 版本化迁移（V1-V4）
-- ✅ 统一错误码体系（ErrorCode 枚举 + 全量业务迁移）
-- ✅ 流式输出（SSE 端到端）+ 会话与记忆管理（多轮对话/历史回放/Token 用量）
-- ✅ 多模型适配（ChatModelFactory：dashscope/openai/anthropic/ollama）
-- ✅ 工具调用可观测（调用记录/统计/熔断器）
-- ✅ 审计日志（@Audit AOP 声明式留痕，19 个关键方法）
-- ✅ 网关限流（全局+IP 双维度固定窗口）
-- ✅ API 版本策略（@DeprecatedApi + Deprecation/Sunset 响应头）
+**核心功能**
+- ✅ 响应式上下文传递 + 敏感配置环境变量化
+- ✅ 统一错误码 + Flyway V1-V6 + 网关限流 + API 版本策略
+- ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
+- ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama）
+- ✅ 工具调用可观测（记录/统计/熔断器）+ 审计日志（@Audit AOP）
+
+**RAG 知识库（全 5 阶段）**
+- ✅ 多 Embedding 提供商（DashScope/OpenAI 兼容/Ollama）
+- ✅ 文档上传管线（TextReader/PDFReader/WordReader → 切片 → Embedding → Store）
+- ✅ Qdrant 向量存储（自定义 REST 实现，绕过 AgentScope gRPC 兼容性问题）
+- ✅ Agent RAG 集成（GENERIC/AGENTIC 模式）
+- ✅ 前端知识库管理页（上传/列表/删除/检索测试）
+
+**可观测性**
+- ✅ MDC 结构化日志（traceId/tenantId/userId）
 - ✅ Micrometer 指标（Prometheus + Grafana）
-- ✅ 测试体系（94 单元 + 6 集成 = 100 测试，集成测试发现修复 2 个租户隔离 bug）
-- ✅ 前端（工具监控页 + 暗色主题 + pnpm build 通过）
+- ✅ OpenTelemetry 全链路追踪（Jaeger，Gateway→Service→Agent→Tools）
+- ✅ 审计日志（19 个关键方法标注）
 
-详细发布说明：[V1.1_RELEASE_NOTES.md](docs/V1.1_RELEASE_NOTES.md)
+**前端增强**
+- ✅ 动态菜单（后端按权限下发，前端渲染侧边栏）
+- ✅ Agent 调试面板（事件时间线 + 统计）
+- ✅ i18n 国际化（中英文切换）
+- ✅ 暗色主题 + 工具监控页 + 知识库管理页
 
-### 待做
+**工程化与部署**
+- ✅ 测试体系（103 测试：common 28 + agent-core 23 + framework 4 + base 38 + agent 10）
+- ✅ CI/CD 模板（GitHub Actions：mvn verify + pnpm build + Docker 镜像构建）
+- ✅ K8s 部署清单 + Helm Chart（参考模板）
+- ✅ 部署文档 + 一键启动脚本（init.sh / init.ps1）
 
-- 📋 OpenTelemetry 全链路追踪（Gateway→服务→Agent→工具）
-- 📋 RAG 知识库（向量存储 + Embedding + 检索增强）
-- 📋 运维部署（K8s Helm Chart + 灰度发布 + 备份策略）
+相关文档：
+- [部署指南](docs/DEPLOYMENT.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
+- [RAG 设计文档](docs/RAG_DESIGN.md) - RAG 架构与技术选型
+- [V1.1 发布说明](docs/V1.1_RELEASE_NOTES.md) - v1.1 功能详情
+- [路线图](docs/ROADMAP.md) - 完整开发路线图
 
 ---
 

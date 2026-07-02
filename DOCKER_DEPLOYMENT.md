@@ -1,5 +1,8 @@
 # Lumina Docker 部署指南
 
+> **注意**: 完整部署指南（含 RAG 配置、OpenTelemetry 追踪、K8s 参考、一键启动脚本）已迁移至
+> [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。本文件保留旧版 Docker 部署细节作补充参考。
+
 本文档介绍如何使用 Docker 和 Docker Compose 部署 Lumina 平台。
 
 ## 前置要求
