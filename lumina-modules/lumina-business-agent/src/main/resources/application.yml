@@ -53,24 +53,61 @@ lumina:
   agent:
     # LLM 配置
     llm:
-      # API Key (可选,不配置则使用模拟模式)
+      # 模型类型（dashscope/openai/anthropic/ollama，openai 兼容 DeepSeek/GLM/Moonshot 等）
+      type: ${LLM_TYPE:dashscope}
+      # API Key
       api-key: ${LLM_API_KEY:}
-      # 模型名称 (gpt-3.5-turbo, gpt-4, dashscope-qwen-turbo 等)
-      model: ${LLM_MODEL:gpt-3.5-turbo}
-      # API Base URL
-      base-url: ${LLM_BASE_URL:https://api.openai.com/v1}
+      # 模型名称
+      model: ${LLM_MODEL:qwen-plus}
+      # API Base URL（OpenAI 兼容服务使用）
+      base-url: ${LLM_BASE_URL:}
       # 温度参数
       temperature: ${LLM_TEMPERATURE:0.7}
       # 最大 Token 数
       max-tokens: ${LLM_MAX_TOKENS:2000}
+      # 流式输出
+      stream: ${LLM_STREAM:false}
+
+  # RAG 知识库配置
+  rag:
+    # 是否启用 RAG（true 时自动创建 Knowledge bean 并注入 Agent）
+    enabled: ${RAG_ENABLED:false}
+    # 向量存储类型（memory=内存模式开发用 / qdrant=生产）
+    store-type: ${RAG_STORE_TYPE:memory}
+    # RAG 检索模式（generic=自动检索 / agentic=Agent 自主决定）
+    mode: ${RAG_MODE:generic}
+    # Embedding 配置
+    embedding:
+      # 提供商（dashscope/openai/ollama，openai 适用于硅基流动等兼容服务）
+      provider: ${RAG_EMBEDDING_PROVIDER:dashscope}
+      # API Key（独立配置，不填则复用 LLM_API_KEY）
+      api-key: ${RAG_EMBEDDING_API_KEY:}
+      # Base URL（OpenAI 兼容服务，如硅基流动 https://api.siliconflow.cn/v1）
+      base-url: ${RAG_EMBEDDING_BASE_URL:}
+      # 模型名称
+      model: ${RAG_EMBEDDING_MODEL:text-embedding-v3}
+      # 向量维度（需与模型一致）
+      dimensions: ${RAG_EMBEDDING_DIMENSIONS:1024}
+    # 检索配置
+    retrieve:
+      limit: 3
+      score-threshold: 0.3
+    # 文档切片配置
+    reader:
+      chunk-size: 512
+      overlap: 50
+      split-strategy: PARAGRAPH
+    # Qdrant 配置
+    qdrant:
+      host: ${QDRANT_HOST:localhost:6334}
+      collection: ${QDRANT_COLLECTION:lumina_knowledge}
+      tls: ${QDRANT_TLS:false}
 
 # 日志配置
 logging:
   level:
     io.lumina: DEBUG
     org.springframework: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
 

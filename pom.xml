@@ -284,6 +284,7 @@
                         <source>${java.version}</source>
                         <target>${java.version}</target>
                         <encoding>${project.build.sourceEncoding}</encoding>
+                        <parameters>true</parameters>
                     </configuration>
                 </plugin>
             </plugins>

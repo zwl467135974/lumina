@@ -23,7 +23,31 @@ public class RagProperties {
 
     @Data
     public static class EmbeddingConfig {
+        /**
+         * Embedding 提供商（dashscope/openai/ollama，默认 dashscope）
+         *
+         * <p>openai 适用于所有 OpenAI 兼容服务（如硅基流动 SiliconFlow），需配合 baseUrl + apiKey。
+         */
+        private String provider = "dashscope";
+
+        /**
+         * Embedding API Key（openai 提供商必填）
+         */
+        private String apiKey;
+
+        /**
+         * Embedding 服务 Base URL（openai 兼容服务，如硅基流动 https://api.siliconflow.cn/v1）
+         */
+        private String baseUrl;
+
+        /**
+         * Embedding 模型名称
+         */
         private String model = "text-embedding-v3";
+
+        /**
+         * 向量维度（需与模型一致）
+         */
         private int dimensions = 1024;
     }
 
@@ -44,5 +68,9 @@ public class RagProperties {
     public static class QdrantConfig {
         private String host = "localhost:6334";
         private String collection = "lumina_knowledge";
+        /**
+         * 是否启用 TLS（生产环境 https 推荐 true，本地明文 gRPC 需 false）
+         */
+        private boolean tls = false;
     }
 }

@@ -38,13 +38,73 @@ public class RagKnowledgeFactory {
 
     @Bean
     public EmbeddingModel embeddingModel(RagProperties props) {
-        String apiKey = getApiKey();
-        log.info("RAG Embedding 模型: {}, 维度: {}", props.getEmbedding().getModel(), props.getEmbedding().getDimensions());
+        String provider = props.getEmbedding().getProvider() != null
+                ? props.getEmbedding().getProvider() : "dashscope";
+        log.info("RAG Embedding 提供商: {}, 模型: {}, 维度: {}",
+                provider, props.getEmbedding().getModel(), props.getEmbedding().getDimensions());
+
+        switch (provider) {
+            case "openai":
+                return createOpenAIEmbedding(props);
+            case "ollama":
+                return createOllamaEmbedding(props);
+            case "dashscope":
+            default:
+                return createDashScopeEmbedding(props);
+        }
+    }
+
+    /**
+     * DashScope Embedding（通义千问 text-embedding-v3）
+     */
+    private EmbeddingModel createDashScopeEmbedding(RagProperties props) {
+        String apiKey = resolveEmbeddingApiKey(props);
         return DashScopeTextEmbedding.builder()
                 .apiKey(apiKey)
                 .modelName(props.getEmbedding().getModel())
                 .dimensions(props.getEmbedding().getDimensions())
                 .build();
+    }
+
+    /**
+     * OpenAI 兼容 Embedding（适用于硅基流动 SiliconFlow、OpenAI、Azure OpenAI 等）
+     *
+     * <p>使用自定义 HTTP 实现而非 OpenAI Java SDK，避免强制发送 dimensions 参数
+     * 导致 SiliconFlow 等 API 返回 400 错误。
+     */
+    private EmbeddingModel createOpenAIEmbedding(RagProperties props) {
+        String apiKey = resolveEmbeddingApiKey(props);
+        String baseUrl = props.getEmbedding().getBaseUrl() != null
+                ? props.getEmbedding().getBaseUrl() : "https://api.openai.com/v1";
+        return new OpenAICompatibleEmbeddingModel(
+                apiKey,
+                props.getEmbedding().getModel(),
+                baseUrl,
+                props.getEmbedding().getDimensions());
+    }
+
+    /**
+     * Ollama 本地 Embedding（nomic-embed-text 等，无需 API Key）
+     */
+    private EmbeddingModel createOllamaEmbedding(RagProperties props) {
+        String baseUrl = props.getEmbedding().getBaseUrl() != null
+                ? props.getEmbedding().getBaseUrl() : "http://localhost:11434";
+        return io.agentscope.core.embedding.ollama.OllamaTextEmbedding.builder()
+                .baseUrl(baseUrl)
+                .modelName(props.getEmbedding().getModel())
+                .dimensions(props.getEmbedding().getDimensions())
+                .build();
+    }
+
+    /**
+     * 解析 Embedding API Key（优先 embedding 专用 Key，其次复用 LLM Key）
+     */
+    private String resolveEmbeddingApiKey(RagProperties props) {
+        String key = props.getEmbedding().getApiKey();
+        if (key != null && !key.isBlank()) {
+            return key;
+        }
+        return getApiKey();
     }
 
     @Bean
@@ -57,12 +117,13 @@ public class RagKnowledgeFactory {
                         .dimensions(dims)
                         .build();
             } else {
-                log.info("RAG 使用 Qdrant 向量存储: host={}, collection={}",
-                        props.getQdrant().getHost(), props.getQdrant().getCollection());
+                log.info("RAG 使用 Qdrant 向量存储: host={}, collection={}, tls={}",
+                        props.getQdrant().getHost(), props.getQdrant().getCollection(), props.getQdrant().isTls());
                 return QdrantStore.builder()
                         .location(props.getQdrant().getHost())
                         .collectionName(props.getQdrant().getCollection())
                         .dimensions(dims)
+                        .useTransportLayerSecurity(props.getQdrant().isTls())
                         .build();
             }
         } catch (Exception e) {

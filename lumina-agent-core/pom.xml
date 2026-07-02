@@ -90,6 +90,20 @@
             <version>5.3.0</version>
         </dependency>
 
+        <!-- Qdrant 向量数据库客户端（RAG QdrantStore） -->
+        <dependency>
+            <groupId>io.qdrant</groupId>
+            <artifactId>client</artifactId>
+            <version>1.14.0</version>
+        </dependency>
+
+        <!-- OpenAI Java SDK（OpenAITextEmbedding + OpenAIChatModel 依赖） -->
+        <dependency>
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>2.4.0</version>
+        </dependency>
+
         <!-- Nacos Config -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>

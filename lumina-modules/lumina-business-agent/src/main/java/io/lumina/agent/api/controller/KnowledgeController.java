@@ -22,7 +22,7 @@ public class KnowledgeController {
 
     @PostMapping("/documents")
     public R<String> upload(@RequestParam("file") MultipartFile file,
-                            @RequestParam(required = false) Long agentId) {
+                            @RequestParam(value = "agentId", required = false) Long agentId) {
         if (file.isEmpty()) {
             return R.fail("文件不能为空");
         }
@@ -32,9 +32,9 @@ public class KnowledgeController {
 
     @GetMapping("/documents")
     public R<PageResult<KnowledgeDocumentDO>> list(
-            @RequestParam(required = false) Long agentId,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
+            @RequestParam(value = "agentId", required = false) Long agentId,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize) {
         return R.success(knowledgeService.listDocuments(agentId, pageNum, pageSize));
     }
 
@@ -45,8 +45,8 @@ public class KnowledgeController {
     }
 
     @PostMapping("/search")
-    public R<List<Map<String, Object>>> search(@RequestParam String query,
-                                                @RequestParam(defaultValue = "5") int limit) {
+    public R<List<Map<String, Object>>> search(@RequestParam("query") String query,
+                                                @RequestParam(value = "limit", defaultValue = "5") int limit) {
         return R.success(knowledgeService.search(query, limit));
     }
 }

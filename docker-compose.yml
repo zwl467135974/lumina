@@ -216,6 +216,19 @@ services:
       gateway:
         condition: service_healthy
 
+  # Qdrant 向量数据库（RAG 知识库）
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    container_name: lumina-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"    # REST API / Web UI
+      - "6334:6334"    # gRPC（AgentScope 连接）
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - lumina-network
+
   # Prometheus 监控（指标抓取与存储）
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -261,6 +274,8 @@ volumes:
   prometheus-data:
     driver: local
   grafana-data:
+    driver: local
+  qdrant-data:
     driver: local
 
 # 网络定义
