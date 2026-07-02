@@ -141,7 +141,7 @@ public class ChatModelFactory {
     }
 
     /**
-     * 构建 GenerateOptions（temperature + maxTokens）
+     * 构建 GenerateOptions（temperature + maxTokens + topP + penalties + seed + topK）
      */
     private GenerateOptions buildGenerateOptions(LLMConfig config) {
         GenerateOptions.Builder ob = GenerateOptions.builder();
@@ -150,6 +150,21 @@ public class ChatModelFactory {
         }
         if (config.getMaxTokens() != null) {
             ob.maxTokens(config.getMaxTokens());
+        }
+        if (config.getTopP() != null) {
+            ob.topP(config.getTopP());
+        }
+        if (config.getFrequencyPenalty() != null) {
+            ob.frequencyPenalty(config.getFrequencyPenalty());
+        }
+        if (config.getPresencePenalty() != null) {
+            ob.presencePenalty(config.getPresencePenalty());
+        }
+        if (config.getSeed() != null) {
+            ob.seed(config.getSeed());
+        }
+        if (config.getTopK() != null) {
+            ob.topK(config.getTopK());
         }
         return ob.build();
     }

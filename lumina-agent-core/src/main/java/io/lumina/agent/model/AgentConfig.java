@@ -90,6 +90,31 @@ public class AgentConfig implements Serializable {
          * API Base URL（OpenAI 兼容 API、Ollama 本地模型等场景使用）
          */
         private String baseUrl;
+
+        /**
+         * Top-P 核采样
+         */
+        private Double topP;
+
+        /**
+         * 频率惩罚
+         */
+        private Double frequencyPenalty;
+
+        /**
+         * 存在惩罚
+         */
+        private Double presencePenalty;
+
+        /**
+         * 随机种子
+         */
+        private Long seed;
+
+        /**
+         * Top-K 采样
+         */
+        private Integer topK;
     }
 
     /**

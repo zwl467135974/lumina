@@ -66,6 +66,31 @@ public class LuminaAgentProperties {
          * 是否启用思考模式（默认：false）
          */
         private Boolean enableThinking = false;
+
+        /**
+         * Top-P 核采样（0-1，null 则不传）
+         */
+        private Double topP;
+
+        /**
+         * 频率惩罚（-2.0 到 2.0，null 则不传）
+         */
+        private Double frequencyPenalty;
+
+        /**
+         * 存在惩罚（-2.0 到 2.0，null 则不传）
+         */
+        private Double presencePenalty;
+
+        /**
+         * 随机种子（可复现输出，null 则不传）
+         */
+        private Long seed;
+
+        /**
+         * Top-K 采样（null 则不传）
+         */
+        private Integer topK;
     }
 }
 

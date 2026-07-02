@@ -113,6 +113,12 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Resilience4j 容错（LLM 调用重试/熔断） -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

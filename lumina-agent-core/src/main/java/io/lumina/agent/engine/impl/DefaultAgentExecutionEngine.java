@@ -24,6 +24,7 @@ import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
+import io.lumina.agent.resilience.LlmResilienceWrapper;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
 import io.micrometer.observation.annotation.Observed;
@@ -80,6 +81,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
     @Autowired
     private ChatModelFactory chatModelFactory;
+
+    @Autowired
+    private LlmResilienceWrapper llmResilience;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -286,7 +290,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         try {
             ReActAgent agent = createReActAgent(config);
 
-            Msg response = agent.call(messages).block();
+            Msg response = llmResilience.execute("agent-call",
+                    () -> agent.call(messages).block());
 
             if (response != null) {
                 return response;
@@ -297,6 +302,13 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             }
 
         } catch (Exception e) {
+            if (llmResilience.isCircuitBreakerOpen()) {
+                log.error("LLM 熔断器已开启，返回降级响应: {}", e.getMessage());
+                String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
+                return Msg.builder().role(MsgRole.ASSISTANT)
+                        .textContent("服务暂时不可用，请稍后重试。LLM 服务可能正在恢复中。")
+                        .build();
+            }
             log.error("AgentScope 执行失败: {}", e.getMessage(), e);
             String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
             return Msg.builder().role(MsgRole.ASSISTANT).textContent(generateMockResponse(lastUserText)).build();
