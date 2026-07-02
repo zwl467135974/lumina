@@ -7,8 +7,12 @@ import io.agentscope.core.memory.InMemoryMemory;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.model.Model;
 import io.agentscope.core.message.MsgRole;
+import io.agentscope.core.rag.Knowledge;
+import io.agentscope.core.rag.RAGMode;
+import io.agentscope.core.rag.model.RetrieveConfig;
 import io.agentscope.core.tool.Toolkit;
 import io.lumina.agent.config.LuminaAgentProperties;
+import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.loader.ConfigLoader;
 import io.lumina.agent.loader.PromptLoader;
@@ -66,6 +70,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
     @Autowired(required = false)
     private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
+    @Autowired(required = false)
+    private Knowledge knowledge;
+
+    @Autowired(required = false)
+    private RagProperties ragProperties;
 
     @Autowired
     private ChatModelFactory chatModelFactory;
@@ -313,7 +323,59 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .toolkit(toolkit)
                 .memory(new InMemoryMemory());
 
+        // RAG 知识库集成（当 Knowledge bean 存在时注入，按配置选择检索模式）
+        configureRag(agentBuilder);
+
         return agentBuilder.build();
+    }
+
+    /**
+     * 配置 RAG 知识库（当 Knowledge bean 存在且 RAG 启用时注入）
+     *
+     * <p>GENERIC 模式：每次提问自动检索 Top-K 相似片段注入上下文。
+     * <p>AGENTIC 模式：Agent 自行决定是否调用知识检索工具。
+     *
+     * @param agentBuilder ReActAgent 构建器
+     */
+    private void configureRag(ReActAgent.Builder agentBuilder) {
+        if (knowledge == null) {
+            log.debug("RAG 未启用（Knowledge bean 不存在），Agent 不具备知识库检索能力");
+            return;
+        }
+
+        RAGMode ragMode = parseRagMode(ragProperties != null ? ragProperties.getMode() : "generic");
+        int limit = ragProperties != null ? ragProperties.getRetrieve().getLimit() : 3;
+        double scoreThreshold = ragProperties != null ? ragProperties.getRetrieve().getScoreThreshold() : 0.3;
+
+        RetrieveConfig retrieveConfig = RetrieveConfig.builder()
+                .limit(limit)
+                .scoreThreshold(scoreThreshold)
+                .build();
+
+        agentBuilder
+                .knowledge(knowledge)
+                .ragMode(ragMode)
+                .retrieveConfig(retrieveConfig);
+
+        log.info("RAG 知识库已注入 Agent: mode={}, limit={}, scoreThreshold={}", ragMode, limit, scoreThreshold);
+    }
+
+    /**
+     * 解析 RAG 模式字符串为枚举
+     *
+     * @param mode 模式字符串（generic/agentic/none，大小写不敏感）
+     * @return RAGMode 枚举（默认 GENERIC）
+     */
+    RAGMode parseRagMode(String mode) {
+        if (mode == null || mode.isBlank()) {
+            return RAGMode.GENERIC;
+        }
+        try {
+            return RAGMode.valueOf(mode.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("未知 RAG 模式: {}，回退到 GENERIC", mode);
+            return RAGMode.GENERIC;
+        }
     }
 
     /**
