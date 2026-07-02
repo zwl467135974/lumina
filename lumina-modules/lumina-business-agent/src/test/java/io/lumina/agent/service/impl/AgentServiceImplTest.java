@@ -3,6 +3,8 @@ package io.lumina.agent.service.impl;
 import io.lumina.agent.infrastructure.entity.AgentDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.engine.AgentExecutionEngine;
+import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.service.ConversationService;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -11,7 +13,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -85,5 +92,47 @@ class AgentServiceImplTest {
 
         assertThatThrownBy(() -> agentService.executeAgentStream(1L, "task", null))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void executeAgentMultimodalSuccessReturnsResult() {
+        AgentDO agentDO = new AgentDO();
+        agentDO.setAgentId(1L);
+        agentDO.setAgentName("vision-agent");
+        agentDO.setAgentType("assistant");
+        agentDO.setStatus(1);
+        when(agentMapper.selectById(1L)).thenReturn(agentDO);
+
+        ExecuteResult executeResult = ExecuteResult.success("ok");
+        when(agentExecutionEngine.executeMultimodalSync(
+                eq("assistant"),
+                eq("describe"),
+                any(),
+                any(),
+                eq(null)
+        )).thenReturn(executeResult);
+
+        String result = agentService.executeAgentMultimodal(
+                1L,
+                "describe",
+                List.of(new MultimodalImage("image/png", "dGVzdA==")),
+                null
+        );
+
+        assertThat(result).isEqualTo("ok");
+    }
+
+    @Test
+    void executeAgentMultimodalNotActiveThrows() {
+        AgentDO agentDO = new AgentDO();
+        agentDO.setStatus(0);
+        when(agentMapper.selectById(1L)).thenReturn(agentDO);
+
+        assertThatThrownBy(() -> agentService.executeAgentMultimodal(
+                1L,
+                "describe",
+                List.of(new MultimodalImage("image/png", "dGVzdA==")),
+                null
+        )).isInstanceOf(BusinessException.class);
     }
 }

@@ -4,9 +4,13 @@ import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.Event;
 import io.agentscope.core.agent.StreamOptions;
 import io.agentscope.core.memory.InMemoryMemory;
+import io.agentscope.core.message.Base64Source;
+import io.agentscope.core.message.ContentBlock;
+import io.agentscope.core.message.ImageBlock;
 import io.agentscope.core.message.Msg;
-import io.agentscope.core.model.Model;
 import io.agentscope.core.message.MsgRole;
+import io.agentscope.core.message.TextBlock;
+import io.agentscope.core.model.Model;
 import io.agentscope.core.rag.Knowledge;
 import io.agentscope.core.rag.RAGMode;
 import io.agentscope.core.rag.model.RetrieveConfig;
@@ -21,6 +25,7 @@ import io.lumina.agent.manager.MemoryManager;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ChatModelFactory;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
@@ -36,6 +41,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -108,10 +114,24 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Override
     @Observed(name = "agent.execute", contextualName = "agent-sync-execution")
     public ExecuteResult executeSync(String businessType, String task, AgentConfig config, String conversationId) {
+        return executeSyncInternal(businessType, task, Collections.emptyList(), config, conversationId);
+    }
+
+    @Override
+    @Observed(name = "agent.execute.multimodal", contextualName = "agent-multimodal-execution")
+    public ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalImage> images,
+                                               AgentConfig config, String conversationId) {
+        return executeSyncInternal(businessType, task, images, config, conversationId);
+    }
+
+    private ExecuteResult executeSyncInternal(String businessType, String task, List<MultimodalImage> images,
+                                             AgentConfig config, String conversationId) {
         long startTime = System.currentTimeMillis();
 
         try {
-            log.info("开始执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
+            int imageCount = images != null ? images.size() : 0;
+            log.info("开始执行 Agent: businessType={}, task={}, imageCount={}, conversationId={}",
+                    businessType, task, imageCount, conversationId);
 
             // 加载配置
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
@@ -126,7 +146,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
             // 构建上下文消息（含历史记忆）
-            List<Msg> contextMessages = buildContextMessages(conversationId, prompt);
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, images);
 
             // 执行 Agent
             Msg agentResponse = executeAgentWithAgentScope(agentConfig, contextMessages);
@@ -247,6 +267,18 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * @return AgentScope Msg 列表
      */
     private List<Msg> buildContextMessages(String conversationId, String currentPrompt) {
+        return buildContextMessages(conversationId, currentPrompt, Collections.emptyList());
+    }
+
+    /**
+     * 构建上下文消息列表（加载历史记忆 + 当前多模态用户输入）
+     *
+     * @param conversationId 会话 ID（null 则无历史，仅当前输入）
+     * @param currentPrompt  当前用户提示词（已填充模板）
+     * @param images         当前用户输入携带的图片
+     * @return AgentScope Msg 列表
+     */
+    private List<Msg> buildContextMessages(String conversationId, String currentPrompt, List<MultimodalImage> images) {
         List<Msg> messages = new ArrayList<>();
 
         if (conversationId != null) {
@@ -260,7 +292,21 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
 
         // 追加当前用户消息
-        messages.add(Msg.builder().role(MsgRole.USER).textContent(currentPrompt).build());
+        if (images == null || images.isEmpty()) {
+            messages.add(Msg.builder().role(MsgRole.USER).textContent(currentPrompt).build());
+        } else {
+            List<ContentBlock> blocks = new ArrayList<>();
+            blocks.add(TextBlock.builder().text(currentPrompt).build());
+            for (MultimodalImage image : images) {
+                blocks.add(ImageBlock.builder()
+                        .source(Base64Source.builder()
+                                .mediaType(image.getMediaType())
+                                .data(image.getData())
+                                .build())
+                        .build());
+            }
+            messages.add(Msg.builder().role(MsgRole.USER).content(blocks).build());
+        }
         return messages;
     }
 

@@ -1,9 +1,12 @@
 package io.lumina.agent.service;
 
 import io.lumina.agent.domain.model.Agent;
+import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.common.core.PageResult;
 import reactor.core.publisher.Flux;
+
+import java.util.List;
 
 /**
  * Agent 服务接口
@@ -65,6 +68,17 @@ public interface AgentService {
      * @return 执行结果
      */
     String executeAgent(Long agentId, String task, String conversationUuid);
+
+    /**
+     * 执行多模态 Agent 任务（文本 + 图片，带会话上下文）
+     *
+     * @param agentId          Agent ID
+     * @param task             任务描述
+     * @param images           图片内容列表
+     * @param conversationUuid 会话 UUID（null 表示无会话上下文）
+     * @return 执行结果
+     */
+    String executeAgentMultimodal(Long agentId, String task, List<MultimodalImage> images, String conversationUuid);
 
     /**
      * 流式执行 Agent 任务（带会话上下文）

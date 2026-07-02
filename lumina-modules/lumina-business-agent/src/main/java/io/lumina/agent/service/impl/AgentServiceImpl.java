@@ -9,6 +9,7 @@ import io.lumina.agent.infrastructure.entity.ConversationDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.ConversationService;
 import io.lumina.common.core.ErrorCode;
@@ -220,6 +221,47 @@ public class AgentServiceImpl implements AgentService {
         }
 
         log.info("Agent 执行成功: id={}", agentId);
+        return result.getResult();
+    }
+
+    @Override
+    public String executeAgentMultimodal(Long agentId, String task, List<MultimodalImage> images, String conversationUuid) {
+        log.info("多模态执行 Agent: id={}, task={}, imageCount={}, conversation={}",
+                agentId, task, images != null ? images.size() : 0, conversationUuid);
+
+        Agent agent = getAgentById(agentId);
+        if (!agent.isActive()) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
+        }
+
+        AgentConfig config = new AgentConfig();
+        config.setAgentName(agent.getAgentName());
+        config.setAgentType(agent.getAgentType());
+
+        String sessionId = resolveConversation(conversationUuid, agentId);
+        if (sessionId != null) {
+            conversationService.saveMessage(sessionId, "user", task, 0, null);
+        }
+
+        ExecuteResult result = agentExecutionEngine.executeMultimodalSync(
+                agent.getAgentType().toLowerCase(),
+                task,
+                images,
+                config,
+                sessionId
+        );
+
+        if (!result.getSuccess()) {
+            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
+        }
+
+        if (sessionId != null) {
+            Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
+            conversationService.saveMessage(sessionId, "assistant", result.getResult(), tokenCount, result.getDuration());
+            conversationService.incrementMessageCount(sessionId, 2);
+        }
+
+        log.info("多模态 Agent 执行成功: id={}", agentId);
         return result.getResult();
     }
 

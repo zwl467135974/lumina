@@ -2,9 +2,12 @@ package io.lumina.agent.engine;
 
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /**
  * Agent 执行引擎接口
@@ -35,6 +38,14 @@ public interface AgentExecutionEngine {
     ExecuteResult executeSync(String businessType, String task, AgentConfig config, String conversationId);
 
     /**
+     * 执行多模态 Agent（文本 + 图片，阻塞等待结果）
+     *
+     * @param conversationId 会话 ID（null 表示无会话上下文）
+     */
+    ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalImage> images,
+                                        AgentConfig config, String conversationId);
+
+    /**
      * 流式执行 Agent，逐片段返回（用于 SSE 打字机效果，带会话上下文）
      *
      * @param conversationId 会话 ID（null 表示无会话上下文）
@@ -58,6 +69,14 @@ public interface AgentExecutionEngine {
      */
     default ExecuteResult executeSync(String businessType, String task, AgentConfig config) {
         return executeSync(businessType, task, config, null);
+    }
+
+    /**
+     * 兼容重载：执行多模态 Agent（无会话上下文）
+     */
+    default ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalImage> images,
+                                               AgentConfig config) {
+        return executeMultimodalSync(businessType, task, images, config, null);
     }
 
     /**

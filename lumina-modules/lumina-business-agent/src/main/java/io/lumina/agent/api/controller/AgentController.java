@@ -3,6 +3,7 @@ package io.lumina.agent.api.controller;
 import io.lumina.agent.api.dto.CreateAgentDTO;
 import io.lumina.agent.api.vo.AgentVO;
 import io.lumina.agent.domain.model.Agent;
+import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.service.AgentService;
 import io.lumina.common.core.ErrorCode;
@@ -18,11 +19,18 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Agent Controller
@@ -35,6 +43,16 @@ import jakarta.validation.constraints.NotNull;
 @RequestMapping("/api/v1/agents")
 @Validated
 public class AgentController {
+
+    private static final int MAX_IMAGE_COUNT = 5;
+
+    private static final long MAX_IMAGE_SIZE = 10L * 1024L * 1024L;
+
+    private static final Set<String> SUPPORTED_IMAGE_TYPES = Set.of(
+            MediaType.IMAGE_PNG_VALUE,
+            MediaType.IMAGE_JPEG_VALUE,
+            "image/webp"
+    );
 
     @Autowired
     private AgentService agentService;
@@ -170,6 +188,30 @@ public class AgentController {
     }
 
     /**
+     * 多模态执行 Agent（文本 + 图片）
+     *
+     * @param conversationId 会话 UUID（可选，传入则启用多轮上下文）
+     */
+    @Audit(module = "agent", action = "EXECUTE_MULTIMODAL", description = "多模态执行Agent")
+    @PostMapping(value = "/{id}/execute/multimodal", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public R<String> executeAgentMultimodal(
+            @PathVariable("id") Long id,
+            @RequestParam String task,
+            @RequestParam("images") MultipartFile[] images,
+            @RequestParam(required = false) String conversationId) {
+        log.info("多模态执行 Agent: id={}, task={}, imageCount={}, conversationId={}",
+                id, task, images != null ? images.length : 0, conversationId);
+
+        if (task == null || task.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
+        }
+
+        List<MultimodalImage> imageContents = toMultimodalImages(images);
+        String result = agentService.executeAgentMultimodal(id, task, imageContents, conversationId);
+        return R.success(result);
+    }
+
+    /**
      * 流式执行 Agent（SSE，逐片段返回，用于打字机效果）
      *
      * <p>每个 SSE 事件的 event 字段为片段类型（REASONING_CHUNK/ACTING_CHUNK/FINAL/ERROR），
@@ -194,5 +236,40 @@ public class AgentController {
                         .event(chunk.type())
                         .data(chunk)
                         .build());
+    }
+
+    private List<MultimodalImage> toMultimodalImages(MultipartFile[] files) {
+        if (files == null || files.length == 0) {
+            throw BusinessException.of("请至少上传一张图片");
+        }
+        if (files.length > MAX_IMAGE_COUNT) {
+            throw BusinessException.of("图片数量不能超过" + MAX_IMAGE_COUNT + "张");
+        }
+
+        List<MultimodalImage> images = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+
+            String contentType = file.getContentType();
+            if (!SUPPORTED_IMAGE_TYPES.contains(contentType)) {
+                throw BusinessException.of("仅支持 png、jpg、jpeg、webp 图片");
+            }
+            if (file.getSize() > MAX_IMAGE_SIZE) {
+                throw BusinessException.of("单张图片大小不能超过10MB");
+            }
+
+            try {
+                images.add(new MultimodalImage(contentType, Base64.getEncoder().encodeToString(file.getBytes())));
+            } catch (IOException e) {
+                throw new BusinessException("读取图片失败", e);
+            }
+        }
+
+        if (images.isEmpty()) {
+            throw BusinessException.of("请至少上传一张有效图片");
+        }
+        return images;
     }
 }
