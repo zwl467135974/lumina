@@ -138,6 +138,20 @@ export const systemRoutes: AppRouteRecordRaw[] = [
   }
 ]
 
+// 知识库路由
+export const knowledgeRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/knowledge',
+    name: 'Knowledge',
+    component: () => import('@/views/knowledge/index.vue'),
+    meta: {
+      title: '知识库',
+      icon: 'Document',
+      requiresAuth: true
+    }
+  }
+]
+
 // 监控路由
 export const monitorRoutes: AppRouteRecordRaw[] = [
   {

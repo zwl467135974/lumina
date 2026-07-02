@@ -41,7 +41,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores'
-import { agentRoutes, systemRoutes } from '@/router/modules'
+import { agentRoutes, systemRoutes, knowledgeRoutes } from '@/router/modules'
 
 const route = useRoute()
 const appStore = useAppStore()
@@ -49,7 +49,7 @@ const appStore = useAppStore()
 const activeMenu = computed(() => route.path)
 
 const menuRoutes = computed(() => {
-  return [...agentRoutes, ...systemRoutes].filter((route) => !route.meta?.hidden)
+  return [...agentRoutes, ...knowledgeRoutes, ...systemRoutes].filter((route) => !route.meta?.hidden)
 })
 </script>
 
