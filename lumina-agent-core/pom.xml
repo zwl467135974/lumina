@@ -80,21 +80,18 @@
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
-            <version>3.0.3</version>
         </dependency>
 
         <!-- Word 文档解析（RAG WordReader） -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.3.0</version>
         </dependency>
 
         <!-- OpenAI Java SDK（OpenAIChatModel 依赖） -->
         <dependency>
             <groupId>com.openai</groupId>
             <artifactId>openai-java</artifactId>
-            <version>2.4.0</version>
         </dependency>
 
         <!-- Nacos Config -->

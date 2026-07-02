@@ -38,7 +38,6 @@
         <mybatis.version>3.0.3</mybatis.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
         <druid.version>1.2.23</druid.version>
-        <dynamic-datasource.version>4.3.1</dynamic-datasource.version>
         <jsqlparser.version>4.9</jsqlparser.version>
 
         <!-- 缓存与消息队列 -->
@@ -46,13 +45,18 @@
 
         <!-- Agent 核心框架 -->
         <agentscope.version>1.0.7</agentscope.version>
-        <project-reactor.version>2025.0.2</project-reactor.version>
 
         <!-- LLM SDK -->
         <dashscope.version>2.22.5</dashscope.version>
+        <openai-java.version>2.4.0</openai-java.version>
 
-        <!-- 服务注册与配置 -->
-        <nacos.version>3.1.1</nacos.version>
+        <!-- 安全认证 -->
+        <jjwt.version>0.12.5</jjwt.version>
+        <bcrypt.version>0.10.2</bcrypt.version>
+
+        <!-- 文档解析（RAG） -->
+        <pdfbox.version>3.0.3</pdfbox.version>
+        <poi.version>5.3.0</poi.version>
 
         <!-- 工具库 -->
         <jackson.version>2.17.2</jackson.version>
@@ -60,14 +64,13 @@
         <guava.version>33.5.0-jre</guava.version>
         <lombok.version>1.18.34</lombok.version>
 
-        <!-- 安全认证 -->
-        <jjwt.version>0.12.5</jjwt.version>
-
         <!-- 文档 -->
         <springdoc.version>2.6.0</springdoc.version>
 
+        <!-- Maven 插件 -->
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+
         <!-- 测试 -->
-        <junit.version>5.10.3</junit.version>
         <testcontainers.version>1.20.6</testcontainers.version>
     </properties>
 
@@ -130,12 +133,7 @@
                 <version>${druid.version}</version>
             </dependency>
 
-            <!-- Dynamic DataSource -->
-            <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>dynamic-datasource-spring-boot3-starter</artifactId>
-                <version>${dynamic-datasource.version}</version>
-            </dependency>
+            <!-- Dynamic DataSource（预留，暂未使用） -->
 
             <!-- JSqlParser：锁定 4.9，避免 5.x 移除 SelectBody 接口破坏 TenantLineInterceptor -->
             <dependency>
@@ -158,13 +156,20 @@
                 <version>${agentscope.version}</version>
             </dependency>
 
-            <!-- Project Reactor：版本由 spring-boot-dependencies BOM 管理（父 pom 不再覆盖）-->
+            <!-- Project Reactor：版本由 spring-boot-dependencies BOM 管理 -->
 
             <!-- DashScope SDK -->
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>dashscope-sdk-java</artifactId>
                 <version>${dashscope.version}</version>
+            </dependency>
+
+            <!-- OpenAI Java SDK -->
+            <dependency>
+                <groupId>com.openai</groupId>
+                <artifactId>openai-java</artifactId>
+                <version>${openai-java.version}</version>
             </dependency>
 
             <!-- Nacos -->
@@ -241,6 +246,27 @@
                 <version>${springdoc.version}</version>
             </dependency>
 
+            <!-- BCrypt 密码加密 -->
+            <dependency>
+                <groupId>at.favre.lib</groupId>
+                <artifactId>bcrypt</artifactId>
+                <version>${bcrypt.version}</version>
+            </dependency>
+
+            <!-- PDF 文档解析（RAG） -->
+            <dependency>
+                <groupId>org.apache.pdfbox</groupId>
+                <artifactId>pdfbox</artifactId>
+                <version>${pdfbox.version}</version>
+            </dependency>
+
+            <!-- Word 文档解析（RAG） -->
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+
             <!-- 内部模块依赖 -->
             <dependency>
                 <groupId>io.lumina</groupId>
@@ -279,7 +305,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.11.0</version>
+                    <version>${maven-compiler-plugin.version}</version>
                     <configuration>
                         <source>${java.version}</source>
                         <target>${java.version}</target>

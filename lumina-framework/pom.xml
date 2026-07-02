@@ -109,12 +109,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- BCrypt -->
-        <dependency>
-            <groupId>at.favre.lib</groupId>
-            <artifactId>bcrypt</artifactId>
-            <version>0.10.2</version>
-        </dependency>
+        <!-- BCrypt（通过 lumina-common 传递依赖引入） -->
 
         <!-- Test -->
         <dependency>
