@@ -36,6 +36,9 @@
             <div class="msg-body">
               <div class="msg-role">{{ msg.role === 'user' ? '我' : '助手' }}</div>
               <div class="msg-content">{{ msg.content }}</div>
+              <div v-if="msg.images && msg.images.length > 0" class="msg-images">
+                <img v-for="(img, idx) in msg.images" :key="idx" :src="img" class="msg-image-thumb" />
+              </div>
               <div v-if="msg.tokenCount" class="msg-meta">
                 Token: {{ msg.tokenCount }}<span v-if="msg.durationMs"> · {{ msg.durationMs }}ms</span>
               </div>
@@ -311,8 +314,9 @@ const pickImages = () => fileInputRef.value?.click()
 const onImagesSelected = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (!target.files) return
+  const filesToAdd: File[] = []
   for (const f of Array.from(target.files)) {
-    if (selectedImages.value.length >= MAX_IMAGES) {
+    if (selectedImages.value.length + filesToAdd.length >= MAX_IMAGES) {
       ElMessage.warning(`最多 ${MAX_IMAGES} 张图片`)
       break
     }
@@ -324,18 +328,23 @@ const onImagesSelected = (e: Event) => {
       ElMessage.warning(`${f.name} 超过 10MB`)
       continue
     }
-    selectedImages.value.push({ url: URL.createObjectURL(f), file: f, name: f.name })
+    filesToAdd.push(f)
+  }
+  for (const f of filesToAdd) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      selectedImages.value.push({ url: reader.result as string, file: f, name: f.name })
+    }
+    reader.readAsDataURL(f)
   }
   target.value = ''
 }
 
 const removeImage = (idx: number) => {
-  URL.revokeObjectURL(selectedImages.value[idx].url)
   selectedImages.value.splice(idx, 1)
 }
 
 const clearImages = () => {
-  selectedImages.value.forEach(i => URL.revokeObjectURL(i.url))
   selectedImages.value = []
 }
 
@@ -360,12 +369,12 @@ const send = async () => {
 
   const hasImages = selectedImages.value.length > 0
 
-  // 即时显示用户消息
-  const displayContent = hasImages ? `${t}  [图片 x${selectedImages.value.length}]` : t
+  // 即时显示用户消息（含图片缩略图）
   historyMessages.value.push({
     messageId: Date.now(),
     role: 'user',
-    content: displayContent,
+    content: t,
+    images: hasImages ? selectedImages.value.map(i => i.url) : undefined,
     tokenCount: 0,
     durationMs: null,
     createTime: new Date().toISOString()
@@ -411,15 +420,27 @@ const sendStream = (t: string) => {
 const sendMultimodal = async (t: string) => {
   multimodalLoading.value = true
   try {
-    await executeMultimodalAgent(
+    const res = await executeMultimodalAgent(
       props.agentId,
       t,
       selectedImages.value.map(i => i.file),
       currentConvId.value || undefined
     )
     clearImages()
+    // 直接追加助手回复，保留用户消息中的图片缩略图
+    historyMessages.value.push({
+      messageId: Date.now() + 1,
+      role: 'assistant',
+      content: (res as any).data || '',
+      tokenCount: 0,
+      durationMs: null,
+      createTime: new Date().toISOString()
+    })
+    scrollToBottom()
+    // 更新会话列表的消息数
     if (currentConvId.value) {
-      await loadHistory(currentConvId.value)
+      const conv = conversations.value.find(c => c.conversationUuid === currentConvId.value)
+      if (conv) conv.messageCount += 2
     }
   } catch (e: any) {
     errorMsg.value = e.message || '多模态执行失败'
@@ -561,6 +582,20 @@ defineExpose({ resetStream })
     line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-word;
+  }
+  .msg-images {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .msg-image-thumb {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--el-border-color-lighter);
+    cursor: pointer;
   }
   .msg-meta {
     font-size: 12px;

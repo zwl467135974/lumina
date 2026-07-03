@@ -21,6 +21,8 @@ export interface MessageVO {
   tokenCount: number
   durationMs: number | null
   createTime: string
+  /** 图片 Data URL 列表（仅本地显示，不持久化） */
+  images?: string[]
 }
 
 /**
