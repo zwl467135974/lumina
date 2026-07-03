@@ -81,6 +81,27 @@ export function executeAgent(id: number, task: string) {
  * @param cb    回调（onChunk 必填，onError/onClose 可选）
  * @returns AbortController（调用 .abort() 中断流式）
  */
+/**
+ * 多模态执行 Agent（文本 + 图片，同步返回）
+ *
+ * @param id            Agent ID
+ * @param task          任务描述
+ * @param images        图片文件列表
+ * @param conversationId 会话 UUID（可选）
+ */
+export function executeMultimodalAgent(id: number, task: string, images: File[], conversationId?: string) {
+  const formData = new FormData()
+  formData.append('task', task)
+  images.forEach(f => formData.append('images', f))
+  if (conversationId) {
+    formData.append('conversationId', conversationId)
+  }
+  return request.post<R<string>>(`/api/v1/agents/${id}/execute/multimodal`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000
+  })
+}
+
 export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks, conversationId?: string): AbortController {
   const controller = new AbortController()
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''

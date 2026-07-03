@@ -93,17 +93,39 @@
 
         <!-- 输入区 -->
         <div class="input-area">
+          <!-- 图片预览行 -->
+          <div v-if="selectedImages.length > 0" class="image-previews">
+            <div v-for="(img, idx) in selectedImages" :key="idx" class="image-preview-item">
+              <img :src="img.url" :alt="img.name" />
+              <span class="image-remove" @click="removeImage(idx)">×</span>
+            </div>
+          </div>
+
           <el-input
             v-model="task"
             type="textarea"
             :rows="2"
             placeholder="输入任务描述，Enter 发送 / Shift+Enter 换行"
-            :disabled="streaming"
+            :disabled="isBusy"
             @keydown.enter.exact.prevent="send"
           />
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            multiple
+            class="hidden-file-input"
+            @change="onImagesSelected"
+          />
           <div class="actions">
-            <el-button v-if="!streaming" type="primary" :disabled="!task.trim()" @click="send">发送</el-button>
-            <el-button v-else type="danger" @click="abort">中断</el-button>
+            <el-button :disabled="isBusy" @click="pickImages">
+              <el-icon><Picture /></el-icon>
+              <span>图片</span>
+            </el-button>
+            <span v-if="selectedImages.length > 0" class="image-hint">{{ selectedImages.length }}/5</span>
+            <el-button v-if="!isBusy" type="primary" :disabled="!task.trim()" @click="send">发送</el-button>
+            <el-button v-if="streaming" type="danger" @click="abort">中断</el-button>
+            <el-button v-if="multimodalLoading" type="warning" loading>处理中…</el-button>
           </div>
         </div>
       </div>
@@ -114,7 +136,8 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { streamExecuteAgent, type StreamChunk } from '@/api/modules/agent'
+import { Picture } from '@element-plus/icons-vue'
+import { streamExecuteAgent, executeMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
 import {
   listConversations,
   createConversation,
@@ -135,11 +158,19 @@ const creating = ref(false)
 // 流式状态
 const task = ref('')
 const streaming = ref(false)
+const multimodalLoading = ref(false)
 const reasoningText = ref('')
 const actingText = ref('')
 const finalText = ref('')
 const errorMsg = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
+
+// 图片上传
+interface ImagePreview { url: string; file: File; name: string }
+const selectedImages = ref<ImagePreview[]>([])
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const isBusy = computed(() => streaming.value || multimodalLoading.value)
 
 // 调试模式
 const debugMode = ref(false)
@@ -209,8 +240,9 @@ const newConversation = async () => {
 
 // 选择会话
 const selectConversation = async (uuid: string) => {
-  if (streaming.value) return
+  if (isBusy.value) return
   currentConvId.value = uuid
+  clearImages()
   resetStream()
   await loadHistory(uuid)
 }
@@ -267,9 +299,47 @@ const handleChunk = (chunk: StreamChunk) => {
   scrollToBottom()
 }
 
+// 图片上传
+const MAX_IMAGES = 5
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+
+const pickImages = () => fileInputRef.value?.click()
+
+const onImagesSelected = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  if (!target.files) return
+  for (const f of Array.from(target.files)) {
+    if (selectedImages.value.length >= MAX_IMAGES) {
+      ElMessage.warning(`最多 ${MAX_IMAGES} 张图片`)
+      break
+    }
+    if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+      ElMessage.warning(`${f.name} 格式不支持，仅支持 png、jpg、webp`)
+      continue
+    }
+    if (f.size > MAX_IMAGE_SIZE) {
+      ElMessage.warning(`${f.name} 超过 10MB`)
+      continue
+    }
+    selectedImages.value.push({ url: URL.createObjectURL(f), file: f, name: f.name })
+  }
+  target.value = ''
+}
+
+const removeImage = (idx: number) => {
+  URL.revokeObjectURL(selectedImages.value[idx].url)
+  selectedImages.value.splice(idx, 1)
+}
+
+const clearImages = () => {
+  selectedImages.value.forEach(i => URL.revokeObjectURL(i.url))
+  selectedImages.value = []
+}
+
 const send = async () => {
   const t = task.value.trim()
-  if (!t || streaming.value) return
+  if (!t || isBusy.value) return
 
   // 无会话时自动创建
   if (!currentConvId.value) {
@@ -286,11 +356,14 @@ const send = async () => {
     creating.value = false
   }
 
+  const hasImages = selectedImages.value.length > 0
+
   // 即时显示用户消息
+  const displayContent = hasImages ? `${t}  [图片 x${selectedImages.value.length}]` : t
   historyMessages.value.push({
     messageId: Date.now(),
     role: 'user',
-    content: t,
+    content: displayContent,
     tokenCount: 0,
     durationMs: null,
     createTime: new Date().toISOString()
@@ -298,6 +371,15 @@ const send = async () => {
 
   task.value = ''
   resetStream()
+
+  if (hasImages) {
+    await sendMultimodal(t)
+  } else {
+    sendStream(t)
+  }
+}
+
+const sendStream = (t: string) => {
   streaming.value = true
   streamStartTime = Date.now()
 
@@ -313,7 +395,6 @@ const send = async () => {
       },
       onClose: () => {
         streaming.value = false
-        // 刷新历史获取助手回复（含 token 用量），并清空流式临时态
         resetStream()
         if (currentConvId.value) {
           loadHistory(currentConvId.value)
@@ -322,6 +403,27 @@ const send = async () => {
     },
     currentConvId.value || undefined
   )
+}
+
+const sendMultimodal = async (t: string) => {
+  multimodalLoading.value = true
+  try {
+    await executeMultimodalAgent(
+      props.agentId,
+      t,
+      selectedImages.value.map(i => i.file),
+      currentConvId.value || undefined
+    )
+    clearImages()
+    if (currentConvId.value) {
+      await loadHistory(currentConvId.value)
+    }
+  } catch (e: any) {
+    errorMsg.value = e.message || '多模态执行失败'
+    ElMessage.error(errorMsg.value)
+  } finally {
+    multimodalLoading.value = false
+  }
 }
 
 const abort = () => {
@@ -543,9 +645,60 @@ defineExpose({ resetStream })
   gap: 8px;
   .actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 8px;
+    .image-hint {
+      font-size: 12px;
+      color: var(--el-text-color-secondary);
+      margin-right: auto;
+    }
   }
+}
+
+/* 图片预览 */
+.image-previews {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.image-preview-item {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--el-border-color-lighter);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .image-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 13px;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    &:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+  }
+}
+
+.hidden-file-input {
+  display: none;
 }
 
 /* 工具栏 */
