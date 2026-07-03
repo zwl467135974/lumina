@@ -1,14 +1,18 @@
 package io.lumina.agent.service.impl;
 
 import io.lumina.agent.infrastructure.entity.AgentDO;
+import io.lumina.agent.infrastructure.entity.PromptDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.engine.AgentExecutionEngine;
+import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.framework.storage.FileService;
 import io.lumina.agent.service.ConversationService;
+import io.lumina.agent.service.PromptService;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -19,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -46,6 +51,9 @@ class AgentServiceImplTest {
 
     @Mock
     private FileService fileService;
+
+    @Mock
+    private PromptService promptService;
 
     @Test
     void getAgentByIdNotFoundThrows() {
@@ -123,6 +131,36 @@ class AgentServiceImplTest {
         );
 
         assertThat(result).isEqualTo("ok");
+    }
+
+    @Test
+    void executeAgentUsesActivePromptTemplate() {
+        AgentDO agentDO = new AgentDO();
+        agentDO.setAgentId(1L);
+        agentDO.setAgentName("assistant-agent");
+        agentDO.setAgentType("assistant");
+        agentDO.setStatus(1);
+        when(agentMapper.selectById(1L)).thenReturn(agentDO);
+
+        PromptDO prompt = new PromptDO();
+        prompt.setName("assistant");
+        prompt.setVersion(2);
+        prompt.setContent("DB prompt: {0}");
+        when(promptService.getActive("assistant")).thenReturn(prompt);
+
+        when(agentExecutionEngine.executeSync(
+                eq("assistant"),
+                eq("task"),
+                any(AgentConfig.class),
+                eq(null)
+        )).thenReturn(ExecuteResult.success("ok"));
+
+        String result = agentService.executeAgent(1L, "task", null);
+
+        ArgumentCaptor<AgentConfig> configCaptor = ArgumentCaptor.forClass(AgentConfig.class);
+        verify(agentExecutionEngine).executeSync(eq("assistant"), eq("task"), configCaptor.capture(), eq(null));
+        assertThat(result).isEqualTo("ok");
+        assertThat(configCaptor.getValue().getPromptTemplate()).isEqualTo("DB prompt: {0}");
     }
 
     @Test

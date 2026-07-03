@@ -175,10 +175,19 @@ public class PromptServiceImpl implements PromptService {
     @Override
     public PromptDO getActive(String name) {
         Long tenantId = currentTenant();
+        PromptDO tenantPrompt = selectActivePrompt(name, tenantId);
+        if (tenantPrompt != null || tenantId == 0L) {
+            return tenantPrompt;
+        }
+        return selectActivePrompt(name, 0L);
+    }
+
+    private PromptDO selectActivePrompt(String name, Long tenantId) {
         LambdaQueryWrapper<PromptDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PromptDO::getName, name);
         wrapper.eq(PromptDO::getTenantId, tenantId);
         wrapper.eq(PromptDO::getIsActive, 1);
+        wrapper.eq(PromptDO::getStatus, 1);
         wrapper.eq(PromptDO::getIsDeleted, 0);
         wrapper.last("LIMIT 1");
         return promptMapper.selectOne(wrapper);

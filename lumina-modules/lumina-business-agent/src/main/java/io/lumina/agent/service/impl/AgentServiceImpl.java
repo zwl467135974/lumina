@@ -6,6 +6,7 @@ import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.infrastructure.entity.AgentDO;
 import io.lumina.agent.infrastructure.entity.ConversationDO;
+import io.lumina.agent.infrastructure.entity.PromptDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
@@ -19,6 +20,7 @@ import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.model.StreamEventType;
+import io.lumina.agent.service.PromptService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +54,9 @@ public class AgentServiceImpl implements AgentService {
 
     @Autowired
     private FileService fileService;
+
+    @Autowired
+    private PromptService promptService;
 
     /**
      * Domain -> DO 转换
@@ -197,9 +202,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         // 构建配置
-        AgentConfig config = new AgentConfig();
-        config.setAgentName(agent.getAgentName());
-        config.setAgentType(agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
         // 会话上下文校验 + 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
@@ -240,9 +243,7 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
 
-        AgentConfig config = new AgentConfig();
-        config.setAgentName(agent.getAgentName());
-        config.setAgentType(agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
         String sessionId = resolveConversation(conversationUuid, agentId);
 
@@ -319,9 +320,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         // 构建配置
-        AgentConfig config = new AgentConfig();
-        config.setAgentName(agent.getAgentName());
-        config.setAgentType(agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
         // 会话上下文校验 + 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
@@ -362,9 +361,7 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
 
-        AgentConfig config = new AgentConfig();
-        config.setAgentName(agent.getAgentName());
-        config.setAgentType(agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
         String sessionId = resolveConversation(conversationUuid, agentId);
 
@@ -440,5 +437,21 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.CONVERSATION_AGENT_MISMATCH);
         }
         return conv.getConversationUuid();
+    }
+
+    private AgentConfig buildExecutionConfig(String agentName, String agentType) {
+        AgentConfig config = new AgentConfig();
+        config.setAgentName(agentName);
+        config.setAgentType(agentType);
+
+        if (StringUtils.hasText(agentType)) {
+            PromptDO activePrompt = promptService.getActive(agentType.toLowerCase());
+            if (activePrompt != null && StringUtils.hasText(activePrompt.getContent())) {
+                config.setPromptTemplate(activePrompt.getContent());
+                log.info("使用 DB 激活 Prompt: name={}, version={}", activePrompt.getName(), activePrompt.getVersion());
+            }
+        }
+
+        return config;
     }
 }
