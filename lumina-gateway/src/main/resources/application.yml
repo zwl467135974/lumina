@@ -72,6 +72,14 @@ spring:
           filters:
             - StripPrefix=0
 
+        # Agent 工作流路由
+        - id: lumina-agent-workflows-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/workflows/**
+          filters:
+            - StripPrefix=0
+
         # Agent 工具监控路由
         - id: lumina-agent-tools-route
           uri: lb://lumina-agent-service

@@ -1,0 +1,38 @@
+name: "pipeline"
+description: "流水线：Agent A → Agent B → Agent C，前一个的输出是后一个的输入"
+
+inputs:
+  - name: input
+    type: string
+    required: true
+
+nodes:
+  - id: stage-1
+    type: agent
+    name: "阶段一：分析"
+    agentId: 1
+    input: "#input"
+    outputVar: "analysis"
+
+  - id: stage-2
+    type: agent
+    name: "阶段二：处理"
+    agentId: 2
+    input: "#analysis"
+    outputVar: "processed"
+
+  - id: stage-3
+    type: agent
+    name: "阶段三：输出"
+    agentId: 3
+    input: "#processed"
+    outputVar: "final_output"
+
+edges:
+  - from: stage-1
+    to: stage-2
+  - from: stage-2
+    to: stage-3
+
+outputs:
+  result: "#final_output"

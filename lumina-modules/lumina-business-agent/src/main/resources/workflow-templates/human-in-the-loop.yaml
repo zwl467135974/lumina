@@ -1,0 +1,57 @@
+name: "human-in-the-loop"
+description: "人机协同：Agent 执行 → 人工审批 → 继续/终止"
+
+inputs:
+  - name: request
+    type: string
+    required: true
+
+nodes:
+  - id: draft
+    type: agent
+    name: "生成草稿"
+    agentId: 1
+    input: "#request"
+    outputVar: "draft_result"
+
+  - id: review
+    type: human
+    name: "人工审批"
+    prompt: "请审核以下结果是否可以发送"
+    options: ["approve", "reject"]
+    defaultDecision: "reject"
+    timeoutSeconds: 3600
+    decisionVar: "decision"
+
+  - id: check-decision
+    type: condition
+    name: "审批结果"
+    expression: "#decision == 'approve'"
+    trueBranch: send
+    falseBranch: revise
+
+  - id: send
+    type: agent
+    name: "最终发送"
+    agentId: 2
+    input: "'发送以下已审核内容: ' + #draft_result"
+    outputVar: "final_result"
+
+  - id: revise
+    type: agent
+    name: "修改重做"
+    agentId: 1
+    input: "'根据反馈修改以下内容: ' + #draft_result"
+    outputVar: "final_result"
+
+edges:
+  - from: draft
+    to: review
+  - from: review
+    to: check-decision
+  - from: check-decision
+    to: revise
+
+outputs:
+  result: "#final_result"
+  decision: "#decision"

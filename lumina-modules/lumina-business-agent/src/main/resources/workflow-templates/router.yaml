@@ -1,0 +1,61 @@
+name: "router"
+description: "路由模式：分类 Agent 判断意图 → 路由到不同专业 Agent"
+
+inputs:
+  - name: query
+    type: string
+    required: true
+
+nodes:
+  - id: classifier
+    type: agent
+    name: "意图分类"
+    agentId: 1
+    input: "'判断以下问题的类别（技术/商务/售后），仅返回类别名: ' + #query"
+    outputVar: "category"
+
+  - id: route
+    type: condition
+    name: "路由判断"
+    expression: "#category.contains('技术')"
+    trueBranch: tech-agent
+    falseBranch: route-other
+
+  - id: route-other
+    type: condition
+    name: "二级路由"
+    expression: "#category.contains('商务')"
+    trueBranch: business-agent
+    falseBranch: support-agent
+
+  - id: tech-agent
+    type: agent
+    name: "技术支持"
+    agentId: 2
+    input: "#query"
+    outputVar: "answer"
+
+  - id: business-agent
+    type: agent
+    name: "商务咨询"
+    agentId: 3
+    input: "#query"
+    outputVar: "answer"
+
+  - id: support-agent
+    type: agent
+    name: "售后服务"
+    agentId: 4
+    input: "#query"
+    outputVar: "answer"
+
+edges:
+  - from: classifier
+    to: route
+  - from: route-other
+    to: business-agent
+  - from: route-other
+    to: support-agent
+
+outputs:
+  result: "#answer"

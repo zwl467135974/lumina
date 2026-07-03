@@ -1,0 +1,40 @@
+name: "debate"
+description: "辩论模式：两个 Agent 对同一问题给出不同观点 → 裁判 Agent 综合判断"
+
+inputs:
+  - name: topic
+    type: string
+    required: true
+
+nodes:
+  - id: debater-a
+    type: agent
+    name: "正方观点"
+    agentId: 1
+    input: "'作为正方，就以下话题给出你的论点: ' + #topic"
+    outputVar: "view_a"
+
+  - id: debater-b
+    type: agent
+    name: "反方观点"
+    agentId: 2
+    input: "'作为反方，就以下话题给出你的论点: ' + #topic"
+    outputVar: "view_b"
+
+  - id: judge
+    type: agent
+    name: "裁判综合"
+    agentId: 3
+    input: "'正方观点: ' + #view_a + '\\n反方观点: ' + #view_b + '\\n请综合评判并给出结论'"
+    outputVar: "verdict"
+
+edges:
+  - from: debater-a
+    to: debater-b
+  - from: debater-b
+    to: judge
+
+outputs:
+  result: "#verdict"
+  view_a: "#view_a"
+  view_b: "#view_b"

@@ -1,0 +1,64 @@
+name: "supervisor-worker"
+description: "主管 Agent 分解任务 → 多 Worker Agent 并行执行 → 主管汇总"
+
+inputs:
+  - name: task
+    type: string
+    required: true
+
+nodes:
+  - id: supervisor
+    type: agent
+    name: "主管分解任务"
+    agentId: 1
+    input: "'请将以下任务分解为3个子任务，以JSON数组格式返回: ' + #task"
+    outputVar: "subtasks"
+
+  - id: workers
+    type: parallel
+    name: "Worker 并行执行"
+    waitAll: true
+    branches:
+      - name: "worker-1"
+        startNode: worker-1
+      - name: "worker-2"
+        startNode: worker-2
+      - name: "worker-3"
+        startNode: worker-3
+
+  - id: worker-1
+    type: agent
+    name: "Worker 1"
+    agentId: 2
+    input: "#subtasks"
+    outputVar: "result_1"
+
+  - id: worker-2
+    type: agent
+    name: "Worker 2"
+    agentId: 2
+    input: "#subtasks"
+    outputVar: "result_2"
+
+  - id: worker-3
+    type: agent
+    name: "Worker 3"
+    agentId: 2
+    input: "#subtasks"
+    outputVar: "result_3"
+
+  - id: aggregate
+    type: agent
+    name: "主管汇总"
+    agentId: 1
+    input: "'汇总以下结果: ' + #result_1 + ', ' + #result_2 + ', ' + #result_3"
+    outputVar: "final_result"
+
+edges:
+  - from: supervisor
+    to: workers
+  - from: workers
+    to: aggregate
+
+outputs:
+  result: "#final_result"
