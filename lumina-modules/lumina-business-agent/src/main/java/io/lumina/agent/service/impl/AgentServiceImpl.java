@@ -9,6 +9,8 @@ import io.lumina.agent.infrastructure.entity.ConversationDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.framework.storage.FileService;
+import io.lumina.framework.storage.entity.FileDO;
 import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.ConversationService;
@@ -46,6 +48,9 @@ public class AgentServiceImpl implements AgentService {
 
     @Autowired
     private ConversationService conversationService;
+
+    @Autowired
+    private FileService fileService;
 
     /**
      * Domain -> DO 转换
@@ -225,9 +230,9 @@ public class AgentServiceImpl implements AgentService {
     }
 
     @Override
-    public String executeAgentMultimodal(Long agentId, String task, List<MultimodalImage> images, String conversationUuid) {
-        log.info("多模态执行 Agent: id={}, task={}, imageCount={}, conversation={}",
-                agentId, task, images != null ? images.size() : 0, conversationUuid);
+    public String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        log.info("多模态执行 Agent: id={}, task={}, fileCount={}, conversation={}",
+                agentId, task, fileUuids != null ? fileUuids.size() : 0, conversationUuid);
 
         Agent agent = getAgentById(agentId);
         if (!agent.isActive()) {
@@ -239,8 +244,39 @@ public class AgentServiceImpl implements AgentService {
         config.setAgentType(agent.getAgentType());
 
         String sessionId = resolveConversation(conversationUuid, agentId);
+
+        // 从文件存储加载图片，转换为 MultimodalImage
+        List<MultimodalImage> images = new ArrayList<>();
+        if (fileUuids != null) {
+            for (String uuid : fileUuids) {
+                FileDO fileDO = fileService.getByUuid(uuid);
+                if (fileDO == null || fileDO.getStatus() != 1) {
+                    log.warn("文件不存在或已删除: {}", uuid);
+                    continue;
+                }
+                byte[] bytes;
+                try (java.io.InputStream is = fileService.download(uuid)) {
+                    bytes = is.readAllBytes();
+                } catch (Exception e) {
+                    throw new BusinessException("读取图片失败: " + uuid, e);
+                }
+                images.add(new MultimodalImage(fileDO.getContentType(),
+                        java.util.Base64.getEncoder().encodeToString(bytes)));
+            }
+        }
+
+        // 序列化 file_ids JSON
+        String fileIdsJson = null;
+        if (fileUuids != null && !fileUuids.isEmpty()) {
+            try {
+                fileIdsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileUuids);
+            } catch (Exception e) {
+                fileIdsJson = null;
+            }
+        }
+
         if (sessionId != null) {
-            conversationService.saveMessage(sessionId, "user", task, 0, null);
+            conversationService.saveMessage(sessionId, "user", task, 0, null, fileIdsJson);
         }
 
         ExecuteResult result = agentExecutionEngine.executeMultimodalSync(

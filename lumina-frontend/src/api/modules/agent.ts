@@ -86,18 +86,15 @@ export function executeAgent(id: number, task: string) {
  *
  * @param id            Agent ID
  * @param task          任务描述
- * @param images        图片文件列表
+ * @param fileUuids     图片文件 UUID 列表
  * @param conversationId 会话 UUID（可选）
  */
-export function executeMultimodalAgent(id: number, task: string, images: File[], conversationId?: string) {
-  const formData = new FormData()
-  formData.append('task', task)
-  images.forEach(f => formData.append('images', f))
-  if (conversationId) {
-    formData.append('conversationId', conversationId)
-  }
-  return request.post<R<string>>(`/api/v1/agents/${id}/execute/multimodal`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+export function executeMultimodalAgent(id: number, task: string, fileUuids: string[], conversationId?: string) {
+  return request.post<R<string>>(`/api/v1/agents/${id}/execute/multimodal`, {
+    task,
+    fileUuids,
+    conversationId
+  }, {
     timeout: 120000
   })
 }

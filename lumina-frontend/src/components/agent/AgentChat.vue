@@ -123,7 +123,7 @@
           <div class="actions">
             <el-button :disabled="isBusy" @click="pickImages">
               <el-icon><Picture /></el-icon>
-              <span>图片</span>
+              <span>{{ uploading ? '上传中…' : '图片' }}</span>
             </el-button>
             <span v-if="selectedImages.length > 0" class="image-hint">{{ selectedImages.length }}/5</span>
             <el-button v-if="!isBusy" type="primary" :disabled="!task.trim()" @click="send">发送</el-button>
@@ -141,6 +141,7 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
 import { streamExecuteAgent, executeMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
+import { uploadFile } from '@/api/modules/file'
 import {
   listConversations,
   createConversation,
@@ -169,11 +170,12 @@ const errorMsg = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 
 // 图片上传
-interface ImagePreview { url: string; file: File; name: string }
+interface ImagePreview { fileUuid: string; url: string; name: string }
 const selectedImages = ref<ImagePreview[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
 
-const isBusy = computed(() => streaming.value || multimodalLoading.value)
+const isBusy = computed(() => streaming.value || multimodalLoading.value || uploading.value)
 
 // 调试模式
 const debugMode = ref(false)
@@ -254,9 +256,22 @@ const selectConversation = async (uuid: string) => {
 const loadHistory = async (uuid: string) => {
   try {
     const res = await listMessages(uuid)
-    historyMessages.value = res.data?.list || []
+    const msgs = res.data?.list || []
+    // 解析 fileIds JSON → 构造图片 URL 列表
+    historyMessages.value = msgs.map(m => {
+      const parsed = { ...m }
+      if (m.fileIds && typeof m.fileIds === 'string') {
+        try {
+          const uuids = JSON.parse(m.fileIds as string) as string[]
+          parsed.images = uuids.map((uuid: string) => `/api/v1/files/${uuid}/download`)
+        } catch {
+          // fileIds 不是合法 JSON，忽略
+        }
+      }
+      return parsed
+    })
     scrollToBottom()
-  } catch (e) {
+  } catch {
     historyMessages.value = []
   }
 }
@@ -311,7 +326,7 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
 const pickImages = () => fileInputRef.value?.click()
 
-const onImagesSelected = (e: Event) => {
+const onImagesSelected = async (e: Event) => {
   const target = e.target as HTMLInputElement
   if (!target.files) return
   const filesToAdd: File[] = []
@@ -330,14 +345,25 @@ const onImagesSelected = (e: Event) => {
     }
     filesToAdd.push(f)
   }
-  for (const f of filesToAdd) {
-    const reader = new FileReader()
-    reader.onload = () => {
-      selectedImages.value.push({ url: reader.result as string, file: f, name: f.name })
-    }
-    reader.readAsDataURL(f)
-  }
   target.value = ''
+
+  // 上传到文件存储服务
+  uploading.value = true
+  for (const f of filesToAdd) {
+    try {
+      const res = await uploadFile(f)
+      if (res.data) {
+        selectedImages.value.push({
+          fileUuid: res.data.fileUuid,
+          url: `/api/v1/files/${res.data.fileUuid}/download`,
+          name: res.data.originalName
+        })
+      }
+    } catch {
+      ElMessage.error(`${f.name} 上传失败`)
+    }
+  }
+  uploading.value = false
 }
 
 const removeImage = (idx: number) => {
@@ -420,10 +446,11 @@ const sendStream = (t: string) => {
 const sendMultimodal = async (t: string) => {
   multimodalLoading.value = true
   try {
+    const fileUuids = selectedImages.value.map(i => i.fileUuid)
     const res = await executeMultimodalAgent(
       props.agentId,
       t,
-      selectedImages.value.map(i => i.file),
+      fileUuids,
       currentConvId.value || undefined
     )
     clearImages()

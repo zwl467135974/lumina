@@ -63,6 +63,11 @@ public interface ConversationService {
     MessageDO saveMessage(String conversationUuid, String role, String content, Integer tokenCount, Long durationMs);
 
     /**
+     * 保存消息（带文件关联）
+     */
+    MessageDO saveMessage(String conversationUuid, String role, String content, Integer tokenCount, Long durationMs, String fileIds);
+
+    /**
      * 分页查询会话历史消息（按时间正序）
      */
     PageResult<MessageDO> listMessages(String conversationUuid, Integer pageNum, Integer pageSize);

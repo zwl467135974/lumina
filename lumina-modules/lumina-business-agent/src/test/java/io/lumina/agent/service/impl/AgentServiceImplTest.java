@@ -4,7 +4,7 @@ import io.lumina.agent.infrastructure.entity.AgentDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.model.ExecuteResult;
-import io.lumina.agent.model.MultimodalImage;
+import io.lumina.framework.storage.FileService;
 import io.lumina.agent.service.ConversationService;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -43,6 +43,9 @@ class AgentServiceImplTest {
 
     @Mock
     private ConversationService conversationService;
+
+    @Mock
+    private FileService fileService;
 
     @Test
     void getAgentByIdNotFoundThrows() {
@@ -115,7 +118,7 @@ class AgentServiceImplTest {
         String result = agentService.executeAgentMultimodal(
                 1L,
                 "describe",
-                List.of(new MultimodalImage("image/png", "dGVzdA==")),
+                java.util.Collections.emptyList(),
                 null
         );
 
@@ -131,7 +134,7 @@ class AgentServiceImplTest {
         assertThatThrownBy(() -> agentService.executeAgentMultimodal(
                 1L,
                 "describe",
-                List.of(new MultimodalImage("image/png", "dGVzdA==")),
+                java.util.Collections.emptyList(),
                 null
         )).isInstanceOf(BusinessException.class);
     }

@@ -74,11 +74,11 @@ public interface AgentService {
      *
      * @param agentId          Agent ID
      * @param task             任务描述
-     * @param images           图片内容列表
+     * @param fileUuids        图片文件 UUID 列表
      * @param conversationUuid 会话 UUID（null 表示无会话上下文）
      * @return 执行结果
      */
-    String executeAgentMultimodal(Long agentId, String task, List<MultimodalImage> images, String conversationUuid);
+    String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid);
 
     /**
      * 流式执行 Agent 任务（带会话上下文）

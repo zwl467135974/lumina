@@ -122,6 +122,13 @@ public class ConversationServiceImpl implements ConversationService {
     @Transactional(rollbackFor = Exception.class)
     public MessageDO saveMessage(String conversationUuid, String role, String content,
                                  Integer tokenCount, Long durationMs) {
+        return saveMessage(conversationUuid, role, content, tokenCount, durationMs, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public MessageDO saveMessage(String conversationUuid, String role, String content,
+                                 Integer tokenCount, Long durationMs, String fileIds) {
         ConversationDO conv = getByUuid(conversationUuid);
 
         MessageDO msg = new MessageDO();
@@ -130,6 +137,7 @@ public class ConversationServiceImpl implements ConversationService {
         msg.setContent(content);
         msg.setTokenCount(tokenCount != null ? tokenCount : 0);
         msg.setDurationMs(durationMs);
+        msg.setFileIds(fileIds);
 
         messageMapper.insert(msg);
         return msg;

@@ -21,7 +21,9 @@ export interface MessageVO {
   tokenCount: number
   durationMs: number | null
   createTime: string
-  /** 图片 Data URL 列表（仅本地显示，不持久化） */
+  /** 关联文件 UUID 列表（JSON 字符串，后端返回） */
+  fileIds?: string
+  /** 图片 URL 列表（前端解析 fileIds 后填充，仅本地显示） */
   images?: string[]
 }
 

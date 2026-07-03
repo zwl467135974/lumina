@@ -36,6 +36,10 @@ public class MessageDO implements Serializable {
     @TableField("duration_ms")
     private Long durationMs;
 
+    /** 关联文件 UUID 列表（JSON 数组，仅多模态用户消息有值） */
+    @TableField("file_ids")
+    private String fileIds;
+
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }
