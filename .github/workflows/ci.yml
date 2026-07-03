@@ -56,6 +56,13 @@ jobs:
       - name: Maven Verify
         run: mvn verify -B
 
+      - name: Upload JaCoCo Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage
+          path: '**/target/site/jacoco/jacoco.xml'
+
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,3 +92,7 @@ jobs:
       - name: Type Check & Build
         working-directory: lumina-frontend
         run: pnpm build
+
+      - name: Frontend Unit Tests
+        working-directory: lumina-frontend
+        run: pnpm test

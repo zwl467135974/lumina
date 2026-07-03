@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
+    "test": "vitest run",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write \"src/**/*.{vue,ts,js,scss}\"",
@@ -25,6 +26,7 @@
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@pinia/testing": "^1.0.3",
     "@types/node": "^20.12.7",
     "@types/nprogress": "^0.2.3",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
@@ -32,14 +34,17 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/eslint-config-prettier": "^9.0.0",
     "@vue/eslint-config-typescript": "^13.0.0",
+    "@vue/test-utils": "^2.4.11",
     "eslint": "^8.57.0",
     "eslint-plugin-vue": "^9.25.0",
+    "jsdom": "^29.1.1",
     "prettier": "^3.2.5",
     "sass": "^1.75.0",
     "stylelint": "^16.4.0",
     "stylelint-config-standard-scss": "^13.1.0",
     "typescript": "^5.4.5",
     "vite": "^5.2.8",
+    "vitest": "^2.1.9",
     "vue-tsc": "^2.0.14"
   },
   "engines": {
