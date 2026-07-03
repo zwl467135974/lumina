@@ -20,6 +20,29 @@
       </el-descriptions>
     </el-card>
 
+    <el-card class="prompt-card" shadow="never" v-loading="promptLoading">
+      <template #header>
+        <span>运行时 Prompt</span>
+      </template>
+      <template v-if="currentPrompt">
+        <div class="prompt-header">
+          <el-tag type="success" size="small">DB 激活</el-tag>
+          <span>{{ currentPrompt.name }} v{{ currentPrompt.version }}</span>
+        </div>
+        <div class="prompt-desc">{{ currentPrompt.description || '无描述' }}</div>
+        <el-input :model-value="currentPrompt.content" type="textarea" :rows="5" readonly />
+      </template>
+      <template v-else>
+        <div class="prompt-header">
+          <el-tag type="info" size="small">内置回退</el-tag>
+          <span>prompts/{{ promptName }}.txt</span>
+        </div>
+        <div class="prompt-desc">
+          Prompt 管理中没有名称为 {{ promptName }} 的激活版本，执行时使用 agent-core 内置 Prompt。
+        </div>
+      </template>
+    </el-card>
+
     <el-card class="chat-card" shadow="never">
       <template #header>
         <span>💬 对话执行</span>
@@ -31,9 +54,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAgent } from '@/api/modules/agent'
+import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AgentChat from '@/components/agent/AgentChat.vue'
 
@@ -48,6 +72,10 @@ const status = ref(0)
 const description = ref('')
 const createTime = ref('')
 const updateTime = ref('')
+const promptLoading = ref(false)
+const currentPrompt = ref<PromptVO | null>(null)
+
+const promptName = computed(() => agentType.value.toLowerCase())
 
 const loadAgentDetail = async () => {
   const id = Number(route.params.id)
@@ -64,8 +92,25 @@ const loadAgentDetail = async () => {
     description.value = agent.description || ''
     createTime.value = agent.createTime
     updateTime.value = agent.updateTime
+    await loadActivePrompt()
   } finally {
     loading.value = false
+  }
+}
+
+const loadActivePrompt = async () => {
+  if (!promptName.value) {
+    currentPrompt.value = null
+    return
+  }
+  promptLoading.value = true
+  try {
+    const res = await getActivePrompt(promptName.value)
+    currentPrompt.value = res.data || null
+  } catch {
+    currentPrompt.value = null
+  } finally {
+    promptLoading.value = false
   }
 }
 
@@ -80,9 +125,22 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .agent-detail-page {
-  // 样式
+  .prompt-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .prompt-desc {
+    margin-bottom: 10px;
+    color: #606266;
+    font-size: 13px;
+  }
 }
 
+.prompt-card,
 .chat-card {
   margin-top: 16px;
 }

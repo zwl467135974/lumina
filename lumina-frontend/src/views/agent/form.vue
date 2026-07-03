@@ -152,35 +152,6 @@
           </el-checkbox-group>
         </el-form-item>
 
-        <el-divider content-position="left">提示词配置</el-divider>
-
-        <el-alert
-          type="info"
-          show-icon
-          :closable="false"
-          class="prompt-alert"
-          title="执行时优先使用 Prompt 管理中的激活版本"
-          description="Agent 类型会转为小写作为 Prompt 名称匹配，例如 ReAct -> react、tool -> tool。下方字段当前仅作为表单备注，后端执行链路以运行时 Prompt 为准。"
-        />
-
-        <el-form-item label="系统提示词" prop="systemPrompt">
-          <el-input
-            v-model="formData.systemPrompt"
-            type="textarea"
-            :rows="6"
-            placeholder="请输入系统提示词，定义 Agent 的角色和行为"
-          />
-        </el-form-item>
-
-        <el-form-item label="用户提示词模板" prop="userPromptTemplate">
-          <el-input
-            v-model="formData.userPromptTemplate"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入用户提示词模板，使用 {task} 作为任务占位符"
-          />
-        </el-form-item>
-
         <el-form-item>
           <el-button type="primary" @click="handleSubmit" :loading="submitting">
             {{ isEdit ? '更新' : '创建' }}
@@ -238,17 +209,7 @@ const formData = reactive({
     temperature: 0.7,
     maxTokens: 4096
   },
-  tools: [] as string[],
-  systemPrompt: `你是一个智能助手，能够使用各种工具来帮助用户完成任务。
-
-请遵循以下原则：
-1. 理解用户需求，分析任务目标
-2. 选择合适的工具来完成任务
-3. 根据工具返回结果，给出准确、有用的回答
-4. 如果需要更多信息，主动向用户询问
-
-让我们开始吧！`,
-  userPromptTemplate: '任务：{task}\n\n请使用你掌握的工具来帮助完成这个任务。'
+  tools: [] as string[]
 })
 
 const promptName = computed(() => formData.agentType.toLowerCase())
@@ -284,9 +245,6 @@ const formRules: FormRules = {
   ],
   'llmConfig.apiKey': [
     { required: true, message: '请输入 API Key', trigger: 'blur' }
-  ],
-  systemPrompt: [
-    { required: true, message: '请输入系统提示词', trigger: 'blur' }
   ]
 }
 
@@ -314,13 +272,6 @@ const loadAgentDetail = async () => {
       formData.tools = (agent as any).tools
     }
 
-    // 加载提示词
-    if ((agent as any).systemPrompt) {
-      formData.systemPrompt = (agent as any).systemPrompt
-    }
-    if ((agent as any).userPromptTemplate) {
-      formData.userPromptTemplate = (agent as any).userPromptTemplate
-    }
   } catch (error) {
     console.error('加载 Agent 详情失败:', error)
     ElMessage.error('加载 Agent 详情失败')
@@ -343,9 +294,7 @@ const handleSubmit = async () => {
           agentType: formData.agentType,
           description: formData.description,
           llmConfig: formData.llmConfig,
-          tools: selectedTools.value,
-          systemPrompt: formData.systemPrompt,
-          userPromptTemplate: formData.userPromptTemplate
+          tools: selectedTools.value
         }
 
         if (isEdit.value) {
@@ -432,10 +381,6 @@ watch(() => formData.agentType, () => {
       color: #606266;
       font-size: 13px;
     }
-  }
-
-  .prompt-alert {
-    margin-bottom: 18px;
   }
 }
 </style>
