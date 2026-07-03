@@ -6,6 +6,7 @@ import io.lumina.agent.orchestration.model.WorkflowContext;
 import io.lumina.agent.orchestration.model.WorkflowNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(AgentExecutionHandler.class)
 @RequiredArgsConstructor
 public class AgentNodeExecutor implements NodeExecutor {
 
