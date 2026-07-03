@@ -212,3 +212,17 @@ export const workflowRoutes: AppRouteRecordRaw[] = [
     ]
   }
 ]
+
+// Prompt 路由
+export const promptRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/prompt',
+    name: 'Prompt',
+    component: () => import('@/views/prompt/index.vue'),
+    meta: {
+      title: 'Prompt 管理',
+      icon: 'EditPen',
+      requiresAuth: true
+    }
+  }
+]

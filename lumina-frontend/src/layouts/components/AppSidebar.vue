@@ -58,14 +58,14 @@ const activeMenu = computed(() => route.path)
  */
 const menuList = computed<MenuVO[]>(() => {
   const backendMenus = userStore.menus
-  const hasWorkflow = backendMenus.some(m => m.path?.includes('workflow'))
-  if (!hasWorkflow) {
-    return [...backendMenus, {
-      name: 'workflow', path: '/workflow/list',
-      title: '工作流', icon: 'Connection'
-    } as MenuVO]
+  const extras: MenuVO[] = []
+  if (!backendMenus.some(m => m.path?.includes('workflow'))) {
+    extras.push({ name: 'workflow', path: '/workflow/list', title: '工作流', icon: 'Connection' } as MenuVO)
   }
-  return backendMenus
+  if (!backendMenus.some(m => m.path?.includes('prompt'))) {
+    extras.push({ name: 'prompt', path: '/prompt', title: 'Prompt 管理', icon: 'EditPen' } as MenuVO)
+  }
+  return [...backendMenus, ...extras]
 })
 
 /**

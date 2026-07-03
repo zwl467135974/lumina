@@ -3,7 +3,7 @@
  */
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { basicRoutes, agentRoutes, systemRoutes, knowledgeRoutes, monitorRoutes, workflowRoutes } from './modules'
+import { basicRoutes, agentRoutes, systemRoutes, knowledgeRoutes, monitorRoutes, workflowRoutes, promptRoutes } from './modules'
 import { setupRouterGuards } from './guards'
 
 const routes = [
@@ -14,7 +14,7 @@ const routes = [
   {
     path: '/',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    children: [...agentRoutes, ...systemRoutes, ...knowledgeRoutes, ...monitorRoutes, ...workflowRoutes]
+    children: [...agentRoutes, ...systemRoutes, ...knowledgeRoutes, ...monitorRoutes, ...workflowRoutes, ...promptRoutes]
   },
   ...basicRoutes,
   {
