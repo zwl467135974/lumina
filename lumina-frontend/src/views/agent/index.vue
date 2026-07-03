@@ -15,11 +15,13 @@
         <el-form-item label="类型">
           <el-select v-model="queryForm.agentType" placeholder="请选择" clearable>
             <el-option label="ReAct" value="ReAct" />
+            <el-option label="Simple" value="simple" />
+            <el-option label="Tool" value="tool" />
             <el-option label="PlanAndExecute" value="PlanAndExecute" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">查询</el-button>
+          <el-button type="primary" @click="reloadData">查询</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
@@ -28,6 +30,23 @@
         <el-table-column prop="agentId" label="ID" width="80" />
         <el-table-column prop="agentName" label="Agent 名称" />
         <el-table-column prop="agentType" label="类型" />
+        <el-table-column label="运行时 Prompt" min-width="220">
+          <template #default="{ row }">
+            <div class="prompt-cell">
+              <template v-if="activePromptMap[getPromptKey(row.agentType)]">
+                <el-tag size="small" type="success">DB 激活</el-tag>
+                <span class="prompt-name">
+                  {{ activePromptMap[getPromptKey(row.agentType)]?.name }}
+                  v{{ activePromptMap[getPromptKey(row.agentType)]?.version }}
+                </span>
+              </template>
+              <template v-else>
+                <el-tag size="small" type="info">内置回退</el-tag>
+                <span class="prompt-name">prompts/{{ getPromptKey(row.agentType) }}.txt</span>
+              </template>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="description" label="描述" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
@@ -61,11 +80,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, onMounted } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { listAgents, deleteAgent } from '@/api/modules/agent'
+import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import type { AgentVO, QueryAgentDTO } from '@/types/api'
 import { useTable } from '@/composables/useTable'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -77,9 +97,41 @@ const queryForm = reactive<QueryAgentDTO>({
   agentType: ''
 })
 
-const { loading, tableData, pagination, loadData, handlePageChange, handleSizeChange } = useTable<AgentVO>(
+const { loading, tableData, pagination, loadData } = useTable<AgentVO>(
   (params) => listAgents({ ...queryForm, ...params })
 )
+
+const activePromptMap = ref<Record<string, PromptVO | null>>({})
+
+const getPromptKey = (agentType?: string) => (agentType || '').toLowerCase()
+
+const loadPromptUsage = async () => {
+  const promptNames = Array.from(new Set(tableData.value.map((item) => getPromptKey(item.agentType)).filter(Boolean)))
+  await Promise.all(promptNames.map(async (name) => {
+    try {
+      const res = await getActivePrompt(name)
+      activePromptMap.value[name] = res.data || null
+    } catch {
+      activePromptMap.value[name] = null
+    }
+  }))
+}
+
+const reloadData = async () => {
+  await loadData()
+  await loadPromptUsage()
+}
+
+const handlePageChange = async (page: number) => {
+  pagination.pageNum = page
+  await reloadData()
+}
+
+const handleSizeChange = async (size: number) => {
+  pagination.pageSize = size
+  pagination.pageNum = 1
+  await reloadData()
+}
 
 const handleCreate = () => {
   router.push('/agent/create')
@@ -100,7 +152,7 @@ const handleDelete = async (row: AgentVO) => {
     })
     await deleteAgent(row.agentId)
     ElMessage.success('删除成功')
-    loadData()
+    reloadData()
   } catch {
     // 用户取消或删除失败
   }
@@ -109,16 +161,27 @@ const handleDelete = async (row: AgentVO) => {
 const handleReset = () => {
   queryForm.agentName = ''
   queryForm.agentType = ''
-  loadData()
+  reloadData()
 }
 
 onMounted(() => {
-  loadData()
+  reloadData()
 })
 </script>
 
 <style scoped lang="scss">
 .agent-list-page {
+  .prompt-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .prompt-name {
+    color: #606266;
+    font-size: 13px;
+  }
+
   :deep(.el-pagination) {
     display: flex;
   }

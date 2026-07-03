@@ -20,13 +20,49 @@
                 推理-行动模式，适合复杂任务
               </span>
             </el-option>
+            <el-option label="Simple" value="simple">
+              <span>Simple</span>
+              <span style="color: #8492a6; font-size: 12px; margin-left: 10px">
+                简单对话模式，匹配 simple Prompt
+              </span>
+            </el-option>
+            <el-option label="Tool" value="tool">
+              <span>Tool</span>
+              <span style="color: #8492a6; font-size: 12px; margin-left: 10px">
+                工具调用模式，匹配 tool Prompt
+              </span>
+            </el-option>
             <el-option label="PlanAndExecute" value="PlanAndExecute">
               <span>PlanAndExecute</span>
               <span style="color: #8492a6; font-size: 12px; margin-left: 10px">
-                规划-执行模式，适合多步骤任务
+                规划-执行模式；未配置同名 Prompt 时使用内置回退
               </span>
             </el-option>
           </el-select>
+        </el-form-item>
+
+        <el-form-item label="运行时 Prompt">
+          <div class="prompt-preview" v-loading="promptLoading">
+            <template v-if="currentPrompt">
+              <div class="prompt-preview__header">
+                <el-tag type="success" size="small">DB 激活</el-tag>
+                <span>{{ currentPrompt.name }} v{{ currentPrompt.version }}</span>
+              </div>
+              <div class="prompt-preview__desc">
+                {{ currentPrompt.description || '无描述' }}
+              </div>
+              <el-input :model-value="currentPrompt.content" type="textarea" :rows="4" readonly />
+            </template>
+            <template v-else>
+              <div class="prompt-preview__header">
+                <el-tag type="info" size="small">内置回退</el-tag>
+                <span>prompts/{{ promptName }}.txt</span>
+              </div>
+              <div class="prompt-preview__desc">
+                Prompt 管理中没有名称为 {{ promptName }} 的激活版本，执行时将使用 agent-core 内置 Prompt。
+              </div>
+            </template>
+          </div>
         </el-form-item>
 
         <el-form-item label="描述" prop="description">
@@ -118,6 +154,15 @@
 
         <el-divider content-position="left">提示词配置</el-divider>
 
+        <el-alert
+          type="info"
+          show-icon
+          :closable="false"
+          class="prompt-alert"
+          title="执行时优先使用 Prompt 管理中的激活版本"
+          description="Agent 类型会转为小写作为 Prompt 名称匹配，例如 ReAct -> react、tool -> tool。下方字段当前仅作为表单备注，后端执行链路以运行时 Prompt 为准。"
+        />
+
         <el-form-item label="系统提示词" prop="systemPrompt">
           <el-input
             v-model="formData.systemPrompt"
@@ -148,10 +193,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed } from 'vue'
+import { reactive, ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAgent, updateAgent, getAgent } from '@/api/modules/agent'
+import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import type { CreateAgentDTO, UpdateAgentDTO } from '@/types/api'
 import PageHeader from '@/components/common/PageHeader.vue'
 
@@ -165,6 +211,8 @@ const agentId = computed(() => Number(route.params.id))
 const loading = ref(false)
 const submitting = ref(false)
 const formRef = ref<FormInstance>()
+const promptLoading = ref(false)
+const currentPrompt = ref<PromptVO | null>(null)
 
 // 可用工具列表
 const availableTools = [
@@ -202,6 +250,24 @@ const formData = reactive({
 让我们开始吧！`,
   userPromptTemplate: '任务：{task}\n\n请使用你掌握的工具来帮助完成这个任务。'
 })
+
+const promptName = computed(() => formData.agentType.toLowerCase())
+
+const loadActivePrompt = async () => {
+  if (!promptName.value) {
+    currentPrompt.value = null
+    return
+  }
+  promptLoading.value = true
+  try {
+    const res = await getActivePrompt(promptName.value)
+    currentPrompt.value = res.data || null
+  } catch {
+    currentPrompt.value = null
+  } finally {
+    promptLoading.value = false
+  }
+}
 
 const formRules: FormRules = {
   agentName: [
@@ -307,8 +373,13 @@ const handleBack = () => {
   router.push('/agent')
 }
 
-onMounted(() => {
-  loadAgentDetail()
+onMounted(async () => {
+  await loadAgentDetail()
+  await loadActivePrompt()
+})
+
+watch(() => formData.agentType, () => {
+  loadActivePrompt()
 })
 </script>
 
@@ -339,6 +410,32 @@ onMounted(() => {
 
   :deep(.el-slider__marks-text) {
     font-size: 12px;
+  }
+
+  .prompt-preview {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e4e7ed;
+    border-radius: 6px;
+    background: #fafafa;
+
+    &__header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    &__desc {
+      margin-bottom: 10px;
+      color: #606266;
+      font-size: 13px;
+    }
+  }
+
+  .prompt-alert {
+    margin-bottom: 18px;
   }
 }
 </style>

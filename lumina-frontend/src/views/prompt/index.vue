@@ -7,6 +7,14 @@
     </PageHeader>
 
     <el-card shadow="never" class="search-card">
+      <el-alert
+        type="info"
+        show-icon
+        :closable="false"
+        class="usage-alert"
+        title="Prompt 生效规则"
+        description="Agent 执行时会将 Agent 类型转为小写匹配 Prompt 名称，例如 ReAct -> react、simple -> simple、tool -> tool。发布并激活后会立即影响后续执行；未匹配到激活版本时使用 agent-core 内置 Prompt。"
+      />
       <el-form inline>
         <el-form-item label="名称">
           <el-input v-model="searchName" placeholder="搜索" clearable style="width: 200px" @keyup.enter="loadList" />
@@ -261,6 +269,7 @@ loadList()
 <style scoped>
 .prompt-page { padding: 0; }
 .search-card { margin-bottom: 12px; }
+.usage-alert { margin-bottom: 12px; }
 .prompt-editor :deep(.el-textarea__inner) {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
