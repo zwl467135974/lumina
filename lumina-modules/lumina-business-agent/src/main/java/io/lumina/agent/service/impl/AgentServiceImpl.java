@@ -352,6 +352,78 @@ public class AgentServiceImpl implements AgentService {
         });
     }
 
+    @Override
+    public Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        AgentDO agent = agentMapper.selectById(agentId);
+        if (agent == null) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND);
+        }
+        if (agent.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
+        }
+
+        AgentConfig config = new AgentConfig();
+        config.setAgentName(agent.getAgentName());
+        config.setAgentType(agent.getAgentType());
+
+        String sessionId = resolveConversation(conversationUuid, agentId);
+
+        List<MultimodalImage> images = new ArrayList<>();
+        if (fileUuids != null) {
+            for (String uuid : fileUuids) {
+                FileDO fileDO = fileService.getByUuid(uuid);
+                if (fileDO == null || fileDO.getStatus() != 1) {
+                    log.warn("文件不存在或已删除: {}", uuid);
+                    continue;
+                }
+                byte[] bytes;
+                try (java.io.InputStream is = fileService.download(uuid)) {
+                    bytes = is.readAllBytes();
+                } catch (Exception e) {
+                    throw new BusinessException("读取图片失败: " + uuid, e);
+                }
+                images.add(new MultimodalImage(fileDO.getContentType(),
+                        java.util.Base64.getEncoder().encodeToString(bytes)));
+            }
+        }
+
+        String fileIdsJson = null;
+        if (fileUuids != null && !fileUuids.isEmpty()) {
+            try {
+                fileIdsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileUuids);
+            } catch (Exception e) {
+                fileIdsJson = null;
+            }
+        }
+
+        if (sessionId != null) {
+            conversationService.saveMessage(sessionId, "user", task, 0, null, fileIdsJson);
+        }
+
+        final String sid = sessionId;
+        StringBuilder fullResponse = new StringBuilder();
+
+        return agentExecutionEngine.executeMultimodalStream(
+                agent.getAgentType().toLowerCase(),
+                task,
+                images,
+                config,
+                sid
+        )
+        .doOnNext(chunk -> {
+            String type = chunk.type();
+            if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {
+                fullResponse.append(chunk.content());
+            }
+        })
+        .doOnComplete(() -> {
+            if (sid != null && fullResponse.length() > 0) {
+                conversationService.saveMessage(sid, "assistant", fullResponse.toString(), 0, null);
+                conversationService.incrementMessageCount(sid, 2);
+            }
+        });
+    }
+
     /**
      * 解析会话：校验 UUID 归属 Agent，返回会话标识（用作记忆 Key）
      *

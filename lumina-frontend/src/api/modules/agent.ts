@@ -115,7 +115,6 @@ export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
     signal: controller.signal,
-    // 避免浏览器在 401/403 时自动重试
     openWhenHidden: true,
     async onopen(response) {
       if (!response.ok) {
@@ -123,7 +122,6 @@ export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks
       }
     },
     onmessage(ev) {
-      // ev.event = 片段类型，ev.data = StreamChunk JSON
       let chunk: StreamChunk
       try {
         chunk = JSON.parse(ev.data) as StreamChunk
@@ -134,7 +132,63 @@ export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks
     },
     onerror(err) {
       cb.onError?.(err instanceof Error ? err : new Error(String(err)))
-      // 抛出以阻止自动重连
+      throw err
+    },
+    onclose() {
+      cb.onClose?.()
+    }
+  })
+
+  return controller
+}
+
+/**
+ * 流式多模态执行 Agent（SSE，文本 + 图片，逐片段回调）
+ *
+ * @param id            Agent ID
+ * @param task          任务描述
+ * @param fileUuids     图片文件 UUID 列表
+ * @param cb            回调
+ * @param conversationId 会话 UUID（可选）
+ */
+export function streamExecuteMultimodalAgent(
+  id: number,
+  task: string,
+  fileUuids: string[],
+  cb: StreamCallbacks,
+  conversationId?: string
+): AbortController {
+  const controller = new AbortController()
+  const baseURL = import.meta.env.VITE_API_BASE_URL || ''
+  const token = getToken()
+  const url = `${baseURL}/api/v1/agents/${id}/execute/multimodal/stream`
+
+  fetchEventSource(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'text/event-stream',
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ task, fileUuids, conversationId }),
+    signal: controller.signal,
+    openWhenHidden: true,
+    async onopen(response) {
+      if (!response.ok) {
+        throw new Error(`流式连接失败: ${response.status} ${response.statusText}`)
+      }
+    },
+    onmessage(ev) {
+      let chunk: StreamChunk
+      try {
+        chunk = JSON.parse(ev.data) as StreamChunk
+      } catch {
+        chunk = { type: ev.event || 'CHUNK', content: ev.data, last: false }
+      }
+      cb.onChunk(chunk)
+    },
+    onerror(err) {
+      cb.onError?.(err instanceof Error ? err : new Error(String(err)))
       throw err
     },
     onclose() {

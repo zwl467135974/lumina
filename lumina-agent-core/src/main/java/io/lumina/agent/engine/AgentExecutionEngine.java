@@ -53,6 +53,14 @@ public interface AgentExecutionEngine {
     Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId);
 
     /**
+     * 流式执行多模态 Agent（文本 + 图片，逐片段返回，用于 SSE 打字机效果）
+     *
+     * @param conversationId 会话 ID（null 表示无会话上下文）
+     */
+    Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalImage> images,
+                                              AgentConfig config, String conversationId);
+
+    /**
      * 获取引擎名称
      */
     String getEngineName();
@@ -84,5 +92,13 @@ public interface AgentExecutionEngine {
      */
     default Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config) {
         return executeStream(businessType, task, config, null);
+    }
+
+    /**
+     * 兼容重载：流式执行多模态 Agent（无会话上下文）
+     */
+    default Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalImage> images,
+                                                       AgentConfig config) {
+        return executeMultimodalStream(businessType, task, images, config, null);
     }
 }

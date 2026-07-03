@@ -75,22 +75,50 @@
             :image-size="60"
           />
 
-          <!-- 调试面板 -->
-          <div v-if="debugMode && eventLog.length > 0" class="debug-panel">
-            <div class="debug-header">调试信息（{{ eventLog.length }} 事件）</div>
-            <div class="debug-stats">
-              <el-tag size="small">总耗时 {{ debugStats.totalMs }}ms</el-tag>
-              <el-tag size="small" type="success">回复 {{ debugStats.finalChars }} 字符</el-tag>
-              <el-tag size="small" type="warning" v-if="debugStats.actingEvents">工具 {{ debugStats.actingEvents }} 次</el-tag>
-              <el-tag size="small" type="info" v-if="debugStats.reasoningEvents">推理 {{ debugStats.reasoningEvents }} 段</el-tag>
+          <!-- 调试面板（右侧栏） -->
+          <div v-if="debugMode" class="debug-sidebar">
+            <div class="debug-sidebar-header">
+              <span class="debug-sidebar-title">调试面板</span>
+              <el-tag v-if="streaming" size="small" type="warning">执行中…</el-tag>
+              <el-tag v-else-if="finalText" size="small" type="success">已完成</el-tag>
             </div>
-            <div class="debug-timeline">
-              <div v-for="(ev, idx) in eventLog" :key="idx" class="debug-event">
-                <span class="ev-time">+{{ ev.elapsed }}ms</span>
-                <el-tag size="small" :type="eventTagType(ev.type)">{{ ev.type }}</el-tag>
-                <span class="ev-preview">{{ ev.preview }}</span>
+
+            <!-- 统计概览 -->
+            <div class="debug-section">
+              <div class="debug-section-title">统计概览</div>
+              <div class="debug-stats-grid">
+                <div class="stat-card"><div class="stat-value">{{ debugStats.totalMs }}</div><div class="stat-label">总耗时(ms)</div></div>
+                <div class="stat-card"><div class="stat-value">{{ debugStats.finalChars }}</div><div class="stat-label">回复字符</div></div>
+                <div class="stat-card"><div class="stat-value">{{ eventLog.length }}</div><div class="stat-label">事件总数</div></div>
+                <div class="stat-card"><div class="stat-value">{{ debugStats.actingEvents }}</div><div class="stat-label">工具调用</div></div>
               </div>
             </div>
+
+            <!-- 推理过程 -->
+            <div v-if="reasoningText" class="debug-section">
+              <div class="debug-section-title">🧠 推理过程</div>
+              <div class="debug-reasoning-text">{{ reasoningText }}</div>
+            </div>
+
+            <!-- 工具调用 -->
+            <div v-if="actingText" class="debug-section">
+              <div class="debug-section-title">🔧 工具调用</div>
+              <div class="debug-acting-text">{{ actingText }}</div>
+            </div>
+
+            <!-- 事件时间线 -->
+            <div v-if="eventLog.length > 0" class="debug-section">
+              <div class="debug-section-title">事件时间线</div>
+              <div class="debug-timeline">
+                <div v-for="(ev, idx) in eventLog" :key="idx" class="debug-event-row">
+                  <span class="ev-time">+{{ ev.elapsed }}ms</span>
+                  <el-tag size="small" :type="eventTagType(ev.type)">{{ ev.type }}</el-tag>
+                  <span class="ev-preview">{{ ev.preview }}</span>
+                </div>
+              </div>
+            </div>
+
+            <el-empty v-if="!streaming && eventLog.length === 0" description="执行后显示调试数据" :image-size="40" />
           </div>
         </div>
 
@@ -128,7 +156,6 @@
             <span v-if="selectedImages.length > 0" class="image-hint">{{ selectedImages.length }}/5</span>
             <el-button v-if="!isBusy" type="primary" :disabled="!task.trim()" @click="send">发送</el-button>
             <el-button v-if="streaming" type="danger" @click="abort">中断</el-button>
-            <el-button v-if="multimodalLoading" type="warning" loading>处理中…</el-button>
           </div>
         </div>
       </div>
@@ -140,7 +167,7 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
-import { streamExecuteAgent, executeMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
+import { streamExecuteAgent, streamExecuteMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
 import { uploadFile } from '@/api/modules/file'
 import {
   listConversations,
@@ -162,7 +189,6 @@ const creating = ref(false)
 // 流式状态
 const task = ref('')
 const streaming = ref(false)
-const multimodalLoading = ref(false)
 const reasoningText = ref('')
 const actingText = ref('')
 const finalText = ref('')
@@ -175,7 +201,7 @@ const selectedImages = ref<ImagePreview[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 
-const isBusy = computed(() => streaming.value || multimodalLoading.value || uploading.value)
+const isBusy = computed(() => streaming.value || uploading.value)
 
 // 调试模式
 const debugMode = ref(false)
@@ -441,38 +467,35 @@ const sendStream = (t: string) => {
   )
 }
 
-const sendMultimodal = async (t: string) => {
-  multimodalLoading.value = true
-  try {
-    const fileUuids = selectedImages.value.map(i => i.fileUuid)
-    const res = await executeMultimodalAgent(
-      props.agentId,
-      t,
-      fileUuids,
-      currentConvId.value || undefined
-    )
-    clearImages()
-    // 直接追加助手回复，保留用户消息中的图片缩略图
-    historyMessages.value.push({
-      messageId: Date.now() + 1,
-      role: 'assistant',
-      content: (res as any).data || '',
-      tokenCount: 0,
-      durationMs: null,
-      createTime: new Date().toISOString()
-    })
-    scrollToBottom()
-    // 更新会话列表的消息数
-    if (currentConvId.value) {
-      const conv = conversations.value.find(c => c.conversationUuid === currentConvId.value)
-      if (conv) conv.messageCount += 2
-    }
-  } catch (e: any) {
-    errorMsg.value = e.message || '多模态执行失败'
-    ElMessage.error(errorMsg.value)
-  } finally {
-    multimodalLoading.value = false
-  }
+const sendMultimodal = (t: string) => {
+  streaming.value = true
+  streamStartTime = Date.now()
+
+  const fileUuids = selectedImages.value.map(i => i.fileUuid)
+
+  controller = streamExecuteMultimodalAgent(
+    props.agentId,
+    t,
+    fileUuids,
+    {
+      onChunk: handleChunk,
+      onError: (err) => {
+        streaming.value = false
+        errorMsg.value = err.message || '流式多模态执行失败'
+        ElMessage.error(errorMsg.value)
+      },
+      onClose: () => {
+        streaming.value = false
+        clearImages()
+        if (currentConvId.value) {
+          loadHistory(currentConvId.value).then(() => resetStream())
+        } else {
+          resetStream()
+        }
+      }
+    },
+    currentConvId.value || undefined
+  )
 }
 
 const abort = () => {
@@ -771,53 +794,103 @@ defineExpose({ resetStream })
   padding: 4px 0 8px;
 }
 
-/* 调试面板 */
-.debug-panel {
-  margin-top: 12px;
-  padding: 12px;
+/* 调试面板 — 右侧栏 */
+.debug-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--el-fill-color-light);
   border-radius: 6px;
-  border: 1px solid var(--el-border-color-lighter);
+  overflow: hidden;
+  max-height: 100%;
 
-  .debug-header {
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--el-text-color-secondary);
+  .debug-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+
+    .debug-sidebar-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
   }
 
-  .debug-stats {
-    display: flex;
+  .debug-section {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--el-border-color-extra-light);
+
+    .debug-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--el-text-color-secondary);
+      margin-bottom: 8px;
+    }
+  }
+
+  .debug-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 6px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
+
+    .stat-card {
+      text-align: center;
+      padding: 8px 4px;
+      background: var(--el-fill-color);
+      border-radius: 4px;
+
+      .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--el-color-primary);
+      }
+
+      .stat-label {
+        font-size: 11px;
+        color: var(--el-text-color-placeholder);
+      }
+    }
+  }
+
+  .debug-reasoning-text,
+  .debug-acting-text {
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+    color: var(--el-text-color-regular);
+    font-family: monospace;
   }
 
   .debug-timeline {
-    max-height: 300px;
+    max-height: 250px;
     overflow-y: auto;
     font-family: monospace;
-    font-size: 12px;
-  }
+    font-size: 11px;
 
-  .debug-event {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 0;
-    border-bottom: 1px solid var(--el-border-color-extra-light);
+    .debug-event-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 0;
 
-    .ev-time {
-      width: 70px;
-      color: var(--el-text-color-placeholder);
-      flex-shrink: 0;
-    }
+      .ev-time {
+        width: 60px;
+        color: var(--el-text-color-placeholder);
+        flex-shrink: 0;
+      }
 
-    .ev-preview {
-      color: var(--el-text-color-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      .ev-preview {
+        color: var(--el-text-color-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+      }
     }
   }
 }

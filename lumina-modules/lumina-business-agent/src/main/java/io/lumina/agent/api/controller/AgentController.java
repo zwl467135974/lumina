@@ -237,4 +237,31 @@ public class AgentController {
                         .data(chunk)
                         .build());
     }
+
+    /**
+     * 流式多模态执行 Agent（SSE，文本 + 图片，逐片段返回）
+     *
+     * <p>请求体为 JSON（task + fileUuids + conversationId），响应为 SSE 流。
+     *
+     * @param dto 请求体（task + fileUuids + conversationId）
+     */
+    @Audit(module = "agent", action = "EXECUTE_MULTIMODAL_STREAM", description = "流式多模态执行Agent")
+    @PostMapping(value = "/{id}/execute/multimodal/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<StreamChunk>> executeAgentMultimodalStream(
+            @PathVariable("id") Long id,
+            @RequestBody MultimodalRequestDTO dto) {
+        log.info("流式多模态执行 Agent: id={}, task={}, fileCount={}, conversationId={}",
+                id, dto.getTask(), dto.getFileUuids() != null ? dto.getFileUuids().size() : 0, dto.getConversationId());
+
+        if (dto.getTask() == null || dto.getTask().trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
+        }
+
+        return agentService.executeAgentMultimodalStream(id, dto.getTask(), dto.getFileUuids(), dto.getConversationId())
+                .map(chunk -> ServerSentEvent.<StreamChunk>builder()
+                        .id(String.valueOf(System.nanoTime()))
+                        .event(chunk.type())
+                        .data(chunk)
+                        .build());
+    }
 }

@@ -87,6 +87,16 @@ public interface AgentService {
      */
     Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid);
 
+    /**
+     * 流式执行多模态 Agent 任务（文本 + 图片，SSE 流式返回）
+     *
+     * @param agentId         Agent ID
+     * @param task            任务描述
+     * @param fileUuids       图片文件 UUID 列表
+     * @param conversationUuid 会话 UUID（null 表示无会话上下文）
+     */
+    Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid);
+
     /** 兼容重载：执行 Agent（无会话上下文） */
     default String executeAgent(Long agentId, String task) {
         return executeAgent(agentId, task, null);

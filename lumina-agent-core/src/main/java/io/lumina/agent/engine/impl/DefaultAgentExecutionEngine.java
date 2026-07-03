@@ -260,6 +260,59 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
     }
 
+    @Override
+    @Observed(name = "agent.execute.multimodalStream", contextualName = "agent-multimodal-stream")
+    public Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalImage> images,
+                                                      AgentConfig config, String conversationId) {
+        int imageCount = images != null ? images.size() : 0;
+        log.info("开始流式多模态执行 Agent: businessType={}, task={}, imageCount={}, conversationId={}",
+                businessType, task, imageCount, conversationId);
+        try {
+            AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
+
+            String promptTemplate = agentConfig.getPromptTemplate();
+            if (promptTemplate == null || promptTemplate.isEmpty()) {
+                promptTemplate = promptLoader.loadPrompt(businessType);
+            }
+            String prompt = promptLoader.fillTemplate(promptTemplate, task);
+
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, images);
+
+            ReActAgent agent = createReActAgent(agentConfig);
+
+            StreamOptions options = StreamOptions.builder()
+                    .incremental(true)
+                    .includeReasoningChunk(true)
+                    .includeActingChunk(true)
+                    .build();
+
+            StringBuilder finalResponse = new StringBuilder();
+
+            return agent.stream(contextMessages, options)
+                    .map(this::toStreamChunk)
+                    .doOnNext(chunk -> {
+                        if (StreamEventType.FINAL.equals(chunk.type())) {
+                            finalResponse.append(chunk.content());
+                        }
+                    })
+                    .doOnComplete(() -> {
+                        if (conversationId != null && finalResponse.length() > 0) {
+                            memoryManager.addMemory(conversationId, "user", task);
+                            memoryManager.addMemory(conversationId, "assistant", finalResponse.toString());
+                        }
+                    })
+                    .onErrorResume(e -> {
+                        log.error("流式多模态执行失败: businessType={}", businessType, e);
+                        return Flux.just(new StreamChunk(StreamEventType.ERROR,
+                                e.getMessage() != null ? e.getMessage() : "流式多模态执行失败", true));
+                    });
+        } catch (Exception e) {
+            log.error("构建流式多模态 Agent 失败: businessType={}", businessType, e);
+            return Flux.just(new StreamChunk(StreamEventType.ERROR,
+                    e.getMessage() != null ? e.getMessage() : "构建多模态 Agent 失败", true));
+        }
+    }
+
     /**
      * 构建上下文消息列表（加载历史记忆 + 当前用户输入）
      *
