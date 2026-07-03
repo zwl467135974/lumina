@@ -302,7 +302,8 @@ public class AgentServiceImpl implements AgentService {
                 sid
         )
         .doOnNext(chunk -> {
-            if ("FINAL".equals(chunk.type())) {
+            String type = chunk.type();
+            if ("FINAL".equals(type) || "AGENT_RESULT".equals(type)) {
                 fullResponse.append(chunk.content());
             }
         })

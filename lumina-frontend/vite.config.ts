@@ -14,10 +14,25 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
+      '/api/v1/agents': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/v1/conversations': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/v1/knowledge': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
+      '/api/v1/tools': {
+        target: 'http://localhost:8081',
+        changeOrigin: true
+      },
       '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api')
+        target: 'http://localhost:8082',
+        changeOrigin: true
       }
     }
   },

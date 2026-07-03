@@ -280,6 +280,7 @@ const handleChunk = (chunk: StreamChunk) => {
 
   switch (chunk.type) {
     case 'REASONING_CHUNK':
+    case 'REASONING':
     case 'POST_REASONING':
       reasoningText.value += content
       break
@@ -292,6 +293,7 @@ const handleChunk = (chunk: StreamChunk) => {
       errorMsg.value = content || '执行失败'
       break
     case 'FINAL':
+    case 'AGENT_RESULT':
     default:
       finalText.value += content
       break
@@ -395,9 +397,10 @@ const sendStream = (t: string) => {
       },
       onClose: () => {
         streaming.value = false
-        resetStream()
         if (currentConvId.value) {
-          loadHistory(currentConvId.value)
+          loadHistory(currentConvId.value).then(() => resetStream())
+        } else {
+          resetStream()
         }
       }
     },
