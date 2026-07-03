@@ -305,6 +305,28 @@ services:
     networks:
       - lumina-network
 
+  # MinIO 对象存储（S3 兼容）
+  minio:
+    image: minio/minio:latest
+    container_name: lumina-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lumina-network
+
   # Grafana 可视化仪表盘
   grafana:
     image: grafana/grafana:11.3.0
@@ -338,6 +360,8 @@ volumes:
   qdrant-data:
     driver: local
   rocketmq-data:
+    driver: local
+  minio-data:
     driver: local
 
 # 网络定义

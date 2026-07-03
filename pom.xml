@@ -73,6 +73,9 @@
         <!-- 容错 -->
         <resilience4j.version>2.2.0</resilience4j.version>
 
+        <!-- 对象存储 -->
+        <minio.version>8.5.14</minio.version>
+
         <!-- 测试 -->
         <testcontainers.version>1.20.6</testcontainers.version>
         <jacoco.version>0.8.13</jacoco.version>
@@ -305,6 +308,13 @@
                 <groupId>io.lumina</groupId>
                 <artifactId>lumina-agent-core</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!-- MinIO 对象存储 SDK -->
+            <dependency>
+                <groupId>io.minio</groupId>
+                <artifactId>minio</artifactId>
+                <version>${minio.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
