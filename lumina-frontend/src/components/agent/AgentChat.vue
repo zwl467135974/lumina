@@ -310,8 +310,6 @@ const handleChunk = (chunk: StreamChunk) => {
     case 'ERROR':
       errorMsg.value = content || '执行失败'
       break
-    case 'FINAL':
-    case 'AGENT_RESULT':
     default:
       finalText.value += content
       break

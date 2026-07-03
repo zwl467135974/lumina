@@ -27,7 +27,7 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
 - **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V6)、网关限流、API 版本策略、工具调用熔断器
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V7)、网关限流、API 版本策略、工具调用熔断器
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
@@ -157,7 +157,7 @@ $env:DASHSCOPE_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V6），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V7），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -520,18 +520,26 @@ npm install
 
 ## 项目状态
 
-### v1.2.0 已完成（2026-07-02）
+### v1.3.0 已完成（2026-07-03）
 
-**核心功能**
+**v1.3.0 核心改进（在 v1.2.0 基础上）**
+- ✅ P0：输入校验补全 + Token 统计接通 + 配置 Bug 修复
+- ✅ P1：RocketMQ + 知识库异步化 + 审计异步化
+- ✅ P2：多模态消息支持（图片上传 + 文件存储持久化 + 历史回放）
+- ✅ P2：LLM Provider 预设 7 家 + Resilience4j 容错 + GenerateOptions 扩展
+- ✅ P3：JaCoCo 覆盖率 + 前端 vitest 30 单元测试 + Playwright E2E 验证
+- ✅ 文件存储模块（StorageClient 抽象 + MinIO 集成 + LocalDisk 实现）
+
+**核心功能（继承 v1.2.0）**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V6 + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V7 + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
-- ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama）
-- ✅ 工具调用可观测（记录/统计/熔断器）+ 审计日志（@Audit AOP）
+- ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
+- ✅ 工具调用可观测（记录/统计/熔断器）+ 审计日志（@Audit AOP + 异步）
 
 **RAG 知识库（全 5 阶段）**
 - ✅ 多 Embedding 提供商（DashScope/OpenAI 兼容/Ollama）
-- ✅ 文档上传管线（TextReader/PDFReader/WordReader → 切片 → Embedding → Store）
+- ✅ 文档上传管线（异步：RocketMQ → 解析 → Embedding → Store）
 - ✅ Qdrant 向量存储（自定义 REST 实现，绕过 AgentScope gRPC 兼容性问题）
 - ✅ Agent RAG 集成（GENERIC/AGENTIC 模式）
 - ✅ 前端知识库管理页（上传/列表/删除/检索测试）
@@ -544,21 +552,22 @@ npm install
 
 **前端增强**
 - ✅ 动态菜单（后端按权限下发，前端渲染侧边栏）
-- ✅ Agent 调试面板（事件时间线 + 统计）
+- ✅ Agent 对话（SSE 流式 + 多模态图片 + 历史回放）
 - ✅ i18n 国际化（中英文切换）
 - ✅ 暗色主题 + 工具监控页 + 知识库管理页
 
 **工程化与部署**
-- ✅ 测试体系（103 测试：common 28 + agent-core 23 + framework 4 + base 38 + agent 10）
-- ✅ CI/CD 模板（GitHub Actions：mvn verify + pnpm build + Docker 镜像构建）
-- ✅ K8s 部署清单 + Helm Chart（参考模板）
-- ✅ 部署文档 + 一键启动脚本（init.sh / init.ps1）
+- ✅ 测试体系（135 测试：后端 105 + 前端 30）
+- ✅ CI/CD（GitHub Actions：mvn verify + JaCoCo + pnpm build + pnpm test + Docker 镜像构建）
+- ✅ docker-compose 13 服务一键部署 + init.sh / init.ps1 启动脚本
+- ✅ 部署文档
 
 相关文档：
+- [v2.0.0 路线图](docs/ROADMAP_v2.0.md) - Agent 编排引擎 + 流式增强 + 生产可用性
+- [v1.3.0 路线图](docs/ROADMAP_v1.3.md) - v1.3.0 需求文档（已全部完成）
 - [部署指南](docs/DEPLOYMENT.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
 - [RAG 设计文档](docs/RAG_DESIGN.md) - RAG 架构与技术选型
-- [V1.1 发布说明](docs/V1.1_RELEASE_NOTES.md) - v1.1 功能详情
-- [路线图](docs/ROADMAP.md) - 完整开发路线图
+- [文件存储设计](docs/FILE_STORAGE_DESIGN.md) - 存储抽象层设计
 
 ---
 

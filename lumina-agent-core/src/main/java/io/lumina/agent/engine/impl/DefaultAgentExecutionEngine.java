@@ -27,6 +27,7 @@ import io.lumina.agent.model.ChatModelFactory;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
+import io.lumina.agent.model.StreamEventType;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
 import io.lumina.agent.resilience.LlmResilienceWrapper;
@@ -239,7 +240,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             return agent.stream(contextMessages, options)
                     .map(this::toStreamChunk)
                     .doOnNext(chunk -> {
-                        if ("FINAL".equals(chunk.type())) {
+                        if (StreamEventType.FINAL.equals(chunk.type())) {
                             finalResponse.append(chunk.content());
                         }
                     })
@@ -251,11 +252,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     })
                     .onErrorResume(e -> {
                         log.error("流式执行失败: businessType={}", businessType, e);
-                        return Flux.just(new StreamChunk("ERROR", e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
+                        return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
                     });
         } catch (Exception e) {
             log.error("构建流式 Agent 失败: businessType={}", businessType, e);
-            return Flux.just(new StreamChunk("ERROR", e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
+            return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
         }
     }
 

@@ -18,6 +18,7 @@ import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.model.StreamChunk;
+import io.lumina.agent.model.StreamEventType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -339,7 +340,7 @@ public class AgentServiceImpl implements AgentService {
         )
         .doOnNext(chunk -> {
             String type = chunk.type();
-            if ("FINAL".equals(type) || "AGENT_RESULT".equals(type)) {
+            if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {
                 fullResponse.append(chunk.content());
             }
         })
