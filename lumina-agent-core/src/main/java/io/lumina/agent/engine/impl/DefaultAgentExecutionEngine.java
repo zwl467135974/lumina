@@ -393,8 +393,14 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             llmConfig.setModelType(agentProperties.getLlm().getType());
             llmConfig.setModelName(agentProperties.getLlm().getModel());
             llmConfig.setApiKey(getApiKey());
+            llmConfig.setBaseUrl(agentProperties.getLlm().getBaseUrl());
             llmConfig.setTemperature(agentProperties.getLlm().getTemperature());
             llmConfig.setMaxTokens(agentProperties.getLlm().getMaxTokens());
+            llmConfig.setTopP(agentProperties.getLlm().getTopP());
+            llmConfig.setFrequencyPenalty(agentProperties.getLlm().getFrequencyPenalty());
+            llmConfig.setPresencePenalty(agentProperties.getLlm().getPresencePenalty());
+            llmConfig.setSeed(agentProperties.getLlm().getSeed());
+            llmConfig.setTopK(agentProperties.getLlm().getTopK());
         }
 
         // 构建模型（按 modelType 路由到 DashScope/OpenAI/Anthropic/Ollama）
