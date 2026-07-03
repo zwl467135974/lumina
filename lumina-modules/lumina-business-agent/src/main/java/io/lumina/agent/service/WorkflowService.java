@@ -2,6 +2,7 @@ package io.lumina.agent.service;
 
 import io.lumina.agent.api.dto.ExecuteWorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowDTO;
+import io.lumina.agent.api.dto.WorkflowTemplateVO;
 import io.lumina.agent.infrastructure.entity.WorkflowDefinitionDO;
 import io.lumina.agent.infrastructure.entity.WorkflowExecutionLogDO;
 import io.lumina.agent.infrastructure.entity.WorkflowInstanceDO;
@@ -42,4 +43,7 @@ public interface WorkflowService {
 
     /** 查询实例执行日志 */
     List<WorkflowExecutionLogDO> getInstanceLogs(Long instanceId);
+
+    /** 获取内置工作流模板列表 */
+    List<WorkflowTemplateVO> getTemplates();
 }

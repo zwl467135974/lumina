@@ -6,11 +6,13 @@ import io.lumina.agent.orchestration.model.WorkflowNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 并行节点执行器
  *
- * <p>并行节点的执行由 {@link WorkflowEngine} 内部处理（fan-out/fan-in 调度），
- * 此执行器仅做前置校验和日志。
+ * <p>返回 {@link ParallelSignal}，由 {@link DefaultWorkflowEngine} 检测并执行 fan-out/fan-in。
  *
  * @author Lumina Team
  * @since 2.0.0
@@ -27,8 +29,30 @@ public class ParallelNodeExecutor implements NodeExecutor {
     @Override
     public Object execute(WorkflowNode node, WorkflowContext ctx) {
         ParallelNode parallelNode = (ParallelNode) node;
+
+        List<ParallelBranchInfo> branches = new ArrayList<>();
+        for (ParallelNode.ParallelBranch pb : parallelNode.getBranches()) {
+            branches.add(new ParallelBranchInfo(pb.getName(), pb.getStartNode()));
+        }
+
         log.info("并行节点: id={}, branches={}, waitAll={}",
-                node.getId(), parallelNode.getBranches().size(), parallelNode.isWaitAll());
-        return null;
+                node.getId(), branches.size(), parallelNode.isWaitAll());
+
+        return new ParallelSignal(branches, parallelNode.isWaitAll());
+    }
+
+    /**
+     * 并行执行信号（引擎接收后 fan-out 到各分支）
+     *
+     * @param branches 分支信息列表
+     * @param waitAll  true=等待全部完成，false=任一完成即继续
+     */
+    public record ParallelSignal(List<ParallelBranchInfo> branches, boolean waitAll) {
+    }
+
+    /**
+     * 分支信息
+     */
+    public record ParallelBranchInfo(String name, String startNode) {
     }
 }

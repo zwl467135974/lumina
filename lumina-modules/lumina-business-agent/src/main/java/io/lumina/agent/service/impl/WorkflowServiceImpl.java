@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lumina.agent.api.dto.ExecuteWorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowDTO;
+import io.lumina.agent.api.dto.WorkflowTemplateVO;
 import io.lumina.agent.infrastructure.entity.WorkflowDefinitionDO;
 import io.lumina.agent.infrastructure.entity.WorkflowExecutionLogDO;
 import io.lumina.agent.infrastructure.entity.WorkflowInstanceDO;
@@ -228,6 +229,36 @@ public class WorkflowServiceImpl implements WorkflowService {
         wrapper.eq(WorkflowExecutionLogDO::getInstanceId, instanceId);
         wrapper.orderByAsc(WorkflowExecutionLogDO::getCreateTime);
         return logMapper.selectList(wrapper);
+    }
+
+    @Override
+    public List<WorkflowTemplateVO> getTemplates() {
+        String[] templateNames = {
+                "supervisor-worker", "pipeline", "router", "human-in-the-loop", "debate"
+        };
+
+        List<WorkflowTemplateVO> templates = new java.util.ArrayList<>();
+        for (String name : templateNames) {
+            try {
+                String path = "workflow-templates/" + name + ".yaml";
+                org.springframework.core.io.ClassPathResource resource =
+                        new org.springframework.core.io.ClassPathResource(path);
+                if (resource.exists()) {
+                    try (var is = resource.getInputStream()) {
+                        String yaml = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                        io.lumina.agent.orchestration.model.WorkflowDefinition def = workflowLoader.load(yaml);
+                        WorkflowTemplateVO vo = new WorkflowTemplateVO();
+                        vo.setName(def.getName());
+                        vo.setDescription(def.getDescription());
+                        vo.setDefinitionYaml(yaml);
+                        templates.add(vo);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("加载模板失败: {}", name, e);
+            }
+        }
+        return templates;
     }
 
     /**

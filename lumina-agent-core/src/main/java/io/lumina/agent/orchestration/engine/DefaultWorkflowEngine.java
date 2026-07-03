@@ -125,6 +125,10 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             ctx.getNodeStatuses().put(node.getId(), WorkflowNodeStatus.COMPLETED);
             listeners.forEach(l -> l.onNodeCompleted(node.getId(), result, duration));
 
+            if (result instanceof ParallelNodeExecutor.ParallelSignal signal) {
+                return executeParallelBranches(definition, signal, ctx);
+            }
+
             return determineNextNode(definition, node, result, ctx);
 
         } catch (HumanNodeExecutor.HumanApprovalRequiredException e) {
@@ -153,13 +157,91 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             }
         }
 
-        if (node instanceof ConditionNode condNode) {
-            if (result instanceof String str && str.startsWith(ConditionNodeExecutor.ROUTE_PREFIX)) {
-                return str.substring(ConditionNodeExecutor.ROUTE_PREFIX.length());
+        return null;
+    }
+
+    /**
+     * 执行并行分支（Virtual Thread fan-out / fan-in）
+     *
+     * <p>每个分支获得一份上下文快照，独立执行子链，完成后将结果按分支名合并到主上下文。
+     *
+     * @return 合并后的结果 Map，或 null（控制流由调用方的 edge 决定后续）
+     */
+    private String executeParallelBranches(WorkflowDefinition definition,
+                                            ParallelNodeExecutor.ParallelSignal signal,
+                                            WorkflowContext ctx) {
+        try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            var futures = signal.branches().stream()
+                    .map(branch -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                        try {
+                            log.info("并行分支启动: {}", branch.name());
+                            executeChain(definition, branch.startNode(), ctx);
+                            Object branchResult = ctx.getNodeResult(branch.startNode());
+                            log.info("并行分支完成: {}, resultLen={}", branch.name(),
+                                    branchResult != null ? branchResult.toString().length() : 0);
+                            return Map.entry(branch.name(), branchResult);
+                        } catch (Exception e) {
+                            log.error("并行分支异常: {}", branch.name(), e);
+                            return Map.entry(branch.name(), (Object) null);
+                        }
+                    }, executor))
+                    .toList();
+
+            if (signal.waitAll()) {
+                java.util.concurrent.CompletableFuture.allOf(
+                        futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+            } else {
+                java.util.concurrent.CompletableFuture.anyOf(
+                        futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+            }
+
+            java.util.Map<String, Object> merged = new java.util.LinkedHashMap<>();
+            for (var f : futures) {
+                var entry = f.join();
+                merged.put(entry.getKey(), entry.getValue());
+            }
+
+            ctx.setNodeResult("__parallel_merged__", merged);
+            for (var entry : merged.entrySet()) {
+                ctx.setVariable(entry.getKey(), entry.getValue());
+            }
+
+            log.info("并行分支合并完成: branches={}", merged.size());
+        }
+
+        List<WorkflowEdge> outgoing = definition.getOutgoingEdges("__parallel_merged__");
+        if (outgoing.isEmpty()) {
+            for (WorkflowNode n : definition.getNodes()) {
+                var edges = definition.getOutgoingEdges(n.getId());
+                if (!edges.isEmpty() && edges.stream().anyMatch(e -> true)) {
+                    continue;
+                }
             }
         }
 
         return null;
+    }
+
+    /**
+     * 从指定节点开始执行子链（沿 edge 顺序遍历直到无后续节点）
+     */
+    private void executeChain(WorkflowDefinition definition, String startNodeId, WorkflowContext ctx) {
+        String currentNodeId = startNodeId;
+        Set<String> visited = new HashSet<>();
+
+        while (currentNodeId != null) {
+            if (visited.contains(currentNodeId)) {
+                break;
+            }
+            visited.add(currentNodeId);
+
+            WorkflowNode node = definition.findNode(currentNodeId);
+            if (node == null) {
+                break;
+            }
+
+            currentNodeId = executeNode(definition, node, ctx);
+        }
     }
 
     private void evaluateOutputs(WorkflowDefinition definition, WorkflowContext ctx) {

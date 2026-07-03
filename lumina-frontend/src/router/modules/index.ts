@@ -176,3 +176,39 @@ export const monitorRoutes: AppRouteRecordRaw[] = [
     ]
   }
 ]
+
+// 工作流路由
+export const workflowRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/workflow',
+    name: 'Workflow',
+    redirect: '/workflow/list',
+    meta: {
+      title: '工作流',
+      icon: 'Connection',
+      requiresAuth: true
+    },
+    children: [
+      {
+        path: 'list',
+        name: 'WorkflowList',
+        component: () => import('@/views/workflow/index.vue'),
+        meta: {
+          title: '工作流管理',
+          requiresAuth: true,
+          keepAlive: true
+        }
+      },
+      {
+        path: 'detail/:id',
+        name: 'WorkflowDetail',
+        component: () => import('@/views/workflow/detail.vue'),
+        meta: {
+          title: '执行详情',
+          requiresAuth: true,
+          hidden: true
+        }
+      }
+    ]
+  }
+]

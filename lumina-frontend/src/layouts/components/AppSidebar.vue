@@ -52,9 +52,21 @@ const userStore = useUserStore()
 const activeMenu = computed(() => route.path)
 
 /**
- * 侧边栏菜单列表（来自后端动态下发）
+ * 侧边栏菜单列表
+ *
+ * 后端动态下发菜单优先；后端未下发的路由（如工作流）由前端静态补充。
  */
-const menuList = computed<MenuVO[]>(() => userStore.menus)
+const menuList = computed<MenuVO[]>(() => {
+  const backendMenus = userStore.menus
+  const hasWorkflow = backendMenus.some(m => m.path?.includes('workflow'))
+  if (!hasWorkflow) {
+    return [...backendMenus, {
+      name: 'workflow', path: '/workflow/list',
+      title: '工作流', icon: 'Connection'
+    } as MenuVO]
+  }
+  return backendMenus
+})
 
 /**
  * 页面刷新时如果 store 有 token 但菜单为空（持久化恢复后），

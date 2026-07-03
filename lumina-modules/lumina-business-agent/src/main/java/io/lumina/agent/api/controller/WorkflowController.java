@@ -2,6 +2,7 @@ package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.ExecuteWorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowDTO;
+import io.lumina.agent.api.dto.WorkflowTemplateVO;
 import io.lumina.agent.infrastructure.entity.WorkflowDefinitionDO;
 import io.lumina.agent.infrastructure.entity.WorkflowExecutionLogDO;
 import io.lumina.agent.infrastructure.entity.WorkflowInstanceDO;
@@ -82,5 +83,13 @@ public class WorkflowController {
     @GetMapping("/instances/{instanceId}/logs")
     public R<List<WorkflowExecutionLogDO>> getInstanceLogs(@PathVariable Long instanceId) {
         return R.success(workflowService.getInstanceLogs(instanceId));
+    }
+
+    /**
+     * 获取内置工作流模板列表
+     */
+    @GetMapping("/templates")
+    public R<List<WorkflowTemplateVO>> getTemplates() {
+        return R.success(workflowService.getTemplates());
     }
 }
