@@ -84,4 +84,4 @@ docker-compose up -d
 - [Architecture](ARCHITECTURE.md) — Module design and dependency flow
 - [Agent Development](AGENT_DEVELOPMENT.md) — How to build custom agents
 - [Workflow Design](WORKFLOW_DESIGN.md) — Multi-agent orchestration
-- [Deployment](DEPLOYMENT.md) — Docker Compose + K8s Helm
+- [Deployment (Chinese)](../zh/deployment/部署指南.md) — Docker Compose + K8s Helm

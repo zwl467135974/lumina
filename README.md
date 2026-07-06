@@ -422,27 +422,34 @@ public String executeAgent(String task) {
 ### 快速开始
 
 - [项目 README](README.md) - 项目介绍和快速开始
-- [部署指南](docs/DEPLOYMENT.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
-- [配置说明](docs/CONFIGURATION.md) - JWT、白名单、租户隔离等完整配置
+- [快速开始](docs/zh/快速开始.md) - 5 分钟跑起来
+- [部署指南](docs/zh/deployment/部署指南.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
+- [配置说明](docs/zh/deployment/配置说明.md) - JWT、白名单、租户隔离等完整配置
 - [测试指南](TESTING.md) - 测试验证步骤和场景
 
 ### 开发指南
 
-- [Lumina开发规范与编码标准](docs/guides/Lumina开发规范与编码标准.md) - 开发规范
-- [业务模块开发指南](docs/guides/业务模块开发指南.md) - 业务模块开发
-- [前端开发指南](docs/guides/前端开发指南.md) - 前端开发指南
-- [工具开发指南](docs/guides/工具开发指南.md) - Agent 工具开发
-- [配置管理规范](docs/guides/配置管理规范.md) - 配置管理规范
-- [数据库配置指南](docs/guides/数据库配置指南.md) - 数据库配置
+- [开发规范与编码标准](docs/zh/guides/Lumina开发规范与编码标准.md) - 开发规范
+- [Agent 开发指南](docs/zh/guides/Agent开发指南.md) - Agent 开发、执行、安全管线
+- [工作流设计指南](docs/zh/guides/工作流设计指南.md) - 多 Agent 编排
+- [业务模块开发指南](docs/zh/guides/业务模块开发指南.md) - 业务模块开发
+- [前端开发指南](docs/zh/guides/前端开发指南.md) - 前端开发指南
+- [工具开发指南](docs/zh/guides/工具开发指南.md) - Agent 工具开发
+- [配置管理规范](docs/zh/guides/配置管理规范.md) - 配置管理规范
+- [数据库配置指南](docs/zh/guides/数据库配置指南.md) - 数据库配置
 
 ### 架构设计
 
-- [Agent执行引擎设计](docs/architecture/Agent执行引擎设计.md) - Agent 核心设计
-- [项目结构设计](docs/architecture/项目结构设计.md) - 项目结构说明
-- [Lumina模块设计](docs/architecture/Lumina模块设计.md) - 模块设计文档
-- [Lumina技术选型方案](docs/architecture/Lumina技术选型方案.md) - 技术选型说明
-- [前端架构设计](docs/architecture/前端架构设计.md) - 前端架构设计
-- [架构模式分析与建议](docs/architecture/架构模式分析与建议.md) - 架构模式分析
+- [Agent 执行引擎设计](docs/zh/architecture/Agent执行引擎设计.md) - Agent 核心设计
+- [项目结构设计](docs/zh/architecture/项目结构设计.md) - 项目结构说明
+- [Lumina 模块设计](docs/zh/architecture/Lumina模块设计.md) - 模块设计文档
+- [Lumina 技术选型方案](docs/zh/architecture/Lumina技术选型方案.md) - 技术选型说明
+- [前端架构设计](docs/zh/architecture/前端架构设计.md) - 前端架构设计
+- [架构模式分析与建议](docs/zh/architecture/架构模式分析与建议.md) - 架构模式分析
+
+### English Docs
+
+- [Quick Start](docs/en/QUICK_START.md) | [Architecture](docs/en/ARCHITECTURE.md) | [Agent Dev](docs/en/AGENT_DEVELOPMENT.md) | [Workflow](docs/en/WORKFLOW_DESIGN.md)
 
 ---
 
@@ -570,9 +577,9 @@ npm install
 - ✅ 前端：动态菜单 + Agent 对话（SSE 流式）+ 暗色主题 + i18n 国际化
 
 相关文档：
-- [v2.0.0 路线图](docs/ROADMAP_v2.0.md) - 完整需求文档与完成状态
-- [Prompt 运行时规则](docs/PROMPT_RUNTIME.md) - Prompt 生效规则说明
-- [部署指南](docs/DEPLOYMENT.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
+- [v2.0.0 路线图](docs/zh/roadmap/v2.0路线图.md) - 完整需求文档与完成状态
+- [Prompt 运行时规则](docs/zh/design/Prompt运行时规则.md) - Prompt 生效规则说明
+- [部署指南](docs/zh/deployment/部署指南.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
 
 ---
 
