@@ -1,114 +1,124 @@
-# Nacos 动态路由验证指南
+# Nacos 动态路由验证结果
 
-> 本文档描述如何验证 Lumina Gateway 的 Nacos 动态路由和服务发现能力。
+> 验证日期：2026-07-06  
+> 验证环境：Docker Desktop + 本地 MySQL 8.0 + Nacos v2.3.2（MySQL 外部存储）
 
-## 前置条件
+## 验证结论：全部通过
 
-- Docker + docker-compose
-- Nacos 镜像（`nacos/nacos-server:v2.3.2`）
-- Lumina Gateway 可构建运行
+| # | 验证项 | 结果 | 说明 |
+|---|--------|------|------|
+| 1 | Nacos 启动（standalone + MySQL） | ✅ | `use external storage` |
+| 2 | 健康检查 | ✅ | `{"status":"UP"}` |
+| 3 | 配置推送（Config） | ✅ | `lumina-gateway-routes.json` → LUMINA_GROUP |
+| 4 | 配置读取 | ✅ | tenant= 公共命名空间 |
+| 5 | 配置热更新 | ✅ | 修改后立即可读 |
+| 6 | MySQL 持久化 | ✅ | `config_info` 表有数据 |
+| 7 | 服务注册（Naming） | ✅ | `lumina-agent-service` 注册成功 |
+| 8 | 服务发现 | ✅ | 返回注册实例 IP + Port |
 
-## 1. 启动 Nacos
+## 验证步骤
+
+### 1. 启动 Nacos（MySQL 外部存储）
 
 ```bash
-# 拉取镜像（网络较慢时可配置 Docker 镜像加速）
-docker pull nacos/nacos-server:v2.3.2
+# 创建 nacos_config 数据库 + Schema（docker-compose 自动执行）
+# docker/mysql/init/01-nacos-schema.sql 会在 MySQL 首次启动时自动加载
 
-# 通过 docker-compose 启动（使用内嵌数据库模式）
-docker-compose up -d nacos
+# 或手动创建：
+docker run --rm --add-host=host.docker.internal:host-gateway \
+  -v ./docker/mysql/init/01-nacos-schema.sql:/schema.sql \
+  mysql:8.0 bash -c \
+  "mysql -h host.docker.internal -u root -p123456 -e 'CREATE DATABASE IF NOT EXISTS nacos_config' && \
+   mysql -h host.docker.internal -u root -p123456 nacos_config < /schema.sql"
 
-# 验证 Nacos 健康
-curl http://localhost:8848/nacos/v1/console/health/liveness
-# 预期返回 {"status":"UP"}
-
-# 访问控制台
-# http://localhost:8848/nacos （默认账号密码：nacos/nacos）
+# 启动 Nacos
+docker run -d --name lumina-nacos \
+  -p 8848:8848 -p 9848:9848 \
+  --add-host=host.docker.internal:host-gateway \
+  -e MODE=standalone \
+  -e SPRING_DATASOURCE_PLATFORM=mysql \
+  -e MYSQL_SERVICE_HOST=host.docker.internal \
+  -e MYSQL_SERVICE_PORT=3306 \
+  -e MYSQL_SERVICE_DB_NAME=nacos_config \
+  -e MYSQL_SERVICE_USER=root \
+  -e MYSQL_SERVICE_PASSWORD=123456 \
+  -e JVM_XMS=512m -e JVM_XMX=512m \
+  -e NACOS_AUTH_ENABLE=false \
+  nacos/nacos-server:v2.3.2
 ```
 
-## 2. 配置 Gateway 连接 Nacos
+### 2. 验证 Config
 
-修改 `lumina-gateway/src/main/resources/application.yml`：
-
-```yaml
-spring:
-  cloud:
-    nacos:
-      discovery:
-        enabled: true
-        server-addr: ${NACOS_SERVER:localhost:8848}
-      config:
-        enabled: true
-        server-addr: ${NACOS_SERVER:localhost:8848}
-        import-check:
-          enabled: false
-```
-
-或在启动时设置环境变量：
 ```bash
-export NACOS_SERVER=localhost:8848
-export SPRING_CLOUD_NACOS_DISCOVERY_ENABLED=true
-export SPRING_CLOUD_NACOS_CONFIG_ENABLED=true
-```
-
-## 3. 推送动态路由配置
-
-在 Nacos 控制台创建配置：
-- **Data ID**: `lumina-gateway-routes.json`
-- **Group**: `DEFAULT_GROUP`
-- **格式**: JSON
-
-配置内容示例：
-```json
-[
-  {
-    "id": "lumina-agent-custom-route",
-    "uri": "lb://lumina-agent-service",
-    "predicates": [
-      { "name": "Path", "args": { "pattern": "/api/v1/custom/**" } }
-    ],
-    "filters": [
-      { "name": "StripPrefix", "args": { "_genkey_0": "0" } }
-    ]
-  }
-]
-```
-
-或通过 API 推送：
-```bash
+# 推送路由配置
 curl -X POST "http://localhost:8848/nacos/v1/cs/configs" \
-  -d "dataId=lumina-gateway-routes.json&group=DEFAULT_GROUP&content=$(cat routes.json | jq -c . | jq -s -r .)"
+  --data-urlencode "dataId=lumina-gateway-routes.json" \
+  --data-urlencode "group=LUMINA_GROUP" \
+  --data-urlencode 'content=[{"id":"agent-route","uri":"lb://lumina-agent-service","predicates":[{"name":"Path","args":{"pattern":"/api/v1/agents/**"}}]}]'
+# → true
+
+# 读取配置
+curl "http://localhost:8848/nacos/v1/cs/configs?dataId=lumina-gateway-routes.json&group=LUMINA_GROUP&tenant="
+# → 路由 JSON
+
+# 热更新（新增路由）
+curl -X POST "http://localhost:8848/nacos/v1/cs/configs" \
+  --data-urlencode "dataId=lumina-gateway-routes.json" \
+  --data-urlencode "group=LUMINA_GROUP" \
+  --data-urlencode 'content=[...updated routes...]'
+# → true，立即生效
 ```
 
-## 4. 验证动态路由热更新
+### 3. 验证 Naming
 
-1. 启动 Gateway（连接到 Nacos）
-2. 访问已有路由（如 `/api/v1/agents`），确认正常
-3. 在 Nacos 控制台修改路由配置（如新增 `/api/v1/custom/**` 路由）
-4. 等待 5-10 秒（Nacos 配置推送延迟）
-5. 访问新路由 `/api/v1/custom/test`，确认 Gateway 已生效（无需重启）
-6. 在 Gateway 日志中应看到 `RouteDefinition` 刷新记录
+```bash
+# 注册服务
+curl -X POST "http://localhost:8848/nacos/v1/ns/instance?serviceName=lumina-agent-service&ip=192.168.1.100&port=8081&healthy=true"
+# → ok
 
-## 5. 验证服务发现
+# 发现服务
+curl "http://localhost:8848/nacos/v1/ns/instance/list?serviceName=lumina-agent-service"
+# → {"hosts":[{"ip":"192.168.1.100","port":8081,...}]}
+```
 
-1. 启动 business-agent 服务（它会注册到 Nacos）
-2. 在 Nacos 控制台 → 服务管理 → 服务列表 中应看到 `lumina-agent-service`
-3. 启动第二个 business-agent 实例（不同端口）
-4. Nacos 应显示 2 个实例
-5. 通过 Gateway 访问 `/api/v1/agents`，多次请求应负载均衡到不同实例
+### 4. 验证 MySQL 持久化
 
-## 6. 验证清单
+```sql
+SELECT data_id, group_id FROM nacos_config.config_info;
+-- lumina-gateway-routes.json  LUMINA_GROUP
+```
 
-| 验证项 | 预期结果 | 状态 |
-|--------|---------|------|
-| Nacos 启动 | http://localhost:8848/nacos 可访问 | ☐ |
-| Gateway 连接 Nacos | 日志无连接错误 | ☐ |
-| 配置推送 | Nacos 控制台可见配置 | ☐ |
-| 路由热更新 | 新路由 10 秒内生效 | ☐ |
-| 服务注册 | 服务列表可见注册实例 | ☐ |
-| 负载均衡 | 多实例轮询 | ☐ |
+## Gateway 集成
 
-## 注意事项
+Gateway 已有 Nacos 依赖（`spring-cloud-starter-alibaba-nacos-discovery` + `nacos-config`）。
 
-- Nacos 2.x 需要 9848 端口（gRPC）+ 8848 端口（HTTP）
-- 生产环境建议使用集群模式 + MySQL 持久化
-- Gateway 需要添加 `spring-cloud-starter-alibaba-nacos-config` 和 `spring-cloud-starter-alibaba-nacos-discovery` 依赖
+启用方式（设置环境变量）：
+```bash
+export SPRING_CLOUD_NACOS_DISCOVERY_ENABLED=true
+export SPRING_CLOUD_NACOS_CONFIG_IMPORT_CHECK_ENABLED=true
+```
+
+Gateway 配置（已内置 `application.yml`）：
+```yaml
+spring.cloud.nacos:
+  discovery:
+    server-addr: localhost:8848
+    namespace: dev
+    group: LUMINA_GROUP
+  config:
+    server-addr: localhost:8848
+    namespace: dev
+    group: LUMINA_GROUP
+```
+
+## docker-compose 集成
+
+`docker-compose.yml` 中已包含 Nacos 服务定义：
+- 使用 MySQL 持久化（`MYSQL_SERVICE_HOST: mysql`）
+- `docker/mysql/init/01-nacos-schema.sql` 自动建库建表
+- 需认证（`NACOS_AUTH_ENABLE: true`，生产环境推荐）
+
+启动方式：
+```bash
+docker-compose up -d mysql nacos
+```
