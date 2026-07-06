@@ -833,17 +833,21 @@ externalRedis: {}            # 外部 Redis 连接配置
 
 ## v2.0.0 发布检查清单
 
-- [x] P0：测试覆盖率补全（后端 300+，前端 80），无技术债残留
-- [x] P1：工作流引擎可用，6 种节点 + 5 种协作模式 YAML 模板
+- [x] P0：测试覆盖率补全（后端 300+，前端 80），JaCoCo CI 门禁
+- [x] P1：工作流引擎可用，6 种节点 + 5 种协作模式 YAML 模板 + 集成测试
+- [x] P1：可视化工作流设计器（Vue Flow 画布拖拽 + YAML 双向同步）
+- [x] P1：多 Agent 对话可视化（对话气泡 + 流向图）
+- [x] P1：工作流 Micrometer 指标（execution/node duration Timer）
+- [x] P1：Human-in-the-Loop 恢复机制（resume API + 端点）
 - [x] Prompt：版本管理、运行时接入、前端生效状态展示
-- [x] P2-1：多模态流式、Agent 调试面板基础能力
-- [ ] P2-2：RAG 来源可视化（等待检索来源回调/暴露）
-- [x] P3-1：异步任务队列（线程池实现，RocketMQ 待后续升级）
-- [x] P3-2：成本管理（价格表 + 计费 + 汇总仪表盘，预算管控待后续）
-- [x] P3-3：安全防护（Prompt 注入检测 + 输出 PII 脱敏）
-- [x] P4：Helm Chart 全量模板
-- [x] P5：英文 README、Apache 2.0 License + CHANGELOG.md
-- [x] 后端全量测试通过（300+ 单元测试）
+- [x] P2-1：多模态流式、Agent 调试面板（Token 估算 + 执行阶段 + 模型信息）
+- [x] P2-2：RAG 来源可视化（RAG_SOURCES chunk + 前端引用面板）
+- [x] P3-1：异步任务队列（RocketMQ + 线程池双模式 + SSE 进度 + 列表 + 取消）
+- [x] P3-2：成本管理（价格表 + 计费 + 汇总仪表盘 + 趋势图表 + 预算管控 + 告警）
+- [x] P3-3：安全防护（Prompt 注入 + PII 脱敏 + 频率限制 + 内容审核）
+- [x] P4：Helm Chart 全量模板（lint + template + dry-run 验证通过）
+- [x] P5：英文 README + 核心文档（ARCHITECTURE / QUICK_START / AGENT_DEVELOPMENT / WORKFLOW_DESIGN）
+- [x] 后端全量测试通过（300+ 单元测试 + JaCoCo 门禁）
 - [x] 前端全量测试通过（80 测试）
 - [x] CHANGELOG.md 更新
 - [x] README.md 更新版本和特性

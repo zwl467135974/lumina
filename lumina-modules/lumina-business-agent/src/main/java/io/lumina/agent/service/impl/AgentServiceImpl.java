@@ -70,6 +70,9 @@ public class AgentServiceImpl implements AgentService {
     @Autowired
     private io.lumina.agent.service.BudgetService budgetService;
 
+    @Autowired(required = false)
+    private io.lumina.agent.security.ContentModerationService contentModerationService;
+
     /**
      * Domain -> DO 转换
      */
@@ -97,7 +100,7 @@ public class AgentServiceImpl implements AgentService {
         agent.validateName();
         agent.validateType();
 
-        // 转换为 DO 并持久化
+        // 转换�?DO 并持久化
         AgentDO agentDO = toDO(agent);
         agentMapper.insert(agentDO);
 
@@ -133,7 +136,7 @@ public class AgentServiceImpl implements AgentService {
         existingAgent.validateName();
         existingAgent.validateType();
 
-        // 持久化到数据库
+        // 持久化到数据�?
         AgentDO agentDO = toDO(existingAgent);
         agentMapper.updateById(agentDO);
 
@@ -161,7 +164,7 @@ public class AgentServiceImpl implements AgentService {
         AgentDO agentDO = agentMapper.selectById(agentId);
 
         if (agentDO == null) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存在: id=" + agentId);
+            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存�? id=" + agentId);
         }
 
         return toDomain(agentDO);
@@ -185,7 +188,7 @@ public class AgentServiceImpl implements AgentService {
         Page<AgentDO> page = new Page<>(pageNum, pageSize);
         Page<AgentDO> doPage = agentMapper.selectPage(page, queryWrapper);
 
-        // 转换为 Domain
+        // 转换�?Domain
         List<Agent> agentList = doPage.getRecords().stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
@@ -211,7 +214,7 @@ public class AgentServiceImpl implements AgentService {
         // 查询 Agent
         Agent agent = getAgentById(agentId);
 
-        // 检查状态
+        // 检查状�?
         if (!agent.isActive()) {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
@@ -219,16 +222,18 @@ public class AgentServiceImpl implements AgentService {
         // 安全检测：Prompt 注入
         promptInjectionFilter.check(task);
 
+        moderateContent(task);
+
         // 构建配置
         AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
-        // 会话上下文校验 + 保存用户消息到数据库
+        // 会话上下文校�?+ 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
         if (sessionId != null) {
             conversationService.saveMessage(sessionId, "user", task, 0, null);
         }
 
-        // 执行 Agent（引擎加载历史记忆 + 保存到 Redis）
+        // 执行 Agent（引擎加载历史记�?+ 保存�?Redis�?
         ExecuteResult result = agentExecutionEngine.executeSync(
                 agent.getAgentType().toLowerCase(),
                 task,
@@ -256,7 +261,7 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
-        log.info("多模态执行 Agent: id={}, task={}, fileCount={}, conversation={}",
+        log.info("多模态执�?Agent: id={}, task={}, fileCount={}, conversation={}",
                 agentId, task, fileUuids != null ? fileUuids.size() : 0, conversationUuid);
 
         agentRateLimiter.checkRateLimit(agentId);
@@ -269,17 +274,19 @@ public class AgentServiceImpl implements AgentService {
 
         promptInjectionFilter.check(task);
 
+        moderateContent(task);
+
         AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
         String sessionId = resolveConversation(conversationUuid, agentId);
 
-        // 从文件存储加载图片，转换为 MultimodalImage
+        // 从文件存储加载图片，转换�?MultimodalImage
         List<MultimodalImage> images = new ArrayList<>();
         if (fileUuids != null) {
             for (String uuid : fileUuids) {
                 FileDO fileDO = fileService.getByUuid(uuid);
                 if (fileDO == null || fileDO.getStatus() != 1) {
-                    log.warn("文件不存在或已删除: {}", uuid);
+                    log.warn("文件不存在或已删�? {}", uuid);
                     continue;
                 }
                 byte[] bytes;
@@ -293,7 +300,7 @@ public class AgentServiceImpl implements AgentService {
             }
         }
 
-        // 序列化 file_ids JSON
+        // 序列�?file_ids JSON
         String fileIdsJson = null;
         if (fileUuids != null && !fileUuids.isEmpty()) {
             try {
@@ -327,7 +334,7 @@ public class AgentServiceImpl implements AgentService {
             conversationService.incrementMessageCount(sessionId, 2);
         }
 
-        log.info("多模态 Agent 执行成功: id={}", agentId);
+        log.info("多模�?Agent 执行成功: id={}", agentId);
         return sanitizedMultimodalResult;
     }
 
@@ -344,10 +351,12 @@ public class AgentServiceImpl implements AgentService {
 
         promptInjectionFilter.check(task);
 
+        moderateContent(task);
+
         // 查询 Agent
         Agent agent = getAgentById(agentId);
 
-        // 检查状态
+        // 检查状�?
         if (!agent.isActive()) {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
@@ -355,7 +364,7 @@ public class AgentServiceImpl implements AgentService {
         // 构建配置
         AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
-        // 会话上下文校验 + 保存用户消息到数据库
+        // 会话上下文校�?+ 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
         if (sessionId != null) {
             conversationService.saveMessage(sessionId, "user", task, 0, null);
@@ -392,6 +401,8 @@ public class AgentServiceImpl implements AgentService {
 
         promptInjectionFilter.check(task);
 
+        moderateContent(task);
+
         AgentDO agent = agentMapper.selectById(agentId);
         if (agent == null) {
             throw new BusinessException(ErrorCode.AGENT_NOT_FOUND);
@@ -409,7 +420,7 @@ public class AgentServiceImpl implements AgentService {
             for (String uuid : fileUuids) {
                 FileDO fileDO = fileService.getByUuid(uuid);
                 if (fileDO == null || fileDO.getStatus() != 1) {
-                    log.warn("文件不存在或已删除: {}", uuid);
+                    log.warn("文件不存在或已删�? {}", uuid);
                     continue;
                 }
                 byte[] bytes;
@@ -462,12 +473,21 @@ public class AgentServiceImpl implements AgentService {
     }
 
     /**
-     * 解析会话：校验 UUID 归属 Agent，返回会话标识（用作记忆 Key）
+     * 解析会话：校�?UUID 归属 Agent，返回会话标识（用作记忆 Key�?
      *
-     * @param conversationUuid 会话 UUID（null 则返回 null）
+     * @param conversationUuid 会话 UUID（null 则返�?null�?
      * @param agentId          当前 Agent ID
      * @return 会话 UUID，或 null（无会话上下文）
      */
+    private void moderateContent(String task) {
+        if (contentModerationService != null) {
+            io.lumina.agent.security.ModerationResult result = contentModerationService.moderate(task);
+            if (!result.isAllowed()) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, result.getReason());
+            }
+        }
+    }
+
     private String resolveConversation(String conversationUuid, Long agentId) {
         if (conversationUuid == null || conversationUuid.isEmpty()) {
             return null;
@@ -488,7 +508,7 @@ public class AgentServiceImpl implements AgentService {
             PromptDO activePrompt = promptService.getActive(agentType.toLowerCase());
             if (activePrompt != null && StringUtils.hasText(activePrompt.getContent())) {
                 config.setPromptTemplate(activePrompt.getContent());
-                log.info("使用 DB 激活 Prompt: name={}, version={}", activePrompt.getName(), activePrompt.getVersion());
+                log.info("使用 DB 激�?Prompt: name={}, version={}", activePrompt.getName(), activePrompt.getVersion());
             }
         }
 

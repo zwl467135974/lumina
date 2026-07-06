@@ -12,6 +12,8 @@ import io.lumina.agent.service.PromptService;
 import io.lumina.agent.security.PromptInjectionFilter;
 import io.lumina.agent.security.OutputSanitizer;
 import io.lumina.agent.security.AgentRateLimiter;
+import io.lumina.agent.security.ContentModerationService;
+import io.lumina.agent.security.ModerationResult;
 import io.lumina.agent.service.BudgetService;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -75,9 +77,14 @@ class AgentServiceImplTest {
     @Mock
     private BudgetService budgetService;
 
+    @Mock
+    private ContentModerationService contentModerationService;
+
     @BeforeEach
     void setUp() {
         org.mockito.Mockito.lenient().when(outputSanitizer.sanitize(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
+        org.mockito.Mockito.lenient().when(contentModerationService.moderate(any(String.class)))
+                .thenReturn(ModerationResult.allowed());
     }
 
     @Test

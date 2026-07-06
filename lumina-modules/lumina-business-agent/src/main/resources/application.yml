@@ -84,6 +84,9 @@ lumina:
       secret-key: ${MINIO_SECRET_KEY:minioadmin}
       bucket: ${MINIO_BUCKET:lumina-files}
   agent:
+    # 内容审核开关
+    content-moderation:
+      enabled: ${CONTENT_MODERATION_ENABLED:true}
     # LLM 配置
     llm:
       # 模型类型（dashscope/openai/anthropic/ollama，openai 兼容 DeepSeek/GLM/Moonshot 等）
