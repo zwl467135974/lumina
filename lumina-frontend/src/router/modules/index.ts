@@ -226,3 +226,17 @@ export const promptRoutes: AppRouteRecordRaw[] = [
     }
   }
 ]
+
+// 成本仪表盘路由
+export const costRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/cost',
+    name: 'Cost',
+    component: () => import('@/views/cost/index.vue'),
+    meta: {
+      title: '成本仪表盘',
+      icon: 'Money',
+      requiresAuth: true
+    }
+  }
+]

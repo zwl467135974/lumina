@@ -9,6 +9,8 @@ import io.lumina.agent.model.ExecuteResult;
 import io.lumina.framework.storage.FileService;
 import io.lumina.agent.service.ConversationService;
 import io.lumina.agent.service.PromptService;
+import io.lumina.agent.security.PromptInjectionFilter;
+import io.lumina.agent.security.OutputSanitizer;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +27,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.BeforeEach;
 
 /**
  * AgentServiceImpl 单元测试
@@ -54,6 +58,17 @@ class AgentServiceImplTest {
 
     @Mock
     private PromptService promptService;
+
+    @Mock
+    private PromptInjectionFilter promptInjectionFilter;
+
+    @Mock
+    private OutputSanitizer outputSanitizer;
+
+    @BeforeEach
+    void setUp() {
+        org.mockito.Mockito.lenient().when(outputSanitizer.sanitize(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     @Test
     void getAgentByIdNotFoundThrows() {

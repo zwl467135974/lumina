@@ -65,6 +65,9 @@ const menuList = computed<MenuVO[]>(() => {
   if (!backendMenus.some(m => m.path?.includes('prompt'))) {
     extras.push({ name: 'prompt', path: '/prompt', title: 'Prompt 管理', icon: 'EditPen' } as MenuVO)
   }
+  if (!backendMenus.some(m => m.path?.includes('cost'))) {
+    extras.push({ name: 'cost', path: '/cost', title: '成本仪表盘', icon: 'Money' } as MenuVO)
+  }
   return [...backendMenus, ...extras]
 })
 

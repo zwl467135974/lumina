@@ -58,6 +58,12 @@ public class AgentServiceImpl implements AgentService {
     @Autowired
     private PromptService promptService;
 
+    @Autowired
+    private io.lumina.agent.security.PromptInjectionFilter promptInjectionFilter;
+
+    @Autowired
+    private io.lumina.agent.security.OutputSanitizer outputSanitizer;
+
     /**
      * Domain -> DO 转换
      */
@@ -201,6 +207,9 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
 
+        // 安全检测：Prompt 注入
+        promptInjectionFilter.check(task);
+
         // 构建配置
         AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
@@ -222,15 +231,18 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
         }
 
+        // 输出脱敏
+        String sanitizedResult = outputSanitizer.sanitize(result.getResult());
+
         // 保存助手回复到数据库
         if (sessionId != null) {
             Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
-            conversationService.saveMessage(sessionId, "assistant", result.getResult(), tokenCount, result.getDuration());
+            conversationService.saveMessage(sessionId, "assistant", sanitizedResult, tokenCount, result.getDuration());
             conversationService.incrementMessageCount(sessionId, 2);
         }
 
         log.info("Agent 执行成功: id={}", agentId);
-        return result.getResult();
+        return sanitizedResult;
     }
 
     @Override
@@ -242,6 +254,8 @@ public class AgentServiceImpl implements AgentService {
         if (!agent.isActive()) {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
+
+        promptInjectionFilter.check(task);
 
         AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
 
@@ -293,14 +307,16 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
         }
 
+        String sanitizedMultimodalResult = outputSanitizer.sanitize(result.getResult());
+
         if (sessionId != null) {
             Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
-            conversationService.saveMessage(sessionId, "assistant", result.getResult(), tokenCount, result.getDuration());
+            conversationService.saveMessage(sessionId, "assistant", sanitizedMultimodalResult, tokenCount, result.getDuration());
             conversationService.incrementMessageCount(sessionId, 2);
         }
 
         log.info("多模态 Agent 执行成功: id={}", agentId);
-        return result.getResult();
+        return sanitizedMultimodalResult;
     }
 
     @Override
@@ -310,6 +326,8 @@ public class AgentServiceImpl implements AgentService {
         if (task == null || task.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
         }
+
+        promptInjectionFilter.check(task);
 
         // 查询 Agent
         Agent agent = getAgentById(agentId);
@@ -345,7 +363,8 @@ public class AgentServiceImpl implements AgentService {
         })
         .doOnComplete(() -> {
             if (sid != null && fullResponse.length() > 0) {
-                conversationService.saveMessage(sid, "assistant", fullResponse.toString(), 0, null);
+                String sanitized = outputSanitizer.sanitize(fullResponse.toString());
+                conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
                 conversationService.incrementMessageCount(sid, 2);
             }
         });
@@ -353,6 +372,8 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        promptInjectionFilter.check(task);
+
         AgentDO agent = agentMapper.selectById(agentId);
         if (agent == null) {
             throw new BusinessException(ErrorCode.AGENT_NOT_FOUND);
@@ -415,7 +436,8 @@ public class AgentServiceImpl implements AgentService {
         })
         .doOnComplete(() -> {
             if (sid != null && fullResponse.length() > 0) {
-                conversationService.saveMessage(sid, "assistant", fullResponse.toString(), 0, null);
+                String sanitized = outputSanitizer.sanitize(fullResponse.toString());
+                conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
                 conversationService.incrementMessageCount(sid, 2);
             }
         });
