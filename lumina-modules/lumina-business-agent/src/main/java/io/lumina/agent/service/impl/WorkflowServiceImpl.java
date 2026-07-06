@@ -284,6 +284,70 @@ public class WorkflowServiceImpl implements WorkflowService {
     /**
      * 从工作流定义中查找节点信息，填充 nodeType 和 agentId 到 SSE 事件中
      */
+    @Override
+    public WorkflowInstanceDO resumeInstance(Long instanceId, String decision) {
+        WorkflowInstanceDO instance = instanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "工作流实例不存在");
+        }
+        if (!"PAUSED".equals(instance.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "工作流实例不在暂停状态，无法恢复");
+        }
+
+        WorkflowDefinitionDO defDO = getById(instance.getDefinitionId());
+        WorkflowDefinition definition = workflowLoader.load(defDO.getDefinitionYaml());
+
+        WorkflowContext ctx = new WorkflowContext();
+        ctx.setWorkflowName(definition.getName());
+        ctx.setStatus(WorkflowStatus.RUNNING);
+        ctx.setCurrentNodeId(instance.getCurrentNodeId());
+
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> savedVars = objectMapper.readValue(
+                    instance.getOutput() != null ? instance.getOutput() : "{}",
+                    java.util.Map.class
+            );
+            ctx.getVariables().putAll(savedVars);
+        } catch (Exception e) {
+            log.warn("解析实例变量失败，使用空上下文: {}", e.getMessage());
+        }
+
+        instance.setStatus(WorkflowStatus.RUNNING.name());
+        instance.setUpdateTime(LocalDateTime.now());
+        instanceMapper.updateById(instance);
+
+        ExecutionLogCollector logCollector = new ExecutionLogCollector(instance.getId(), logMapper, objectMapper);
+
+        try {
+            workflowEngine.addListener(logCollector);
+            WorkflowContext resultCtx = workflowEngine.resume(definition, ctx, decision);
+
+            instance.setStatus(resultCtx.getStatus().name());
+            instance.setCurrentNodeId(resultCtx.getCurrentNodeId());
+
+            if (resultCtx.getStatus() == WorkflowStatus.COMPLETED) {
+                try {
+                    instance.setOutput(objectMapper.writeValueAsString(resultCtx.getVariables()));
+                } catch (Exception e) {
+                    instance.setOutput("{}");
+                }
+            } else if (resultCtx.getStatus() == WorkflowStatus.FAILED) {
+                instance.setErrorMessage(resultCtx.getErrorMessage());
+            }
+        } catch (Exception e) {
+            log.error("工作流恢复失败: instanceId={}", instanceId, e);
+            instance.setStatus(WorkflowStatus.FAILED.name());
+            instance.setErrorMessage(e.getMessage());
+        } finally {
+            instance.setUpdateTime(LocalDateTime.now());
+            instanceMapper.updateById(instance);
+            logCollector.flush();
+        }
+
+        return instance;
+    }
+
     private void enrichWithNodeInfo(java.util.Map<String, Object> event,
                                      WorkflowDefinition definition, String nodeId) {
         if (definition == null) return;

@@ -38,6 +38,9 @@ public interface WorkflowService {
     /** 执行工作流 */
     WorkflowInstanceDO execute(Long definitionId, ExecuteWorkflowDTO dto);
 
+    /** 恢复暂停的工作流实例（人工审批后调用） */
+    WorkflowInstanceDO resumeInstance(Long instanceId, String decision);
+
     /**
      * 流式执行工作流（SSE 推送节点执行进度）
      *

@@ -3,6 +3,7 @@ package io.lumina.agent.orchestration.engine;
 import io.lumina.agent.orchestration.expression.ExpressionEvaluator;
 import io.lumina.agent.orchestration.model.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -38,6 +39,9 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
     private final ExpressionEvaluator expressionEvaluator;
     private final List<WorkflowEventListener> listeners = new ArrayList<>();
 
+    @Autowired(required = false)
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
     public DefaultWorkflowEngine(List<NodeExecutor> executors, ExpressionEvaluator expressionEvaluator) {
         this.executors = executors;
         this.expressionEvaluator = expressionEvaluator;
@@ -53,13 +57,36 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             ctx.getVariables().putAll(inputs);
         }
 
+        List<WorkflowNode> startNodes = definition.getStartNodes();
+        String startNodeId = startNodes.isEmpty() ? null : startNodes.get(0).getId();
+
+        return doExecute(definition, ctx, startNodeId);
+    }
+
+    @Override
+    public WorkflowContext resume(WorkflowDefinition definition, WorkflowContext pausedCtx, String decision) {
+        String humanNodeId = pausedCtx.getCurrentNodeId();
+        WorkflowNode node = definition.findNode(humanNodeId);
+        if (!(node instanceof HumanNode humanNode)) {
+            throw new IllegalStateException("当前节点不是人工审批节点: " + humanNodeId);
+        }
+
+        pausedCtx.setVariable(humanNode.getDecisionVar(), decision);
+        pausedCtx.setStatus(WorkflowStatus.RUNNING);
+
+        String nextNodeId = determineNextNode(definition, node, decision, pausedCtx);
+        log.info("工作流恢复执行: 从节点 {} 继续", nextNodeId);
+
+        return doExecute(definition, pausedCtx, nextNodeId);
+    }
+
+    private WorkflowContext doExecute(WorkflowDefinition definition, WorkflowContext ctx, String startNodeId) {
+        long workflowStart = System.currentTimeMillis();
         try {
-            List<WorkflowNode> startNodes = definition.getStartNodes();
-            if (startNodes.isEmpty()) {
+            if (startNodeId == null) {
                 throw new IllegalStateException("工作流没有起始节点: " + definition.getName());
             }
-
-            String currentNodeId = startNodes.get(0).getId();
+            String currentNodeId = startNodeId;
             Set<String> visited = new HashSet<>();
             int maxSteps = definition.getNodes().size() * 10 + 100;
 
@@ -100,6 +127,8 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             log.error("工作流执行失败: {}", definition.getName(), e);
         }
 
+        recordWorkflowTimer(definition.getName(), ctx.getStatus().name(),
+                System.currentTimeMillis() - workflowStart);
         return ctx;
     }
 
@@ -124,6 +153,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             ctx.setNodeResult(node.getId(), result);
             ctx.getNodeStatuses().put(node.getId(), WorkflowNodeStatus.COMPLETED);
             listeners.forEach(l -> l.onNodeCompleted(node.getId(), result, duration));
+            recordNodeTimer(node.getClass().getSimpleName(), "success", duration);
 
             if (result instanceof ParallelNodeExecutor.ParallelSignal signal) {
                 return executeParallelBranches(definition, signal, ctx);
@@ -137,6 +167,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             long duration = System.currentTimeMillis() - start;
             ctx.getNodeStatuses().put(node.getId(), WorkflowNodeStatus.FAILED);
             listeners.forEach(l -> l.onNodeFailed(node.getId(), e));
+            recordNodeTimer(node.getClass().getSimpleName(), "failure", duration);
             log.error("节点执行失败: id={}, durationMs={}", node.getId(), duration, e);
             throw new RuntimeException("节点执行失败: " + node.getId(), e);
         }
@@ -259,6 +290,20 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
                 .filter(e -> e.supports(node))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void recordWorkflowTimer(String name, String result, long durationMs) {
+        if (meterRegistry != null) {
+            meterRegistry.timer("workflow.execution.duration", "name", name, "result", result)
+                    .record(java.time.Duration.ofMillis(durationMs));
+        }
+    }
+
+    private void recordNodeTimer(String nodeType, String result, long durationMs) {
+        if (meterRegistry != null) {
+            meterRegistry.timer("workflow.node.duration", "type", nodeType, "result", result)
+                    .record(java.time.Duration.ofMillis(durationMs));
+        }
     }
 
     @Override

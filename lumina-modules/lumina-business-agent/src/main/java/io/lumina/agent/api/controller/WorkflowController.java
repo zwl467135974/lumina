@@ -76,6 +76,17 @@ public class WorkflowController {
     }
 
     /**
+     * 恢复暂停的工作流实例（人工审批后调用）
+     */
+    @PostMapping("/instances/{instanceId}/resume")
+    public R<WorkflowInstanceDO> resumeInstance(
+            @PathVariable Long instanceId,
+            @RequestParam String decision) {
+        log.info("恢复工作流实例: instanceId={}, decision={}", instanceId, decision);
+        return R.success(workflowService.resumeInstance(instanceId, decision));
+    }
+
+    /**
      * 流式执行工作流（SSE 推送节点执行进度）
      *
      * <p>每个 SSE 事件的 event 字段为事件类型（NODE_STARTED / NODE_COMPLETED / NODE_FAILED / WORKFLOW_COMPLETED / WORKFLOW_FAILED），
