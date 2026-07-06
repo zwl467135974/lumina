@@ -1,0 +1,20 @@
+Lumina AI Agent Platform 已部署！
+
+1. 等待所有 Pod 就绪:
+   kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+2. 获取前端访问地址:
+{{- if .Values.ingress.enabled }}
+   export LUMINA_URL=http://{{ .Values.ingress.host }}
+{{- else }}
+   kubectl port-forward svc/{{ include "lumina.fullname" . }}-frontend 8080:80
+   export LUMINA_URL=http://localhost:8080
+{{- end }}
+
+3. 访问 $LUMINA_URL 开始使用 Lumina。
+
+部署的服务:
+  - Gateway:        svc/{{ include "lumina.fullname" . }}-gateway:8080
+  - Business Base:  svc/{{ include "lumina.fullname" . }}-business-base:8082
+  - Agent Service:  svc/{{ include "lumina.fullname" . }}-agent-service:8081
+  - Frontend:       svc/{{ include "lumina.fullname" . }}-frontend:80

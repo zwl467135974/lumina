@@ -3,7 +3,7 @@ name: lumina
 description: Lumina AI Agent Platform Helm Chart
 type: application
 version: 1.0.0
-appVersion: "1.2.0"
+appVersion: "2.0.0"
 keywords:
   - ai
   - agent

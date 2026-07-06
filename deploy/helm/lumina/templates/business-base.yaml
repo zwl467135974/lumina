@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "lumina.fullname" . }}-business-base
+  labels:
+    {{- include "lumina.labels" . | nindent 4 }}
+    app.kubernetes.io/component: business-base
+spec:
+  replicas: {{ .Values.businessBase.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: business-base
+  template:
+    metadata:
+      labels:
+        {{- include "lumina.labels" . | nindent 8 }}
+        app.kubernetes.io/component: business-base
+    spec:
+      containers:
+        - name: business-base
+          image: "{{ .Values.image.registry }}/{{ .Values.image.namespace }}/lumina-business-base:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8082
+              name: http
+          envFrom:
+            - configMapRef:
+                name: {{ include "lumina.fullname" . }}-config
+            - secretRef:
+                name: {{ include "lumina.fullname" . }}-secret
+          resources:
+            {{- toYaml .Values.businessBase.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "lumina.fullname" . }}-business-base
+  labels:
+    {{- include "lumina.labels" . | nindent 4 }}
+    app.kubernetes.io/component: business-base
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8082
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/component: business-base
