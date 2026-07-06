@@ -50,13 +50,49 @@
       <agent-chat v-if="agentId && status === 1" :agent-id="agentId" />
       <el-alert v-else-if="agentId && status !== 1" title="Agent 未启用，无法对话" type="warning" :closable="false" />
     </el-card>
+
+    <el-card class="task-card" shadow="never">
+      <template #header>
+        <span>后台任务执行</span>
+      </template>
+      <el-form label-width="90px">
+        <el-form-item label="任务描述">
+          <el-input
+            v-model="asyncTaskText"
+            type="textarea"
+            :rows="3"
+            placeholder="提交后立即返回 taskUuid，后台继续执行"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="submittingTask" :disabled="status !== 1" @click="submitAsyncTask">
+            提交后台任务
+          </el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-descriptions v-if="currentTask" class="task-result" :column="2" border>
+        <el-descriptions-item label="任务 UUID" :span="2">{{ currentTask.taskUuid }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="taskStatusType(currentTask.status)">{{ currentTask.status }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="耗时">{{ currentTask.durationMs ?? '-' }} ms</el-descriptions-item>
+        <el-descriptions-item v-if="currentTask.result" label="结果" :span="2">
+          <el-input :model-value="currentTask.result" type="textarea" :rows="5" readonly />
+        </el-descriptions-item>
+        <el-descriptions-item v-if="currentTask.errorMessage" label="错误" :span="2">
+          {{ currentTask.errorMessage }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getAgent } from '@/api/modules/agent'
+import { ElMessage } from 'element-plus'
+import { getAgent, getAgentTask, submitAgentTask, type AgentTaskVO } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AgentChat from '@/components/agent/AgentChat.vue'
@@ -74,6 +110,10 @@ const createTime = ref('')
 const updateTime = ref('')
 const promptLoading = ref(false)
 const currentPrompt = ref<PromptVO | null>(null)
+const asyncTaskText = ref('')
+const submittingTask = ref(false)
+const currentTask = ref<AgentTaskVO | null>(null)
+let taskPollTimer: number | undefined
 
 const promptName = computed(() => agentType.value.toLowerCase())
 
@@ -118,8 +158,51 @@ const goBack = () => {
   router.back()
 }
 
+const submitAsyncTask = async () => {
+  if (!asyncTaskText.value.trim()) {
+    ElMessage.warning('请输入任务描述')
+    return
+  }
+  submittingTask.value = true
+  try {
+    const res = await submitAgentTask(agentId.value, { task: asyncTaskText.value.trim() })
+    currentTask.value = res.data
+    ElMessage.success('后台任务已提交')
+    startTaskPolling(res.data.taskUuid)
+  } finally {
+    submittingTask.value = false
+  }
+}
+
+const startTaskPolling = (taskUuid: string) => {
+  if (taskPollTimer) {
+    window.clearInterval(taskPollTimer)
+  }
+  taskPollTimer = window.setInterval(async () => {
+    const res = await getAgentTask(taskUuid)
+    currentTask.value = res.data
+    if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(res.data.status)) {
+      window.clearInterval(taskPollTimer)
+      taskPollTimer = undefined
+    }
+  }, 1500)
+}
+
+const taskStatusType = (taskStatus: string) => {
+  if (taskStatus === 'COMPLETED') return 'success'
+  if (taskStatus === 'FAILED') return 'danger'
+  if (taskStatus === 'RUNNING') return 'warning'
+  return 'info'
+}
+
 onMounted(() => {
   loadAgentDetail()
+})
+
+onUnmounted(() => {
+  if (taskPollTimer) {
+    window.clearInterval(taskPollTimer)
+  }
 })
 </script>
 
@@ -141,7 +224,12 @@ onMounted(() => {
 }
 
 .prompt-card,
-.chat-card {
+.chat-card,
+.task-card {
+  margin-top: 16px;
+}
+
+.task-result {
   margin-top: 16px;
 }
 </style>

@@ -47,4 +47,23 @@ public class AsyncConfig {
         log.info("审计日志异步线程池初始化完成: core=4, max=16, queue=200");
         return executor;
     }
+
+    /**
+     * Agent 异步任务线程池
+     *
+     * <p>用于 P3 后台 Agent 任务 MVP，避免长时间 LLM 调用占用审计线程池。
+     */
+    @Bean("agentTaskExecutor")
+    public Executor agentTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(12);
+        executor.setQueueCapacity(100);
+        executor.setKeepAliveSeconds(60);
+        executor.setThreadNamePrefix("agent-task-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        log.info("Agent 异步任务线程池初始化完成: core=4, max=12, queue=100");
+        return executor;
+    }
 }

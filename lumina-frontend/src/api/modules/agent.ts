@@ -28,6 +28,23 @@ export interface StreamCallbacks {
   onClose?: () => void
 }
 
+export interface AgentTaskVO {
+  taskUuid: string
+  agentId: number
+  conversationUuid?: string
+  inputText: string
+  fileIds?: string
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+  result?: string
+  errorMessage?: string
+  promptTokens?: number
+  completionTokens?: number
+  totalTokens?: number
+  durationMs?: number
+  createTime?: string
+  updateTime?: string
+}
+
 /**
  * 创建 Agent
  */
@@ -68,6 +85,14 @@ export function deleteAgent(id: number) {
  */
 export function executeAgent(id: number, task: string) {
   return request.post<R<string>>(`/api/v1/agents/${id}/execute`, { task })
+}
+
+export function submitAgentTask(id: number, data: { task: string; conversationId?: string; fileUuids?: string[] }) {
+  return request.post<R<AgentTaskVO>>(`/api/v1/agents/${id}/execute/async`, data)
+}
+
+export function getAgentTask(taskUuid: string) {
+  return request.get<R<AgentTaskVO>>(`/api/v1/agents/tasks/${taskUuid}`)
 }
 
 /**

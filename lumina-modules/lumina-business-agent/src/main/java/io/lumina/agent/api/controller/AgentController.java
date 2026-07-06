@@ -1,12 +1,16 @@
 package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.CreateAgentDTO;
+import io.lumina.agent.api.dto.AgentTaskRequestDTO;
 import io.lumina.agent.api.dto.MultimodalRequestDTO;
+import io.lumina.agent.api.vo.AgentTaskVO;
 import io.lumina.agent.api.vo.AgentVO;
 import io.lumina.agent.domain.model.Agent;
+import io.lumina.agent.infrastructure.entity.AgentTaskDO;
 import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.service.AgentService;
+import io.lumina.agent.service.AgentTaskService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.framework.audit.annotation.Audit;
 import io.lumina.common.core.PageResult;
@@ -57,6 +61,9 @@ public class AgentController {
 
     @Autowired
     private AgentService agentService;
+
+    @Autowired
+    private AgentTaskService agentTaskService;
 
     /**
      * 创建 Agent
@@ -189,6 +196,28 @@ public class AgentController {
     }
 
     /**
+     * 提交 Agent 异步任务
+     */
+    @Audit(module = "agent", action = "EXECUTE_ASYNC", description = "异步执行Agent")
+    @PostMapping("/{id}/execute/async")
+    public R<AgentTaskVO> submitAgentTask(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody AgentTaskRequestDTO dto) {
+        log.info("提交 Agent 异步任务: agentId={}, task={}", id, dto.getTask());
+        AgentTaskDO task = agentTaskService.submitTask(id, dto);
+        return R.success(toTaskVO(task));
+    }
+
+    /**
+     * 查询 Agent 异步任务详情
+     */
+    @GetMapping("/tasks/{taskUuid}")
+    public R<AgentTaskVO> getAgentTask(@PathVariable("taskUuid") String taskUuid) {
+        AgentTaskDO task = agentTaskService.getTask(taskUuid);
+        return R.success(toTaskVO(task));
+    }
+
+    /**
      * 多模态执行 Agent（文本 + 图片）
      *
      * <p>图片需先通过 POST /api/v1/files/upload 上传，获取 fileUuid 后传入。
@@ -263,5 +292,11 @@ public class AgentController {
                         .event(chunk.type())
                         .data(chunk)
                         .build());
+    }
+
+    private AgentTaskVO toTaskVO(AgentTaskDO task) {
+        AgentTaskVO vo = new AgentTaskVO();
+        BeanUtils.copyProperties(task, vo);
+        return vo;
     }
 }
