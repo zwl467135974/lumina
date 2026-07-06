@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +101,48 @@ public class CostServiceImpl implements CostService {
         summary.put("topAgents", topAgents);
 
         return summary;
+    }
+
+    @Override
+    public List<Map<String, Object>> getCostTrend(int days) {
+        Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+        int effectiveDays = Math.max(1, Math.min(days, 365));
+
+        List<Map<String, Object>> rawTrend = agentTaskMapper.selectDailyTrend(tenantId, effectiveDays);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> row : rawTrend) {
+            int promptTokens = toInt(row.get("promptTokens"));
+            int completionTokens = toInt(row.get("completionTokens"));
+            int totalTokens = toInt(row.get("totalTokens"));
+
+            BigDecimal cost = calculateCost("default", "default", promptTokens, completionTokens);
+
+            Map<String, Object> dataPoint = new HashMap<>();
+            dataPoint.put("date", String.valueOf(row.get("date")));
+            dataPoint.put("taskCount", toInt(row.get("taskCount")));
+            dataPoint.put("promptTokens", promptTokens);
+            dataPoint.put("completionTokens", completionTokens);
+            dataPoint.put("totalTokens", totalTokens);
+            dataPoint.put("cost", cost.setScale(4, RoundingMode.HALF_UP));
+            result.add(dataPoint);
+        }
+
+        return result;
+    }
+
+    private int toInt(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Number num) {
+            return num.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private ModelPricingDO findPricing(String provider, String modelName) {

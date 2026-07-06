@@ -83,14 +83,53 @@
               <el-tag v-else-if="finalText" size="small" type="success">已完成</el-tag>
             </div>
 
+            <div class="debug-sidebar-body">
             <!-- 统计概览 -->
             <div class="debug-section">
-              <div class="debug-section-title">统计概览</div>
+              <div class="debug-section-title">执行统计</div>
               <div class="debug-stats-grid">
                 <div class="stat-card"><div class="stat-value">{{ debugStats.totalMs }}</div><div class="stat-label">总耗时(ms)</div></div>
                 <div class="stat-card"><div class="stat-value">{{ debugStats.finalChars }}</div><div class="stat-label">回复字符</div></div>
-                <div class="stat-card"><div class="stat-value">{{ eventLog.length }}</div><div class="stat-label">事件总数</div></div>
+                <div class="stat-card"><div class="stat-value">{{ debugStats.estimatedTotalTokens }}</div><div class="stat-label">Token 估算</div></div>
                 <div class="stat-card"><div class="stat-value">{{ debugStats.actingEvents }}</div><div class="stat-label">工具调用</div></div>
+              </div>
+            </div>
+
+            <!-- Token 估算 -->
+            <div v-if="debugStats.estimatedTotalTokens > 0" class="debug-section">
+              <div class="debug-section-title">Token 与费用估算</div>
+              <div class="debug-info-rows">
+                <div class="info-row"><span class="info-label">输入(Prompt)</span><span class="info-value">~{{ debugStats.estimatedPromptTokens }} tok</span></div>
+                <div class="info-row"><span class="info-label">输出(Completion)</span><span class="info-value">~{{ debugStats.estimatedCompletionTokens }} tok</span></div>
+                <div class="info-row"><span class="info-label">合计</span><span class="info-value">{{ debugStats.estimatedTotalTokens }} tok</span></div>
+                <div class="info-row"><span class="info-label">估算费用</span><span class="info-value">¥{{ debugStats.estimatedCost }}</span></div>
+              </div>
+            </div>
+
+            <!-- 执行阶段 -->
+            <div v-if="executionPhases.totalMs > 0" class="debug-section">
+              <div class="debug-section-title">执行阶段</div>
+              <div class="debug-phase-bar">
+                <div v-if="executionPhases.firstTokenMs > 0" class="phase-segment phase-init" :style="{ width: phaseWidth('init') }" :title="`首字延迟: ${executionPhases.firstTokenMs}ms`" />
+                <div v-if="executionPhases.reasoningMs > 0" class="phase-segment phase-reasoning" :style="{ width: phaseWidth('reasoning') }" :title="`推理: ${executionPhases.reasoningMs}ms`" />
+                <div v-if="executionPhases.actingMs > 0" class="phase-segment phase-acting" :style="{ width: phaseWidth('acting') }" :title="`工具: ${executionPhases.actingMs}ms`" />
+                <div v-if="executionPhases.generationMs > 0" class="phase-segment phase-generation" :style="{ width: phaseWidth('generation') }" :title="`生成: ${executionPhases.generationMs}ms`" />
+              </div>
+              <div class="debug-phase-legend">
+                <span v-if="executionPhases.firstTokenMs > 0" class="legend-item"><i class="dot dot-init"></i>首字 {{ executionPhases.firstTokenMs }}ms</span>
+                <span v-if="executionPhases.reasoningMs > 0" class="legend-item"><i class="dot dot-reasoning"></i>推理 {{ executionPhases.reasoningMs }}ms</span>
+                <span v-if="executionPhases.actingMs > 0" class="legend-item"><i class="dot dot-acting"></i>工具 {{ executionPhases.actingMs }}ms</span>
+                <span v-if="executionPhases.generationMs > 0" class="legend-item"><i class="dot dot-generation"></i>生成 {{ executionPhases.generationMs }}ms</span>
+              </div>
+            </div>
+
+            <!-- 模型信息 -->
+            <div class="debug-section">
+              <div class="debug-section-title">Agent 信息</div>
+              <div class="debug-info-rows">
+                <div class="info-row"><span class="info-label">Agent ID</span><span class="info-value">{{ agentId }}</span></div>
+                <div class="info-row"><span class="info-label">事件总数</span><span class="info-value">{{ eventLog.length }}</span></div>
+                <div class="info-row"><span class="info-label">推理事件</span><span class="info-value">{{ debugStats.reasoningEvents }}</span></div>
               </div>
             </div>
 
@@ -119,6 +158,7 @@
             </div>
 
             <el-empty v-if="!streaming && eventLog.length === 0" description="执行后显示调试数据" :image-size="40" />
+            </div>
           </div>
         </div>
 
@@ -213,13 +253,81 @@ const debugStats = computed(() => {
   const total = eventLog.value.length > 0
     ? eventLog.value[eventLog.value.length - 1].elapsed
     : 0
+  const promptChars = task.value.length
+  const completionChars = finalText.value.length + reasoningText.value.length + actingText.value.length
+  const estimatedPromptTokens = Math.ceil(promptChars / 2)
+  const estimatedCompletionTokens = Math.ceil(completionChars / 2)
+  const estimatedTotalTokens = estimatedPromptTokens + estimatedCompletionTokens
+  const estimatedCost = ((estimatedPromptTokens * 0.004 + estimatedCompletionTokens * 0.012) / 1000).toFixed(4)
   return {
     totalMs: total,
     finalChars: finalText.value.length,
     actingEvents: eventLog.value.filter(e => e.type.includes('ACTING')).length,
-    reasoningEvents: eventLog.value.filter(e => e.type.includes('REASONING')).length
+    reasoningEvents: eventLog.value.filter(e => e.type.includes('REASONING')).length,
+    estimatedPromptTokens,
+    estimatedCompletionTokens,
+    estimatedTotalTokens,
+    estimatedCost
   }
 })
+
+const executionPhases = computed(() => {
+  const events = eventLog.value
+  if (events.length === 0) {
+    return { firstTokenMs: 0, reasoningMs: 0, actingMs: 0, generationMs: 0, totalMs: 0 }
+  }
+  const totalMs = events[events.length - 1].elapsed
+
+  let firstFinalMs = 0
+  for (const ev of events) {
+    if (ev.type === 'FINAL' || ev.type === 'AGENT_RESULT') {
+      firstFinalMs = ev.elapsed
+      break
+    }
+  }
+
+  let firstReasoningMs = 0
+  let lastReasoningMs = 0
+  for (const ev of events) {
+    if (ev.type.includes('REASONING')) {
+      if (firstReasoningMs === 0) firstReasoningMs = ev.elapsed
+      lastReasoningMs = ev.elapsed
+    }
+  }
+
+  let firstActingMs = 0
+  let lastActingMs = 0
+  for (const ev of events) {
+    if (ev.type.includes('ACTING')) {
+      if (firstActingMs === 0) firstActingMs = ev.elapsed
+      lastActingMs = ev.elapsed
+    }
+  }
+
+  const reasoningMs = firstReasoningMs > 0 ? lastReasoningMs - firstReasoningMs + 50 : 0
+  const actingMs = firstActingMs > 0 ? lastActingMs - firstActingMs + 50 : 0
+  const initEnd = Math.min(
+    firstReasoningMs || firstFinalMs || totalMs,
+    firstActingMs || firstFinalMs || totalMs,
+    firstFinalMs || totalMs
+  )
+  const firstTokenMs = firstFinalMs > 0 ? firstFinalMs : initEnd
+
+  const generationMs = Math.max(0, totalMs - firstTokenMs)
+
+  return { firstTokenMs, reasoningMs, actingMs, generationMs, totalMs }
+})
+
+const phaseWidth = (phase: string) => {
+  const p = executionPhases.value
+  const total = p.totalMs || 1
+  let ms = 0
+  if (phase === 'init') ms = p.firstTokenMs
+  else if (phase === 'reasoning') ms = p.reasoningMs
+  else if (phase === 'acting') ms = p.actingMs
+  else if (phase === 'generation') ms = p.generationMs
+  return `${Math.max((ms / total) * 100, 2)}%`
+}
 
 const eventTagType = (type: string) => {
   if (type.includes('REASONING')) return 'info'
@@ -811,11 +919,17 @@ defineExpose({ resetStream })
     gap: 8px;
     padding: 10px 12px;
     border-bottom: 1px solid var(--el-border-color-lighter);
+    flex-shrink: 0;
 
     .debug-sidebar-title {
       font-size: 14px;
       font-weight: 600;
     }
+  }
+
+  .debug-sidebar-body {
+    flex: 1;
+    overflow-y: auto;
   }
 
   .debug-section {
@@ -851,6 +965,72 @@ defineExpose({ resetStream })
         font-size: 11px;
         color: var(--el-text-color-placeholder);
       }
+    }
+  }
+
+  .debug-info-rows {
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+      font-size: 12px;
+
+      .info-label {
+        color: var(--el-text-color-secondary);
+      }
+
+      .info-value {
+        color: var(--el-text-color-primary);
+        font-weight: 500;
+        font-family: monospace;
+      }
+    }
+  }
+
+  .debug-phase-bar {
+    display: flex;
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+
+    .phase-segment {
+      height: 100%;
+      transition: width 0.3s;
+      min-width: 2%;
+    }
+
+    .phase-init { background: var(--el-color-info-light-5); }
+    .phase-reasoning { background: var(--el-color-primary-light-5); }
+    .phase-acting { background: var(--el-color-warning-light-5); }
+    .phase-generation { background: var(--el-color-success-light-5); }
+  }
+
+  .debug-phase-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      color: var(--el-text-color-secondary);
+      font-family: monospace;
+
+      .dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+      }
+
+      .dot-init { background: var(--el-color-info-light-5); }
+      .dot-reasoning { background: var(--el-color-primary-light-5); }
+      .dot-acting { background: var(--el-color-warning-light-5); }
+      .dot-generation { background: var(--el-color-success-light-5); }
     }
   }
 

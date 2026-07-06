@@ -118,4 +118,64 @@ class CostServiceImplTest {
         List<Map<String, Object>> topAgents = (List<Map<String, Object>>) summary.get("topAgents");
         assertThat(topAgents).isEmpty();
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getCostTrendReturnsDailyAggregates() {
+        BaseContext.setTenantId(1L);
+
+        Map<String, Object> day1 = new java.util.HashMap<>();
+        day1.put("date", java.sql.Date.valueOf("2026-07-01"));
+        day1.put("taskCount", 3L);
+        day1.put("promptTokens", 1000L);
+        day1.put("completionTokens", 500L);
+        day1.put("totalTokens", 1500L);
+
+        Map<String, Object> day2 = new java.util.HashMap<>();
+        day2.put("date", java.sql.Date.valueOf("2026-07-02"));
+        day2.put("taskCount", 5L);
+        day2.put("promptTokens", 2000L);
+        day2.put("completionTokens", 1000L);
+        day2.put("totalTokens", 3000L);
+
+        when(agentTaskMapper.selectDailyTrend(1L, 30)).thenReturn(List.of(day1, day2));
+
+        ModelPricingDO defaultPricing = new ModelPricingDO();
+        defaultPricing.setInputPrice(new BigDecimal("0.002000"));
+        defaultPricing.setOutputPrice(new BigDecimal("0.006000"));
+        when(modelPricingMapper.selectOne(any())).thenReturn(defaultPricing);
+
+        List<Map<String, Object>> trend = costService.getCostTrend(30);
+
+        assertThat(trend).hasSize(2);
+        assertThat(trend.get(0).get("date")).isEqualTo("2026-07-01");
+        assertThat(trend.get(0).get("taskCount")).isEqualTo(3);
+        assertThat(trend.get(0).get("totalTokens")).isEqualTo(1500);
+        assertThat(trend.get(0).get("cost")).isEqualTo(new BigDecimal("0.0050"));
+
+        assertThat(trend.get(1).get("date")).isEqualTo("2026-07-02");
+        assertThat(trend.get(1).get("taskCount")).isEqualTo(5);
+        assertThat(trend.get(1).get("totalTokens")).isEqualTo(3000);
+        assertThat(trend.get(1).get("cost")).isEqualTo(new BigDecimal("0.0100"));
+    }
+
+    @Test
+    void getCostTrendWithNoDataReturnsEmptyList() {
+        BaseContext.setTenantId(0L);
+        when(agentTaskMapper.selectDailyTrend(0L, 7)).thenReturn(List.of());
+
+        List<Map<String, Object>> trend = costService.getCostTrend(7);
+
+        assertThat(trend).isEmpty();
+    }
+
+    @Test
+    void getCostTrendClampsDaysToValidRange() {
+        BaseContext.setTenantId(0L);
+        when(agentTaskMapper.selectDailyTrend(0L, 365)).thenReturn(List.of());
+
+        costService.getCostTrend(9999);
+
+        org.mockito.Mockito.verify(agentTaskMapper).selectDailyTrend(0L, 365);
+    }
 }

@@ -11,6 +11,7 @@ import io.lumina.agent.service.ConversationService;
 import io.lumina.agent.service.PromptService;
 import io.lumina.agent.security.PromptInjectionFilter;
 import io.lumina.agent.security.OutputSanitizer;
+import io.lumina.agent.security.AgentRateLimiter;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,6 +67,9 @@ class AgentServiceImplTest {
 
     @Mock
     private OutputSanitizer outputSanitizer;
+
+    @Mock
+    private AgentRateLimiter agentRateLimiter;
 
     @BeforeEach
     void setUp() {
@@ -228,5 +232,16 @@ class AgentServiceImplTest {
 
         assertThat(result).isEqualTo("call me at 138****5678");
         verify(outputSanitizer).sanitize("call me at 13812345678");
+    }
+
+    @Test
+    void executeAgentRateLimitedBlocksExecution() {
+        doThrow(new BusinessException(io.lumina.common.core.ErrorCode.AGENT_RATE_LIMITED))
+                .when(agentRateLimiter).checkRateLimit(1L);
+
+        assertThatThrownBy(() -> agentService.executeAgent(1L, "task", null))
+                .isInstanceOf(BusinessException.class);
+
+        verify(agentExecutionEngine, never()).executeSync(any(), any(), any(), any());
     }
 }

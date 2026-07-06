@@ -26,12 +26,17 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 ### 核心特性
 
 - **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、流式输出
+- **工作流编排引擎** - DAG 引擎支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 5 种协作模板
+- **Prompt 版本管理** - DB 持久化、版本发布/激活、Agent 执行链路运行时动态生效
 - **RAG 知识库** - 文档上传 → 切片 → 向量化 → 检索增强（Qdrant REST + 多 Embedding 提供商）
 - **微服务架构** - 基于 Spring Cloud Alibaba，支持服务注册、配置管理、负载均衡
 - **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
 - **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
+- **异步任务执行** - 提交后立即返回 taskId，后台线程池执行，支持状态查询与结果获取
+- **成本管理** - 模型价格表 + Token 用量计费 + 消费汇总仪表盘
+- **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V7)、网关限流、API 版本策略、工具调用熔断器
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V11)、网关限流、API 版本策略、工具调用熔断器
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
@@ -82,7 +87,7 @@ lumina-frontend/
 | **lumina-agent-core** | Agent 执行引擎核心模块，封装 AgentScope 能力（ReAct Agent、记忆管理、工具动态注册） | lumina-common |
 | **lumina-gateway** | API 网关模块，作为统一入口，支持 JWT 认证与 Nacos 动态路由 | lumina-common, lumina-framework |
 | **lumina-business-base** | 基础业务模块，提供用户、角色、权限、租户管理（多租户 RBAC 完整实现） | lumina-common, lumina-framework |
-| **lumina-business-agent** | Agent 业务模块，提供 Agent 配置管理与基础 Agent 接口 | lumina-common, lumina-agent-core, lumina-framework |
+| **lumina-business-agent** | Agent 业务模块，提供 Agent 配置、会话、知识库、工作流编排、Prompt 管理、异步任务、成本管理、安全防护 | lumina-common, lumina-agent-core, lumina-framework |
 | **lumina-modules** | 业务模块聚合器，按需添加业务模块 | 以上模块 |
 
 #### 前端项目
@@ -161,7 +166,7 @@ $env:DASHSCOPE_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V7），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V11），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -259,8 +264,6 @@ String userId = request.getHeader("X-User-Id");
 String tenantId = request.getHeader("X-Tenant-Id");
 String[] roles = request.getHeader("X-Roles").split(",");
 ```
-
-详细文档：[sql/README.md](sql/README.md)
 
 ### 创建业务模块
 
@@ -422,7 +425,6 @@ public String executeAgent(String task) {
 - [部署指南](docs/DEPLOYMENT.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
 - [配置说明](docs/CONFIGURATION.md) - JWT、白名单、租户隔离等完整配置
 - [测试指南](TESTING.md) - 测试验证步骤和场景
-- [SQL 使用说明](sql/README.md) - 数据库脚本使用
 
 ### 开发指南
 
@@ -524,54 +526,53 @@ npm install
 
 ## 项目状态
 
-### v1.3.0 已完成（2026-07-03）
+### v2.0.0 已完成
 
-**v1.3.0 核心改进（在 v1.2.0 基础上）**
-- ✅ P0：输入校验补全 + Token 统计接通 + 配置 Bug 修复
-- ✅ P1：RocketMQ + 知识库异步化 + 审计异步化
-- ✅ P2：多模态消息支持（图片上传 + 文件存储持久化 + 历史回放）
-- ✅ P2：LLM Provider 预设 7 家 + Resilience4j 容错 + GenerateOptions 扩展
-- ✅ P3：JaCoCo 覆盖率 + 前端 vitest 30 单元测试 + Playwright E2E 验证
-- ✅ 文件存储模块（StorageClient 抽象 + MinIO 集成 + LocalDisk 实现）
+**Agent 编排引擎（P1）**
+- ✅ DAG 工作流引擎：Agent / Condition / Loop / Parallel / Transform / Human 6 种节点类型
+- ✅ 5 种协作模式 YAML 模板：Supervisor-Worker / Debate / Pipeline / Router / Human-in-the-Loop
+- ✅ 工作流持久化：定义表 + 实例表 + 执行日志表（Flyway V8）
+- ✅ 管理 API：创建/发布/执行/查询 + 模板列表
+- ✅ 前端工作流管理页
 
-**核心功能（继承 v1.2.0）**
+**Prompt 管理（V9）**
+- ✅ DB 持久化 + 版本管理 + 发布/激活
+- ✅ Agent 执行链路运行时接入：优先读 DB 激活 Prompt（租户优先 + 全局回退），未命中回退 classpath 内置
+- ✅ 前端管理页 + Agent 列表/表单/详情页运行时 Prompt 可见性
+
+**流式增强 + 调试（P2）**
+- ✅ 多模态流式：图片 + 文本混合输入，LLM 流式回复
+- ✅ Agent 调试面板：工具调用记录 + 推理过程展示
+
+**生产可用性（P3）**
+- ✅ 异步任务执行：提交即返回 taskId，后台线程池执行，状态查询（Flyway V10）
+- ✅ 成本管理：模型价格表 + Token 计费 + 消费汇总仪表盘（Flyway V11）
+- ✅ 安全防护：Prompt 注入检测（11 种模式）+ 输出 PII 脱敏
+
+**部署 + 文档（P4-P5）**
+- ✅ Helm Chart 全量模板（Gateway / Business-Base / Agent-Service / Frontend / Ingress + HPA）
+- ✅ 英文 README（README_EN.md）
+- ✅ Apache 2.0 License + CHANGELOG.md
+
+**测试**
+- ✅ 后端 300+ 单元测试（全 8 模块 `mvn verify` 通过）
+- ✅ 前端 80 测试（66 工具/Store + 14 组件）
+- ✅ CI/CD 双流水线（GitHub Actions：后端 mvn verify + 前端 pnpm build + pnpm test）
+
+**继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V7 + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V11 + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
+- ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
 - ✅ 工具调用可观测（记录/统计/熔断器）+ 审计日志（@Audit AOP + 异步）
-
-**RAG 知识库（全 5 阶段）**
-- ✅ 多 Embedding 提供商（DashScope/OpenAI 兼容/Ollama）
-- ✅ 文档上传管线（异步：RocketMQ → 解析 → Embedding → Store）
-- ✅ Qdrant 向量存储（自定义 REST 实现，绕过 AgentScope gRPC 兼容性问题）
-- ✅ Agent RAG 集成（GENERIC/AGENTIC 模式）
-- ✅ 前端知识库管理页（上传/列表/删除/检索测试）
-
-**可观测性**
-- ✅ MDC 结构化日志（traceId/tenantId/userId）
-- ✅ Micrometer 指标（Prometheus + Grafana）
-- ✅ OpenTelemetry 全链路追踪（Jaeger，Gateway→Service→Agent→Tools）
-- ✅ 审计日志（19 个关键方法标注）
-
-**前端增强**
-- ✅ 动态菜单（后端按权限下发，前端渲染侧边栏）
-- ✅ Agent 对话（SSE 流式 + 多模态图片 + 历史回放）
-- ✅ i18n 国际化（中英文切换）
-- ✅ 暗色主题 + 工具监控页 + 知识库管理页
-
-**工程化与部署**
-- ✅ 测试体系（135 测试：后端 105 + 前端 30）
-- ✅ CI/CD（GitHub Actions：mvn verify + JaCoCo + pnpm build + pnpm test + Docker 镜像构建）
-- ✅ docker-compose 13 服务一键部署 + init.sh / init.ps1 启动脚本
-- ✅ 部署文档
+- ✅ 可观测性：MDC 结构化日志 + Micrometer 指标 + OpenTelemetry 全链路追踪
+- ✅ 前端：动态菜单 + Agent 对话（SSE 流式）+ 暗色主题 + i18n 国际化
 
 相关文档：
-- [v2.0.0 路线图](docs/ROADMAP_v2.0.md) - Agent 编排引擎 + 流式增强 + 生产可用性
-- [v1.3.0 路线图](docs/ROADMAP_v1.3.md) - v1.3.0 需求文档（已全部完成）
+- [v2.0.0 路线图](docs/ROADMAP_v2.0.md) - 完整需求文档与完成状态
+- [Prompt 运行时规则](docs/PROMPT_RUNTIME.md) - Prompt 生效规则说明
 - [部署指南](docs/DEPLOYMENT.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
-- [RAG 设计文档](docs/RAG_DESIGN.md) - RAG 架构与技术选型
-- [文件存储设计](docs/FILE_STORAGE_DESIGN.md) - 存储抽象层设计
 
 ---
 

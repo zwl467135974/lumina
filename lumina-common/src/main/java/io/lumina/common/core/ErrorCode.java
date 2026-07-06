@@ -76,6 +76,7 @@ public enum ErrorCode {
     AGENT_EXECUTE_FAILED(500, 20003, "Agent 执行失败"),
     AGENT_CONFIG_ERROR(500, 20004, "Agent 配置错误"),
     AGENT_TASK_EMPTY(400, 20005, "任务描述不能为空"),
+    AGENT_RATE_LIMITED(429, 20006, "Agent 请求过于频繁，请稍后重试"),
 
     // ==================== 会话 21000-21999 ====================
     CONVERSATION_NOT_FOUND(404, 21001, "会话不存在"),

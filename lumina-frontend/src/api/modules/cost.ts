@@ -18,6 +18,19 @@ export interface CostSummary {
   }>
 }
 
+export interface CostTrendPoint {
+  date: string
+  taskCount: number
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cost: number
+}
+
 export function getCostSummary() {
   return request.get<R<CostSummary>>('/api/v1/cost/summary')
+}
+
+export function getCostTrend(days = 30) {
+  return request.get<R<CostTrendPoint[]>>('/api/v1/cost/trend', { params: { days } })
 }

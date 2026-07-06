@@ -1,6 +1,7 @@
 package io.lumina.agent.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,4 +29,12 @@ public interface CostService {
      * @return 汇总数据（totalTokens, totalCost, taskCount 等）
      */
     Map<String, Object> getTenantCostSummary();
+
+    /**
+     * 查询租户每日消费趋势
+     *
+     * @param days 查询天数（最近 N 天）
+     * @return 每日消费列表（date, taskCount, promptTokens, completionTokens, totalTokens, cost）
+     */
+    List<Map<String, Object>> getCostTrend(int days);
 }
