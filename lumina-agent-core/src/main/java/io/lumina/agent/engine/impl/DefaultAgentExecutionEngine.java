@@ -237,7 +237,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 累积最终回复内容（用于流结束后保存记忆）
             StringBuilder finalResponse = new StringBuilder();
 
-            return agent.stream(contextMessages, options)
+            Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
+
+            return Flux.concat(ragSourcesFlux, agent.stream(contextMessages, options)
                     .map(this::toStreamChunk)
                     .doOnNext(chunk -> {
                         if (StreamEventType.FINAL.equals(chunk.type())) {
@@ -253,7 +255,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     .onErrorResume(e -> {
                         log.error("流式执行失败: businessType={}", businessType, e);
                         return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
-                    });
+                    }));
         } catch (Exception e) {
             log.error("构建流式 Agent 失败: businessType={}", businessType, e);
             return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
@@ -288,7 +290,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             StringBuilder finalResponse = new StringBuilder();
 
-            return agent.stream(contextMessages, options)
+            Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
+
+            return Flux.concat(ragSourcesFlux, agent.stream(contextMessages, options)
                     .map(this::toStreamChunk)
                     .doOnNext(chunk -> {
                         if (StreamEventType.FINAL.equals(chunk.type())) {
@@ -305,7 +309,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                         log.error("流式多模态执行失败: businessType={}", businessType, e);
                         return Flux.just(new StreamChunk(StreamEventType.ERROR,
                                 e.getMessage() != null ? e.getMessage() : "流式多模态执行失败", true));
-                    });
+                    }));
         } catch (Exception e) {
             log.error("构建流式多模态 Agent 失败: businessType={}", businessType, e);
             return Flux.just(new StreamChunk(StreamEventType.ERROR,
@@ -507,6 +511,64 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .retrieveConfig(retrieveConfig);
 
         log.info("RAG 知识库已注入 Agent: mode={}, limit={}, scoreThreshold={}", ragMode, limit, scoreThreshold);
+    }
+
+    /**
+     * 构建 RAG 检索来源流（在 Agent 执行前推送命中的知识库片段）
+     *
+     * <p>使用与 configureRag 相同的检索参数（limit、scoreThreshold），
+     * 将命中的文档片段封装为 {@link StreamChunk}（type=RAG_SOURCES）推送给前端。
+     * RAG 未启用或检索失败时返回空流，不影响后续 Agent 执行。
+     *
+     * @param task 用户任务描述
+     * @return RAG 来源事件流（0 或 1 个 chunk）
+     */
+    private Flux<StreamChunk> buildRagSourcesFlux(String task) {
+        if (knowledge == null) {
+            return Flux.empty();
+        }
+
+        int limit = ragProperties != null ? ragProperties.getRetrieve().getLimit() : 3;
+        double scoreThreshold = ragProperties != null ? ragProperties.getRetrieve().getScoreThreshold() : 0.3;
+
+        return knowledge.retrieve(task, RetrieveConfig.builder()
+                        .limit(limit)
+                        .scoreThreshold(scoreThreshold)
+                        .build())
+                .flatMap(docs -> {
+                    if (docs == null || docs.isEmpty()) {
+                        return Mono.empty();
+                    }
+                    StringBuilder json = new StringBuilder("[");
+                    for (int i = 0; i < docs.size(); i++) {
+                        if (i > 0) json.append(",");
+                        var doc = docs.get(i);
+                        var meta = doc.getMetadata();
+                        json.append("{\"content\":\"")
+                            .append(escapeJson(meta != null ? meta.getContentText() : ""))
+                            .append("\",\"score\":")
+                            .append(doc.getScore() != null ? doc.getScore() : 0)
+                            .append(",\"docId\":\"")
+                            .append(escapeJson(meta != null && meta.getDocId() != null ? meta.getDocId() : ""))
+                            .append("\"}");
+                    }
+                    json.append("]");
+                    return Mono.just(new StreamChunk(StreamEventType.RAG_SOURCES, json.toString(), false));
+                })
+                .flux()
+                .onErrorResume(e -> {
+                    log.warn("RAG 检索来源获取失败: {}", e.getMessage());
+                    return Flux.empty();
+                });
+    }
+
+    private String escapeJson(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n")
+                   .replace("\r", "\\r")
+                   .replace("\t", "\\t");
     }
 
     /**

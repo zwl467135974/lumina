@@ -96,6 +96,14 @@ spring:
           filters:
             - StripPrefix=0
 
+        # Agent 预算管理路由
+        - id: lumina-agent-budget-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/budget/**
+          filters:
+            - StripPrefix=0
+
         # Agent 工具监控路由
         - id: lumina-agent-tools-route
           uri: lb://lumina-agent-service

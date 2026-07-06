@@ -12,6 +12,7 @@ import io.lumina.agent.service.PromptService;
 import io.lumina.agent.security.PromptInjectionFilter;
 import io.lumina.agent.security.OutputSanitizer;
 import io.lumina.agent.security.AgentRateLimiter;
+import io.lumina.agent.service.BudgetService;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,6 +71,9 @@ class AgentServiceImplTest {
 
     @Mock
     private AgentRateLimiter agentRateLimiter;
+
+    @Mock
+    private BudgetService budgetService;
 
     @BeforeEach
     void setUp() {

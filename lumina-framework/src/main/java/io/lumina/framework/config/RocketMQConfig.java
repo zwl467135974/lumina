@@ -32,4 +32,14 @@ public final class RocketMQConfig {
      * 审计日志消费者组（预留）
      */
     public static final String GROUP_AUDIT_LOG = "lumina-audit-log-group";
+
+    /**
+     * Agent 异步任务 Topic
+     */
+    public static final String TOPIC_AGENT_TASK = "lumina-agent-task";
+
+    /**
+     * Agent 异步任务消费者组
+     */
+    public static final String GROUP_AGENT_TASK = "lumina-agent-task-group";
 }

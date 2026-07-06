@@ -28,4 +28,9 @@ public interface WorkflowEngine {
      * 注册事件监听器（用于 SSE 推送、日志记录等）
      */
     void addListener(WorkflowEventListener listener);
+
+    /**
+     * 移除事件监听器
+     */
+    void removeListener(WorkflowEventListener listener);
 }

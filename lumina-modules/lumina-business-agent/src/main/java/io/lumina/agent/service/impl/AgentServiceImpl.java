@@ -67,6 +67,9 @@ public class AgentServiceImpl implements AgentService {
     @Autowired
     private io.lumina.agent.security.AgentRateLimiter agentRateLimiter;
 
+    @Autowired
+    private io.lumina.agent.service.BudgetService budgetService;
+
     /**
      * Domain -> DO 转换
      */
@@ -203,6 +206,7 @@ public class AgentServiceImpl implements AgentService {
         log.info("执行 Agent: id={}, task={}, conversation={}", agentId, task, conversationUuid);
 
         agentRateLimiter.checkRateLimit(agentId);
+        budgetService.checkBudget(agentId);
 
         // 查询 Agent
         Agent agent = getAgentById(agentId);
@@ -256,6 +260,7 @@ public class AgentServiceImpl implements AgentService {
                 agentId, task, fileUuids != null ? fileUuids.size() : 0, conversationUuid);
 
         agentRateLimiter.checkRateLimit(agentId);
+        budgetService.checkBudget(agentId);
 
         Agent agent = getAgentById(agentId);
         if (!agent.isActive()) {
@@ -335,6 +340,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         agentRateLimiter.checkRateLimit(agentId);
+        budgetService.checkBudget(agentId);
 
         promptInjectionFilter.check(task);
 
@@ -382,6 +388,7 @@ public class AgentServiceImpl implements AgentService {
     @Override
     public Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
         agentRateLimiter.checkRateLimit(agentId);
+        budgetService.checkBudget(agentId);
 
         promptInjectionFilter.check(task);
 

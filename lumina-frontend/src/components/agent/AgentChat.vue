@@ -46,7 +46,21 @@
           </div>
 
           <!-- 当前流式响应 -->
-          <template v-if="streaming || reasoningText || actingText || finalText || errorMsg">
+          <template v-if="streaming || reasoningText || actingText || finalText || errorMsg || ragSources.length">
+            <!-- RAG 检索来源 -->
+            <el-collapse v-if="ragSources.length > 0" class="rag-sources-block">
+              <el-collapse-item :title="`📚 引用来源（${ragSources.length}）`" name="rag">
+                <div v-for="(src, idx) in ragSources" :key="idx" class="rag-source-item">
+                  <div class="rag-source-header">
+                    <el-tag size="small" type="success">#{{ idx + 1 }}</el-tag>
+                    <span class="rag-source-score">{{ (src.score * 100).toFixed(1) }}% 匹配</span>
+                    <span v-if="src.docId" class="rag-source-doc">{{ src.docId }}</span>
+                  </div>
+                  <div class="rag-source-content">{{ src.content }}</div>
+                </div>
+              </el-collapse-item>
+            </el-collapse>
+
             <el-collapse v-if="reasoningText" class="reasoning-block">
               <el-collapse-item title="🧠 思考过程" name="reasoning">
                 <div class="reasoning-text">{{ reasoningText }}</div>
@@ -332,6 +346,7 @@ const phaseWidth = (phase: string) => {
 const eventTagType = (type: string) => {
   if (type.includes('REASONING')) return 'info'
   if (type.includes('ACTING')) return 'warning'
+  if (type === 'RAG_SOURCES') return 'success'
   if (type === 'FINAL') return 'success'
   if (type === 'ERROR') return 'danger'
   return ''
@@ -415,8 +430,13 @@ const resetStream = () => {
   actingText.value = ''
   finalText.value = ''
   errorMsg.value = ''
+  ragSources.value = []
   eventLog.value = []
 }
+
+// RAG 来源
+interface RagSource { content: string; score: number; docId: string }
+const ragSources = ref<RagSource[]>([])
 
 const handleChunk = (chunk: StreamChunk) => {
   const content = chunk.content || ''
@@ -443,6 +463,11 @@ const handleChunk = (chunk: StreamChunk) => {
       break
     case 'ERROR':
       errorMsg.value = content || '执行失败'
+      break
+    case 'RAG_SOURCES':
+      try {
+        ragSources.value = JSON.parse(content) as RagSource[]
+      } catch { /* ignore parse errors */ }
       break
     default:
       finalText.value += content
@@ -771,6 +796,45 @@ defineExpose({ resetStream })
 }
 
 /* 流式过程块 */
+.rag-sources-block {
+  margin-bottom: 12px;
+  :deep(.el-collapse-item__header) {
+    font-size: 13px;
+    color: var(--el-color-success);
+  }
+  .rag-source-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: var(--el-color-success-light-9);
+    border-radius: 4px;
+    border-left: 3px solid var(--el-color-success);
+  }
+  .rag-source-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .rag-source-score {
+    color: var(--el-color-success);
+    font-weight: 500;
+  }
+  .rag-source-doc {
+    color: var(--el-text-color-secondary);
+    font-family: monospace;
+    font-size: 11px;
+  }
+  .rag-source-content {
+    font-size: 12px;
+    color: var(--el-text-color-regular);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+}
+
 .reasoning-block {
   margin-bottom: 12px;
   :deep(.el-collapse-item__header) {

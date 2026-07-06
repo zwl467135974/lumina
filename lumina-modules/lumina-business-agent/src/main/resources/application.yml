@@ -51,6 +51,9 @@ rocketmq:
   consumer:
     knowledge-ingest:
       enabled: ${MQ_KNOWLEDGE_ASYNC:true}
+    # Agent 异步任务消费开关（设为 true 时通过 RocketMQ 派发，false 时使用本地线程池）
+    agent-task:
+      enabled: ${MQ_AGENT_TASK_ASYNC:false}
 
 # MyBatis-Plus 配置
 mybatis-plus:

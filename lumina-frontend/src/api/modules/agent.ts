@@ -95,6 +95,75 @@ export function getAgentTask(taskUuid: string) {
   return request.get<R<AgentTaskVO>>(`/api/v1/agents/tasks/${taskUuid}`)
 }
 
+export function listAgentTasks(params: { agentId?: number; status?: string; pageNum?: number; pageSize?: number }) {
+  return request.get<R<PageResult<AgentTaskVO>>>('/api/v1/agents/tasks', { params })
+}
+
+export function cancelAgentTask(taskUuid: string) {
+  return request.post<R<AgentTaskVO>>(`/api/v1/agents/tasks/${taskUuid}/cancel`)
+}
+
+export interface TaskProgressEvent {
+  taskUuid: string
+  status: string
+  agentId?: number
+  result?: string
+  errorMessage?: string
+  durationMs?: number
+  totalTokens?: number
+}
+
+export function streamAgentTask(
+  taskUuid: string,
+  cb: {
+    onEvent: (event: TaskProgressEvent) => void
+    onError?: (err: Error) => void
+    onClose?: () => void
+  }
+): AbortController {
+  const controller = new AbortController()
+  const baseURL = import.meta.env.VITE_API_BASE_URL || ''
+  const token = getToken()
+  const url = `${baseURL}/api/v1/agents/tasks/${taskUuid}/stream`
+
+  fetchEventSource(url, {
+    method: 'GET',
+    headers: {
+      Accept: 'text/event-stream',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    signal: controller.signal,
+    openWhenHidden: true,
+    async onopen(response) {
+      if (!response.ok) {
+        throw new Error(`SSE 连接失败: ${response.status} ${response.statusText}`)
+      }
+    },
+    onmessage(ev) {
+      let event: TaskProgressEvent
+      try {
+        event = JSON.parse(ev.data) as TaskProgressEvent
+      } catch {
+        event = { taskUuid, status: ev.event || 'UNKNOWN' }
+      }
+      cb.onEvent(event)
+
+      if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(event.status)) {
+        controller.abort()
+        cb.onClose?.()
+      }
+    },
+    onerror(err) {
+      cb.onError?.(err instanceof Error ? err : new Error(String(err)))
+    },
+    onclose() {
+      cb.onClose?.()
+    }
+  })
+
+  return controller
+}
+
 /**
  * 流式执行 Agent（SSE，逐片段回调）
  *

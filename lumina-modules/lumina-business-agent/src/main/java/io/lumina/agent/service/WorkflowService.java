@@ -38,6 +38,13 @@ public interface WorkflowService {
     /** 执行工作流 */
     WorkflowInstanceDO execute(Long definitionId, ExecuteWorkflowDTO dto);
 
+    /**
+     * 流式执行工作流（SSE 推送节点执行进度）
+     *
+     * @return 事件流（NODE_STARTED / NODE_COMPLETED / NODE_FAILED / WORKFLOW_COMPLETED / WORKFLOW_FAILED）
+     */
+    reactor.core.publisher.Flux<java.util.Map<String, Object>> executeStream(Long definitionId, ExecuteWorkflowDTO dto);
+
     /** 查询实例列表 */
     List<WorkflowInstanceDO> listInstances(Long definitionId, String status, int pageNum, int pageSize);
 

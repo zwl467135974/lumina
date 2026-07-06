@@ -265,4 +265,9 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
     public void addListener(WorkflowEventListener listener) {
         listeners.add(listener);
     }
+
+    @Override
+    public void removeListener(WorkflowEventListener listener) {
+        listeners.remove(listener);
+    }
 }

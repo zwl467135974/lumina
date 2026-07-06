@@ -5,9 +5,12 @@ import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.infrastructure.entity.AgentTaskDO;
 import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
 import io.lumina.agent.service.AgentService;
+import io.lumina.agent.service.TaskProgressRegistry;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.LoginContext;
 import io.lumina.common.exception.BusinessException;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import io.lumina.common.core.PageResult;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +50,9 @@ class AgentTaskServiceImplTest {
 
     @Mock
     private Executor agentTaskExecutor;
+
+    @Mock
+    private TaskProgressRegistry progressRegistry;
 
     @AfterEach
     void tearDown() {
@@ -173,5 +179,58 @@ class AgentTaskServiceImplTest {
         ArgumentCaptor<AgentTaskDO> captor = ArgumentCaptor.forClass(AgentTaskDO.class);
         verify(agentTaskMapper, times(2)).updateById(captor.capture());
         assertThat(captor.getAllValues().get(1).getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void cancelTaskQueuedSucceeds() {
+        BaseContext.setTenantId(1L);
+        AgentTaskDO task = new AgentTaskDO();
+        task.setId(1L);
+        task.setTaskUuid("cancel-uuid");
+        task.setStatus("QUEUED");
+        task.setTenantId(1L);
+        task.setIsDeleted(0);
+        when(agentTaskMapper.selectOne(any())).thenReturn(task);
+
+        AgentTaskDO result = agentTaskService.cancelTask("cancel-uuid");
+
+        assertThat(result.getStatus()).isEqualTo("CANCELLED");
+        verify(agentTaskMapper).updateById(any(AgentTaskDO.class));
+    }
+
+    @Test
+    void cancelTaskAlreadyCompletedThrows() {
+        BaseContext.setTenantId(1L);
+        AgentTaskDO task = new AgentTaskDO();
+        task.setId(1L);
+        task.setTaskUuid("done-uuid");
+        task.setStatus("COMPLETED");
+        task.setTenantId(1L);
+        task.setIsDeleted(0);
+        when(agentTaskMapper.selectOne(any())).thenReturn(task);
+
+        assertThatThrownBy(() -> agentTaskService.cancelTask("done-uuid"))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void pageTasksReturnsPaginatedResults() {
+        BaseContext.setTenantId(1L);
+        AgentTaskDO task1 = new AgentTaskDO();
+        task1.setTaskUuid("t1");
+        task1.setStatus("COMPLETED");
+        AgentTaskDO task2 = new AgentTaskDO();
+        task2.setTaskUuid("t2");
+        task2.setStatus("RUNNING");
+
+        Page<AgentTaskDO> page = new Page<>(1, 10);
+        page.setRecords(java.util.List.of(task1, task2));
+        page.setTotal(2);
+        when(agentTaskMapper.selectPage(any(), any())).thenReturn(page);
+
+        PageResult<AgentTaskDO> result = agentTaskService.pageTasks(null, null, 1, 10);
+
+        assertThat(result.getList()).hasSize(2);
+        assertThat(result.getTotal()).isEqualTo(2);
     }
 }

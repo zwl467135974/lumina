@@ -92,7 +92,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getAgent, getAgentTask, submitAgentTask, type AgentTaskVO } from '@/api/modules/agent'
+import { getAgent, submitAgentTask, streamAgentTask, type AgentTaskVO, type TaskProgressEvent } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AgentChat from '@/components/agent/AgentChat.vue'
@@ -113,7 +113,7 @@ const currentPrompt = ref<PromptVO | null>(null)
 const asyncTaskText = ref('')
 const submittingTask = ref(false)
 const currentTask = ref<AgentTaskVO | null>(null)
-let taskPollTimer: number | undefined
+let taskSseController: AbortController | undefined
 
 const promptName = computed(() => agentType.value.toLowerCase())
 
@@ -168,24 +168,35 @@ const submitAsyncTask = async () => {
     const res = await submitAgentTask(agentId.value, { task: asyncTaskText.value.trim() })
     currentTask.value = res.data
     ElMessage.success('后台任务已提交')
-    startTaskPolling(res.data.taskUuid)
+    startTaskStream(res.data.taskUuid)
   } finally {
     submittingTask.value = false
   }
 }
 
-const startTaskPolling = (taskUuid: string) => {
-  if (taskPollTimer) {
-    window.clearInterval(taskPollTimer)
+const startTaskStream = (taskUuid: string) => {
+  if (taskSseController) {
+    taskSseController.abort()
   }
-  taskPollTimer = window.setInterval(async () => {
-    const res = await getAgentTask(taskUuid)
-    currentTask.value = res.data
-    if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(res.data.status)) {
-      window.clearInterval(taskPollTimer)
-      taskPollTimer = undefined
+  taskSseController = streamAgentTask(taskUuid, {
+    onEvent: (event: TaskProgressEvent) => {
+      currentTask.value = {
+        ...currentTask.value!,
+        taskUuid: event.taskUuid,
+        status: event.status as AgentTaskVO['status'],
+        result: event.result,
+        errorMessage: event.errorMessage,
+        durationMs: event.durationMs,
+        totalTokens: event.totalTokens
+      }
+    },
+    onError: () => {
+      // SSE 断开时静默处理，任务可能仍在后台执行
+    },
+    onClose: () => {
+      taskSseController = undefined
     }
-  }, 1500)
+  })
 }
 
 const taskStatusType = (taskStatus: string) => {
@@ -200,8 +211,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (taskPollTimer) {
-    window.clearInterval(taskPollTimer)
+  if (taskSseController) {
+    taskSseController.abort()
   }
 })
 </script>

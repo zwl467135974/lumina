@@ -240,3 +240,17 @@ export const costRoutes: AppRouteRecordRaw[] = [
     }
   }
 ]
+
+// 预算管理路由
+export const budgetRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/budget',
+    name: 'Budget',
+    component: () => import('@/views/budget/index.vue'),
+    meta: {
+      title: '预算管理',
+      icon: 'Wallet',
+      requiresAuth: true
+    }
+  }
+]

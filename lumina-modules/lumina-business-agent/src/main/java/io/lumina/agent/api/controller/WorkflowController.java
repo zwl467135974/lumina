@@ -12,9 +12,13 @@ import io.lumina.common.core.R;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 工作流管理 API
@@ -69,6 +73,24 @@ public class WorkflowController {
     @PostMapping("/{id}/execute")
     public R<WorkflowInstanceDO> execute(@PathVariable Long id, @RequestBody ExecuteWorkflowDTO dto) {
         return R.success(workflowService.execute(id, dto));
+    }
+
+    /**
+     * 流式执行工作流（SSE 推送节点执行进度）
+     *
+     * <p>每个 SSE 事件的 event 字段为事件类型（NODE_STARTED / NODE_COMPLETED / NODE_FAILED / WORKFLOW_COMPLETED / WORKFLOW_FAILED），
+     * data 字段为事件 JSON。
+     */
+    @PostMapping(value = "/{id}/execute/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<Map<String, Object>>> executeStream(
+            @PathVariable Long id,
+            @RequestBody ExecuteWorkflowDTO dto) {
+        log.info("流式执行工作流: definitionId={}", id);
+        return workflowService.executeStream(id, dto)
+                .map(event -> ServerSentEvent.<Map<String, Object>>builder()
+                        .event((String) event.getOrDefault("event", "UPDATE"))
+                        .data(event)
+                        .build());
     }
 
     @GetMapping("/instances")

@@ -32,9 +32,11 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -214,6 +216,59 @@ public class AgentController {
     @GetMapping("/tasks/{taskUuid}")
     public R<AgentTaskVO> getAgentTask(@PathVariable("taskUuid") String taskUuid) {
         AgentTaskDO task = agentTaskService.getTask(taskUuid);
+        return R.success(toTaskVO(task));
+    }
+
+    /**
+     * 异步任务 SSE 进度推送
+     *
+     * <p>连接后实时接收任务状态变更事件（QUEUED → RUNNING → COMPLETED/FAILED/CANCELLED）。
+     * 若任务已结束（sink 已清理），则立即返回当前 DB 状态后关闭连接。
+     */
+    @GetMapping(value = "/tasks/{taskUuid}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<Map<String, Object>>> streamAgentTask(
+            @PathVariable("taskUuid") String taskUuid) {
+        log.info("SSE 订阅异步任务进度: taskUuid={}", taskUuid);
+
+        return agentTaskService.streamTaskProgress(taskUuid)
+                .map(event -> ServerSentEvent.<Map<String, Object>>builder()
+                        .event((String) event.getOrDefault("status", "UPDATE"))
+                        .data(event)
+                        .build());
+    }
+
+    /**
+     * 分页查询异步任务列表
+     */
+    @GetMapping("/tasks")
+    public R<PageResult<AgentTaskVO>> pageAgentTasks(
+            @RequestParam(required = false) Long agentId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") @Min(1) Integer pageNum,
+            @RequestParam(defaultValue = "10") @Min(1) Integer pageSize) {
+        log.info("分页查询异步任务: agentId={}, status={}, pageNum={}, pageSize={}", agentId, status, pageNum, pageSize);
+
+        PageResult<AgentTaskDO> pageResult = agentTaskService.pageTasks(agentId, status, pageNum, pageSize);
+
+        PageResult<AgentTaskVO> voPageResult = new PageResult<>();
+        voPageResult.setPageNum(pageResult.getPageNum());
+        voPageResult.setPageSize(pageResult.getPageSize());
+        voPageResult.setTotal(pageResult.getTotal());
+        voPageResult.setPages(pageResult.getPages());
+        voPageResult.setList(pageResult.getList().stream()
+                .map(this::toTaskVO)
+                .collect(java.util.stream.Collectors.toList()));
+
+        return R.success(voPageResult);
+    }
+
+    /**
+     * 取消异步任务
+     */
+    @PostMapping("/tasks/{taskUuid}/cancel")
+    public R<AgentTaskVO> cancelAgentTask(@PathVariable("taskUuid") String taskUuid) {
+        log.info("取消异步任务: taskUuid={}", taskUuid);
+        AgentTaskDO task = agentTaskService.cancelTask(taskUuid);
         return R.success(toTaskVO(task));
     }
 

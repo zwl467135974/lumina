@@ -84,7 +84,7 @@
     </el-dialog>
 
     <!-- 执行对话框 -->
-    <el-dialog v-model="executeDialogVisible" title="执行工作流" width="500px">
+    <el-dialog v-model="executeDialogVisible" title="执行工作流" width="600px" :close-on-click-modal="false">
       <el-form :model="executeForm" label-width="80px">
         <el-form-item label="工作流">
           <span>{{ executeTarget?.name }}</span>
@@ -93,9 +93,35 @@
           <el-input v-model="executeForm.inputsJson" type="textarea" :rows="6" placeholder='JSON 格式，如 {"task": "分析这段代码"}' />
         </el-form-item>
       </el-form>
+
+      <!-- SSE 执行进度 -->
+      <div v-if="streamEvents.length > 0" class="stream-progress">
+        <div class="stream-header">
+          <el-tag v-if="streaming" type="warning" size="small">执行中…</el-tag>
+          <el-tag v-else type="success" size="small">已完成</el-tag>
+          <span class="stream-step">{{ streamEvents.length }} 步</span>
+        </div>
+        <el-timeline class="stream-timeline">
+          <el-timeline-item
+            v-for="(ev, idx) in streamEvents"
+            :key="idx"
+            :type="streamEventType(ev.event)"
+            :timestamp="ev.nodeId || ''"
+          >
+            <div class="stream-event">
+              <el-tag :type="streamEventType(ev.event)" size="small">{{ ev.event }}</el-tag>
+              <span v-if="ev.nodeName" class="event-name">{{ ev.nodeName }}</span>
+              <span v-if="ev.durationMs" class="event-duration">{{ ev.durationMs }}ms</span>
+              <span v-if="ev.error" class="event-error">{{ ev.error }}</span>
+            </div>
+          </el-timeline-item>
+        </el-timeline>
+      </div>
+
       <template #footer>
-        <el-button @click="executeDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleExecute" :loading="executing">执行</el-button>
+        <el-button @click="executeDialogVisible = false">关闭</el-button>
+        <el-button v-if="!streaming && streamEvents.length === 0" type="primary" @click="handleExecute" :loading="executing">执行</el-button>
+        <el-button v-if="!streaming && streamEvents.length > 0" type="primary" @click="viewResult">查看详情</el-button>
       </template>
     </el-dialog>
 
@@ -130,8 +156,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import {
   listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow,
-  publishWorkflow, executeWorkflow, listInstances, getWorkflowTemplates,
-  type WorkflowDefinitionVO, type WorkflowTemplateVO, type WorkflowDTO, type WorkflowInstanceVO
+  publishWorkflow, streamExecuteWorkflow, listInstances, getWorkflowTemplates,
+  type WorkflowDefinitionVO, type WorkflowTemplateVO, type WorkflowDTO, type WorkflowInstanceVO,
+  type WorkflowStreamEvent
 } from '@/api/modules/workflow'
 
 const router = useRouter()
@@ -253,31 +280,63 @@ const useTemplate = (tpl: WorkflowTemplateVO) => {
 const executeDialogVisible = ref(false)
 const executeTarget = ref<WorkflowDefinitionVO | null>(null)
 const executing = ref(false)
+const streaming = ref(false)
+const streamEvents = ref<WorkflowStreamEvent[]>([])
+const resultInstanceId = ref<number | null>(null)
 const executeForm = reactive({ inputsJson: '{}' })
 
 const showExecuteDialog = (row: WorkflowDefinitionVO) => {
   executeTarget.value = row
   executeForm.inputsJson = '{}'
+  streamEvents.value = []
+  resultInstanceId.value = null
   executeDialogVisible.value = true
 }
 
 const handleExecute = async () => {
   if (!executeTarget.value) return
-  executing.value = true
-  try {
-    let inputs: Record<string, unknown> = {}
-    try { inputs = JSON.parse(executeForm.inputsJson) } catch { /* ignore */ }
-    const res = await executeWorkflow(executeTarget.value.id, { inputs })
-    ElMessage.success('执行完成')
-    executeDialogVisible.value = false
-    if (res.data) {
-      router.push(`/workflow/detail/${res.data.id}`)
+  streaming.value = true
+  streamEvents.value = []
+
+  let inputs: Record<string, unknown> = {}
+  try { inputs = JSON.parse(executeForm.inputsJson) } catch { /* ignore */ }
+
+  streamExecuteWorkflow(
+    executeTarget.value.id,
+    { inputs },
+    {
+      onEvent: (event: WorkflowStreamEvent) => {
+        streamEvents.value.push(event)
+        if (event.instanceId) {
+          resultInstanceId.value = event.instanceId
+        }
+      },
+      onError: (err: Error) => {
+        ElMessage.error(err.message || '执行失败')
+        streaming.value = false
+      },
+      onClose: () => {
+        streaming.value = false
+        if (resultInstanceId.value) {
+          ElMessage.success('执行完成')
+        }
+      }
     }
-  } catch (e: any) {
-    ElMessage.error(e.message || '执行失败')
-  } finally {
-    executing.value = false
+  )
+}
+
+const viewResult = () => {
+  executeDialogVisible.value = false
+  if (resultInstanceId.value) {
+    router.push(`/workflow/detail/${resultInstanceId.value}`)
   }
+}
+
+const streamEventType = (event: string) => {
+  if (event === 'WORKFLOW_COMPLETED') return 'success'
+  if (event === 'WORKFLOW_FAILED' || event === 'NODE_FAILED') return 'danger'
+  if (event === 'NODE_STARTED') return 'primary'
+  return ''
 }
 
 // 实例
@@ -337,5 +396,32 @@ loadList()
 .yaml-editor :deep(.el-textarea__inner) {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
+}
+.stream-progress {
+  margin-top: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+  padding: 12px;
+}
+.stream-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.stream-timeline {
+  padding-left: 8px;
+}
+.stream-event {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  .event-name { font-weight: 500; }
+  .event-duration { color: var(--el-text-color-secondary); }
+  .event-error { color: var(--el-color-danger); }
 }
 </style>

@@ -168,6 +168,115 @@ public class WorkflowServiceImpl implements WorkflowService {
         return instance;
     }
 
+    @Override
+    public reactor.core.publisher.Flux<java.util.Map<String, Object>> executeStream(Long definitionId, ExecuteWorkflowDTO dto) {
+        WorkflowDefinitionDO defDO = getById(definitionId);
+        if (defDO.getStatus() != 1) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "工作流未发布，无法执行");
+        }
+
+        WorkflowDefinition definition = workflowLoader.load(defDO.getDefinitionYaml());
+
+        WorkflowInstanceDO instance = new WorkflowInstanceDO();
+        instance.setDefinitionId(definitionId);
+        instance.setDefinitionName(defDO.getName());
+        instance.setDefinitionVersion(defDO.getVersion());
+        instance.setStatus(WorkflowStatus.PENDING.name());
+        instance.setTenantId(BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L);
+        instance.setCreateBy(BaseContext.getUserId());
+        instance.setCreateTime(LocalDateTime.now());
+        instance.setUpdateTime(LocalDateTime.now());
+        try {
+            instance.setInput(objectMapper.writeValueAsString(dto.getInputs() != null ? dto.getInputs() : "{}"));
+        } catch (Exception e) {
+            instance.setInput("{}");
+        }
+        instanceMapper.insert(instance);
+
+        final Long instanceId = instance.getId();
+        final java.util.Map<String, Object> inputs = dto.getInputs();
+
+        return reactor.core.publisher.Flux.<java.util.Map<String, Object>>create(sink -> {
+            WorkflowEventListener sseListener = new WorkflowEventListener() {
+                @Override
+                public void onNodeStarted(String nodeId, String nodeName, WorkflowContext ctx) {
+                    sink.next(java.util.Map.of(
+                            "event", "NODE_STARTED",
+                            "instanceId", instanceId,
+                            "nodeId", nodeId,
+                            "nodeName", nodeName != null ? nodeName : ""
+                    ));
+                }
+
+                @Override
+                public void onNodeCompleted(String nodeId, Object result, long durationMs) {
+                    java.util.Map<String, Object> event = new java.util.HashMap<>();
+                    event.put("event", "NODE_COMPLETED");
+                    event.put("instanceId", instanceId);
+                    event.put("nodeId", nodeId);
+                    event.put("durationMs", durationMs);
+                    try {
+                        event.put("result", objectMapper.writeValueAsString(result));
+                    } catch (Exception e) {
+                        event.put("result", String.valueOf(result));
+                    }
+                    sink.next(event);
+                }
+
+                @Override
+                public void onNodeFailed(String nodeId, Throwable error) {
+                    sink.next(java.util.Map.of(
+                            "event", "NODE_FAILED",
+                            "instanceId", instanceId,
+                            "nodeId", nodeId,
+                            "error", error.getMessage() != null ? error.getMessage() : error.toString()
+                    ));
+                }
+
+                @Override
+                public void onWorkflowCompleted(WorkflowContext ctx) {
+                    sink.next(java.util.Map.of(
+                            "event", "WORKFLOW_COMPLETED",
+                            "instanceId", instanceId,
+                            "status", ctx.getStatus().name()
+                    ));
+                    sink.complete();
+                }
+
+                @Override
+                public void onWorkflowFailed(WorkflowContext ctx, String error) {
+                    sink.next(java.util.Map.of(
+                            "event", "WORKFLOW_FAILED",
+                            "instanceId", instanceId,
+                            "status", ctx.getStatus().name(),
+                            "error", error != null ? error : "unknown"
+                    ));
+                    sink.complete();
+                }
+            };
+
+            workflowEngine.addListener(sseListener);
+
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                io.lumina.common.core.LoginContext loginCtx = io.lumina.common.core.BaseContext.current();
+                try {
+                    io.lumina.common.core.BaseContext.setCurrent(loginCtx);
+                    executeWorkflow(definition, instance, inputs);
+                } catch (Exception e) {
+                    sink.next(java.util.Map.of(
+                            "event", "WORKFLOW_FAILED",
+                            "instanceId", instanceId,
+                            "error", e.getMessage() != null ? e.getMessage() : e.toString()
+                    ));
+                    sink.complete();
+                } finally {
+                    workflowEngine.removeListener(sseListener);
+                    io.lumina.common.core.BaseContext.clear();
+                }
+            });
+        }).subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic());
+    }
+
     private void executeWorkflow(WorkflowDefinition definition, WorkflowInstanceDO instance,
                                   java.util.Map<String, Object> inputs) {
         instance.setStatus(WorkflowStatus.RUNNING.name());

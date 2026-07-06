@@ -27,6 +27,9 @@ public final class StreamEventType {
     public static final String FINAL = "FINAL";
     public static final String AGENT_RESULT = "AGENT_RESULT";
 
+    /** RAG 检索来源（含文档名、相似度分数、文本片段） */
+    public static final String RAG_SOURCES = "RAG_SOURCES";
+
     /** 错误 */
     public static final String ERROR = "ERROR";
 }
