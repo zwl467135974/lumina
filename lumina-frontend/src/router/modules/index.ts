@@ -208,6 +208,26 @@ export const workflowRoutes: AppRouteRecordRaw[] = [
           requiresAuth: true,
           hidden: true
         }
+      },
+      {
+        path: 'designer',
+        name: 'WorkflowDesignerNew',
+        component: () => import('@/views/workflow/designer/index.vue'),
+        meta: {
+          title: '可视化设计',
+          requiresAuth: true,
+          hidden: true
+        }
+      },
+      {
+        path: 'designer/:id',
+        name: 'WorkflowDesignerEdit',
+        component: () => import('@/views/workflow/designer/index.vue'),
+        meta: {
+          title: '编辑工作流',
+          requiresAuth: true,
+          hidden: true
+        }
       }
     ]
   }

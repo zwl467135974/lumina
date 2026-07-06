@@ -2,7 +2,8 @@
   <div class="workflow-page">
     <PageHeader title="工作流管理" description="创建、管理和执行多 Agent 协作工作流">
       <template #actions>
-        <el-button type="primary" @click="showCreateDialog">新建工作流</el-button>
+        <el-button type="primary" @click="$router.push('/workflow/designer')">可视化新建</el-button>
+        <el-button @click="showCreateDialog">YAML 新建</el-button>
         <el-button @click="showTemplateDialog">从模板创建</el-button>
       </template>
     </PageHeader>
@@ -44,6 +45,7 @@
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="showInstances(row)">实例</el-button>
+            <el-button size="small" @click="$router.push(`/workflow/designer/${row.id}`)">可视化编辑</el-button>
             <el-button v-if="row.status === 0" size="small" type="success" @click="handlePublish(row.id)">发布</el-button>
             <el-button v-if="row.status === 1" size="small" type="primary" @click="showExecuteDialog(row)">执行</el-button>
             <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
