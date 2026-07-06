@@ -101,6 +101,8 @@ export interface WorkflowStreamEvent {
   instanceId?: number
   nodeId?: string
   nodeName?: string
+  nodeType?: string
+  agentId?: number
   result?: string
   durationMs?: number
   error?: string

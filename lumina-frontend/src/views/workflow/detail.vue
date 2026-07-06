@@ -30,11 +30,49 @@
       </el-descriptions>
     </el-card>
 
-    <!-- 节点执行时间线 -->
+    <!-- 多 Agent 对话视图 -->
     <el-card shadow="never" class="timeline-card">
       <template #header>
-        <span class="card-title">节点执行日志（{{ logs.length }} 步）</span>
+        <div class="card-header-row">
+          <span class="card-title">多 Agent 执行过程（{{ agentLogs.length }} 个节点）</span>
+        </div>
       </template>
+
+      <div v-if="agentLogs.length === 0 && !loading" class="empty-tip">暂无执行日志</div>
+
+      <div v-else class="agent-conversation">
+        <!-- 用户输入 -->
+        <div class="conv-bubble conv-user">
+          <div class="bubble-avatar">👤</div>
+          <div class="bubble-body">
+            <div class="bubble-role">用户输入</div>
+            <div class="bubble-content-text">{{ formatJson(instance?.input) }}</div>
+          </div>
+        </div>
+
+        <template v-for="log in agentLogs" :key="log.id">
+          <div class="conv-arrow">↓</div>
+          <div :class="['conv-bubble', `conv-${log.nodeType}`, { 'conv-error': log.status === 'FAILED' }]">
+            <div class="bubble-avatar">{{ nodeIcon(log.nodeType) }}</div>
+            <div class="bubble-body">
+              <div class="bubble-header">
+                <span class="bubble-name">{{ log.nodeName || log.nodeId }}</span>
+                <el-tag size="small" type="info">{{ log.nodeType }}</el-tag>
+                <span v-if="log.status === 'COMPLETED'" class="bubble-status completed">✓ {{ log.durationMs }}ms</span>
+                <span v-else-if="log.status === 'FAILED'" class="bubble-status failed">❌ 失败</span>
+                <span v-else class="bubble-status">{{ log.status }}</span>
+              </div>
+              <div v-if="log.output" class="bubble-result">{{ truncateOutput(log.output) }}</div>
+              <div v-if="log.errorMessage" class="bubble-error">{{ log.errorMessage }}</div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </el-card>
+
+    <!-- 原始执行日志（折叠） -->
+    <el-card shadow="never" class="timeline-card">
+      <template #header>原始执行日志</template>
 
       <div v-if="logs.length === 0 && !loading" class="empty-tip">暂无执行日志</div>
 
@@ -71,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { getInstanceLogs, listInstances, type WorkflowInstanceVO, type WorkflowExecutionLogVO } from '@/api/modules/workflow'
@@ -131,6 +169,21 @@ const logStatusType = (status: string) => {
   return map[status] || ''
 }
 
+const agentLogs = computed(() => logs.value.filter(l => l.output || l.errorMessage || l.nodeType === 'agent'))
+
+const truncateOutput = (text: string): string => {
+  if (!text) return ''
+  const cleaned = text.replace(/^"|"$/g, '').replace(/\\n/g, '\n')
+  return cleaned.length > 300 ? cleaned.substring(0, 300) + '...' : cleaned
+}
+
+const nodeIcon = (nodeType?: string): string => {
+  const icons: Record<string, string> = {
+    agent: '🤖', condition: '🔀', parallel: '⚡', loop: '🔁', transform: '🔄', human: '✋'
+  }
+  return nodeType ? (icons[nodeType] || '📦') : '📦'
+}
+
 onMounted(loadData)
 </script>
 
@@ -153,6 +206,54 @@ onMounted(loadData)
   color: var(--el-color-danger);
   font-size: 13px;
 }
+.card-header-row { display: flex; align-items: center; }
+
+/* 多 Agent 对话气泡 */
+.agent-conversation {
+  max-height: 600px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.conv-bubble {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+}
+.conv-bubble.conv-agent { border-left: 3px solid var(--el-color-primary); }
+.conv-bubble.conv-condition { border-left: 3px solid var(--el-color-warning); }
+.conv-bubble.conv-parallel { border-left: 3px solid var(--el-color-success); }
+.conv-bubble.conv-user { border-left: 3px solid var(--el-color-info); }
+.conv-bubble.conv-error { border-left: 3px solid var(--el-color-danger); }
+.bubble-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0; background: var(--el-fill-color);
+}
+.bubble-body { flex: 1; min-width: 0; }
+.bubble-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;
+}
+.bubble-name { font-weight: 600; font-size: 14px; }
+.bubble-role { font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 4px; }
+.bubble-status { font-size: 12px; margin-left: auto; }
+.bubble-status.completed { color: var(--el-color-success); }
+.bubble-status.failed { color: var(--el-color-danger); }
+.bubble-content-text {
+  font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  font-family: 'Consolas', 'Monaco', monospace; max-height: 100px; overflow-y: auto;
+}
+.bubble-result {
+  font-size: 12px; line-height: 1.6; color: var(--el-text-color-regular);
+  white-space: pre-wrap; word-break: break-word;
+  background: var(--el-fill-color); padding: 8px; border-radius: 4px;
+  max-height: 120px; overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+.bubble-error { color: var(--el-color-danger); font-size: 12px; margin-top: 4px; }
+.conv-arrow { text-align: center; color: var(--el-text-color-placeholder); font-size: 16px; padding: 4px 0; }
 .log-node {
   .log-header {
     display: flex;

@@ -17,6 +17,7 @@ import io.lumina.agent.orchestration.engine.WorkflowEventListener;
 import io.lumina.agent.orchestration.loader.WorkflowLoader;
 import io.lumina.agent.orchestration.model.WorkflowContext;
 import io.lumina.agent.orchestration.model.WorkflowDefinition;
+import io.lumina.agent.orchestration.model.WorkflowNode;
 import io.lumina.agent.orchestration.model.WorkflowStatus;
 import io.lumina.agent.service.WorkflowService;
 import io.lumina.common.core.BaseContext;
@@ -200,12 +201,13 @@ public class WorkflowServiceImpl implements WorkflowService {
             WorkflowEventListener sseListener = new WorkflowEventListener() {
                 @Override
                 public void onNodeStarted(String nodeId, String nodeName, WorkflowContext ctx) {
-                    sink.next(java.util.Map.of(
-                            "event", "NODE_STARTED",
-                            "instanceId", instanceId,
-                            "nodeId", nodeId,
-                            "nodeName", nodeName != null ? nodeName : ""
-                    ));
+                    java.util.Map<String, Object> event = new java.util.HashMap<>();
+                    event.put("event", "NODE_STARTED");
+                    event.put("instanceId", instanceId);
+                    event.put("nodeId", nodeId);
+                    event.put("nodeName", nodeName != null ? nodeName : "");
+                    enrichWithNodeInfo(event, definition, nodeId);
+                    sink.next(event);
                 }
 
                 @Override
@@ -215,6 +217,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     event.put("instanceId", instanceId);
                     event.put("nodeId", nodeId);
                     event.put("durationMs", durationMs);
+                    enrichWithNodeInfo(event, definition, nodeId);
                     try {
                         event.put("result", objectMapper.writeValueAsString(result));
                     } catch (Exception e) {
@@ -225,12 +228,13 @@ public class WorkflowServiceImpl implements WorkflowService {
 
                 @Override
                 public void onNodeFailed(String nodeId, Throwable error) {
-                    sink.next(java.util.Map.of(
-                            "event", "NODE_FAILED",
-                            "instanceId", instanceId,
-                            "nodeId", nodeId,
-                            "error", error.getMessage() != null ? error.getMessage() : error.toString()
-                    ));
+                    java.util.Map<String, Object> event = new java.util.HashMap<>();
+                    event.put("event", "NODE_FAILED");
+                    event.put("instanceId", instanceId);
+                    event.put("nodeId", nodeId);
+                    event.put("error", error.getMessage() != null ? error.getMessage() : error.toString());
+                    enrichWithNodeInfo(event, definition, nodeId);
+                    sink.next(event);
                 }
 
                 @Override
@@ -275,6 +279,33 @@ public class WorkflowServiceImpl implements WorkflowService {
                 }
             });
         }).subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic());
+    }
+
+    /**
+     * 从工作流定义中查找节点信息，填充 nodeType 和 agentId 到 SSE 事件中
+     */
+    private void enrichWithNodeInfo(java.util.Map<String, Object> event,
+                                     WorkflowDefinition definition, String nodeId) {
+        if (definition == null) return;
+        try {
+            WorkflowNode node = definition.findNode(nodeId);
+            if (node != null) {
+                event.put("nodeType", resolveNodeType(node));
+                if (node instanceof io.lumina.agent.orchestration.model.AgentNode agentNode) {
+                    event.put("agentId", agentNode.getAgentId());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("节点信息查找失败: nodeId={}", nodeId);
+        }
+    }
+
+    private String resolveNodeType(WorkflowNode node) {
+        String className = node.getClass().getSimpleName();
+        if (className.endsWith("Node")) {
+            return className.substring(0, className.length() - 4).toLowerCase();
+        }
+        return className.toLowerCase();
     }
 
     private void executeWorkflow(WorkflowDefinition definition, WorkflowInstanceDO instance,

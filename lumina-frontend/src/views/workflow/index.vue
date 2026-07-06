@@ -84,38 +84,54 @@
     </el-dialog>
 
     <!-- 执行对话框 -->
-    <el-dialog v-model="executeDialogVisible" title="执行工作流" width="600px" :close-on-click-modal="false">
+    <el-dialog v-model="executeDialogVisible" title="执行工作流" width="700px" :close-on-click-modal="false">
       <el-form :model="executeForm" label-width="80px">
         <el-form-item label="工作流">
           <span>{{ executeTarget?.name }}</span>
         </el-form-item>
         <el-form-item label="输入参数">
-          <el-input v-model="executeForm.inputsJson" type="textarea" :rows="6" placeholder='JSON 格式，如 {"task": "分析这段代码"}' />
+          <el-input v-model="executeForm.inputsJson" type="textarea" :rows="4" placeholder='JSON 格式，如 {"task": "分析这段代码"}' />
         </el-form-item>
       </el-form>
 
-      <!-- SSE 执行进度 -->
-      <div v-if="streamEvents.length > 0" class="stream-progress">
-        <div class="stream-header">
+      <!-- 多 Agent 对话过程 -->
+      <div v-if="streamEvents.length > 0 || streaming" class="agent-conversation">
+        <div class="conversation-header">
           <el-tag v-if="streaming" type="warning" size="small">执行中…</el-tag>
           <el-tag v-else type="success" size="small">已完成</el-tag>
-          <span class="stream-step">{{ streamEvents.length }} 步</span>
+          <span class="conv-step-count">{{ agentBubbles.length }} 个节点</span>
         </div>
-        <el-timeline class="stream-timeline">
-          <el-timeline-item
-            v-for="(ev, idx) in streamEvents"
-            :key="idx"
-            :type="streamEventType(ev.event)"
-            :timestamp="ev.nodeId || ''"
-          >
-            <div class="stream-event">
-              <el-tag :type="streamEventType(ev.event)" size="small">{{ ev.event }}</el-tag>
-              <span v-if="ev.nodeName" class="event-name">{{ ev.nodeName }}</span>
-              <span v-if="ev.durationMs" class="event-duration">{{ ev.durationMs }}ms</span>
-              <span v-if="ev.error" class="event-error">{{ ev.error }}</span>
+
+        <!-- 用户输入气泡 -->
+        <div class="conv-bubble conv-user">
+          <div class="bubble-avatar">👤</div>
+          <div class="bubble-body">
+            <div class="bubble-role">用户输入</div>
+            <div class="bubble-content">{{ executeForm.inputsJson }}</div>
+          </div>
+        </div>
+
+        <!-- Agent / 节点气泡 -->
+        <template v-for="(bubble, idx) in agentBubbles" :key="idx">
+          <div class="conv-arrow">↓</div>
+          <div :class="['conv-bubble', `conv-${bubble.nodeType || 'unknown'}`, { 'conv-error': bubble.status === 'failed' }]">
+            <div class="bubble-avatar">{{ nodeIcon(bubble.nodeType) }}</div>
+            <div class="bubble-body">
+              <div class="bubble-header">
+                <span class="bubble-name">{{ bubble.nodeName || bubble.nodeId }}</span>
+                <el-tag v-if="bubble.agentId" size="small" type="primary">Agent #{{ bubble.agentId }}</el-tag>
+                <el-tag size="small" type="info">{{ bubble.nodeType || 'node' }}</el-tag>
+                <span v-if="bubble.status === 'completed'" class="bubble-status completed">✓ {{ bubble.durationMs }}ms</span>
+                <span v-else-if="bubble.status === 'running'" class="bubble-status running">⏳ 执行中…</span>
+                <span v-else-if="bubble.status === 'failed'" class="bubble-status failed">❌ 失败</span>
+              </div>
+              <div v-if="bubble.result && bubble.status === 'completed'" class="bubble-result">
+                {{ bubble.resultPreview }}
+              </div>
+              <div v-if="bubble.error" class="bubble-error">{{ bubble.error }}</div>
             </div>
-          </el-timeline-item>
-        </el-timeline>
+          </div>
+        </template>
       </div>
 
       <template #footer>
@@ -150,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -332,11 +348,79 @@ const viewResult = () => {
   }
 }
 
-const streamEventType = (event: string) => {
-  if (event === 'WORKFLOW_COMPLETED') return 'success'
-  if (event === 'WORKFLOW_FAILED' || event === 'NODE_FAILED') return 'danger'
-  if (event === 'NODE_STARTED') return 'primary'
-  return ''
+// 多 Agent 对话气泡
+interface AgentBubble {
+  nodeId: string
+  nodeName: string
+  nodeType?: string
+  agentId?: number
+  status: 'running' | 'completed' | 'failed'
+  result?: string
+  resultPreview: string
+  durationMs?: number
+  error?: string
+}
+
+const agentBubbles = computed<AgentBubble[]>(() => {
+  const bubbles = new Map<string, AgentBubble>()
+  for (const ev of streamEvents.value) {
+    if (!ev.nodeId || ev.event === 'WORKFLOW_COMPLETED' || ev.event === 'WORKFLOW_FAILED') continue
+
+    if (ev.event === 'NODE_STARTED') {
+      bubbles.set(ev.nodeId, {
+        nodeId: ev.nodeId,
+        nodeName: ev.nodeName || ev.nodeId,
+        nodeType: ev.nodeType,
+        agentId: ev.agentId,
+        status: 'running',
+        resultPreview: ''
+      })
+    } else if (ev.event === 'NODE_COMPLETED') {
+      const existing = bubbles.get(ev.nodeId)
+      const resultStr = ev.result || ''
+      bubbles.set(ev.nodeId, {
+        nodeId: ev.nodeId,
+        nodeName: existing?.nodeName || ev.nodeId,
+        nodeType: existing?.nodeType || ev.nodeType,
+        agentId: existing?.agentId || ev.agentId,
+        status: 'completed',
+        result: resultStr,
+        resultPreview: truncateResult(resultStr),
+        durationMs: ev.durationMs
+      })
+    } else if (ev.event === 'NODE_FAILED') {
+      const existing = bubbles.get(ev.nodeId)
+      bubbles.set(ev.nodeId, {
+        nodeId: ev.nodeId,
+        nodeName: existing?.nodeName || ev.nodeId,
+        nodeType: existing?.nodeType || ev.nodeType,
+        agentId: existing?.agentId || ev.agentId,
+        status: 'failed',
+        resultPreview: '',
+        error: ev.error
+      })
+    }
+  }
+  return Array.from(bubbles.values())
+})
+
+const truncateResult = (text: string): string => {
+  if (!text) return ''
+  const cleaned = text.replace(/^"|"$/g, '').replace(/\\n/g, '\n')
+  if (cleaned.length <= 300) return cleaned
+  return cleaned.substring(0, 300) + '...'
+}
+
+const nodeIcon = (nodeType?: string): string => {
+  const icons: Record<string, string> = {
+    agent: '🤖',
+    condition: '🔀',
+    parallel: '⚡',
+    loop: '🔁',
+    transform: '🔄',
+    human: '✋'
+  }
+  return nodeType ? (icons[nodeType] || '📦') : '📦'
 }
 
 // 实例
@@ -397,31 +481,107 @@ loadList()
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
 }
-.stream-progress {
+
+/* 多 Agent 对话气泡 */
+.agent-conversation {
   margin-top: 16px;
-  max-height: 300px;
+  max-height: 450px;
   overflow-y: auto;
   background: var(--el-fill-color-light);
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: 8px;
+  padding: 16px;
 }
-.stream-header {
+.conversation-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-size: 13px;
 }
-.stream-timeline {
-  padding-left: 8px;
+.conv-step-count {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
-.stream-event {
+.conv-bubble {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  transition: border-color 0.2s;
+}
+.conv-bubble.conv-agent {
+  border-left: 3px solid var(--el-color-primary);
+}
+.conv-bubble.conv-condition {
+  border-left: 3px solid var(--el-color-warning);
+}
+.conv-bubble.conv-parallel {
+  border-left: 3px solid var(--el-color-success);
+}
+.conv-bubble.conv-user {
+  border-left: 3px solid var(--el-color-info);
+}
+.conv-bubble.conv-error {
+  border-left: 3px solid var(--el-color-danger);
+}
+.bubble-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  background: var(--el-fill-color-light);
+}
+.bubble-body {
+  flex: 1;
+  min-width: 0;
+}
+.bubble-header {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.bubble-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.bubble-status {
   font-size: 12px;
-  .event-name { font-weight: 500; }
-  .event-duration { color: var(--el-text-color-secondary); }
-  .event-error { color: var(--el-color-danger); }
+  margin-left: auto;
+}
+.bubble-status.completed { color: var(--el-color-success); }
+.bubble-status.running { color: var(--el-color-warning); }
+.bubble-status.failed { color: var(--el-color-danger); }
+.bubble-result {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--el-text-color-regular);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--el-fill-color-lighter);
+  padding: 8px;
+  border-radius: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+}
+.bubble-error {
+  color: var(--el-color-danger);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.conv-arrow {
+  text-align: center;
+  color: var(--el-text-color-placeholder);
+  font-size: 16px;
+  padding: 4px 0;
 }
 </style>
