@@ -14,6 +14,9 @@ export const usePermissionStore = defineStore('permission', () => {
    */
   const hasPermission = (permission: string | string[]): boolean => {
     const userStore = useUserStore()
+    // 超级管理员直接放行
+    const userRoles = userStore.userInfo?.roles || roles.value
+    if (userRoles.includes('SUPER_ADMIN')) return true
     const userPermissions = userStore.userInfo?.permissions || permissions.value
 
     if (Array.isArray(permission)) {

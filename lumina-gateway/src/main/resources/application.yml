@@ -56,6 +56,14 @@ spring:
           filters:
             - StripPrefix=0
 
+        # Base 服务兜底路由（menus、dashboard 等其他 base 路径统一转给 business-base）
+        - id: lumina-base-fallback-route
+          uri: lb://lumina-business-base
+          predicates:
+            - Path=/api/v1/base/**
+          filters:
+            - StripPrefix=0
+
         # Agent 服务路由
         - id: lumina-agent-route
           uri: lb://lumina-agent-service
@@ -109,6 +117,22 @@ spring:
           uri: lb://lumina-agent-service
           predicates:
             - Path=/api/v1/tools/**
+          filters:
+            - StripPrefix=0
+
+        # Agent 知识库路由
+        - id: lumina-agent-knowledge-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/knowledge/**
+          filters:
+            - StripPrefix=0
+
+        # Agent 文件路由
+        - id: lumina-agent-files-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/files/**
           filters:
             - StripPrefix=0
 

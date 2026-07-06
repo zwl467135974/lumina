@@ -77,6 +77,21 @@ public class RoleController {
     }
 
     /**
+     * 获取所有角色（不分页，用于用户分配角色等下拉选择场景）
+     *
+     * <p>注意：必须定义在 {@code /{roleId}} 之外的字面路径，否则 GET /roles/all 会被
+     * /{roleId} 匹配，"all" 转 Long 失败触发「参数类型不匹配」。
+     */
+    @GetMapping("/all")
+    public R<List<RoleVO>> listAllRoles() {
+        RoleQueryDTO dto = new RoleQueryDTO();
+        dto.setCurrent(1);
+        dto.setSize(100);
+        Page<RoleVO> page = roleService.listRoles(dto);
+        return R.success(page.getRecords());
+    }
+
+    /**
      * 分页查询角色
      */
     @GetMapping

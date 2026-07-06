@@ -27,17 +27,20 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 public class RedisConfig {
 
-    @Value("${spring.redis.host:localhost}")
+    @Value("${spring.data.redis.host:localhost}")
     private String redisHost;
 
-    @Value("${spring.redis.port:6379}")
+    @Value("${spring.data.redis.port:6379}")
     private int redisPort;
 
-    @Value("${spring.redis.database:0}")
+    @Value("${spring.data.redis.database:0}")
     private int redisDatabase;
 
-    @Value("${spring.redis.timeout:3000}")
+    @Value("${spring.data.redis.timeout:3000}")
     private int redisTimeout;
+
+    @Value("${spring.data.redis.password:}")
+    private String redisPassword;
 
     /**
      * Redisson 客户端
@@ -51,6 +54,7 @@ public class RedisConfig {
         config.useSingleServer()
               .setAddress(String.format("redis://%s:%d", redisHost, redisPort))
               .setDatabase(redisDatabase)
+              .setPassword(redisPassword)
               .setConnectionPoolSize(64)
               .setConnectionMinimumIdleSize(10)
               .setConnectTimeout(redisTimeout);

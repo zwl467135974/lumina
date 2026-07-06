@@ -14,40 +14,40 @@ import type {
  * 查询权限树
  */
 export function getPermissionTree(params?: QueryPermissionDTO) {
-  return request.get<R<PermissionVO[]>>('/api/v1/permissions/tree', { params })
+  return request.get<R<PermissionVO[]>>('/api/v1/base/permissions/tree', { params })
 }
 
 /**
  * 查询所有权限（不分页）
  */
 export function getAllPermissions(params?: QueryPermissionDTO) {
-  return request.get<R<PermissionVO[]>>('/api/v1/permissions', { params })
+  return request.get<R<PermissionVO[]>>('/api/v1/base/permissions', { params })
 }
 
 /**
  * 根据ID查询权限
  */
 export function getPermissionById(id: number) {
-  return request.get<R<PermissionVO>>(`/api/v1/permissions/${id}`)
+  return request.get<R<PermissionVO>>(`/api/v1/base/permissions/${id}`)
 }
 
 /**
  * 创建权限
  */
 export function createPermission(data: CreatePermissionDTO) {
-  return request.post<R<PermissionVO>>('/api/v1/permissions', data)
+  return request.post<R<PermissionVO>>('/api/v1/base/permissions', data)
 }
 
 /**
  * 更新权限
  */
 export function updatePermission(id: number, data: UpdatePermissionDTO) {
-  return request.put<R<PermissionVO>>(`/api/v1/permissions/${id}`, data)
+  return request.put<R<PermissionVO>>(`/api/v1/base/permissions/${id}`, data)
 }
 
 /**
  * 删除权限
  */
 export function deletePermission(id: number) {
-  return request.delete<R<void>>(`/api/v1/permissions/${id}`)
+  return request.delete<R<void>>(`/api/v1/base/permissions/${id}`)
 }

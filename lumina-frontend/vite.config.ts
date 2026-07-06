@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import http from 'node:http'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,45 +15,18 @@ export default defineConfig({
     port: 3000,
     host: true,
     proxy: {
-      '/api/v1/agents': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/conversations': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/knowledge': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/tools': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/files': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/workflows': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/prompts': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/cost': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
-      '/api/v1/budget': {
-        target: 'http://localhost:8081',
-        changeOrigin: true
-      },
+      // 全部走 Gateway（完整链路验证）
+      // Node http-proxy 与 Reactor Netty 默认有 "Data after Connection: close" 兼容问题，
+      // 通过强制 keep-alive 请求头 + keep-alive agent 解决
       '/api': {
-        target: 'http://localhost:8082',
-        changeOrigin: true
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        agent: new http.Agent({ keepAlive: true, maxSockets: 64 }),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('Connection', 'keep-alive')
+          })
+        }
       }
     }
   },

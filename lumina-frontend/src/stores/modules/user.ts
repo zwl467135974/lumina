@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserInfo } from '@/types/api'
 import { login as loginApi, getUserInfo, logout as logoutApi } from '@/api/modules/user'
+import { setToken, removeToken } from '@/utils'
 import { getUserMenus, type MenuVO } from '@/api/modules/menu'
 
 export const useUserStore = defineStore('user', () => {
@@ -23,7 +24,9 @@ export const useUserStore = defineStore('user', () => {
   const login = async (username: string, password: string) => {
     const res = await loginApi({ username, password })
     token.value = res.data.token
-    userInfo.value = res.data.userInfo
+    setToken(res.data.token)
+    // 后端 LoginVO 是扁平结构（roles/permissions 在顶层），直接作为 userInfo
+    userInfo.value = res.data as any
     await loadMenus()
   }
 
@@ -56,6 +59,7 @@ export const useUserStore = defineStore('user', () => {
       await logoutApi()
     } finally {
       token.value = ''
+      removeToken()
       userInfo.value = null
       menus.value = []
     }

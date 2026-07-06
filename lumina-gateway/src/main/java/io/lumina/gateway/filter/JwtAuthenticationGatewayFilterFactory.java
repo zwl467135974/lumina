@@ -16,12 +16,15 @@ import org.springframework.stereotype.Component;
  *
  * 在 Gateway 中验证 JWT Token
  *
+ * 类名必须以 GatewayFilterFactory 结尾，Spring Cloud Gateway 才能通过
+ * application.yml 中 `name: JwtAuthentication` 找到本类。
+ *
  * @author Lumina Team
  * @since 1.0.0
  */
 @Slf4j
 @Component
-public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
+public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<JwtAuthenticationGatewayFilterFactory.Config> {
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -29,7 +32,7 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     @Autowired
     private WhitelistConfig whitelistConfig;
 
-    public JwtAuthenticationFilter() {
+    public JwtAuthenticationGatewayFilterFactory() {
         super(Config.class);
     }
 
