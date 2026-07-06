@@ -6,6 +6,7 @@ import io.lumina.agent.infrastructure.entity.AgentTaskDO;
 import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
 import io.lumina.agent.service.AgentService;
 import io.lumina.common.core.BaseContext;
+import io.lumina.common.core.LoginContext;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,9 @@ import java.util.concurrent.Executor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,5 +98,80 @@ class AgentTaskServiceImplTest {
 
         assertThatThrownBy(() -> agentTaskService.getTask("missing"))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void executeTaskCompletesSuccessfully() {
+        AgentTaskDO task = new AgentTaskDO();
+        task.setId(1L);
+        task.setTaskUuid("test-uuid");
+        task.setAgentId(100L);
+        task.setInputText("hello");
+        task.setStatus("QUEUED");
+        task.setFileIds(null);
+
+        when(agentTaskMapper.selectOne(any())).thenReturn(task);
+        when(agentService.executeAgent(eq(100L), eq("hello"), any())).thenReturn("result-text");
+
+        agentTaskService.executeTask("test-uuid", LoginContext.empty());
+
+        // markRunning → updateById called
+        // markCompleted → updateById called
+        verify(agentTaskMapper, times(2)).updateById(any(AgentTaskDO.class));
+
+        ArgumentCaptor<AgentTaskDO> captor = ArgumentCaptor.forClass(AgentTaskDO.class);
+        verify(agentTaskMapper, times(2)).updateById(captor.capture());
+        assertThat(captor.getAllValues().get(0).getStatus()).isEqualTo("RUNNING");
+        assertThat(captor.getAllValues().get(1).getStatus()).isEqualTo("COMPLETED");
+        assertThat(captor.getAllValues().get(1).getResult()).isEqualTo("result-text");
+    }
+
+    @Test
+    void executeTaskHandlesFailure() {
+        AgentTaskDO task = new AgentTaskDO();
+        task.setId(1L);
+        task.setTaskUuid("fail-uuid");
+        task.setAgentId(100L);
+        task.setInputText("bad input");
+        task.setStatus("QUEUED");
+        task.setFileIds(null);
+
+        when(agentTaskMapper.selectOne(any())).thenReturn(task);
+        when(agentService.executeAgent(eq(100L), eq("bad input"), any()))
+                .thenThrow(new RuntimeException("LLM error"));
+
+        agentTaskService.executeTask("fail-uuid", LoginContext.empty());
+
+        verify(agentTaskMapper, times(2)).updateById(any(AgentTaskDO.class));
+
+        ArgumentCaptor<AgentTaskDO> captor = ArgumentCaptor.forClass(AgentTaskDO.class);
+        verify(agentTaskMapper, times(2)).updateById(captor.capture());
+        assertThat(captor.getAllValues().get(0).getStatus()).isEqualTo("RUNNING");
+        assertThat(captor.getAllValues().get(1).getStatus()).isEqualTo("FAILED");
+        assertThat(captor.getAllValues().get(1).getErrorMessage()).contains("LLM error");
+    }
+
+    @Test
+    void executeTaskWithFileUuidsUsesMultimodal() {
+        AgentTaskDO task = new AgentTaskDO();
+        task.setId(1L);
+        task.setTaskUuid("multi-uuid");
+        task.setAgentId(100L);
+        task.setInputText("describe image");
+        task.setStatus("QUEUED");
+        task.setFileIds("uuid-1,uuid-2");
+
+        when(agentTaskMapper.selectOne(any())).thenReturn(task);
+        when(agentService.executeAgentMultimodal(eq(100L), eq("describe image"), any(), any()))
+                .thenReturn("image description");
+
+        agentTaskService.executeTask("multi-uuid", LoginContext.empty());
+
+        verify(agentService).executeAgentMultimodal(eq(100L), eq("describe image"), any(), any());
+        verify(agentService, never()).executeAgent(any(), any(), any());
+
+        ArgumentCaptor<AgentTaskDO> captor = ArgumentCaptor.forClass(AgentTaskDO.class);
+        verify(agentTaskMapper, times(2)).updateById(captor.capture());
+        assertThat(captor.getAllValues().get(1).getStatus()).isEqualTo("COMPLETED");
     }
 }
