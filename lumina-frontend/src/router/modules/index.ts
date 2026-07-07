@@ -274,3 +274,17 @@ export const budgetRoutes: AppRouteRecordRaw[] = [
     }
   }
 ]
+
+// Agent 评估路由
+export const evaluationRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/evaluation',
+    name: 'Evaluation',
+    component: () => import('@/views/evaluation/index.vue'),
+    meta: {
+      title: 'Agent 评估',
+      icon: 'DataAnalysis',
+      requiresAuth: true
+    }
+  }
+]
