@@ -29,8 +29,10 @@
     <el-card shadow="never" class="mount-card">
       <template #header>Agent 知识库挂载</template>
       <el-form :inline="true">
-        <el-form-item label="Agent ID">
-          <el-input-number v-model="mountAgentId" :min="1" :controls="false" style="width: 80px" />
+        <el-form-item label="Agent">
+          <el-select v-model="mountAgentId" style="width: 240px" placeholder="Select Agent">
+            <el-option v-for="a in agents" :key="a.agentId" :label="`${a.agentName} (#${a.agentId})`" :value="a.agentId" />
+          </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="loadAgentKbs">查询已挂载</el-button>
@@ -104,12 +106,15 @@ import {
   unmountKnowledgeBase,
   type KnowledgeBaseVO
 } from '@/api/modules/knowledge-base'
+import { listAgents } from '@/api/modules/agent'
+import type { AgentVO } from '@/types/api'
 
 const { t } = useI18n()
 
 const queryName = ref('')
 const loading = ref(false)
 const kbs = ref<KnowledgeBaseVO[]>([])
+const agents = ref<AgentVO[]>([])
 const dialogVisible = ref(false)
 const saving = ref(false)
 const mountAgentId = ref(1)
@@ -176,7 +181,10 @@ const handleUnmount = async (kbId: number) => {
   await loadAgentKbs()
 }
 
-onMounted(() => { loadKbs() })
+onMounted(() => {
+  loadKbs()
+  listAgents({ pageNum: 1, pageSize: 100 }).then(res => { agents.value = res.data.list || [] }).catch(() => {})
+})
 </script>
 
 <style scoped>

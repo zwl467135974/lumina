@@ -59,6 +59,14 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
 
+    @Autowired
+    private io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper;
+
+    @Autowired
+    private io.lumina.agent.config.LuminaAgentProperties agentProperties;
+
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
     @org.springframework.beans.factory.annotation.Value("${rocketmq.consumer.agent-task.enabled:false}")
     private boolean mqTaskEnabled;
 
@@ -160,7 +168,8 @@ public class AgentTaskServiceImpl implements AgentTaskService {
                 result = agentService.executeAgentMultimodal(
                         task.getAgentId(), task.getInputText(), fileUuids, task.getConversationUuid());
             }
-            markCompleted(taskUuid, result, System.currentTimeMillis() - start);
+            String[] modelInfo = resolveModelInfo(task.getAgentId());
+            markCompleted(taskUuid, result, System.currentTimeMillis() - start, modelInfo[0], modelInfo[1]);
         } catch (Exception e) {
             markFailed(taskUuid, e, System.currentTimeMillis() - start);
         } finally {
@@ -176,6 +185,28 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         return agentTaskMapper.selectOne(wrapper);
     }
 
+    /**
+     * 从 Agent 的 llmConfig 或全局配置解析模型信息
+     * @return [modelName, provider]
+     */
+    private String[] resolveModelInfo(Long agentId) {
+        try {
+            io.lumina.agent.infrastructure.entity.AgentDO agent = agentMapper.selectById(agentId);
+            if (agent != null && agent.getLlmConfig() != null && !agent.getLlmConfig().isBlank()) {
+                var config = objectMapper.readTree(agent.getLlmConfig());
+                String modelName = config.has("modelName") ? config.get("modelName").asText() : null;
+                String modelType = config.has("modelType") ? config.get("modelType").asText() : null;
+                if (modelName != null) return new String[]{modelName, modelType != null ? modelType : "default"};
+            }
+        } catch (Exception e) {
+            log.debug("解析 Agent LLM 配置失败，使用全局默认: {}", e.getMessage());
+        }
+        if (agentProperties != null && agentProperties.getLlm() != null) {
+            return new String[]{agentProperties.getLlm().getModel(), agentProperties.getLlm().getType()};
+        }
+        return new String[]{"default", "default"};
+    }
+
     private void markRunning(AgentTaskDO task) {
         AgentTaskDO update = new AgentTaskDO();
         update.setId(task.getId());
@@ -186,7 +217,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         progressRegistry.emit(task.getTaskUuid(), buildEvent(task));
     }
 
-    private void markCompleted(String taskUuid, String result, long durationMs) {
+    private void markCompleted(String taskUuid, String result, long durationMs, String modelName, String provider) {
         AgentTaskDO task = selectByUuid(taskUuid);
         if (task == null) return;
         if (STATUS_CANCELLED.equals(task.getStatus())) {
@@ -196,6 +227,8 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         task.setStatus(STATUS_COMPLETED);
         task.setResult(result);
         task.setDurationMs(durationMs);
+        task.setModelName(modelName);
+        task.setProvider(provider);
         task.setUpdateTime(LocalDateTime.now());
         agentTaskMapper.updateById(task);
         progressRegistry.emit(taskUuid, buildEvent(task));

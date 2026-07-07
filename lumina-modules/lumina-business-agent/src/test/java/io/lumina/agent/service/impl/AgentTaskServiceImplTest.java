@@ -54,6 +54,9 @@ class AgentTaskServiceImplTest {
     @Mock
     private TaskProgressRegistry progressRegistry;
 
+    @Mock
+    private io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper;
+
     @AfterEach
     void tearDown() {
         BaseContext.clear();

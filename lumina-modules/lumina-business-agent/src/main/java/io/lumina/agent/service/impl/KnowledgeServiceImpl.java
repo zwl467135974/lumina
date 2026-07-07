@@ -48,6 +48,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
 
+    @Autowired(required = false)
+    private io.lumina.agent.config.RagProperties ragProperties;
+
     @Value("${lumina.rag.reader.chunk-size:512}")
     private int chunkSize;
 
@@ -99,6 +102,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             doc.setTitle(filename);
             doc.setFormat(format);
             doc.setFileSize(file.getSize());
+            doc.setLanguage(detectLanguage(filename));
+            doc.setEmbeddingModel(getEmbeddingModelName());
             doc.setStatus(0);
             documentMapper.insert(doc);
 
@@ -167,6 +172,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             doc.setChunkCount(docs != null ? docs.size() : 0);
             doc.setVectorDocIds(objectMapper.writeValueAsString(vectorDocIds));
             doc.setFileSize(file.getSize());
+            doc.setLanguage(detectLanguage(filename));
+            doc.setEmbeddingModel(getEmbeddingModelName());
             doc.setStatus(1);
             documentMapper.insert(doc);
 
@@ -278,5 +285,29 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         if (lower.endsWith(".docx")) return "docx";
         if (lower.endsWith(".md")) return "md";
         return "txt";
+    }
+
+    /**
+     * 简单语言检测：文件名含 CJK 字符判定为中文
+     */
+    private String detectLanguage(String text) {
+        if (text == null) return "auto";
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if ((ch >= '\u4E00' && ch <= '\u9FFF') || (ch >= '\u3040' && ch <= '\u30FF')) {
+                return "zh";
+            }
+        }
+        return "en";
+    }
+
+    /**
+     * 获取当前配置的 Embedding 模型名称
+     */
+    private String getEmbeddingModelName() {
+        if (ragProperties != null && ragProperties.getEmbedding() != null) {
+            return ragProperties.getEmbedding().getModel();
+        }
+        return "unknown";
     }
 }

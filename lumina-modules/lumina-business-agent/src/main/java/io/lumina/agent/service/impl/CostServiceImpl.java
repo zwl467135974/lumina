@@ -71,7 +71,9 @@ public class CostServiceImpl implements CostService {
             totalCompletionTokens += safeInt(task.getCompletionTokens());
             totalTokens += safeInt(task.getTotalTokens());
 
-            BigDecimal taskCost = calculateCost("default", "default",
+            String provider = task.getProvider() != null ? task.getProvider() : "default";
+            String model = task.getModelName() != null ? task.getModelName() : "default";
+            BigDecimal taskCost = calculateCost(provider, model,
                     safeInt(task.getPromptTokens()), safeInt(task.getCompletionTokens()));
             totalCost = totalCost.add(taskCost);
 

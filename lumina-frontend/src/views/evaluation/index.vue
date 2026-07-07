@@ -45,8 +45,10 @@
             </el-descriptions>
 
             <el-form :model="runForm" label-width="110px" class="run-form">
-              <el-form-item label="Agent ID">
-                <el-input-number v-model="runForm.agentId" :min="1" />
+              <el-form-item label="Agent">
+                <el-select v-model="runForm.agentId" style="width: 280px" placeholder="Select Agent">
+                  <el-option v-for="a in agents" :key="a.agentId" :label="`${a.agentName} (#${a.agentId})`" :value="a.agentId" />
+                </el-select>
               </el-form-item>
               <el-form-item :label="t('evaluation.scoringMethod')">
                 <el-select v-model="runForm.scoringMethod" style="width: 240px">
@@ -241,6 +243,8 @@ import {
   type RunReport,
   type ScoringMethod
 } from '@/api/modules/evaluation'
+import { listAgents } from '@/api/modules/agent'
+import type { AgentVO } from '@/types/api'
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -258,6 +262,7 @@ const sampleYaml = `cases:
 
 const queryName = ref('')
 const datasets = ref<EvaluationDataset[]>([])
+const agents = ref<AgentVO[]>([])
 const selectedDataset = ref<EvaluationDataset | null>(null)
 const datasetLoading = ref(false)
 const runLoading = ref(false)
@@ -518,6 +523,7 @@ const loadReport = async (id: number) => {
 onMounted(() => {
   loadDatasets()
   loadRuns()
+  listAgents({ pageNum: 1, pageSize: 100 }).then(res => { agents.value = res.data.list || [] }).catch(() => {})
 })
 </script>
 

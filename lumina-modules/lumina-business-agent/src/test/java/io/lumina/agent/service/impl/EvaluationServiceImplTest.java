@@ -97,7 +97,7 @@ class EvaluationServiceImplTest {
         agent.setAgentId(2L);
         agent.setAgentType("assistant");
         when(agentMapper.selectById(2L)).thenReturn(agent);
-        when(agentExecutionEngine.executeSync(eq("assistant"), eq("hello"), isNull(), isNull()))
+        when(agentExecutionEngine.executeSync(eq("assistant"), eq("hello"), any(), isNull()))
                 .thenReturn(ExecuteResult.success("Lumina response"));
 
         EvaluationRunDTO dto = new EvaluationRunDTO();

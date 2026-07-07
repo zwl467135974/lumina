@@ -23,6 +23,7 @@ import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.infrastructure.mapper.EvaluationDatasetMapper;
 import io.lumina.agent.infrastructure.mapper.EvaluationRunMapper;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.service.EvaluationService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
@@ -346,6 +347,24 @@ public class EvaluationServiceImpl implements EvaluationService {
                 .orderByAsc(EvaluationRunDO::getCreateTime));
     }
 
+    /**
+     * 从 Agent DB 配置构建 AgentConfig（评估时使用 Agent 专属配置而非全局默认）
+     */
+    private AgentConfig buildEvalConfig(AgentDO agent) {
+        AgentConfig config = new AgentConfig();
+        config.setAgentName(agent.getAgentName());
+        config.setAgentType(agent.getAgentType());
+        if (agent.getLlmConfig() != null && !agent.getLlmConfig().isBlank()) {
+            try {
+                AgentConfig.LLMConfig llmConfig = jsonMapper.readValue(agent.getLlmConfig(), AgentConfig.LLMConfig.class);
+                config.setLlmConfig(llmConfig);
+            } catch (Exception e) {
+                log.debug("评估：解析 Agent LLM 配置失败，使用全局默认: {}", e.getMessage());
+            }
+        }
+        return config;
+    }
+
     private CaseResult runSingleCase(AgentDO agent, TestCase testCase, EvaluationScorer scorer, double threshold) {
         long start = System.currentTimeMillis();
         CaseResult caseResult = new CaseResult();
@@ -354,7 +373,8 @@ public class EvaluationServiceImpl implements EvaluationService {
         caseResult.setExpected(testCase.getExpected());
         caseResult.setCategory(testCase.getCategory());
         try {
-            ExecuteResult executeResult = agentExecutionEngine.executeSync(agent.getAgentType(), testCase.getInput(), null, null);
+            AgentConfig evalConfig = buildEvalConfig(agent);
+            ExecuteResult executeResult = agentExecutionEngine.executeSync(agent.getAgentType(), testCase.getInput(), evalConfig, null);
             caseResult.setActual(executeResult.getResult());
             caseResult.setLatencyMs(executeResult.getDuration() == null ? System.currentTimeMillis() - start : executeResult.getDuration());
             fillTokenUsage(caseResult, executeResult.getTokenUsage());

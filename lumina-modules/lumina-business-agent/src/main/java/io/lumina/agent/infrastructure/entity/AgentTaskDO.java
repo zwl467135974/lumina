@@ -32,6 +32,8 @@ public class AgentTaskDO {
     private Integer promptTokens;
     private Integer completionTokens;
     private Integer totalTokens;
+    private String modelName;
+    private String provider;
     private Long durationMs;
     private Long tenantId;
     private Long createBy;
