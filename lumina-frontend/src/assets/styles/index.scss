@@ -1,52 +1,1816 @@
-/**
- * 全局样式入口
- */
+﻿// ============================================================
+//  Lumina Global Styles — "Luminous" Dark Theme
+//  Google Fonts → Design Tokens → Mixins → Reset →
+//  Element Plus Component Overrides → Animations
+// ============================================================
+
+// ----------------------------------------------------------
+//  0. Google Fonts (加载字体)
+// ----------------------------------------------------------
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+// ----------------------------------------------------------
+//  1. Design Tokens & Mixins
+// ----------------------------------------------------------
 @import './variables.scss';
 @import './mixins.scss';
 
-* {
+// ----------------------------------------------------------
+//  2. CSS Reset & Base Styles
+// ----------------------------------------------------------
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html,
+html {
+  font-size: 16px; // 1rem = 16px
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
 body {
-  width: 100%;
-  height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-    'Noto Color Emoji';
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--el-text-color-primary);
-  background-color: var(--el-bg-color-page);
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-base);
+  font-weight: var(--lumina-font-weight-normal);
+  line-height: var(--lumina-line-height-base);
+  color: var(--lumina-text-primary);
+  background-color: var(--lumina-bg-base);
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
+// Headings — display font
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--lumina-font-display);
+  font-weight: var(--lumina-font-weight-semibold);
+  line-height: var(--lumina-line-height-tight);
+  color: var(--lumina-text-primary);
+}
+
+h1 { font-size: var(--lumina-font-size-4xl); }
+h2 { font-size: var(--lumina-font-size-3xl); }
+h3 { font-size: var(--lumina-font-size-2xl); }
+h4 { font-size: var(--lumina-font-size-xl); }
+h5 { font-size: var(--lumina-font-size-lg); }
+h6 { font-size: var(--lumina-font-size-md); }
+
+// Code — monospace font
+code, pre, kbd, samp {
+  font-family: var(--lumina-font-mono);
+}
+
+code {
+  padding: 2px 6px;
+  border-radius: var(--lumina-radius-sm);
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--lumina-primary-light);
+  font-size: 0.875em;
+}
+
+pre {
+  padding: var(--lumina-spacing-md);
+  border-radius: var(--lumina-radius-md);
+  background: var(--lumina-bg-input);
+  border: 1px solid var(--lumina-border);
+  overflow-x: auto;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+  color: var(--lumina-text-regular);
+}
+
+// Links
 a {
-  color: var(--el-color-primary);
+  color: var(--lumina-primary-light);
   text-decoration: none;
+  transition: color var(--lumina-transition-fast);
 
   &:hover {
-    color: var(--el-color-primary-light-3);
+    color: var(--lumina-primary);
   }
 }
 
-// 滚动条样式
+// Selection
+::selection {
+  background: rgba(124, 58, 237, 0.3);
+  color: var(--lumina-text-primary);
+}
+
+// Images
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+// Focus visible
+:focus-visible {
+  outline: 2px solid var(--lumina-primary);
+  outline-offset: 2px;
+}
+
+// ----------------------------------------------------------
+//  3. Scrollbar Styling
+// ----------------------------------------------------------
+// Webkit (Chrome, Edge, Safari)
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: var(--el-border-color);
-  border-radius: 3px;
-
-  &:hover {
-    background-color: var(--el-border-color-darker);
-  }
+  width: var(--lumina-scrollbar-width);
+  height: var(--lumina-scrollbar-width);
 }
 
 ::-webkit-scrollbar-track {
-  background-color: var(--el-fill-color-light);
+  background: var(--lumina-scrollbar-track);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--lumina-scrollbar-thumb);
+  border-radius: 3px;
+  transition: background var(--lumina-transition-fast);
+
+  &:hover {
+    background: var(--lumina-scrollbar-thumb-hover);
+  }
+}
+
+// Firefox
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--lumina-scrollbar-thumb) var(--lumina-scrollbar-track);
+}
+
+// ----------------------------------------------------------
+//  4. Utility Classes
+// ----------------------------------------------------------
+.lumina-glass {
+  @include glass-effect;
+}
+
+.lumina-card {
+  @include card-base;
+}
+
+.lumina-text-gradient {
+  @include text-gradient;
+}
+
+.lumina-glow {
+  @include glow-shadow;
+}
+
+// 渐变分隔线
+.lumina-divider {
+  height: 1px;
+  border: none;
+  @include gradient-line;
+  opacity: 0.3;
+}
+
+// 页面进入动画容器
+.lumina-page-enter {
+  @include fade-in-up;
+}
+
+// ----------------------------------------------------------
+//  5. Element Plus Component Overrides
+// ----------------------------------------------------------
+
+// === Card ===
+.el-card {
+  @include card-base;
+  --el-card-bg-color: var(--lumina-bg-card);
+  --el-card-border-color: var(--lumina-border);
+
+  .el-card__header {
+    border-bottom-color: var(--lumina-border);
+    padding: var(--lumina-spacing-md) var(--lumina-spacing-lg);
+    font-family: var(--lumina-font-display);
+    font-weight: var(--lumina-font-weight-semibold);
+    font-size: var(--lumina-font-size-md);
+    color: var(--lumina-text-primary);
+  }
+
+  .el-card__body {
+    padding: var(--lumina-spacing-lg);
+  }
+
+  &.is-always-shadow,
+  &.is-hover-shadow:hover {
+    box-shadow: var(--lumina-shadow-lg);
+  }
+}
+
+// === Table ===
+.el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(30, 41, 59, 0.6);
+  --el-table-row-hover-bg-color: var(--lumina-bg-hover);
+  --el-table-border-color: var(--lumina-border);
+  --el-table-text-color: var(--lumina-text-primary);
+  --el-table-header-text-color: var(--lumina-text-secondary);
+  --el-table-current-row-bg-color: var(--lumina-bg-selected);
+
+  font-family: var(--lumina-font-body);
+
+  th.el-table__cell {
+    background-color: var(--el-table-header-bg-color);
+    font-weight: var(--lumina-font-weight-semibold);
+    font-size: var(--lumina-font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--lumina-border);
+  }
+
+  td.el-table__cell {
+    border-bottom-color: var(--lumina-border-light);
+  }
+
+  // Stripe effect
+  &.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+    background-color: rgba(30, 41, 59, 0.3);
+  }
+
+  // Expand arrow
+  .el-table__expand-icon {
+    color: var(--lumina-text-secondary);
+
+    &:hover {
+      color: var(--lumina-primary);
+    }
+  }
+}
+
+// === Button ===
+.el-button {
+  --el-button-bg-color: var(--lumina-bg-elevated);
+  --el-button-border-color: var(--lumina-border);
+  --el-button-text-color: var(--lumina-text-primary);
+  --el-button-hover-bg-color: var(--lumina-bg-hover);
+  --el-button-hover-border-color: var(--lumina-border-hover);
+  --el-button-hover-text-color: var(--lumina-text-primary);
+  --el-button-active-bg-color: var(--lumina-bg-active);
+  --el-button-active-border-color: var(--lumina-primary);
+  --el-button-active-text-color: var(--lumina-primary-light);
+  --el-button-disabled-bg-color: var(--lumina-disabled-bg);
+  --el-button-disabled-border-color: var(--lumina-disabled-border);
+  --el-button-disabled-text-color: var(--lumina-disabled-text);
+
+  font-family: var(--lumina-font-body);
+  font-weight: var(--lumina-font-weight-medium);
+  border-radius: var(--lumina-radius-sm);
+  transition: all var(--lumina-transition-base);
+
+  // === Primary Button (渐变 + 微光) ===
+  &.el-button--primary {
+    @include gradient-bg(var(--lumina-primary), var(--lumina-primary-dark));
+    border: none;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+
+    // 微光伪元素
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%
+      );
+      opacity: 0;
+      transition: opacity var(--lumina-transition-fast);
+    }
+
+    &:hover {
+      box-shadow: var(--lumina-shadow-glow);
+      transform: translateY(-1px);
+
+      &::before {
+        opacity: 1;
+      }
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    &.is-disabled,
+    &:disabled {
+      background: var(--lumina-disabled-bg);
+      color: var(--lumina-disabled-text);
+      box-shadow: none;
+      transform: none;
+
+      &::before {
+        display: none;
+      }
+    }
+  }
+
+  // === Success Button ===
+  &.el-button--success {
+    @include gradient-bg(var(--lumina-success), var(--lumina-success-dark));
+    border: none;
+    color: #ffffff;
+
+    &:hover {
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+
+  // === Warning Button ===
+  &.el-button--warning {
+    @include gradient-bg(var(--lumina-warning), var(--lumina-warning-dark));
+    border: none;
+    color: #000000;
+
+    &:hover {
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+
+  // === Danger Button ===
+  &.el-button--danger {
+    @include gradient-bg(var(--lumina-danger), var(--lumina-danger-dark));
+    border: none;
+    color: #ffffff;
+
+    &:hover {
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+
+  // === Info Button ===
+  &.el-button--info {
+    background: var(--lumina-fill);
+    border: none;
+    color: var(--lumina-text-primary);
+
+    &:hover {
+      background: var(--lumina-fill-light);
+    }
+  }
+
+  // === Text Button ===
+  &.el-button--text {
+    background: transparent;
+    border-color: transparent;
+    color: var(--lumina-text-secondary);
+
+    &:hover {
+      color: var(--lumina-primary-light);
+      background: var(--lumina-bg-active);
+    }
+  }
+
+  // === Plain Button ===
+  &.is-plain {
+    background: transparent;
+    border: 1px solid currentColor;
+    opacity: 0.8;
+
+    &:hover {
+      opacity: 1;
+      background: rgba(124, 58, 237, 0.1);
+    }
+  }
+
+  // Sizes
+  &.el-button--small {
+    font-size: var(--lumina-font-size-sm);
+    border-radius: calc(var(--lumina-radius-sm) - 2px);
+    padding: 5px 11px;
+  }
+
+  &.el-button--large {
+    font-size: var(--lumina-font-size-md);
+    border-radius: var(--lumina-radius-md);
+    padding: 10px 20px;
+  }
+
+  // Round / Circle buttons
+  &.is-round {
+    border-radius: var(--lumina-radius-full);
+  }
+
+  &.is-circle {
+    border-radius: var(--lumina-radius-circle);
+  }
+}
+
+// Button Group
+.el-button-group {
+  .el-button:not(:first-child) {
+    border-left-color: var(--lumina-border);
+  }
+}
+
+// === Input ===
+.el-input {
+  --el-input-bg-color: var(--lumina-bg-input);
+  --el-input-border-color: var(--lumina-border);
+  --el-input-hover-border-color: var(--lumina-border-hover);
+  --el-input-focus-border-color: var(--lumina-primary);
+  --el-input-text-color: var(--lumina-text-primary);
+  --el-input-placeholder-color: var(--lumina-text-placeholder);
+  --el-input-icon-color: var(--lumina-text-muted);
+  --el-input-clear-hover-color: var(--lumina-text-secondary);
+
+  font-family: var(--lumina-font-body);
+
+  .el-input__wrapper {
+    background-color: var(--lumina-bg-input);
+    border-radius: var(--lumina-radius-sm);
+    box-shadow: inset 0 1px 0 0 var(--lumina-border-light);
+    transition: all var(--lumina-transition-base);
+
+    &:hover {
+      box-shadow: inset 0 1px 0 0 var(--lumina-border-light);
+    }
+  }
+
+  // Focus glow
+  &.is-focus .el-input__wrapper,
+  .el-input__wrapper.is-focus {
+    box-shadow:
+      0 0 0 1px var(--lumina-primary) inset,
+      0 0 12px var(--lumina-primary-glow);
+  }
+
+  // Disabled
+  &.is-disabled .el-input__wrapper {
+    background-color: var(--lumina-disabled-bg);
+    box-shadow: inset 0 1px 0 0 var(--lumina-disabled-border);
+    opacity: var(--lumina-disabled-opacity);
+  }
+
+  // Sizes
+  &.el-input--small .el-input__wrapper {
+    border-radius: calc(var(--lumina-radius-sm) - 2px);
+  }
+
+  &.el-input--large .el-input__wrapper {
+    border-radius: var(--lumina-radius-md);
+  }
+}
+
+// Textarea
+.el-textarea {
+  --el-input-bg-color: var(--lumina-bg-input);
+  --el-input-border-color: var(--lumina-border);
+  --el-input-hover-border-color: var(--lumina-border-hover);
+
+  .el-textarea__inner {
+    background-color: var(--lumina-bg-input);
+    border-color: var(--lumina-border);
+    color: var(--lumina-text-primary);
+    border-radius: var(--lumina-radius-sm);
+    font-family: var(--lumina-font-body);
+    resize: vertical;
+    min-height: 80px;
+    transition: all var(--lumina-transition-base);
+
+    &:hover {
+      border-color: var(--lumina-border-hover);
+    }
+
+    &:focus {
+      border-color: var(--lumina-primary);
+      box-shadow: 0 0 12px var(--lumina-primary-glow);
+    }
+
+    &::placeholder {
+      color: var(--lumina-text-placeholder);
+    }
+  }
+}
+
+// Input Number
+.el-input-number {
+  .el-input__wrapper {
+    padding-right: 0;
+  }
+
+  .el-input-number__decrease,
+  .el-input-number__increase {
+    background-color: var(--lumina-bg-elevated);
+    border-color: var(--lumina-border);
+    color: var(--lumina-text-secondary);
+
+    &:hover {
+      color: var(--lumina-primary);
+    }
+  }
+}
+
+// === Menu ===
+.el-menu {
+  --el-menu-bg-color: var(--lumina-bg-elevated);
+  --el-menu-text-color: var(--lumina-text-secondary);
+  --el-menu-hover-bg-color: var(--lumina-bg-hover);
+  --el-menu-active-color: var(--lumina-primary-light);
+  --el-menu-item-height: 48px;
+  --el-menu-border-color: var(--lumina-border);
+
+  background-color: var(--lumina-bg-elevated);
+  border-right-color: var(--lumina-border);
+  font-family: var(--lumina-font-body);
+
+  &.el-menu--horizontal {
+    border-bottom-color: var(--lumina-border);
+
+    > .el-menu-item,
+    > .el-sub-menu .el-sub-menu__title {
+      border-bottom-color: transparent;
+      transition: border-color var(--lumina-transition-base);
+
+      &:hover {
+        background-color: var(--lumina-bg-hover);
+      }
+
+      &.is-active {
+        border-bottom-color: var(--lumina-primary);
+      }
+    }
+  }
+
+  &.el-menu--collapse {
+    width: 64px;
+  }
+
+  // Menu Item
+  .el-menu-item {
+    border-radius: var(--lumina-radius-sm);
+    margin: 2px var(--lumina-spacing-sm);
+    transition: all var(--lumina-transition-base);
+
+    &:hover {
+      background-color: var(--lumina-bg-hover);
+      color: var(--lumina-text-primary);
+    }
+
+    &.is-active {
+      background: linear-gradient(
+        135deg,
+        rgba(124, 58, 237, 0.15),
+        rgba(124, 58, 237, 0.05)
+      );
+      color: var(--lumina-primary-light);
+      font-weight: var(--lumina-font-weight-medium);
+      position: relative;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 60%;
+        background: var(--lumina-primary);
+        border-radius: 0 2px 2px 0;
+      }
+    }
+
+    i, .el-icon {
+      color: var(--lumina-text-muted);
+      transition: color var(--lumina-transition-fast);
+    }
+
+    &.is-active i,
+    &.is-active .el-icon,
+    &:hover i,
+    &:hover .el-icon {
+      color: var(--lumina-primary-light);
+    }
+  }
+
+  // Submenu
+  .el-sub-menu {
+    .el-sub-menu__title {
+      border-radius: var(--lumina-radius-sm);
+      margin: 2px var(--lumina-spacing-sm);
+      transition: all var(--lumina-transition-base);
+
+      &:hover {
+        background-color: var(--lumina-bg-hover);
+        color: var(--lumina-text-primary);
+
+        i {
+          color: var(--lumina-primary-light);
+        }
+      }
+    }
+
+    &.is-opened .el-sub-menu__title {
+      color: var(--lumina-text-primary);
+    }
+
+    .el-menu {
+      background-color: rgba(0, 0, 0, 0.15);
+    }
+  }
+}
+
+// === Dropdown ===
+.el-dropdown-menu {
+  --el-dropdown-menuItem-hover-fill: var(--lumina-bg-hover);
+  --el-dropdown-menuItem-hover-color: var(--lumina-text-primary);
+
+  background-color: var(--lumina-bg-elevated);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-md);
+  box-shadow: var(--lumina-shadow-lg);
+  padding: var(--lumina-spacing-sm);
+  font-family: var(--lumina-font-body);
+  @include scale-in(0.2s);
+
+  .el-dropdown-menu__item {
+    border-radius: var(--lumina-radius-sm);
+    margin: 2px 0;
+    transition: all var(--lumina-transition-fast);
+
+    &:hover {
+      background-color: var(--lumina-bg-active);
+      color: var(--lumina-primary-light);
+    }
+
+    &.is-disabled {
+      color: var(--lumina-disabled-text);
+    }
+
+    // Divider
+    &.el-dropdown-menu__item--divided {
+      border-top-color: var(--lumina-border);
+      margin-top: var(--lumina-spacing-sm);
+      padding-top: calc(var(--lumina-spacing-sm) + 5px);
+    }
+  }
+}
+
+// === Dialog (Modal) ===
+.el-overlay {
+  background-color: var(--lumina-bg-mask);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.el-dialog {
+  --el-dialog-bg-color: var(--lumina-bg-elevated);
+  --el-dialog-border-radius: var(--lumina-radius-lg);
+
+  background-color: var(--lumina-bg-elevated);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-lg);
+  box-shadow: var(--lumina-shadow-xl);
+  font-family: var(--lumina-font-body);
+
+  .el-dialog__header {
+    padding: var(--lumina-spacing-lg) var(--lumina-spacing-lg) var(--lumina-spacing-md);
+    border-bottom: 1px solid var(--lumina-border);
+
+    .el-dialog__title {
+      font-family: var(--lumina-font-display);
+      font-weight: var(--lumina-font-weight-semibold);
+      font-size: var(--lumina-font-size-lg);
+      color: var(--lumina-text-primary);
+    }
+  }
+
+  .el-dialog__headerbtn {
+    .el-dialog__close {
+      color: var(--lumina-text-muted);
+      font-size: var(--lumina-font-size-xl);
+
+      &:hover {
+        color: var(--lumina-danger);
+      }
+    }
+  }
+
+  .el-dialog__body {
+    padding: var(--lumina-spacing-lg);
+    color: var(--lumina-text-regular);
+  }
+
+  .el-dialog__footer {
+    padding: var(--lumina-spacing-md) var(--lumina-spacing-lg) var(--lumina-spacing-lg);
+    border-top: 1px solid var(--lumina-border);
+  }
+}
+
+// Dialog animation
+.dialog-fade-enter-active {
+  animation: lumina-scale-in 0.3s var(--lumina-ease-out);
+}
+
+// === Drawer ===
+.el-drawer {
+  --el-drawer-bg-color: var(--lumina-bg-elevated);
+
+  background-color: var(--lumina-bg-elevated);
+  font-family: var(--lumina-font-body);
+
+  .el-drawer__header {
+    border-bottom: 1px solid var(--lumina-border);
+    padding: var(--lumina-spacing-lg);
+    margin-bottom: 0;
+
+    .el-drawer__title {
+      font-family: var(--lumina-font-display);
+      font-weight: var(--lumina-font-weight-semibold);
+      color: var(--lumina-text-primary);
+    }
+  }
+
+  .el-drawer__body {
+    padding: var(--lumina-spacing-lg);
+  }
+}
+
+// === Tag ===
+.el-tag {
+  --el-tag-bg-color: var(--lumina-bg-elevated);
+  --el-tag-border-color: var(--lumina-border);
+  --el-tag-text-color: var(--lumina-text-secondary);
+  --el-tag-hover-color: var(--lumina-primary-light);
+
+  border-radius: var(--lumina-radius-sm);
+  font-family: var(--lumina-font-body);
+  font-weight: var(--lumina-font-weight-medium);
+  border-width: 1px;
+  transition: all var(--lumina-transition-fast);
+
+  // Type variants
+  &.el-tag--primary {
+    --el-tag-bg-color: rgba(124, 58, 237, 0.12);
+    --el-tag-border-color: rgba(124, 58, 237, 0.3);
+    --el-tag-text-color: var(--lumina-primary-light);
+  }
+
+  &.el-tag--success {
+    --el-tag-bg-color: rgba(16, 185, 129, 0.12);
+    --el-tag-border-color: rgba(16, 185, 129, 0.3);
+    --el-tag-text-color: var(--lumina-success-light);
+  }
+
+  &.el-tag--warning {
+    --el-tag-bg-color: rgba(245, 158, 11, 0.12);
+    --el-tag-border-color: rgba(245, 158, 11, 0.3);
+    --el-tag-text-color: var(--lumina-accent-light);
+  }
+
+  &.el-tag--danger {
+    --el-tag-bg-color: rgba(239, 68, 68, 0.12);
+    --el-tag-border-color: rgba(239, 68, 68, 0.3);
+    --el-tag-text-color: var(--lumina-danger-light);
+  }
+
+  &.el-tag--info {
+    --el-tag-bg-color: rgba(59, 130, 246, 0.12);
+    --el-tag-border-color: rgba(59, 130, 246, 0.3);
+    --el-tag-text-color: var(--lumina-info-light);
+  }
+
+  // Dark variant (filled)
+  &.el-tag--dark {
+    border-color: transparent;
+  }
+
+  // Size
+  &.el-tag--small {
+    font-size: var(--lumina-font-size-xs);
+    padding: 0 6px;
+  }
+
+  &.el-tag--large {
+    padding: 4px 12px;
+  }
+
+  // Round
+  &.el-tag--round {
+    border-radius: var(--lumina-radius-full);
+  }
+
+  // Close button
+  .el-tag__close {
+    color: currentColor;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+// === Select ===
+.el-select {
+  --el-select-border-color-hover: var(--lumina-border-hover);
+  --el-select-input-focus-border-color: var(--lumina-primary);
+
+  font-family: var(--lumina-font-body);
+
+  .el-input__wrapper {
+    background-color: var(--lumina-bg-input);
+  }
+}
+
+.el-select-dropdown {
+  background-color: var(--lumina-bg-elevated);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-md);
+  box-shadow: var(--lumina-shadow-lg);
+  font-family: var(--lumina-font-body);
+
+  .el-select-dropdown__item {
+    color: var(--lumina-text-regular);
+    border-radius: var(--lumina-radius-sm);
+    margin: 2px var(--lumina-spacing-sm);
+    transition: all var(--lumina-transition-fast);
+
+    &:hover {
+      background-color: var(--lumina-bg-hover);
+    }
+
+    &.is-selected,
+    &.selected {
+      color: var(--lumina-primary-light);
+      font-weight: var(--lumina-font-weight-medium);
+      background-color: var(--lumina-bg-selected);
+    }
+
+    &.is-hovering {
+      background-color: var(--lumina-bg-hover);
+    }
+
+    &.is-disabled {
+      color: var(--lumina-disabled-text);
+    }
+  }
+
+  .el-select-dropdown__empty {
+    color: var(--lumina-text-muted);
+    padding: var(--lumina-spacing-lg);
+  }
+
+  // Group title
+  .el-select-group__title {
+    color: var(--lumina-text-muted);
+    font-size: var(--lumina-font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--lumina-spacing-sm) var(--lumina-spacing-md);
+  }
+}
+
+// === Pagination ===
+.el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-button-bg-color: var(--lumina-bg-elevated);
+  --el-pagination-button-color: var(--lumina-text-secondary);
+  --el-pagination-button-disabled-bg-color: var(--lumina-disabled-bg);
+  --el-pagination-button-disabled-color: var(--lumina-disabled-text);
+  --el-pagination-hover-color: var(--lumina-primary-light);
+  --el-pagination-font-size: var(--lumina-font-size-sm);
+
+  font-family: var(--lumina-font-body);
+  color: var(--lumina-text-secondary);
+
+  .el-pagination__total,
+  .el-pagination__sizes,
+  .el-pagination__jump {
+    color: var(--lumina-text-secondary);
+  }
+
+  .btn-prev,
+  .btn-next,
+  .el-pager li {
+    background-color: var(--lumina-bg-elevated);
+    border: 1px solid var(--lumina-border);
+    border-radius: var(--lumina-radius-sm);
+    color: var(--lumina-text-secondary);
+    transition: all var(--lumina-transition-fast);
+
+    &:hover {
+      color: var(--lumina-primary-light);
+      border-color: var(--lumina-border-hover);
+    }
+
+    &.is-active {
+      background: linear-gradient(135deg, var(--lumina-primary), var(--lumina-primary-dark));
+      border-color: transparent;
+      color: #ffffff;
+      font-weight: var(--lumina-font-weight-semibold);
+    }
+
+    &:disabled {
+      background-color: var(--lumina-disabled-bg);
+      border-color: var(--lumina-disabled-border);
+      color: var(--lumina-disabled-text);
+      cursor: not-allowed;
+    }
+  }
+
+  .el-pagination__editor {
+    .el-input__wrapper {
+      background-color: var(--lumina-bg-input);
+    }
+  }
+}
+
+// === Switch ===
+.el-switch {
+  --el-switch-on-color: var(--lumina-primary);
+  --el-switch-off-color: var(--lumina-fill-light);
+
+  &.is-checked .el-switch__core {
+    border-color: var(--lumina-primary);
+    background-color: var(--lumina-primary);
+  }
+
+  .el-switch__core {
+    border-color: var(--lumina-fill-light);
+    background-color: var(--lumina-fill-light);
+    border-radius: var(--lumina-radius-full);
+    transition: all var(--lumina-transition-base);
+  }
+
+  .el-switch__action {
+    background-color: var(--lumina-text-primary);
+  }
+}
+
+// === Breadcrumb ===
+.el-breadcrumb {
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-sm);
+
+  .el-breadcrumb__item {
+    .el-breadcrumb__inner {
+      color: var(--lumina-text-secondary);
+      font-weight: var(--lumina-font-weight-normal);
+      transition: color var(--lumina-transition-fast);
+
+      &.is-link:hover {
+        color: var(--lumina-primary-light);
+      }
+    }
+
+    &:last-child .el-breadcrumb__inner {
+      color: var(--lumina-text-primary);
+      font-weight: var(--lumina-font-weight-medium);
+    }
+  }
+
+  .el-breadcrumb__separator {
+    color: var(--lumina-text-muted);
+    margin: 0 var(--lumina-spacing-sm);
+  }
+}
+
+// === Form ===
+.el-form {
+  font-family: var(--lumina-font-body);
+
+  .el-form-item {
+    margin-bottom: var(--lumina-spacing-lg);
+  }
+
+  .el-form-item__label {
+    color: var(--lumina-text-secondary);
+    font-weight: var(--lumina-font-weight-medium);
+    font-size: var(--lumina-font-size-sm);
+  }
+
+  .el-form-item__error {
+    color: var(--lumina-danger);
+    font-size: var(--lumina-font-size-xs);
+    padding-top: 2px;
+  }
+
+  // Form inline
+  &.el-form--inline .el-form-item {
+    margin-right: var(--lumina-spacing-md);
+  }
+
+  // Label position top
+  &.el-form--label-top .el-form-item__label {
+    margin-bottom: var(--lumina-spacing-xs);
+  }
+}
+
+// Form validation states
+.el-form-item {
+  &.is-error {
+    .el-input__wrapper,
+    .el-select .el-input__wrapper,
+    .el-textarea__inner {
+      border-color: var(--lumina-danger) !important;
+      box-shadow: 0 0 0 1px var(--lumina-danger) inset, 0 0 8px rgba(239, 68, 68, 0.2);
+    }
+  }
+
+  &.is-success {
+    .el-input__wrapper,
+    .el-select .el-input__wrapper,
+    .el-textarea__inner {
+      border-color: var(--lumina-success) !important;
+    }
+  }
+}
+
+// === Radio & Checkbox ===
+.el-radio,
+.el-checkbox {
+  --el-radio-text-color: var(--lumina-text-primary);
+  --el-checkbox-text-color: var(--lumina-text-primary);
+  --el-checkbox-checked-text-color: var(--lumina-primary-light);
+  --el-checkbox-checked-bg-color: var(--lumina-primary);
+  --el-checkbox-checked-border-color: var(--lumina-primary);
+  --el-checkbox-checked-input-border-color: var(--lumina-primary);
+  --el-checkbox-input-border: 1px solid var(--lumina-border);
+  --el-radio-input-border: 1px solid var(--lumina-border);
+  --el-radio-checked-text-color: var(--lumina-primary-light);
+  --el-radio-checked-input-border-color: var(--lumina-primary);
+  --el-radio-checked-bg-color: var(--lumina-primary);
+
+  font-family: var(--lumina-font-body);
+  color: var(--lumina-text-primary);
+
+  .el-radio__input.is-checked + .el-radio__label,
+  .el-checkbox__input.is-checked + .el-checkbox__label {
+    color: var(--lumina-primary-light);
+  }
+
+  .el-radio__input.is-disabled + .el-radio__label,
+  .el-checkbox__input.is-disabled + .el-checkbox__label {
+    color: var(--lumina-disabled-text);
+  }
+}
+
+// Checkbox Button
+.el-checkbox-button {
+  .el-checkbox-button__inner {
+    background-color: var(--lumina-bg-elevated);
+    border-color: var(--lumina-border);
+    color: var(--lumina-text-secondary);
+    font-family: var(--lumina-font-body);
+    transition: all var(--lumina-transition-fast);
+
+    &:hover {
+      color: var(--lumina-primary-light);
+    }
+  }
+
+  &.is-checked .el-checkbox-button__inner {
+    background-color: var(--lumina-primary);
+    border-color: var(--lumina-primary);
+    color: #ffffff;
+    box-shadow: -1px 0 0 0 var(--lumina-primary);
+  }
+
+  &.is-disabled .el-checkbox-button__inner {
+    background-color: var(--lumina-disabled-bg);
+    color: var(--lumina-disabled-text);
+  }
+}
+
+// Radio Button
+.el-radio-button {
+  .el-radio-button__inner {
+    background-color: var(--lumina-bg-elevated);
+    border-color: var(--lumina-border);
+    color: var(--lumina-text-secondary);
+    font-family: var(--lumina-font-body);
+    transition: all var(--lumina-transition-fast);
+
+    &:hover {
+      color: var(--lumina-primary-light);
+    }
+  }
+
+  &.is-active .el-radio-button__inner {
+    background-color: var(--lumina-primary);
+    border-color: var(--lumina-primary);
+    color: #ffffff;
+  }
+
+  &.is-disabled .el-radio-button__inner {
+    background-color: var(--lumina-disabled-bg);
+    color: var(--lumina-disabled-text);
+  }
+}
+
+// === Statistic ===
+.el-statistic {
+  font-family: var(--lumina-font-display);
+
+  .el-statistic__head {
+    color: var(--lumina-text-muted);
+    font-size: var(--lumina-font-size-sm);
+    font-weight: var(--lumina-font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .el-statistic__number {
+    font-family: var(--lumina-font-display);
+    font-weight: var(--lumina-font-weight-bold);
+    color: var(--lumina-text-primary);
+
+    // Gradient accent for important numbers
+    &.is-value {
+      @include text-gradient;
+    }
+  }
+
+  .el-statistic__suffix {
+    color: var(--lumina-text-secondary);
+    font-size: 0.6em;
+  }
+}
+
+// === Descriptions ===
+.el-descriptions {
+  --el-descriptions-table-border: 1px solid var(--lumina-border);
+  --el-descriptions-item-bordered-label-background: rgba(30, 41, 59, 0.4);
+
+  font-family: var(--lumina-font-body);
+
+  .el-descriptions__label {
+    color: var(--lumina-text-muted);
+    font-weight: var(--lumina-font-weight-medium);
+    font-size: var(--lumina-font-size-sm);
+  }
+
+  .el-descriptions__content {
+    color: var(--lumina-text-primary);
+  }
+
+  &.el-descriptions--bordered {
+    border-radius: var(--lumina-radius-md);
+    overflow: hidden;
+  }
+}
+
+// === Empty ===
+.el-empty {
+  --el-empty-fill-color-0: var(--lumina-bg-elevated);
+  --el-empty-fill-color-1: var(--lumina-border-light);
+  --el-empty-fill-color-2: var(--lumina-fill);
+  --el-empty-fill-color-3: var(--lumina-fill-light);
+  --el-empty-fill-color-4: var(--lumina-primary-light);
+  --el-empty-fill-color-5: var(--lumina-primary);
+  --el-empty-fill-color-6: var(--lumina-accent);
+  --el-empty-fill-color-7: var(--lumina-accent-light);
+  --el-empty-fill-color-8: var(--lumina-border);
+  --el-empty-fill-color-9: var(--lumina-fill-light);
+
+  padding: var(--lumina-spacing-2xl) 0;
+
+  .el-empty__description {
+    color: var(--lumina-text-muted);
+    font-family: var(--lumina-font-body);
+    font-size: var(--lumina-font-size-sm);
+    margin-top: var(--lumina-spacing-md);
+  }
+}
+
+// === Loading ===
+.el-loading-mask {
+  background-color: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+
+  .el-loading-spinner {
+    .circular {
+      circle {
+        stroke: var(--lumina-primary);
+      }
+    }
+
+    .el-loading-text {
+      color: var(--lumina-text-secondary);
+      font-family: var(--lumina-font-body);
+      font-size: var(--lumina-font-size-sm);
+    }
+  }
+
+  // Skeleton loading
+  .el-loading-spinner .path {
+    stroke: var(--lumina-primary);
+  }
+}
+
+// === Skeleton ===
+.el-skeleton {
+  --el-skeleton-color: var(--lumina-bg-elevated);
+  --el-skeleton-to-color: var(--lumina-fill-light);
+
+  .el-skeleton__item {
+    background: linear-gradient(
+      90deg,
+      var(--lumina-bg-elevated) 25%,
+      var(--lumina-fill-light) 50%,
+      var(--lumina-bg-elevated) 75%
+    );
+    background-size: 200% 100%;
+    border-radius: var(--lumina-radius-sm);
+  }
+}
+
+// === Message Box & Notification ===
+.el-message-box {
+  --el-messagebox-bg-color: var(--lumina-bg-elevated);
+  --el-messagebox-border-color: var(--lumina-border);
+  --el-messagebox-title-color: var(--lumina-text-primary);
+  --el-messagebox-content-color: var(--lumina-text-regular);
+
+  background-color: var(--lumina-bg-elevated);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-lg);
+  box-shadow: var(--lumina-shadow-xl);
+  font-family: var(--lumina-font-body);
+  @include scale-in(0.25s);
+
+  .el-message-box__title {
+    font-family: var(--lumina-font-display);
+    font-weight: var(--lumina-font-weight-semibold);
+  }
+
+  .el-message-box__headerbtn .el-message-box__close {
+    color: var(--lumina-text-muted);
+
+    &:hover {
+      color: var(--lumina-danger);
+    }
+  }
+}
+
+.el-message,
+.el-notification {
+  font-family: var(--lumina-font-body);
+  border-radius: var(--lumina-radius-md);
+  border: 1px solid var(--lumina-border);
+  box-shadow: var(--lumina-shadow-lg);
+  @include fade-in-up(0.3s);
+
+  &.el-message--success,
+  &.el-notification--success {
+    background-color: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--lumina-success-light);
+  }
+
+  &.el-message--warning,
+  &.el-notification--warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--lumina-accent-light);
+  }
+
+  &.el-message--error,
+  &.el-notification--error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--lumina-danger-light);
+  }
+
+  &.el-message--info,
+  &.el-notification--info {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: var(--lumina-info-light);
+  }
+}
+
+.el-notification {
+  background-color: var(--lumina-bg-elevated);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  .el-notification__title {
+    font-family: var(--lumina-font-display);
+    font-weight: var(--lumina-font-weight-semibold);
+    color: var(--lumina-text-primary);
+  }
+
+  .el-notification__content {
+    color: var(--lumina-text-secondary);
+  }
+
+  .el-notification__closeBtn {
+    color: var(--lumina-text-muted);
+
+    &:hover {
+      color: var(--lumina-danger);
+    }
+  }
+}
+
+// === Popover ===
+.el-popover {
+  --el-popover-bg-color: var(--lumina-bg-elevated);
+  --el-popover-border-color: var(--lumina-border);
+  --el-popover-text-color: var(--lumina-text-primary);
+  --el-popover-title-text-color: var(--lumina-text-primary);
+
+  background-color: var(--lumina-bg-elevated);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-md);
+  box-shadow: var(--lumina-shadow-lg);
+  font-family: var(--lumina-font-body);
+  padding: var(--lumina-spacing-md);
+
+  .el-popover__title {
+    font-family: var(--lumina-font-display);
+    font-weight: var(--lumina-font-weight-semibold);
+    font-size: var(--lumina-font-size-md);
+    margin-bottom: var(--lumina-spacing-sm);
+  }
+}
+
+// === Tooltip ===
+.el-tooltip__popper {
+  --el-tooltip-bg-color: var(--lumina-bg-tooltip);
+
+  background-color: var(--lumina-bg-tooltip);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-sm);
+  box-shadow: var(--lumina-shadow-md);
+  padding: 6px 12px;
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-sm);
+}
+
+// === Progress ===
+.el-progress {
+  .el-progress-bar__outer {
+    background-color: var(--lumina-fill-lighter);
+    border-radius: var(--lumina-radius-full);
+  }
+
+  .el-progress-bar__inner {
+    border-radius: var(--lumina-radius-full);
+    @include gradient-bg(var(--lumina-primary), var(--lumina-primary-dark));
+  }
+
+  .el-progress__text {
+    color: var(--lumina-text-secondary);
+    font-size: var(--lumina-font-size-sm);
+  }
+
+  &.el-progress--success .el-progress-bar__inner {
+    @include gradient-bg(var(--lumina-success), var(--lumina-success-dark));
+  }
+
+  &.el-progress--warning .el-progress-bar__inner {
+    @include gradient-bg(var(--lumina-warning), var(--lumina-warning-dark));
+  }
+
+  &.el-progress--exception .el-progress-bar__inner {
+    @include gradient-bg(var(--lumina-danger), var(--lumina-danger-dark));
+  }
+}
+
+// === Slider ===
+.el-slider {
+  .el-slider__runway {
+    background-color: var(--lumina-fill-lighter);
+    border-radius: var(--lumina-radius-full);
+  }
+
+  .el-slider__bar {
+    background: linear-gradient(90deg, var(--lumina-primary), var(--lumina-primary-light));
+    border-radius: var(--lumina-radius-full);
+  }
+
+  .el-slider__button-wrapper {
+    .el-slider__button {
+      background-color: var(--lumina-primary);
+      border-color: var(--lumina-primary);
+      box-shadow: 0 0 0 4px var(--lumina-primary-glow);
+      transition: box-shadow var(--lumina-transition-fast);
+
+      &:hover {
+        box-shadow: 0 0 0 6px var(--lumina-primary-glow);
+      }
+    }
+  }
+}
+
+// === Avatar ===
+.el-avatar {
+  --el-avatar-bg-color: var(--lumina-fill-light);
+  font-family: var(--lumina-font-display);
+  font-weight: var(--lumina-font-weight-semibold);
+}
+
+// === Badge ===
+.el-badge {
+  .el-badge__content {
+    --el-badge-bg-color: var(--lumina-danger);
+    font-family: var(--lumina-font-body);
+    border: 2px solid var(--lumina-bg-base);
+  }
+
+  &.is-dot .el-badge__content {
+    border: none;
+  }
+}
+
+// === Date & Time Pickers ===
+.el-picker-panel {
+  --el-datepicker-bg-color: var(--lumina-bg-elevated);
+  --el-datepicker-border-color: var(--lumina-border);
+  --el-datepicker-text-color: var(--lumina-text-primary);
+  --el-datepicker-header-text-color: var(--lumina-text-secondary);
+  --el-datepicker-hover-text-color: var(--lumina-primary-light);
+  --el-datepicker-active-text-color: #ffffff;
+  --el-datepicker-cell-hover-color: var(--lumina-bg-active);
+
+  background-color: var(--lumina-bg-elevated);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-md);
+  box-shadow: var(--lumina-shadow-lg);
+  font-family: var(--lumina-font-body);
+  color: var(--lumina-text-primary);
+
+  .el-date-table td {
+    &.available:hover {
+      color: var(--lumina-primary-light);
+    }
+
+    &.current:not(.disabled) .el-date-table-cell__text {
+      background-color: var(--lumina-primary);
+      color: #ffffff;
+      border-radius: var(--lumina-radius-sm);
+    }
+
+    &.today .el-date-table-cell__text {
+      color: var(--lumina-primary);
+      font-weight: var(--lumina-font-weight-bold);
+    }
+  }
+}
+
+// === Steps ===
+.el-steps {
+  .el-step__title {
+    font-family: var(--lumina-font-body);
+    font-size: var(--lumina-font-size-sm);
+    color: var(--lumina-text-secondary);
+
+    &.is-process {
+      color: var(--lumina-primary-light);
+      font-weight: var(--lumina-font-weight-semibold);
+    }
+
+    &.is-wait {
+      color: var(--lumina-text-muted);
+    }
+
+    &.is-finish {
+      color: var(--lumina-success-light);
+    }
+  }
+
+  .el-step__head {
+    &.is-process {
+      color: var(--lumina-primary);
+      border-color: var(--lumina-primary);
+    }
+
+    &.is-wait {
+      color: var(--lumina-text-muted);
+      border-color: var(--lumina-border);
+    }
+
+    &.is-finish {
+      color: var(--lumina-success);
+      border-color: var(--lumina-success);
+    }
+  }
+
+  .el-step__line {
+    background-color: var(--lumina-border);
+
+    .el-step__line-inner {
+      background-color: var(--lumina-success);
+    }
+  }
+}
+
+// === Tabs ===
+.el-tabs {
+  --el-tabs-header-height: 40px;
+
+  .el-tabs__header {
+    border-bottom-color: var(--lumina-border);
+    margin-bottom: var(--lumina-spacing-md);
+  }
+
+  .el-tabs__item {
+    font-family: var(--lumina-font-body);
+    font-weight: var(--lumina-font-weight-medium);
+    color: var(--lumina-text-secondary);
+    transition: all var(--lumina-transition-fast);
+
+    &:hover {
+      color: var(--lumina-primary-light);
+    }
+
+    &.is-active {
+      color: var(--lumina-primary-light);
+    }
+  }
+
+  .el-tabs__active-bar {
+    background-color: var(--lumina-primary);
+    height: 2px;
+  }
+
+  .el-tabs__nav-wrap::after {
+    background-color: var(--lumina-border);
+    height: 1px;
+  }
+
+  // Card style tabs
+  &.el-tabs--card {
+    .el-tabs__item {
+      background-color: var(--lumina-bg-elevated);
+      border-color: var(--lumina-border);
+      border-radius: var(--lumina-radius-sm) var(--lumina-radius-sm) 0 0;
+
+      &.is-active {
+        background-color: var(--lumina-bg-card);
+        border-bottom-color: transparent;
+      }
+    }
+  }
+}
+
+// === Collapse ===
+.el-collapse {
+  --el-collapse-header-bg-color: var(--lumina-bg-elevated);
+  --el-collapse-content-bg-color: var(--lumina-bg-base);
+  --el-collapse-border-color: var(--lumina-border);
+  --el-collapse-header-text-color: var(--lumina-text-primary);
+  --el-collapse-content-text-color: var(--lumina-text-regular);
+
+  border-color: var(--lumina-border);
+
+  .el-collapse-item__header {
+    font-family: var(--lumina-font-display);
+    font-weight: var(--lumina-font-weight-medium);
+    border-bottom-color: var(--lumina-border);
+    padding: var(--lumina-spacing-md);
+    transition: all var(--lumina-transition-fast);
+
+    &:hover {
+      background-color: var(--lumina-bg-hover);
+    }
+  }
+
+  .el-collapse-item__wrap {
+    border-bottom-color: var(--lumina-border);
+  }
+
+  .el-collapse-item__content {
+    padding: var(--lumina-spacing-md);
+  }
+}
+
+// === Timeline ===
+.el-timeline {
+  .el-timeline-item__node {
+    background-color: var(--lumina-border);
+
+    &.el-timeline-item__node--primary {
+      background-color: var(--lumina-primary);
+    }
+
+    &.el-timeline-item__node--success {
+      background-color: var(--lumina-success);
+    }
+
+    &.el-timeline-item__node--warning {
+      background-color: var(--lumina-warning);
+    }
+
+    &.el-timeline-item__node--danger {
+      background-color: var(--lumina-danger);
+    }
+  }
+
+  .el-timeline-item__wrapper {
+    color: var(--lumina-text-regular);
+  }
+
+  .el-timeline-item__timestamp {
+    color: var(--lumina-text-muted);
+    font-size: var(--lumina-font-size-sm);
+  }
+}
+
+// === Alert ===
+.el-alert {
+  --el-alert-bg-color: var(--lumina-bg-elevated);
+  border-radius: var(--lumina-radius-md);
+  padding: var(--lumina-spacing-sm) var(--lumina-spacing-md);
+  font-family: var(--lumina-font-body);
+
+  &.el-alert--success {
+    background-color: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--lumina-success-light);
+  }
+
+  &.el-alert--warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--lumina-accent-light);
+  }
+
+  &.el-alert--error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--lumina-danger-light);
+  }
+
+  &.el-alert--info {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: var(--lumina-info-light);
+  }
+}
+
+// === Result ===
+.el-result {
+  padding: var(--lumina-spacing-2xl) var(--lumina-spacing-xl);
+
+  .el-result__title {
+    font-family: var(--lumina-font-display);
+    font-size: var(--lumina-font-size-2xl);
+    color: var(--lumina-text-primary);
+  }
+
+  .el-result__subtitle {
+    color: var(--lumina-text-secondary);
+  }
+}
+
+// ----------------------------------------------------------
+//  6. Page Transition Animations
+// ----------------------------------------------------------
+// Fade In Up — 页面进入
+.lumina-fade-enter-active {
+  @include fade-in-up;
+}
+
+.lumina-fade-leave-active {
+  @include fade-in(0.2s);
+  animation-direction: reverse;
+}
+
+// 通用页面容器进入动画
+.page-enter-active {
+  @include fade-in-up(0.35s);
+}
+
+.page-leave-active {
+  @include fade-in(0.2s);
+  animation-direction: reverse;
+}
+
+// ----------------------------------------------------------
+//  7. Element Plus Layout Container Overrides
+// ----------------------------------------------------------
+.el-container {
+  &.is-vertical {
+    .el-header,
+    .el-main,
+    .el-footer {
+      font-family: var(--lumina-font-body);
+    }
+  }
+}
+
+.el-header {
+  --el-header-padding: 0 var(--lumina-spacing-lg);
+  --el-header-height: 60px;
+  background-color: var(--lumina-bg-elevated);
+  border-bottom: 1px solid var(--lumina-border);
+}
+
+.el-aside {
+  --el-aside-width: 240px;
+  background-color: var(--lumina-bg-elevated);
+  border-right: 1px solid var(--lumina-border);
+}
+
+.el-main {
+  background-color: var(--lumina-bg-base);
+  padding: var(--lumina-spacing-lg);
+}
+
+.el-footer {
+  --el-footer-height: 60px;
+  background-color: var(--lumina-bg-elevated);
+  border-top: 1px solid var(--lumina-border);
+}
+
+// ----------------------------------------------------------
+//  8. Utility Overrides for Lumina-specific classes
+// ----------------------------------------------------------
+.lumina-page {
+  min-height: 100vh;
+  background: var(--lumina-bg-base);
+}
+
+// Gradient Separator
+.lumina-section-divider {
+  @include gradient-line;
+  height: 1px;
+  border: none;
+  margin: var(--lumina-spacing-xl) 0;
+  opacity: 0.2;
+}
+
+// Accent Pulse Dot
+.lumina-pulse-dot {
+  @include circle(8px);
+  background: var(--lumina-accent);
+  @include glow-pulse;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: var(--lumina-spacing-xs);
+}
+
+// Status Indicator
+.lumina-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lumina-spacing-xs);
+  font-size: var(--lumina-font-size-sm);
+  color: var(--lumina-text-secondary);
+
+  &::before {
+    content: '';
+    @include circle(6px);
+    background: var(--lumina-text-muted);
+  }
+
+  &.is-online::before {
+    background: var(--lumina-success);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  }
+
+  &.is-offline::before {
+    background: var(--lumina-danger);
+  }
+
+  &.is-warning::before {
+    background: var(--lumina-warning);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+  }
+
+  &.is-idle::before {
+    background: var(--lumina-info);
+  }
+}
+
+// ----------------------------------------------------------
+//  9. Print Styles
+// ----------------------------------------------------------
+@media print {
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .el-menu,
+  .el-header,
+  .el-footer {
+    display: none;
+  }
+
+  .el-main {
+    padding: 0;
+  }
 }

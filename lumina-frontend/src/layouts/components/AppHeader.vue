@@ -1,166 +1,419 @@
-<template>
-  <div class="app-header">
+﻿<template>
+  <header class="app-header">
+    <!-- Left: Collapse Toggle + Breadcrumb -->
     <div class="header-left">
-      <el-icon class="collapse-icon" @click="handleCollapse">
-        <Fold v-if="!appStore.sidebarCollapsed" />
-        <Expand v-else />
-      </el-icon>
-    </div>
-    <div class="header-right">
-      <!-- 语言切换 -->
-      <el-dropdown @command="toggleLang" trigger="click">
-        <span class="lang-switch">
-          {{ currentLang === 'zh-CN' ? '中文' : 'EN' }}
-        </span>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="zh-CN" :class="{ 'is-active': currentLang === 'zh-CN' }">中文</el-dropdown-item>
-            <el-dropdown-item command="en" :class="{ 'is-active': currentLang === 'en' }">English</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+      <button class="collapse-btn" @click="appStore.toggleSidebar()" :title="$t('common.collapse')">
+        <el-icon :size="20">
+          <Fold v-if="!appStore.sidebarCollapsed" />
+          <Expand v-else />
+        </el-icon>
+      </button>
 
-      <el-icon class="theme-icon" @click="toggleTheme">
-        <Sunny v-if="isDark" />
-        <Moon v-else />
-      </el-icon>
-      <el-dropdown @command="handleCommand">
-        <span class="user-dropdown">
-          <el-avatar :size="32" :src="userInfo?.avatar">
-            {{ userInfo?.username?.charAt(0)?.toUpperCase() }}
+      <!-- Breadcrumb -->
+      <el-breadcrumb v-if="breadcrumbs?.length" separator="/" class="header-breadcrumb">
+        <el-breadcrumb-item
+          v-for="item in breadcrumbs"
+          :key="item.path"
+          :to="item.path"
+        >
+          {{ item.meta?.title || item.name }}
+        </el-breadcrumb-item>
+      </el-breadcrumb>
+    </div>
+
+    <!-- Right: Actions -->
+    <div class="header-right">
+      <!-- Language Switch -->
+      <div class="lang-switch">
+        <button
+          v-for="lang in availableLocales"
+          :key="lang.code"
+          :class="['lang-btn', { active: locale === lang.code }]"
+          @click="switchLocale(lang.code)"
+        >
+          {{ lang.label }}
+        </button>
+      </div>
+
+      <!-- Theme Toggle -->
+      <button class="theme-toggle" @click="toggleTheme" :title="$t('common.theme')">
+        <el-icon :size="18" class="theme-icon">
+          <Sunny v-if="isDark" />
+          <Moon v-else />
+        </el-icon>
+      </button>
+
+      <!-- Notifications -->
+      <el-popover placement="bottom-end" :width="320" trigger="click">
+        <template #reference>
+          <button class="icon-btn" title="Notifications">
+            <el-badge :value="unreadCount" :hidden="!unreadCount" :max="99">
+              <el-icon :size="18"><Bell /></el-icon>
+            </el-badge>
+          </button>
+        </template>
+        <div class="notification-panel">
+          <p class="notif-empty" v-if="!notifications?.length">No new notifications</p>
+          <!-- notification list would go here -->
+        </div>
+      </el-popover>
+
+      <!-- User Dropdown -->
+      <el-dropdown trigger="click" @command="handleUserCommand">
+        <div class="user-avatar-wrapper">
+          <el-avatar :size="34" :src="userStore.avatar" class="user-avatar">
+            {{ userStore.nickname?.charAt(0)?.toUpperCase() || 'U' }}
           </el-avatar>
-          <span class="username">{{ userInfo?.nickname || userInfo?.username }}</span>
-        </span>
+          <span class="avatar-glow" />
+        </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="profile">{{ t('header.profile') }}</el-dropdown-item>
-            <el-dropdown-item command="logout" divided>{{ t('header.logout') }}</el-dropdown-item>
+            <el-dropdown-item command="profile">
+              <el-icon><User /></el-icon>{{ $t('common.profile') }}
+            </el-dropdown-item>
+            <el-dropdown-item command="settings">
+              <el-icon><Setting /></el-icon>{{ $t('common.settings') }}
+            </el-dropdown-item>
+            <el-dropdown-item divided command="logout">
+              <el-icon><SwitchButton /></el-icon>{{ $t('common.logout') }}
+            </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
     </div>
-  </div>
+  </header>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Fold, Expand, Moon, Sunny } from '@element-plus/icons-vue'
-import { useAppStore, useUserStore } from '@/stores'
+import { useAppStore } from '@/stores/app'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
+import {
+  Fold,
+  Expand,
+  Sunny,
+  Moon,
+  Bell,
+  User,
+  Setting,
+  SwitchButton
+} from '@element-plus/icons-vue'
 
-const router = useRouter()
+const { locale, availableLocales } = useI18n()
 const appStore = useAppStore()
 const userStore = useUserStore()
-const { locale, t } = useI18n()
+const router = useRouter()
 
-const currentLang = computed(() => locale.value)
+const props = defineProps<{
+  breadcrumbs?: Array<{ path: string; name?: string; meta?: { title?: string } }>
+}>()
 
-const toggleLang = (lang: string) => {
-  locale.value = lang
-  localStorage.setItem('lumina-lang', lang)
+const isDark = computed(() => true) // always dark in Luminous theme
+
+const unreadCount = computed(() => 0) // placeholder
+const notifications = computed(() => []) // placeholder
+
+function switchLocale(code: string) {
+  locale.value = code
 }
 
-const userInfo = computed(() => userStore.userInfo)
-
-const isDark = ref(false)
-
-const toggleTheme = () => {
-  isDark.value = !isDark.value
-  document.documentElement.classList.toggle('dark', isDark.value)
-  localStorage.setItem('lumina-theme', isDark.value ? 'dark' : 'light')
+function toggleTheme() {
+  // Theme is always dark for Luminous; toggle could switch accent
+  console.warn('Theme locked to Luminous dark')
 }
 
-onMounted(() => {
-  const saved = localStorage.getItem('lumina-theme')
-  if (saved === 'dark') {
-    isDark.value = true
-    document.documentElement.classList.add('dark')
-  }
-})
-
-const handleCollapse = () => {
-  appStore.toggleSidebar()
-}
-
-const handleCommand = async (command: string) => {
-  if (command === 'logout') {
-    try {
-      await ElMessageBox.confirm(t('header.logout') + '?', '', {
-        type: 'warning'
-      })
-      await userStore.logout()
-      router.push('/login')
-    } catch {
-      // 用户取消
-    }
-  } else if (command === 'profile') {
-    ElMessage.info('个人中心功能开发中')
-  }
+function handleUserCommand(command: string) {
+  if (command === 'profile') router.push('/profile')
+  else if (command === 'settings') router.push('/settings')
+  else if (command === 'logout') userStore.logout()
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
+/* ============================================================
+   AppHeader — Luminous Dark Theme
+   Design: glass backdrop, gradient edge, subtle animations
+   ============================================================ */
+
 .app-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 56px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  height: 60px;
+  justify-content: space-between;
   padding: 0 20px;
-  background-color: var(--el-bg-color);
-  border-bottom: 1px solid var(--el-border-color);
+  z-index: 1000;
 
-  .header-left {
-    display: flex;
-    align-items: center;
+  /* Glass backdrop */
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.98) 0%,
+    rgba(15, 23, 42, 0.95) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 
-    .collapse-icon {
-      font-size: 20px;
-      cursor: pointer;
-      transition: color 0.3s;
+  /* Gradient bottom edge */
+  border-bottom: 1px solid transparent;
+  background-clip: padding-box;
+}
 
-      &:hover {
-        color: var(--el-color-primary);
-      }
-    }
-  }
+/* Gradient border line at bottom */
+.app-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(124, 58, 237, 0.15) 20%,
+    rgba(124, 58, 237, 0.25) 50%,
+    rgba(124, 58, 237, 0.15) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
 
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+/* ---------- Left Section ---------- */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
 
-    .lang-switch {
-      font-size: 14px;
-      cursor: pointer;
-      color: var(--el-text-color-regular);
-      user-select: none;
-      &:hover { color: var(--el-color-primary); }
-    }
+/* Collapse button */
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--lumina-radius-sm, 6px);
+  background: transparent;
+  color: var(--lumina-text-secondary, #94a3b8);
+  cursor: pointer;
+  transition:
+    color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1)),
+    background var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+}
 
-    .theme-icon {
-      font-size: 18px;
-      cursor: pointer;
-      color: var(--el-text-color-regular);
-      transition: color 0.3s;
+.collapse-btn:hover {
+  color: var(--lumina-primary-light, #a78bfa);
+  background: rgba(124, 58, 237, 0.1);
+}
 
-      &:hover {
-        color: var(--el-color-primary);
-      }
-    }
+/* ---------- Breadcrumb ---------- */
+.header-breadcrumb {
+  margin-left: 4px;
+}
 
-    .user-dropdown {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
+.header-breadcrumb :deep(.el-breadcrumb__item) {
+  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
+  font-size: 13px;
+}
 
-      .username {
-        font-size: 14px;
-        color: var(--el-text-color-primary);
-      }
-    }
-  }
+.header-breadcrumb :deep(.el-breadcrumb__inner) {
+  color: var(--lumina-text-muted, #64748b);
+  font-weight: 400;
+  transition: color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.header-breadcrumb :deep(.el-breadcrumb__inner:hover) {
+  color: var(--lumina-primary-light, #a78bfa);
+}
+
+.header-breadcrumb :deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
+  color: var(--lumina-primary-light, #a78bfa);
+  font-weight: 600;
+}
+
+.header-breadcrumb :deep(.el-breadcrumb__separator) {
+  color: var(--lumina-border-light, #475569);
+  margin: 0 6px;
+}
+
+/* ---------- Right Section ---------- */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Language Switch ---------- */
+.lang-switch {
+  display: flex;
+  align-items: center;
+  background: var(--lumina-bg-elevated, #1e293b);
+  border-radius: 20px;
+  padding: 2px;
+  border: 1px solid var(--lumina-border, #334155);
+}
+
+.lang-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--lumina-text-muted, #64748b);
+  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+  white-space: nowrap;
+}
+
+.lang-btn:hover {
+  color: var(--lumina-text-secondary, #94a3b8);
+}
+
+.lang-btn.active {
+  background: var(--lumina-primary, #7c3aed);
+  color: var(--lumina-text-primary, #f1f5f9);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+
+/* ---------- Icon Buttons ---------- */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--lumina-radius-sm, 6px);
+  background: transparent;
+  color: var(--lumina-text-secondary, #94a3b8);
+  cursor: pointer;
+  position: relative;
+  transition:
+    color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1)),
+    background var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.icon-btn:hover {
+  color: var(--lumina-primary-light, #a78bfa);
+  background: rgba(124, 58, 237, 0.1);
+}
+
+/* Theme toggle with rotation animation */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--lumina-radius-sm, 6px);
+  background: transparent;
+  color: var(--lumina-accent, #f59e0b);
+  cursor: pointer;
+  transition:
+    color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1)),
+    background var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.theme-toggle:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.theme-toggle .theme-icon {
+  transition: transform var(--lumina-transition-slow, 400ms cubic-bezier(0.4, 0, 0.2, 1));
+  display: inline-flex;
+}
+
+.theme-toggle:hover .theme-icon {
+  transform: rotate(180deg);
+}
+
+/* ---------- User Avatar ---------- */
+.user-avatar-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.user-avatar {
+  border: 2px solid var(--lumina-border, #334155);
+  transition: border-color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--lumina-primary-dark, #5b21b6), var(--lumina-primary, #7c3aed));
+  color: var(--lumina-text-primary, #f1f5f9);
+}
+
+.user-avatar-wrapper:hover .user-avatar {
+  border-color: var(--lumina-primary-light, #a78bfa);
+}
+
+.avatar-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    rgba(124, 58, 237, 0.25) 0%,
+    rgba(124, 58, 237, 0.1) 50%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--lumina-transition-base, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+  pointer-events: none;
+}
+
+.user-avatar-wrapper:hover .avatar-glow {
+  opacity: 1;
+}
+
+/* ---------- Notification Panel ---------- */
+.notification-panel {
+  padding: 8px 0;
+}
+
+.notif-empty {
+  text-align: center;
+  color: var(--lumina-text-muted, #64748b);
+  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
+  font-size: 13px;
+  padding: 20px;
+  margin: 0;
+}
+
+/* ---------- Badge Override ---------- */
+:deep(.el-badge__content) {
+  background: var(--lumina-accent, #f59e0b);
+  border: 2px solid var(--lumina-bg-elevated, #1e293b);
+}
+
+/* ---------- Dropdown Override ---------- */
+:deep(.el-dropdown-menu__item) {
+  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
+  font-size: 13px;
+  color: var(--lumina-text-secondary, #94a3b8);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:deep(.el-dropdown-menu__item:hover) {
+  background: rgba(124, 58, 237, 0.1);
+  color: var(--lumina-text-primary, #f1f5f9);
+}
+
+:deep(.el-dropdown-menu__item .el-icon) {
+  font-size: 15px;
 }
 </style>

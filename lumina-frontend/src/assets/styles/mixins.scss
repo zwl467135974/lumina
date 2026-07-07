@@ -1,28 +1,312 @@
-/**
- * SCSS 混入
- */
+﻿// ============================================================
+//  Lumina SCSS Mixins
+//  Base mixins (flex-center, flex-between, ellipsis) +
+//  Lumina additions (card-base, glass-effect, text-gradient)
+// ============================================================
+
+// ----------------------------------------------------------
+//  Flexbox Layout Mixins
+// ----------------------------------------------------------
+
+/// 居中 flex 容器 (both axes)
 @mixin flex-center {
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
 }
 
+/// 两端对齐 flex 容器
 @mixin flex-between {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
 }
 
+/// 纵向 flex 容器
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+/// 纵向居中 flex 容器
+@mixin flex-column-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/// 水平对齐 flex 容器（可自定义对齐方式）
+@mixin flex-align($justify: flex-start, $align: center) {
+  display: flex;
+  justify-content: $justify;
+  align-items: $align;
+}
+
+/// 纵向 flex 容器对齐（可自定义）
+@mixin flex-column-align($justify: flex-start, $align: stretch) {
+  display: flex;
+  flex-direction: column;
+  justify-content: $justify;
+  align-items: $align;
+}
+
+// ----------------------------------------------------------
+//  Text Mixins
+// ----------------------------------------------------------
+
+/// 单行省略
 @mixin ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/// 多行省略
 @mixin multi-ellipsis($lines: 2) {
   display: -webkit-box;
+  overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: $lines;
-  overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/// 文字渐变 (Primary → Accent)
+@mixin text-gradient($from: var(--lumina-primary), $to: var(--lumina-accent)) {
+  background: linear-gradient(135deg, $from, $to);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// ----------------------------------------------------------
+//  Visual Mixins
+// ----------------------------------------------------------
+
+/// 基础卡片样式 — 抬升背景 + 圆角 + 边框 + 过渡
+@mixin card-base(
+  $padding: var(--lumina-spacing-lg),
+  $radius: var(--lumina-radius-md),
+  $bg: var(--lumina-bg-card),
+  $border-color: var(--lumina-border)
+) {
+  background: $bg;
+  border: 1px solid $border-color;
+  border-radius: $radius;
+  padding: $padding;
+  transition:
+    box-shadow var(--lumina-transition-base),
+    border-color var(--lumina-transition-base),
+    transform var(--lumina-transition-base);
+
+  &:hover {
+    border-color: var(--lumina-border-hover);
+    box-shadow: var(--lumina-shadow-glow);
+  }
+}
+
+/// 毛玻璃效果 — backdrop-filter blur + 半透明背景
+@mixin glass-effect(
+  $blur: 12px,
+  $bg-opacity: 0.65,
+  $bg-color: var(--lumina-bg-elevated),
+  $border-opacity: 0.1,
+  $saturate: 180%
+) {
+  background: rgba(
+    var(--lumina-primary-rgb, 124, 58, 237),
+    0.03
+  ); // fallback rgba — will be overridden
+  background: rgba($bg-color, $bg-opacity);
+  backdrop-filter: blur($blur) saturate($saturate);
+  -webkit-backdrop-filter: blur($blur) saturate($saturate);
+  border: 1px solid rgba(255, 255, 255, $border-opacity);
+}
+
+/// 渐变微光阴影 — box-shadow + 渐变边框效果(伪元素)
+@mixin glow-shadow($glow-color: var(--lumina-primary-glow)) {
+  box-shadow: 0 0 20px $glow-color, var(--lumina-shadow-md);
+}
+
+/// 渐变背景色
+@mixin gradient-bg($from: var(--lumina-primary), $to: var(--lumina-accent)) {
+  background: linear-gradient(135deg, $from, $to);
+}
+
+/// 水平渐变线
+@mixin gradient-line($from: var(--lumina-primary), $to: var(--lumina-accent)) {
+  background: linear-gradient(90deg, $from, $to);
+}
+
+// ----------------------------------------------------------
+//  Sizing & Spacing Mixins
+// ----------------------------------------------------------
+
+/// 固定宽高正方形
+@mixin square($size) {
+  width: $size;
+  height: $size;
+}
+
+/// 固定宽高圆形
+@mixin circle($size) {
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+}
+
+/// 绝对定位填充
+@mixin absolute-fill {
+  position: absolute;
+  inset: 0;
+}
+
+/// 伪元素基础设置
+@mixin pseudo($display: block, $pos: absolute, $content: '') {
+  content: $content;
+  display: $display;
+  position: $pos;
+}
+
+// ----------------------------------------------------------
+//  Responsive Mixins
+// ----------------------------------------------------------
+
+/// 响应式断点
+$breakpoints: (
+  'xs': 480px,
+  'sm': 640px,
+  'md': 768px,
+  'lg': 1024px,
+  'xl': 1280px,
+  '2xl': 1536px,
+);
+
+@mixin respond-above($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @media (min-width: map-get($breakpoints, $breakpoint)) {
+      @content;
+    }
+  } @else {
+    @media (min-width: $breakpoint) {
+      @content;
+    }
+  }
+}
+
+@mixin respond-below($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @media (max-width: map-get($breakpoints, $breakpoint) - 0.02px) {
+      @content;
+    }
+  } @else {
+    @media (max-width: $breakpoint) {
+      @content;
+    }
+  }
+}
+
+@mixin respond-between($lower, $upper) {
+  $min: if(map-has-key($breakpoints, $lower), map-get($breakpoints, $lower), $lower);
+  $max: if(map-has-key($breakpoints, $upper), map-get($breakpoints, $upper), $upper);
+
+  @media (min-width: $min) and (max-width: $max - 0.02px) {
+    @content;
+  }
+}
+
+// ----------------------------------------------------------
+//  Accessibility & Interaction
+// ----------------------------------------------------------
+
+/// 焦点环 (可访问性)
+@mixin focus-ring($color: var(--lumina-primary), $offset: 2px) {
+  outline: 2px solid $color;
+  outline-offset: $offset;
+}
+
+/// 隐藏元素但保持可访问
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/// 点击区域扩大
+@mixin clickable-area($padding: 8px) {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -$padding;
+  }
+}
+
+// ----------------------------------------------------------
+//  Animation Mixins
+// ----------------------------------------------------------
+
+/// 淡入上移
+@mixin fade-in-up($duration: 0.4s, $delay: 0s) {
+  animation: lumina-fade-in-up $duration var(--lumina-ease-out) $delay both;
+}
+
+/// 关键帧: fadeInUp
+@keyframes lumina-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/// 淡入
+@mixin fade-in($duration: 0.3s, $delay: 0s) {
+  animation: lumina-fade-in $duration var(--lumina-ease-out) $delay both;
+}
+
+@keyframes lumina-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/// 缩放弹入
+@mixin scale-in($duration: 0.3s, $delay: 0s) {
+  animation: lumina-scale-in $duration var(--lumina-ease-out) $delay both;
+}
+
+@keyframes lumina-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/// 微光脉冲
+@mixin glow-pulse($duration: 2s) {
+  animation: lumina-glow-pulse $duration ease-in-out infinite;
+}
+
+@keyframes lumina-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px var(--lumina-primary-glow);
+  }
+  50% {
+    box-shadow: 0 0 24px var(--lumina-primary-glow);
+  }
 }
