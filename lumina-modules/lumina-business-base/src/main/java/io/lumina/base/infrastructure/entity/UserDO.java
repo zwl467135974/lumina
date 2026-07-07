@@ -45,8 +45,8 @@ public class UserDO implements Serializable {
     /**
      * 真实姓名
      */
-    @TableField("real_name")
-    private String realName;
+    @TableField("nickname")
+    private String nickname;
 
     /**
      * 邮箱

@@ -43,6 +43,24 @@ public class AgentDO implements Serializable {
     private String description;
 
     /**
+     * LLM 配置 JSON
+     */
+    @TableField("llm_config")
+    private String llmConfig;
+
+    /**
+     * 工具列表（逗号分隔）
+     */
+    @TableField("tools")
+    private String tools;
+
+    /**
+     * 租户 ID
+     */
+    @TableField("tenant_id")
+    private Long tenantId;
+
+    /**
      * 状态（0-禁用，1-启用）
      */
     @TableField("status")

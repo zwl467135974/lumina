@@ -34,17 +34,17 @@ public class CreateTenantDTO extends BaseDTO {
      * 联系人
      */
     @Size(max = 50, message = "联系人长度不能超过50")
-    private String contactName;
+    private String contact;
 
     /**
      * 联系电话
      */
     @Size(max = 20, message = "联系电话长度不能超过20")
-    private String contactPhone;
+    private String phone;
 
     /**
      * 联系邮箱
      */
     @Size(max = 100, message = "联系邮箱长度不能超过100")
-    private String contactEmail;
+    private String email;
 }

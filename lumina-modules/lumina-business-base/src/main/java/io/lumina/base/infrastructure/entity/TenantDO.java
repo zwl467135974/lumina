@@ -39,20 +39,20 @@ public class TenantDO implements Serializable {
     /**
      * 联系人
      */
-    @TableField("contact_name")
-    private String contactName;
+    @TableField("contact")
+    private String contact;
 
     /**
      * 联系电话
      */
-    @TableField("contact_phone")
-    private String contactPhone;
+    @TableField("phone")
+    private String phone;
 
     /**
      * 联系邮箱
      */
-    @TableField("contact_email")
-    private String contactEmail;
+    @TableField("email")
+    private String email;
 
     /**
      * 状态（0-禁用，1-启用）

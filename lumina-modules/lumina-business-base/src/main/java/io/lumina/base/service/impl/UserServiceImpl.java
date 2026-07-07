@@ -69,7 +69,7 @@ public class UserServiceImpl implements UserService {
         userDO.setTenantId(BaseContext.getTenantId());
         userDO.setUsername(dto.getUsername());
         userDO.setPassword(PasswordUtil.hash(dto.getPassword()));
-        userDO.setRealName(dto.getRealName());
+        userDO.setNickname(dto.getNickname());
         userDO.setEmail(dto.getEmail());
         userDO.setPhone(dto.getPhone());
         userDO.setAvatar(dto.getAvatar());
@@ -109,8 +109,8 @@ public class UserServiceImpl implements UserService {
         }
 
         // 3. 更新字段
-        if (dto.getRealName() != null) {
-            userDO.setRealName(dto.getRealName());
+        if (dto.getNickname() != null) {
+            userDO.setNickname(dto.getNickname());
         }
         if (dto.getEmail() != null) {
             userDO.setEmail(dto.getEmail());
@@ -235,8 +235,8 @@ public class UserServiceImpl implements UserService {
         if (dto.getUsername() != null && !dto.getUsername().isEmpty()) {
             wrapper.like(UserDO::getUsername, dto.getUsername());
         }
-        if (dto.getRealName() != null && !dto.getRealName().isEmpty()) {
-            wrapper.like(UserDO::getRealName, dto.getRealName());
+        if (dto.getNickname() != null && !dto.getNickname().isEmpty()) {
+            wrapper.like(UserDO::getNickname, dto.getNickname());
         }
         if (dto.getEmail() != null && !dto.getEmail().isEmpty()) {
             wrapper.eq(UserDO::getEmail, dto.getEmail());

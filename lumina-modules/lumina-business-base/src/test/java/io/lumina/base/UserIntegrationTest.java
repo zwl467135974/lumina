@@ -46,14 +46,14 @@ class UserIntegrationTest extends BaseIntegrationTest {
         CreateUserDTO dto = new CreateUserDTO();
         dto.setUsername("itest_create");
         dto.setPassword("pass123");
-        dto.setRealName("测试用户");
+        dto.setNickname("测试用户");
 
         Long userId = userService.createUser(dto);
         assertThat(userId).isNotNull().isPositive();
 
         UserVO user = userService.getUserById(userId);
         assertThat(user.getUsername()).isEqualTo("itest_create");
-        assertThat(user.getRealName()).isEqualTo("测试用户");
+        assertThat(user.getNickname()).isEqualTo("测试用户");
     }
 
     @Test

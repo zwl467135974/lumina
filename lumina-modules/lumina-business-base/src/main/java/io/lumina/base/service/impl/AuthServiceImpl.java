@@ -118,7 +118,7 @@ public class AuthServiceImpl implements AuthService {
         loginVO.setUserId(user.getUserId());
         loginVO.setUsername(user.getUsername());
         loginVO.setTenantId(user.getTenantId());
-        loginVO.setRealName(user.getRealName());
+        loginVO.setNickname(user.getNickname());
         loginVO.setRoles(user.getRoleCodes().toArray(new String[0]));
         loginVO.setPermissions(user.getPermissionCodes().toArray(new String[0]));
         loginVO.setExpiration(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000); // 7天

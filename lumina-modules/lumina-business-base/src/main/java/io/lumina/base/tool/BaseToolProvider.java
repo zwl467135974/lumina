@@ -40,7 +40,7 @@ public class BaseToolProvider {
         description = "创建新用户。需要提供用户名、密码、真实姓名、邮箱、手机号等信息。返回创建的用户ID。",
         category = "base.user"
     )
-    public Map<String, Object> createUser(String username, String password, String realName,
+    public Map<String, Object> createUser(String username, String password, String nickname,
                                           String email, String phone) {
         log.info("Agent 调用创建用户工具: username={}", username);
 
@@ -49,7 +49,7 @@ public class BaseToolProvider {
             CreateUserDTO dto = new CreateUserDTO();
             dto.setUsername(username);
             dto.setPassword(password);
-            dto.setRealName(realName);
+            dto.setNickname(nickname);
             dto.setEmail(email);
             dto.setPhone(phone);
             dto.setRoleIds(new Long[0]); // 默认无角色
@@ -95,7 +95,7 @@ public class BaseToolProvider {
             result.put("success", true);
             result.put("userId", userVO.getUserId());
             result.put("username", userVO.getUsername());
-            result.put("realName", userVO.getRealName());
+            result.put("nickname", userVO.getNickname());
             result.put("email", userVO.getEmail());
             result.put("phone", userVO.getPhone());
             result.put("status", userVO.getStatus());

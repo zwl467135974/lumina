@@ -34,17 +34,17 @@ public class Tenant implements Serializable {
     /**
      * 联系人
      */
-    private String contactName;
+    private String contact;
 
     /**
      * 联系电话
      */
-    private String contactPhone;
+    private String phone;
 
     /**
      * 联系邮箱
      */
-    private String contactEmail;
+    private String email;
 
     /**
      * 状态（0-禁用，1-启用）
@@ -132,9 +132,9 @@ public class Tenant implements Serializable {
      * 验证邮箱
      */
     public void validateEmail() {
-        if (contactEmail != null && !contactEmail.isEmpty()) {
+        if (email != null && !email.isEmpty()) {
             String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
-            if (!contactEmail.matches(emailRegex)) {
+            if (!email.matches(emailRegex)) {
                 throw new IllegalArgumentException("联系邮箱格式不正确");
             }
         }
@@ -144,9 +144,9 @@ public class Tenant implements Serializable {
      * 验证手机号
      */
     public void validatePhone() {
-        if (contactPhone != null && !contactPhone.isEmpty()) {
+        if (phone != null && !phone.isEmpty()) {
             String phoneRegex = "^1[3-9]\\d{9}$";
-            if (!contactPhone.matches(phoneRegex)) {
+            if (!phone.matches(phoneRegex)) {
                 throw new IllegalArgumentException("联系电话格式不正确");
             }
         }

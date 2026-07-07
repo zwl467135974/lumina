@@ -31,17 +31,17 @@ public class TenantVO {
     /**
      * 联系人
      */
-    private String contactName;
+    private String contact;
 
     /**
      * 联系电话
      */
-    private String contactPhone;
+    private String phone;
 
     /**
      * 联系邮箱
      */
-    private String contactEmail;
+    private String email;
 
     /**
      * 状态（0-禁用，1-启用）

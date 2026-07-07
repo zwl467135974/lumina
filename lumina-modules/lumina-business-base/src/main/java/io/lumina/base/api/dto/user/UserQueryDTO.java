@@ -24,7 +24,7 @@ public class UserQueryDTO extends BaseDTO {
     /**
      * 真实姓名（模糊查询）
      */
-    private String realName;
+    private String nickname;
 
     /**
      * 邮箱

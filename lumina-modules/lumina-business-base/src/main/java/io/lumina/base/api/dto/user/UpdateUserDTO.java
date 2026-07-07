@@ -26,7 +26,7 @@ public class UpdateUserDTO extends BaseDTO {
      * 真实姓名
      */
     @Size(max = 100, message = "真实姓名长度不能超过100")
-    private String realName;
+    private String nickname;
 
     /**
      * 邮箱
