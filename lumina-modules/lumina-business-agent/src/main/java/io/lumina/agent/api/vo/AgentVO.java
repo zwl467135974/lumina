@@ -37,6 +37,16 @@ public class AgentVO implements Serializable {
     private String description;
 
     /**
+     * LLM 配置 JSON
+     */
+    private String llmConfig;
+
+    /**
+     * 工具列表（逗号分隔）
+     */
+    private String tools;
+
+    /**
      * 状态
      */
     private Integer status;

@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Map;
 
 public interface KnowledgeService {
-    String uploadDocument(MultipartFile file, Long agentId);
+    String uploadDocument(MultipartFile file, Long agentId, Long kbId);
     KnowledgeDocumentDO getDocumentStatus(String uuid);
-    PageResult<KnowledgeDocumentDO> listDocuments(Long agentId, Integer pageNum, Integer pageSize);
+    PageResult<KnowledgeDocumentDO> listDocuments(Long agentId, Long kbId, Integer pageNum, Integer pageSize);
     void deleteDocument(String uuid);
     List<Map<String, Object>> search(String query, int limit);
 }

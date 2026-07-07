@@ -128,6 +128,12 @@ public class AgentServiceImpl implements AgentService {
         if (agent.getDescription() != null) {
             existingAgent.setDescription(agent.getDescription());
         }
+        if (agent.getLlmConfig() != null) {
+            existingAgent.setLlmConfig(agent.getLlmConfig());
+        }
+        if (agent.getTools() != null) {
+            existingAgent.setTools(agent.getTools());
+        }
         if (agent.getStatus() != null) {
             existingAgent.setStatus(agent.getStatus());
         }
@@ -225,7 +231,7 @@ public class AgentServiceImpl implements AgentService {
         moderateContent(task);
 
         // 构建配置
-        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(agent);
 
         // 会话上下文校�?+ 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
@@ -276,7 +282,7 @@ public class AgentServiceImpl implements AgentService {
 
         moderateContent(task);
 
-        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(agent);
 
         String sessionId = resolveConversation(conversationUuid, agentId);
 
@@ -362,7 +368,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         // 构建配置
-        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(agent);
 
         // 会话上下文校�?+ 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
@@ -411,7 +417,7 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
 
-        AgentConfig config = buildExecutionConfig(agent.getAgentName(), agent.getAgentType());
+        AgentConfig config = buildExecutionConfig(toDomain(agent));
 
         String sessionId = resolveConversation(conversationUuid, agentId);
 
@@ -499,17 +505,38 @@ public class AgentServiceImpl implements AgentService {
         return conv.getConversationUuid();
     }
 
-    private AgentConfig buildExecutionConfig(String agentName, String agentType) {
+    private AgentConfig buildExecutionConfig(Agent agent) {
         AgentConfig config = new AgentConfig();
-        config.setAgentName(agentName);
-        config.setAgentType(agentType);
+        config.setAgentName(agent.getAgentName());
+        config.setAgentType(agent.getAgentType());
 
+        String agentType = agent.getAgentType();
         if (StringUtils.hasText(agentType)) {
             PromptDO activePrompt = promptService.getActive(agentType.toLowerCase());
             if (activePrompt != null && StringUtils.hasText(activePrompt.getContent())) {
                 config.setPromptTemplate(activePrompt.getContent());
-                log.info("使用 DB 激�?Prompt: name={}, version={}", activePrompt.getName(), activePrompt.getVersion());
+                log.info("使用 DB 激活 Prompt: name={}, version={}", activePrompt.getName(), activePrompt.getVersion());
             }
+        }
+
+        // 解析 Agent 的 LLM 配置（DB 持久化的 JSON）
+        if (StringUtils.hasText(agent.getLlmConfig())) {
+            try {
+                AgentConfig.LLMConfig llmConfig = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(agent.getLlmConfig(), AgentConfig.LLMConfig.class);
+                config.setLlmConfig(llmConfig);
+                log.debug("使用 Agent 专属 LLM 配置: modelType={}, modelName={}",
+                        llmConfig.getModelType(), llmConfig.getModelName());
+            } catch (Exception e) {
+                log.warn("解析 Agent LLM 配置失败，使用全局默认: {}", e.getMessage());
+            }
+        }
+
+        // 解析 Agent 的工具列表
+        if (StringUtils.hasText(agent.getTools())) {
+            AgentConfig.ToolConfig toolConfig = new AgentConfig.ToolConfig();
+            toolConfig.setTools(java.util.Arrays.asList(agent.getTools().split(",")));
+            config.setToolConfig(toolConfig);
         }
 
         return config;

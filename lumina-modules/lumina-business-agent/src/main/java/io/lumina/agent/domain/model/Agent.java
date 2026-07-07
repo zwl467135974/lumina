@@ -37,6 +37,21 @@ public class Agent implements Serializable {
     private String description;
 
     /**
+     * LLM 配置 JSON（modelType/modelName/temperature 等）
+     */
+    private String llmConfig;
+
+    /**
+     * 工具列表（逗号分隔）
+     */
+    private String tools;
+
+    /**
+     * 租户 ID
+     */
+    private Long tenantId;
+
+    /**
      * 状态（0-禁用，1-启用）
      */
     private Integer status;

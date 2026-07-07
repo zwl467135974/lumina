@@ -29,7 +29,8 @@ public class KnowledgeController {
 
     @PostMapping("/documents")
     public R<String> upload(@RequestParam("file") MultipartFile file,
-                            @RequestParam(value = "agentId", required = false) Long agentId) {
+                            @RequestParam(value = "agentId", required = false) Long agentId,
+                            @RequestParam(value = "kbId", required = false) Long kbId) {
         if (file.isEmpty()) {
             return R.fail("文件不能为空");
         }
@@ -41,19 +42,20 @@ public class KnowledgeController {
                 return R.fail("仅支持 PDF、DOCX、TXT、MD 格式文件");
             }
         }
-        String uuid = knowledgeService.uploadDocument(file, agentId);
+        String uuid = knowledgeService.uploadDocument(file, agentId, kbId);
         return R.success(uuid);
     }
 
     @GetMapping("/documents")
     public R<PageResult<KnowledgeDocumentDO>> list(
             @RequestParam(value = "agentId", required = false) Long agentId,
+            @RequestParam(value = "kbId", required = false) Long kbId,
             @RequestParam(value = "pageNum", defaultValue = "1") @Min(1) Integer pageNum,
             @RequestParam(value = "pageSize", defaultValue = "20") @Min(1) Integer pageSize) {
         if (pageSize > MAX_PAGE_SIZE) {
             pageSize = MAX_PAGE_SIZE;
         }
-        return R.success(knowledgeService.listDocuments(agentId, pageNum, pageSize));
+        return R.success(knowledgeService.listDocuments(agentId, kbId, pageNum, pageSize));
     }
 
     @GetMapping("/documents/{uuid}/status")

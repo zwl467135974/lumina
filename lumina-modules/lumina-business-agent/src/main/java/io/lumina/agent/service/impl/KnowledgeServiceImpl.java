@@ -63,27 +63,27 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String uploadDocument(MultipartFile file, Long agentId) {
+    public String uploadDocument(MultipartFile file, Long agentId, Long kbId) {
         String filename = file.getOriginalFilename();
         String format = getFormat(filename);
         String uuid = UUID.randomUUID().toString().replace("-", "");
 
-        log.info("上传知识文档: filename={}, format={}, size={}", filename, format, file.getSize());
+        log.info("上传知识文档: filename={}, format={}, size={}, kbId={}", filename, format, file.getSize(), kbId);
 
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
 
         if (rocketMQTemplate != null) {
-            return uploadAsync(file, agentId, filename, format, uuid, tenantId);
+            return uploadAsync(file, agentId, kbId, filename, format, uuid, tenantId);
         } else {
             log.info("RocketMQ 不可用，降级为同步处理");
-            return uploadSync(file, agentId, filename, format, uuid, tenantId);
+            return uploadSync(file, agentId, kbId, filename, format, uuid, tenantId);
         }
     }
 
     /**
      * 异步上传：保存文件 → 创建 PENDING 记录 → 发送 MQ 消息 → 立即返回
      */
-    private String uploadAsync(MultipartFile file, Long agentId, String filename,
+    private String uploadAsync(MultipartFile file, Long agentId, Long kbId, String filename,
                                String format, String uuid, Long tenantId) {
         try {
             Path storageDir = Path.of(storagePath);
@@ -95,6 +95,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             doc.setDocumentUuid(uuid);
             doc.setTenantId(tenantId);
             doc.setAgentId(agentId);
+            doc.setKbId(kbId);
             doc.setTitle(filename);
             doc.setFormat(format);
             doc.setFileSize(file.getSize());
@@ -119,7 +120,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     /**
      * 同步上传（降级模式，RocketMQ 不可用时使用）
      */
-    private String uploadSync(MultipartFile file, Long agentId, String filename,
+    private String uploadSync(MultipartFile file, Long agentId, Long kbId, String filename,
                               String format, String uuid, Long tenantId) {
         try {
             Path tempFile = Files.createTempFile("lumina_rag_", "_" + filename);
@@ -160,6 +161,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             doc.setDocumentUuid(uuid);
             doc.setTenantId(tenantId);
             doc.setAgentId(agentId);
+            doc.setKbId(kbId);
             doc.setTitle(filename);
             doc.setFormat(format);
             doc.setChunkCount(docs != null ? docs.size() : 0);
@@ -188,12 +190,15 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     }
 
     @Override
-    public PageResult<KnowledgeDocumentDO> listDocuments(Long agentId, Integer pageNum, Integer pageSize) {
+    public PageResult<KnowledgeDocumentDO> listDocuments(Long agentId, Long kbId, Integer pageNum, Integer pageSize) {
         Long tenantId = BaseContext.getTenantId();
         LambdaQueryWrapper<KnowledgeDocumentDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeDocumentDO::getTenantId, tenantId != null ? tenantId : 0L);
         if (agentId != null) {
             wrapper.eq(KnowledgeDocumentDO::getAgentId, agentId);
+        }
+        if (kbId != null) {
+            wrapper.eq(KnowledgeDocumentDO::getKbId, kbId);
         }
         wrapper.orderByDesc(KnowledgeDocumentDO::getCreateTime);
 

@@ -36,4 +36,14 @@ public class CreateAgentDTO implements Serializable {
      */
     @Size(max = 500, message = "描述不能超过 500 个字符")
     private String description;
+
+    /**
+     * LLM 配置 JSON（modelType/modelName/temperature 等）
+     */
+    private String llmConfig;
+
+    /**
+     * 工具列表（逗号分隔）
+     */
+    private String tools;
 }
