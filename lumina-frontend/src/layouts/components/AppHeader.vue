@@ -1,4 +1,4 @@
-ï»¿<template>
+<template>
   <header class="app-header">
     <!-- Left: Collapse Toggle + Breadcrumb -->
     <div class="header-left">
@@ -88,7 +88,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '@/stores'
 import { useRouter } from 'vue-router'
 import {
   Fold,
@@ -133,7 +133,7 @@ function handleUserCommand(command: string) {
 
 <style scoped>
 /* ============================================================
-   AppHeader â€” Luminous Dark Theme
+   AppHeader ¡ª Luminous Dark Theme
    Design: glass backdrop, gradient edge, subtle animations
    ============================================================ */
 

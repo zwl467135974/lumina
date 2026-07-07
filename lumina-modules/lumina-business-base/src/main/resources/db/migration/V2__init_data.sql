@@ -90,7 +90,7 @@ WHERE `permission_code` LIKE 'system:user%';
 -- 租户：系统租户（tenant_id=0）
 -- 角色：超级管理员
 INSERT INTO `lumina_user` (`user_id`, `tenant_id`, `username`, `password`, `real_name`, `status`)
-VALUES (1, 0, 'admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5NU9XKaQUeAqn.', '系统管理员', 1)
+VALUES (1, 0, 'admin', '$2a$10$HWV2wa7wb5ILmg4ft1NEGOI08u4IKzhfEZ54yGdfzpPVkfI8yPDfS', '系统管理员', 1)
 ON DUPLICATE KEY UPDATE `username` = `username`;
 
 -- 7. 为管理员用户分配角色

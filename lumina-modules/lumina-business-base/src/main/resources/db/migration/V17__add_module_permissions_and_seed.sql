@@ -1,5 +1,7 @@
 -- V17: 补充各模块权限 + 菜单路由 + 角色分配 + 种子数据（v3.0 稳定化）
 
+ALTER TABLE lumina_prompt ADD COLUMN agent_type VARCHAR(50) NOT NULL DEFAULT '' AFTER description;
+
 -- ========================================
 -- 1. 新增模块权限（根菜单 type=1）
 -- ========================================

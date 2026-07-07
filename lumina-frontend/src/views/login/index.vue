@@ -1,7 +1,7 @@
-ï»¿<!--
-  Lumina AI Agent Platform â€” Login Page
+<!--
+  Lumina AI Agent Platform ¡ª Login Page
   Design: "Luminous" Dark Theme
-  Engineer: ç™»å…¥é¡µå·¥ç¨‹å¸ˆ (Subagent)
+  Engineer: µÇÈëÒ³¹¤³ÌÊ¦ (Subagent)
 -->
 
 <template>
@@ -106,7 +106,7 @@ import { useRouter } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '@/stores'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -175,7 +175,7 @@ async function handleLogin() {
 }
 
 /* ============================================
-   Page Wrapper â€” Background
+   Page Wrapper ¡ª Background
    ============================================ */
 .login-page {
   position: relative;
@@ -188,7 +188,7 @@ async function handleLogin() {
   font-family: var(--lumina-font-body);
 }
 
-/* â”€â”€ Grid texture layer â”€â”€ */
+/* ©¤©¤ Grid texture layer ©¤©¤ */
 .login-bg-layer {
   position: absolute;
   inset: 0;
@@ -200,7 +200,7 @@ async function handleLogin() {
   pointer-events: none;
 }
 
-/* â”€â”€ Deep space radial layers on the page itself â”€â”€ */
+/* ©¤©¤ Deep space radial layers on the page itself ©¤©¤ */
 .login-page::before,
 .login-page::after {
   content: '';
@@ -211,7 +211,7 @@ async function handleLogin() {
   pointer-events: none;
 }
 
-/* Purple glow orb â€” top-left */
+/* Purple glow orb ¡ª top-left */
 .login-page::before {
   width: 600px;
   height: 600px;
@@ -221,7 +221,7 @@ async function handleLogin() {
   animation: orbDriftPurple 18s ease-in-out infinite;
 }
 
-/* Amber glow orb â€” bottom-right */
+/* Amber glow orb ¡ª bottom-right */
 .login-page::after {
   width: 500px;
   height: 500px;
@@ -261,7 +261,7 @@ async function handleLogin() {
   }
 }
 
-/* Extra micro orb â€” third layer */
+/* Extra micro orb ¡ª third layer */
 .login-page .login-bg-layer::before {
   content: '';
   position: absolute;
@@ -290,7 +290,7 @@ async function handleLogin() {
 }
 
 /* ============================================
-   Card â€” Glass Morphism
+   Card ¡ª Glass Morphism
    ============================================ */
 .login-card {
   position: relative;
@@ -373,7 +373,7 @@ async function handleLogin() {
   }
 }
 
-/* Title â€” gradient text */
+/* Title ¡ª gradient text */
 .login-title {
   font-family: var(--lumina-font-display);
   font-size: 28px;
@@ -444,7 +444,7 @@ async function handleLogin() {
   color: var(--lumina-primary-light);
 }
 
-/* â”€â”€ Submit Button â”€â”€ */
+/* ©¤©¤ Submit Button ©¤©¤ */
 .login-btn {
   width: 100%;
   margin-top: 12px;

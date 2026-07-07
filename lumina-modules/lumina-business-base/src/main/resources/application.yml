@@ -2,6 +2,8 @@ server:
   port: 8082
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: lumina-business-base
   cloud:
@@ -21,6 +23,8 @@ spring:
       min-idle: 5
       max-active: 20
   flyway:
+    encoding: UTF-8
+    out-of-order: true
     # 数据库版本化迁移（base 服务负责 schema，其他服务不引入 flyway 依赖）
     enabled: true
     baseline-on-migrate: true

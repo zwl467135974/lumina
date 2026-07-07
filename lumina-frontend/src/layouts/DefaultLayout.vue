@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <el-container class="lumina-layout">
     <!-- Sidebar -->
     <AppSidebar :menu-routes="menuRoutes" />
@@ -36,7 +36,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAppStore } from '@/stores/app'
+import { useAppStore } from '@/stores'
 import AppSidebar from './components/AppSidebar.vue'
 import AppHeader from './components/AppHeader.vue'
 import type { RouteRecordRaw } from 'vue-router'
