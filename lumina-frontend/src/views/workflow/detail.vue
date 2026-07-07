@@ -125,17 +125,13 @@ const loading = ref(false)
 const loadData = async () => {
   loading.value = true
   try {
-    const instRes = await listInstances({ pageNum: 1, pageSize: 1 })
-    const all = instRes.data || []
-    instance.value = all.find(i => i.id === instanceId) || null
-
-    if (!instance.value) {
-      // 尝试直接按 ID 查（后端目前只支持列表查询）
-      instance.value = { id: instanceId } as WorkflowInstanceVO
-    }
-
     const logRes = await getInstanceLogs(instanceId)
     logs.value = logRes.data || []
+
+    const instRes = await listInstances({ pageNum: 1, pageSize: 100 })
+    const all = (instRes.data as any)?.list || instRes.data || []
+    instance.value = (Array.isArray(all) ? all : []).find((i: any) => i.id === instanceId)
+                 || { id: instanceId } as WorkflowInstanceVO
   } catch {
     // ignore
   } finally {

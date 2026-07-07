@@ -47,6 +47,7 @@ export interface UpdateAgentDTO {
   agentName?: string
   agentType?: string
   description?: string
+  status?: number
 }
 
 export interface QueryAgentDTO {

@@ -50,9 +50,11 @@
         <el-table-column prop="description" label="描述" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
-              {{ row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
+            <el-switch
+              :model-value="row.status === 1"
+              :loading="row._switching"
+              @change="(val: boolean) => handleStatusToggle(row, val)"
+            />
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" />
@@ -84,7 +86,7 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { listAgents, deleteAgent } from '@/api/modules/agent'
+import { listAgents, deleteAgent, updateAgent } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import type { AgentVO, QueryAgentDTO } from '@/types/api'
 import { useTable } from '@/composables/useTable'
@@ -162,6 +164,19 @@ const handleReset = () => {
   queryForm.agentName = ''
   queryForm.agentType = ''
   reloadData()
+}
+
+const handleStatusToggle = async (row: any, val: boolean) => {
+  row._switching = true
+  try {
+    await updateAgent(row.agentId, { status: val ? 1 : 0 })
+    row.status = val ? 1 : 0
+    ElMessage.success(val ? '已启用' : '已禁用')
+  } catch {
+    // error handled by interceptor
+  } finally {
+    row._switching = false
+  }
 }
 
 onMounted(() => {
