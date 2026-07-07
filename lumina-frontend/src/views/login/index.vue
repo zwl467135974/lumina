@@ -74,7 +74,7 @@ const handleLogin = async () => {
     try {
       await userStore.login(formData.username, formData.password)
       ElMessage.success('登录成功')
-      const redirect = (route.query.redirect as string) || '/agent/list'
+      const redirect = (route.query.redirect as string) || '/'
       router.push(redirect)
     } catch {
       // 错误已在请求拦截器中处理

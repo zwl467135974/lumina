@@ -28,7 +28,7 @@ const breadcrumbList = computed(() => {
 <style scoped lang="scss">
 .app-breadcrumb {
   padding: 16px 20px;
-  background-color: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  background-color: var(--el-bg-color);
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 </style>

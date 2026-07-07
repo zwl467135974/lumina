@@ -19,8 +19,8 @@ body {
     'Noto Color Emoji';
   font-size: 14px;
   line-height: 1.5;
-  color: #333;
-  background-color: #f5f5f5;
+  color: var(--el-text-color-primary);
+  background-color: var(--el-bg-color-page);
 }
 
 a {
@@ -39,14 +39,14 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #ddd;
+  background-color: var(--el-border-color);
   border-radius: 3px;
 
   &:hover {
-    background-color: #ccc;
+    background-color: var(--el-border-color-darker);
   }
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #f1f1f1;
+  background-color: var(--el-fill-color-light);
 }

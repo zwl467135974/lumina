@@ -28,6 +28,16 @@ export const basicRoutes: AppRouteRecordRaw[] = [
 // Agent 路由
 export const agentRoutes: AppRouteRecordRaw[] = [
   {
+    path: '/',
+    name: 'Dashboard',
+    component: () => import('@/views/dashboard/index.vue'),
+    meta: {
+      title: '仪表盘',
+      icon: 'Odometer',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/agent',
     name: 'Agent',
     redirect: '/agent/list',
