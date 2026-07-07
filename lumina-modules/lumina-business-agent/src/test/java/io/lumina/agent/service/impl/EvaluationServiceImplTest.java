@@ -58,8 +58,9 @@ class EvaluationServiceImplTest {
     void setUp() {
         BaseContext.setTenantId(1L);
         BaseContext.setUserId(10L);
+        java.util.concurrent.Executor directExecutor = Runnable::run;
         evaluationService = new EvaluationServiceImpl(datasetMapper, runMapper, agentMapper, agentExecutionEngine,
-                List.of(new ExactMatchScorer(), new ContainsScorer()));
+                List.of(new ExactMatchScorer(), new ContainsScorer()), directExecutor);
     }
 
     @AfterEach

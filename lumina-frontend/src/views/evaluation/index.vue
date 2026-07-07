@@ -8,7 +8,12 @@
           <template #header>
             <div class="card-header">
               <span>评估数据集</span>
-              <el-button type="primary" size="small" @click="openDatasetDialog">新建数据集</el-button>
+              <div>
+                <el-upload :show-file-list="false" :before-upload="handleFileImport" accept=".yaml,.yml" style="display: inline-block; margin-right: 8px">
+                  <el-button size="small" type="success" plain>导入 YAML</el-button>
+                </el-upload>
+                <el-button type="primary" size="small" @click="openDatasetDialog">新建数据集</el-button>
+              </div>
             </div>
           </template>
 
@@ -54,8 +59,12 @@
               <el-form-item label="通过阈值">
                 <el-slider v-model="runForm.threshold" :min="0" :max="1" :step="0.05" show-input style="max-width: 420px" />
               </el-form-item>
+              <el-form-item label="异步执行">
+                <el-switch v-model="asyncMode" active-text="大数据集（>20 条）建议开启" />
+              </el-form-item>
               <el-form-item>
                 <el-button type="primary" :loading="runLoading" @click="handleRunEvaluation">开始评估</el-button>
+                <el-tag v-if="asyncRunning" type="warning" class="async-tag">评估进行中... (Run #{{ asyncRunId }})</el-tag>
               </el-form-item>
             </el-form>
           </div>
@@ -78,6 +87,20 @@
         <el-col :span="6"><el-statistic title="平均延迟(ms)" :value="currentReport.avgLatencyMs" /></el-col>
         <el-col :span="6"><el-statistic title="总 Token" :value="currentReport.totalTokens || 0" /></el-col>
       </el-row>
+
+      <el-row :gutter="16">
+        <el-col :span="12">
+          <div class="chart-title">分类通过率</div>
+          <v-chart v-if="categoryChartOption" :option="categoryChartOption" autoresize style="height: 280px" />
+          <el-empty v-else description="暂无分类数据" :image-size="40" />
+        </el-col>
+        <el-col :span="12">
+          <div class="chart-title">历史趋势</div>
+          <v-chart v-if="trendChartOption" :option="trendChartOption" autoresize style="height: 280px" />
+          <el-empty v-else description="暂无趋势数据（至少需 2 次评估）" :image-size="40" />
+        </el-col>
+      </el-row>
+
       <el-table :data="currentReport.results" stripe class="result-table">
         <el-table-column prop="caseId" label="用例" width="120" />
         <el-table-column prop="category" label="分类" width="120" />
@@ -102,6 +125,13 @@
         <el-table-column prop="datasetName" label="数据集" min-width="150" />
         <el-table-column prop="agentId" label="Agent ID" width="100" />
         <el-table-column prop="scoringMethod" label="评分方式" width="160" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'COMPLETED' ? 'success' : row.status === 'FAILED' ? 'danger' : 'warning'" size="small">
+              {{ row.status || 'COMPLETED' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="通过率" width="110">
           <template #default="{ row }">{{ percent(row.passRate) }}</template>
         </el-table-column>
@@ -141,21 +171,31 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { BarChart, LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import VChart from 'vue-echarts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import {
   createEvaluationDataset,
   deleteEvaluationDataset,
   getEvaluationRunReport,
+  getEvaluationTrend,
+  importEvaluationDataset,
   listEvaluationDatasets,
   listEvaluationRuns,
   runEvaluation,
+  runEvaluationAsync,
   type EvaluationDataset,
   type EvaluationRunRecord,
   type RunReport,
   type ScoringMethod
 } from '@/api/modules/evaluation'
+
+use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const sampleYaml = `cases:
   - id: basic-001
@@ -176,7 +216,12 @@ const runListLoading = ref(false)
 const savingDataset = ref(false)
 const datasetDialogVisible = ref(false)
 const runs = ref<EvaluationRunRecord[]>([])
+const trendData = ref<EvaluationRunRecord[]>([])
 const currentReport = ref<RunReport | null>(null)
+const asyncMode = ref(false)
+const asyncRunning = ref(false)
+const asyncRunId = ref<number | null>(null)
+let asyncPollTimer: ReturnType<typeof setInterval> | null = null
 
 const runForm = reactive<{ agentId: number; scoringMethod: ScoringMethod; threshold: number }>({
   agentId: 1,
@@ -192,6 +237,76 @@ const datasetForm = reactive({
 })
 
 const percent = (value?: number) => `${((value || 0) * 100).toFixed(1)}%`
+
+const categoryChartOption = computed(() => {
+  if (!currentReport.value?.categoryStats) return null
+  const entries = Object.entries(currentReport.value.categoryStats)
+  if (entries.length === 0) return null
+  return {
+    tooltip: { trigger: 'axis', formatter: (params: any) => {
+      const data = params[0]
+      const stats = entries.find(e => e[0] === data.name)?.[1]
+      return `${data.name}<br/>通过率: ${(data.value * 100).toFixed(1)}%<br/>通过: ${stats?.passedCases}/${stats?.totalCases}`
+    }},
+    grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: entries.map(e => e[0]),
+      axisLabel: { rotate: entries.length > 4 ? 30 : 0, interval: 0 }
+    },
+    yAxis: {
+      type: 'value',
+      max: 1,
+      axisLabel: { formatter: (val: number) => `${(val * 100).toFixed(0)}%` }
+    },
+    series: [{
+      type: 'bar',
+      data: entries.map(e => Number((e[1].passRate * 100).toFixed(1)) / 100),
+      itemStyle: {
+        color: (params: any) => params.value >= (currentReport.value?.threshold || 0.7) ? '#67c23a' : '#e6a23c'
+      },
+      barMaxWidth: 40,
+      label: { show: true, position: 'top', formatter: (p: any) => `${(p.value * 100).toFixed(0)}%` }
+    }]
+  }
+})
+
+const trendChartOption = computed(() => {
+  if (trendData.value.length === 0) return null
+  const labels = trendData.value.map(r => `#${r.id}`)
+  const passRates = trendData.value.map(r => Number((r.passRate * 100).toFixed(1)) / 100)
+  const avgScores = trendData.value.map(r => Number(r.avgScore.toFixed(3)))
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['通过率', '平均分'], top: 0 },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: labels },
+    yAxis: [
+      { type: 'value', name: '通过率', max: 1, axisLabel: { formatter: (v: number) => `${(v * 100).toFixed(0)}%` } },
+      { type: 'value', name: '平均分', max: 1 }
+    ],
+    series: [
+      {
+        name: '通过率',
+        type: 'line',
+        data: passRates,
+        smooth: true,
+        itemStyle: { color: '#409eff' },
+        lineStyle: { width: 2 },
+        label: { show: true, formatter: (p: any) => `${(p.value * 100).toFixed(0)}%` }
+      },
+      {
+        name: '平均分',
+        type: 'line',
+        yAxisIndex: 1,
+        data: avgScores,
+        smooth: true,
+        itemStyle: { color: '#67c23a' },
+        lineStyle: { width: 2, type: 'dashed' }
+      }
+    ]
+  }
+})
 
 const loadDatasets = async () => {
   datasetLoading.value = true
@@ -213,10 +328,24 @@ const loadRuns = async () => {
   }
 }
 
+const loadTrend = async () => {
+  if (!selectedDataset.value) {
+    trendData.value = []
+    return
+  }
+  try {
+    const res = await getEvaluationTrend(selectedDataset.value.id)
+    trendData.value = res.data || []
+  } catch {
+    trendData.value = []
+  }
+}
+
 const selectDataset = (row: EvaluationDataset) => {
   selectedDataset.value = row
   currentReport.value = null
   loadRuns()
+  loadTrend()
 }
 
 const openDatasetDialog = () => {
@@ -250,6 +379,7 @@ const handleDeleteDataset = async (id: number) => {
   if (selectedDataset.value?.id === id) {
     selectedDataset.value = null
     currentReport.value = null
+    trendData.value = []
   }
   await loadDatasets()
 }
@@ -258,13 +388,55 @@ const handleRunEvaluation = async () => {
   if (!selectedDataset.value) return
   runLoading.value = true
   try {
-    const res = await runEvaluation(selectedDataset.value.id, runForm)
-    currentReport.value = res.data
-    ElMessage.success('评估完成')
-    await loadRuns()
+    if (asyncMode.value) {
+      const res = await runEvaluationAsync(selectedDataset.value.id, runForm)
+      asyncRunId.value = res.data
+      asyncRunning.value = true
+      ElMessage.success(`异步评估已提交 (Run #${res.data})`)
+      startAsyncPolling(res.data)
+    } else {
+      const res = await runEvaluation(selectedDataset.value.id, runForm)
+      currentReport.value = res.data
+      ElMessage.success('评估完成')
+      await loadRuns()
+      await loadTrend()
+    }
   } finally {
     runLoading.value = false
   }
+}
+
+const startAsyncPolling = (runId: number) => {
+  if (asyncPollTimer) clearInterval(asyncPollTimer)
+  asyncPollTimer = setInterval(async () => {
+    try {
+      const res = await listEvaluationRuns({ datasetId: selectedDataset.value?.id })
+      const run = res.data?.find(r => r.id === runId)
+      if (run && run.status !== 'RUNNING') {
+        clearInterval(asyncPollTimer!)
+        asyncPollTimer = null
+        asyncRunning.value = false
+        const reportRes = await getEvaluationRunReport(runId)
+        currentReport.value = reportRes.data
+        ElMessage.success(run.status === 'COMPLETED' ? '异步评估完成' : '异步评估失败')
+        await loadRuns()
+        await loadTrend()
+      }
+    } catch {
+      // ignore polling errors
+    }
+  }, 2000)
+}
+
+const handleFileImport = async (file: File) => {
+  try {
+    await importEvaluationDataset(file)
+    ElMessage.success('数据集导入成功')
+    await loadDatasets()
+  } catch {
+    // error handled by interceptor
+  }
+  return false // prevent default upload
 }
 
 const loadReport = async (id: number) => {
@@ -286,7 +458,9 @@ onMounted(() => {
 .dataset-summary { margin-bottom: 16px; }
 .run-form { margin-top: 16px; }
 .metric-row { margin-bottom: 16px; }
-.result-table { margin-top: 12px; }
+.chart-title { font-size: 14px; font-weight: 600; color: #606266; margin-bottom: 8px; }
+.result-table { margin-top: 16px; }
+.async-tag { margin-left: 12px; }
 .yaml-input :deep(textarea) { font-family: Consolas, Monaco, monospace; }
 @media (max-width: 900px) {
   .evaluation-page :deep(.el-col) { max-width: 100%; flex: 0 0 100%; }

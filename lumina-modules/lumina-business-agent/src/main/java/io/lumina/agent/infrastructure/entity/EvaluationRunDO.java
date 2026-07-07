@@ -33,6 +33,7 @@ public class EvaluationRunDO {
     private Long avgLatencyMs;
     private Integer totalTokens;
     private String resultsJson;
+    private String status;
     private Long tenantId;
     private Long createBy;
     private LocalDateTime createTime;

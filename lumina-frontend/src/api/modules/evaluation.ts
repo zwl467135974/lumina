@@ -74,6 +74,7 @@ export interface EvaluationRunRecord {
   avgScore: number
   avgLatencyMs?: number
   totalTokens?: number
+  status?: 'RUNNING' | 'COMPLETED' | 'FAILED'
   createTime?: string
 }
 
@@ -93,10 +94,29 @@ export function runEvaluation(id: number, data: { agentId: number; scoringMethod
   return request.post<R<RunReport>>(`/api/v1/evaluations/datasets/${id}/runs`, data)
 }
 
+export function runEvaluationAsync(id: number, data: { agentId: number; scoringMethod: ScoringMethod; threshold: number }) {
+  return request.post<R<number>>(`/api/v1/evaluations/datasets/${id}/runs/async`, data)
+}
+
 export function listEvaluationRuns(params?: { datasetId?: number }) {
   return request.get<R<EvaluationRunRecord[]>>('/api/v1/evaluations/runs', { params })
 }
 
 export function getEvaluationRunReport(id: number) {
   return request.get<R<RunReport>>(`/api/v1/evaluations/runs/${id}`)
+}
+
+export function getEvaluationTrend(datasetId: number) {
+  return request.get<R<EvaluationRunRecord[]>>(`/api/v1/evaluations/datasets/${datasetId}/trend`)
+}
+
+export function importEvaluationDataset(file: File, name?: string, agentType?: string, description?: string) {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (name) formData.append('name', name)
+  if (agentType) formData.append('agentType', agentType)
+  if (description) formData.append('description', description)
+  return request.post<R<EvaluationDataset>>('/api/v1/evaluations/datasets/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 }

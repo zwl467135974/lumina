@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -42,6 +43,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.concurrent.Executor;
 
 /**
  * Agent 评估服务实现
@@ -62,17 +64,20 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final Map<ScoringMethod, EvaluationScorer> scorerMap;
     private final ObjectMapper jsonMapper = new ObjectMapper();
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+    private final Executor evaluationExecutor;
 
     public EvaluationServiceImpl(EvaluationDatasetMapper datasetMapper,
                                  EvaluationRunMapper runMapper,
                                  AgentMapper agentMapper,
                                  AgentExecutionEngine agentExecutionEngine,
-                                 List<EvaluationScorer> scorers) {
+                                 List<EvaluationScorer> scorers,
+                                 @org.springframework.beans.factory.annotation.Qualifier("agentTaskExecutor") Executor evaluationExecutor) {
         this.datasetMapper = datasetMapper;
         this.runMapper = runMapper;
         this.agentMapper = agentMapper;
         this.agentExecutionEngine = agentExecutionEngine;
         this.scorerMap = scorers.stream().collect(Collectors.toMap(EvaluationScorer::getMethod, Function.identity()));
+        this.evaluationExecutor = evaluationExecutor;
     }
 
     @Override
@@ -125,6 +130,26 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public EvaluationDataset importDataset(MultipartFile file, String name, String agentType, String description) {
+        if (file == null || file.isEmpty()) {
+            throw BusinessException.of("上传文件不能为空");
+        }
+        String yamlContent;
+        try {
+            yamlContent = new String(file.getBytes());
+        } catch (Exception e) {
+            throw new BusinessException("读取文件失败", e);
+        }
+        EvaluationDatasetDTO dto = new EvaluationDatasetDTO();
+        dto.setName(name != null && !name.isBlank() ? name : file.getOriginalFilename());
+        dto.setAgentType(agentType);
+        dto.setDescription(description);
+        dto.setCasesYaml(yamlContent);
+        return createDataset(dto);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public RunReport runEvaluation(Long datasetId, EvaluationRunDTO dto) {
         EvaluationDatasetDO dataset = getDatasetDO(datasetId);
         AgentDO agent = Optional.ofNullable(agentMapper.selectById(dto.getAgentId()))
@@ -142,6 +167,7 @@ public class EvaluationServiceImpl implements EvaluationService {
 
         RunReport report = buildReport(dataset, agent, method, threshold, results);
         EvaluationRunDO run = toRunDO(report);
+        run.setStatus("COMPLETED");
         run.setTenantId(currentTenantId());
         run.setCreateBy(BaseContext.getUserId());
         try {
@@ -152,6 +178,65 @@ public class EvaluationServiceImpl implements EvaluationService {
         runMapper.insert(run);
         report.setRunId(run.getId());
         return report;
+    }
+
+    @Override
+    public Long runEvaluationAsync(Long datasetId, EvaluationRunDTO dto) {
+        EvaluationDatasetDO dataset = getDatasetDO(datasetId);
+        AgentDO agent = Optional.ofNullable(agentMapper.selectById(dto.getAgentId()))
+                .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_FOUND));
+
+        EvaluationRunDO placeholder = new EvaluationRunDO();
+        placeholder.setDatasetId(datasetId);
+        placeholder.setDatasetName(dataset.getName());
+        placeholder.setAgentId(agent.getAgentId());
+        placeholder.setAgentType(agent.getAgentType());
+        placeholder.setScoringMethod(dto.getScoringMethod() != null ? dto.getScoringMethod().name() : ScoringMethod.EXACT_MATCH.name());
+        placeholder.setThresholdValue(toBigDecimal(dto.getThreshold() != null ? dto.getThreshold() : 0.7, 2));
+        placeholder.setTotalCases(0);
+        placeholder.setPassedCases(0);
+        placeholder.setPassRate(toBigDecimal(0, 2));
+        placeholder.setAvgScore(toBigDecimal(0, 4));
+        placeholder.setAvgLatencyMs(0L);
+        placeholder.setTotalTokens(0);
+        placeholder.setStatus("RUNNING");
+        placeholder.setTenantId(currentTenantId());
+        placeholder.setCreateBy(BaseContext.getUserId());
+        runMapper.insert(placeholder);
+
+        Long runId = placeholder.getId();
+        Long tenantId = currentTenantId();
+        Long userId = BaseContext.getUserId();
+
+        evaluationExecutor.execute(() -> {
+            io.lumina.common.core.BaseContext.setTenantId(tenantId);
+            io.lumina.common.core.BaseContext.setUserId(userId);
+            try {
+                RunReport report = runEvaluation(datasetId, dto);
+                EvaluationRunDO update = new EvaluationRunDO();
+                update.setId(runId);
+                update.setStatus("COMPLETED");
+                update.setTotalCases(report.getTotalCases());
+                update.setPassedCases(report.getPassedCases());
+                update.setPassRate(toBigDecimal(report.getPassRate(), 2));
+                update.setAvgScore(toBigDecimal(report.getAvgScore(), 4));
+                update.setAvgLatencyMs(report.getAvgLatencyMs());
+                update.setTotalTokens(report.getTotalTokens());
+                update.setResultsJson(jsonMapper.writeValueAsString(report.getResults()));
+                runMapper.updateById(update);
+            } catch (Exception e) {
+                log.error("异步评估失败: runId={}", runId, e);
+                EvaluationRunDO update = new EvaluationRunDO();
+                update.setId(runId);
+                update.setStatus("FAILED");
+                update.setResultsJson("{\"error\":\"" + e.getMessage() + "\"}");
+                runMapper.updateById(update);
+            } finally {
+                io.lumina.common.core.BaseContext.clear();
+            }
+        });
+
+        return runId;
     }
 
     @Override
@@ -189,6 +274,14 @@ public class EvaluationServiceImpl implements EvaluationService {
             wrapper.eq(EvaluationRunDO::getDatasetId, datasetId);
         }
         return runMapper.selectList(wrapper);
+    }
+
+    @Override
+    public List<EvaluationRunDO> getRunTrend(Long datasetId) {
+        return runMapper.selectList(new LambdaQueryWrapper<EvaluationRunDO>()
+                .eq(EvaluationRunDO::getTenantId, currentTenantId())
+                .eq(EvaluationRunDO::getDatasetId, datasetId)
+                .orderByAsc(EvaluationRunDO::getCreateTime));
     }
 
     private CaseResult runSingleCase(AgentDO agent, TestCase testCase, EvaluationScorer scorer, double threshold) {
