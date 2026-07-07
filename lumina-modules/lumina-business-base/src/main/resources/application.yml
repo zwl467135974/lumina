@@ -12,6 +12,10 @@ spring:
         server-addr: localhost:8848
         namespace: dev
         group: LUMINA_GROUP
+
+  config:
+    import: nacos:lumina-business-base.yaml
+
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     druid:

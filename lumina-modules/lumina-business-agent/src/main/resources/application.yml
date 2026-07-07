@@ -24,6 +24,8 @@ spring:
         server-addr: localhost:8848
         namespace: dev
         group: LUMINA_GROUP
+  config:
+    import: nacos:lumina-agent-service.yaml
 
   # 数据源配置
   datasource:

@@ -17,6 +17,8 @@ spring:
         namespace: dev
         group: LUMINA_GROUP
         file-extension: yaml
+  config:
+    import: nacos:lumina-gateway.yaml
 
     gateway:
       routes:
