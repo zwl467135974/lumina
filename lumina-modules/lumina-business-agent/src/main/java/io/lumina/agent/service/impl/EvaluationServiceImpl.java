@@ -212,7 +212,21 @@ public class EvaluationServiceImpl implements EvaluationService {
             io.lumina.common.core.BaseContext.setTenantId(tenantId);
             io.lumina.common.core.BaseContext.setUserId(userId);
             try {
-                RunReport report = runEvaluation(datasetId, dto);
+                // 直接执行评估逻辑，不调用 runEvaluation()（避免产生重复行）
+                EvaluationDatasetDO asyncDataset = getDatasetDO(datasetId);
+                AgentDO agent2 = Optional.ofNullable(agentMapper.selectById(dto.getAgentId()))
+                        .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_FOUND));
+                List<TestCase> cases2 = parseCases(asyncDataset.getCasesYaml());
+                ScoringMethod method2 = dto.getScoringMethod() == null ? ScoringMethod.EXACT_MATCH : dto.getScoringMethod();
+                EvaluationScorer scorer2 = Optional.ofNullable(scorerMap.get(method2))
+                        .orElseThrow(() -> BusinessException.of("不支持的评分方法: " + method2));
+                double threshold2 = dto.getThreshold() == null ? 0.7 : dto.getThreshold();
+                List<CaseResult> results2 = new ArrayList<>();
+                for (TestCase tc : cases2) {
+                    results2.add(runSingleCase(agent2, tc, scorer2, threshold2));
+                }
+                RunReport report = buildReport(asyncDataset, agent2, method2, threshold2, results2);
+
                 EvaluationRunDO update = new EvaluationRunDO();
                 update.setId(runId);
                 update.setStatus("COMPLETED");
