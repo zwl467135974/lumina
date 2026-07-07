@@ -298,3 +298,17 @@ export const evaluationRoutes: AppRouteRecordRaw[] = [
     }
   }
 ]
+
+// 知识库联邦路由
+export const knowledgeBaseRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/knowledge-base',
+    name: 'KnowledgeBase',
+    component: () => import('@/views/knowledge-base/index.vue'),
+    meta: {
+      title: '知识库联邦',
+      icon: 'Collection',
+      requiresAuth: true
+    }
+  }
+]

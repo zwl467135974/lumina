@@ -120,6 +120,14 @@ spring:
           filters:
             - StripPrefix=0
 
+        # 知识库联邦路由
+        - id: lumina-agent-knowledge-bases-route
+          uri: lb://lumina-agent-service
+          predicates:
+            - Path=/api/v1/knowledge-bases/**
+          filters:
+            - StripPrefix=0
+
         # Agent 工具监控路由
         - id: lumina-agent-tools-route
           uri: lb://lumina-agent-service

@@ -17,6 +17,8 @@ public class KnowledgeDocumentDO implements Serializable {
     private Long tenantId;
     @TableField("agent_id")
     private Long agentId;
+    @TableField("kb_id")
+    private Long kbId;
     @TableField("title")
     private String title;
     @TableField("format")
