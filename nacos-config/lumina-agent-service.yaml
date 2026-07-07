@@ -1,0 +1,129 @@
+# ============================================================
+# Nacos Config — lumina-agent-service
+# Data ID: lumina-agent-service.yaml
+# Group:   LUMINA_GROUP
+# Namespace: dev
+# ============================================================
+
+# ---- 数据源配置 ----
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+      username: ${SPRING_DATASOURCE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_PASSWORD:root123}
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+
+  # RocketMQ 消息队列
+  rocketmq:
+    name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+    producer:
+      group: lumina-producer
+      send-message-timeout: 5000
+
+# ---- RocketMQ Consumer 开关 ----
+rocketmq:
+  consumer:
+    knowledge-ingest:
+      enabled: ${MQ_KNOWLEDGE_ASYNC:true}
+    agent-task:
+      enabled: ${MQ_AGENT_TASK_ASYNC:false}
+
+# ---- MyBatis-Plus ----
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.lumina.*.infrastructure.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ---- Lumina Agent 配置 ----
+lumina:
+  # 文件存储
+  storage:
+    type: ${STORAGE_TYPE:local}
+    local:
+      base-path: ${STORAGE_LOCAL_PATH:./data/files}
+      url-prefix: /api/v1/files
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket: ${MINIO_BUCKET:lumina-files}
+
+  agent:
+    content-moderation:
+      enabled: ${CONTENT_MODERATION_ENABLED:true}
+      strict: ${CONTENT_MODERATION_STRICT:false}
+    llm:
+      type: ${LLM_TYPE:dashscope}
+      api-key: ${LLM_API_KEY:}
+      model: ${LLM_MODEL:qwen-plus}
+      base-url: ${LLM_BASE_URL:}
+      temperature: ${LLM_TEMPERATURE:0.7}
+      max-tokens: ${LLM_MAX_TOKENS:2000}
+      stream: ${LLM_STREAM:false}
+
+  # RAG 知识库配置
+  rag:
+    enabled: ${RAG_ENABLED:false}
+    store-type: ${RAG_STORE_TYPE:memory}
+    mode: ${RAG_MODE:generic}
+    embedding:
+      provider: ${RAG_EMBEDDING_PROVIDER:dashscope}
+      api-key: ${RAG_EMBEDDING_API_KEY:}
+      base-url: ${RAG_EMBEDDING_BASE_URL:}
+      model: ${RAG_EMBEDDING_MODEL:text-embedding-v3}
+      dimensions: ${RAG_EMBEDDING_DIMENSIONS:1024}
+    retrieve:
+      limit: 3
+      score-threshold: 0.3
+    reader:
+      chunk-size: 512
+      overlap: 50
+      split-strategy: PARAGRAPH
+    qdrant:
+      host: ${QDRANT_HOST:localhost:6334}
+      collection: ${QDRANT_COLLECTION:lumina_knowledge}
+      tls: ${QDRANT_TLS:false}
+
+# ---- 日志 ----
+logging:
+  level:
+    io.lumina: DEBUG
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
+
+# ---- Actuator 监控 ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${OTEL_SAMPLING_PROBABILITY:1.0}

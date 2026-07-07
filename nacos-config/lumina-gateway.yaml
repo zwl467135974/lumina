@@ -1,0 +1,67 @@
+# ============================================================
+# Nacos Config — lumina-gateway
+# Data ID: lumina-gateway.yaml
+# Group:   LUMINA_GROUP
+# Namespace: dev
+# ============================================================
+
+# ---- Redis 配置（用于限流） ----
+spring:
+  redis:
+    host: ${SPRING_DATA_REDIS_HOST:localhost}
+    port: ${SPRING_DATA_REDIS_PORT:6379}
+    password: ${SPRING_DATA_REDIS_PASSWORD:}
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+
+# ---- Lumina 网关配置 ----
+lumina:
+  jwt:
+    secret-key: ${LUMINA_JWT_SECRET:dev-only-secret-please-change-for-production-use-at-least-32-chars}
+    expiration: 604800000
+
+  # 白名单路径（不需要认证）
+  whitelist:
+    paths:
+      - /api/v1/auth/login
+      - /api/v1/base/auth/login
+      - /actuator/health
+      - /actuator/info
+
+  # 网关限流配置（固定窗口，每秒重置）
+  gateway:
+    rate-limit:
+      global: 100
+      per-ip: 20
+
+# ---- 日志 ----
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    io.lumina: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# ---- Actuator 监控 ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,prometheus,metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${OTEL_SAMPLING_PROBABILITY:1.0}
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true

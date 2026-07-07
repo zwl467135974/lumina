@@ -1,0 +1,69 @@
+# ============================================================
+# Nacos Config — lumina-business-base
+# Data ID: lumina-business-base.yaml
+# Group:   LUMINA_GROUP
+# Namespace: dev
+# ============================================================
+
+# ---- 数据源配置 ----
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+      username: ${SPRING_DATASOURCE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_PASSWORD:root123}
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+
+  # Flyway 数据库迁移
+  flyway:
+    encoding: UTF-8
+    out-of-order: true
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
+# ---- MyBatis-Plus ----
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.lumina.base.infrastructure.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ---- Lumina 配置 ----
+lumina:
+  jwt:
+    secret-key: ${LUMINA_JWT_SECRET:dev-only-secret-please-change-for-production-use-at-least-32-chars}
+    expiration: 604800000
+
+# ---- 日志 ----
+logging:
+  level:
+    io.lumina: DEBUG
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
+
+# ---- Actuator 监控 ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${OTEL_SAMPLING_PROBABILITY:1.0}
