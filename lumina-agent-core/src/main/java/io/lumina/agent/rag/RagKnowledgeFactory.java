@@ -14,6 +14,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Map;
+
 /**
  * RAG 知识库自动配置
  *
@@ -37,6 +39,12 @@ public class RagKnowledgeFactory {
 
     @Bean
     public EmbeddingModel embeddingModel(RagProperties props) {
+        // E4: 多 Embedding 模型路由
+        if (props.getRouter().isEnabled() && props.getRouter().getModels() != null
+                && !props.getRouter().getModels().isEmpty()) {
+            return createEmbeddingRouter(props);
+        }
+
         String provider = props.getEmbedding().getProvider() != null
                 ? props.getEmbedding().getProvider() : "dashscope";
         log.info("RAG Embedding 提供商: {}, 模型: {}, 维度: {}",
@@ -51,6 +59,64 @@ public class RagKnowledgeFactory {
             default:
                 return createDashScopeEmbedding(props);
         }
+    }
+
+    /**
+     * 创建多模型路由器（E4）
+     */
+    private EmbeddingModel createEmbeddingRouter(RagProperties props) {
+        RagProperties.RouterConfig routerConfig = props.getRouter();
+        log.info("启用多 Embedding 模型路由: strategy={}, models={}", routerConfig.getStrategy(), routerConfig.getModels().keySet());
+
+        Map<String, EmbeddingModel> models = EmbeddingRouter.buildModels(
+                routerConfig,
+                props.getEmbedding(),
+                config -> createEmbeddingFromConfig(config, props));
+
+        return new EmbeddingRouter(models, routerConfig.getDefaultModel(), routerConfig.getStrategy());
+    }
+
+    /**
+     * 从单个 EmbeddingConfig 创建模型
+     */
+    private EmbeddingModel createEmbeddingFromConfig(RagProperties.EmbeddingConfig config, RagProperties props) {
+        String provider = config.getProvider() != null ? config.getProvider() : "dashscope";
+        switch (provider) {
+            case "openai":
+                return new OpenAICompatibleEmbeddingModel(
+                        resolveEmbeddingApiKey(config, props),
+                        config.getModel(),
+                        config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.openai.com/v1",
+                        config.getDimensions());
+            case "ollama":
+                return io.agentscope.core.embedding.ollama.OllamaTextEmbedding.builder()
+                        .baseUrl(config.getBaseUrl() != null ? config.getBaseUrl() : "http://localhost:11434")
+                        .modelName(config.getModel())
+                        .dimensions(config.getDimensions())
+                        .build();
+            case "dashscope":
+            default:
+                return DashScopeTextEmbedding.builder()
+                        .apiKey(resolveEmbeddingApiKey(config, props))
+                        .modelName(config.getModel())
+                        .dimensions(config.getDimensions())
+                        .build();
+        }
+    }
+
+    /**
+     * 解析 Embedding API Key（优先 config 专用 Key，其次复用 LLM Key）
+     */
+    private String resolveEmbeddingApiKey(RagProperties.EmbeddingConfig config, RagProperties props) {
+        String key = config.getApiKey();
+        if (key != null && !key.isBlank()) {
+            return key;
+        }
+        key = props.getEmbedding().getApiKey();
+        if (key != null && !key.isBlank()) {
+            return key;
+        }
+        return getApiKey();
     }
 
     /**

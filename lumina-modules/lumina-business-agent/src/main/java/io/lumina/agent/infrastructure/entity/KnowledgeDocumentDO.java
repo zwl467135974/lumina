@@ -21,6 +21,10 @@ public class KnowledgeDocumentDO implements Serializable {
     private String title;
     @TableField("format")
     private String format;
+    @TableField("language")
+    private String language;
+    @TableField("embedding_model")
+    private String embeddingModel;
     @TableField("chunk_count")
     private Integer chunkCount;
     @TableField("vector_doc_ids")

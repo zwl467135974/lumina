@@ -3,6 +3,8 @@ package io.lumina.agent.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.Map;
+
 /**
  * RAG 知识库配置
  *
@@ -20,6 +22,7 @@ public class RagProperties {
     private RetrieveConfig retrieve = new RetrieveConfig();
     private ReaderConfig reader = new ReaderConfig();
     private QdrantConfig qdrant = new QdrantConfig();
+    private RouterConfig router = new RouterConfig();
 
     @Data
     public static class EmbeddingConfig {
@@ -68,9 +71,21 @@ public class RagProperties {
     public static class QdrantConfig {
         private String host = "localhost:6334";
         private String collection = "lumina_knowledge";
-        /**
-         * 是否启用 TLS（生产环境 https 推荐 true，本地明文 gRPC 需 false）
-         */
         private boolean tls = false;
+    }
+
+    /**
+     * 多 Embedding 模型路由配置（E4）
+     */
+    @Data
+    public static class RouterConfig {
+        /** 是否启用多模型路由 */
+        private boolean enabled = false;
+        /** 路由策略：language（按语言检测）/ manual（手动指定） */
+        private String strategy = "language";
+        /** 默认模型名称（当路由无法决定时使用） */
+        private String defaultModel = "default";
+        /** 命名模型列表，每个都有完整的 EmbeddingConfig */
+        private Map<String, EmbeddingConfig> models;
     }
 }
