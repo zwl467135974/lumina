@@ -1,7 +1,7 @@
 <template>
   <div class="app-breadcrumb">
     <el-breadcrumb separator="/">
-      <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/' }">{{ t('menu.dashboard') }}</el-breadcrumb-item>
       <el-breadcrumb-item
         v-for="item in breadcrumbList"
         :key="item.path"
@@ -16,7 +16,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const route = useRoute()
 
 const breadcrumbList = computed(() => {

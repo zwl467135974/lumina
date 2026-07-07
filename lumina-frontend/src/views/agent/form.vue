@@ -8,11 +8,11 @@
       <el-form :model="formData" :rules="formRules" ref="formRef" label-width="120px">
         <el-divider content-position="left">基本信息</el-divider>
 
-        <el-form-item label="Agent 名称" prop="agentName">
+        <el-form-item :label="t('agent.name')" prop="agentName">
           <el-input v-model="formData.agentName" placeholder="请输入 Agent 名称" />
         </el-form-item>
 
-        <el-form-item label="Agent 类型" prop="agentType">
+        <el-form-item :label="t('agent.type')" prop="agentType">
           <el-select v-model="formData.agentType" placeholder="请选择 Agent 类型" style="width: 100%">
             <el-option label="ReAct" value="ReAct">
               <span>ReAct</span>
@@ -41,7 +41,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="运行时 Prompt">
+        <el-form-item :label="t('agent.runtimePrompt')">
           <div class="prompt-preview" v-loading="promptLoading">
             <template v-if="currentPrompt">
               <div class="prompt-preview__header">
@@ -65,7 +65,7 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="描述" prop="description">
+        <el-form-item :label="t('agent.description')" prop="description">
           <el-input
             v-model="formData.description"
             type="textarea"
@@ -156,7 +156,7 @@
           <el-button type="primary" @click="handleSubmit" :loading="submitting">
             {{ isEdit ? '更新' : '创建' }}
           </el-button>
-          <el-button @click="handleBack">取消</el-button>
+          <el-button @click="handleBack">{{ t('common.cancel') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -166,6 +166,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAgent, updateAgent, getAgent } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
@@ -174,9 +175,10 @@ import PageHeader from '@/components/common/PageHeader.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const isEdit = computed(() => !!route.params.id)
-const pageTitle = computed(() => (isEdit.value ? '编辑 Agent' : '创建 Agent'))
+const pageTitle = computed(() => (isEdit.value ? t('agent.edit') : t('agent.create')))
 const agentId = computed(() => Number(route.params.id))
 
 const loading = ref(false)
@@ -299,10 +301,10 @@ const handleSubmit = async () => {
 
         if (isEdit.value) {
           await updateAgent(agentId.value, submitData as UpdateAgentDTO)
-          ElMessage.success('更新成功')
+          ElMessage.success(t('common.updateSuccess'))
         } else {
           await createAgent(submitData as CreateAgentDTO)
-          ElMessage.success('创建成功')
+          ElMessage.success(t('common.createSuccess'))
         }
 
         // 跳转回列表页

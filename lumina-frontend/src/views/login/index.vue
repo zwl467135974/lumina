@@ -3,13 +3,13 @@
     <div class="login-container">
       <div class="login-header">
         <h1>Lumina AI Agent Platform</h1>
-        <p>智能代理管理平台</p>
+        <p>{{ t('login.subtitle') }}</p>
       </div>
       <el-form ref="formRef" :model="formData" :rules="formRules" @submit.prevent="handleLogin">
         <el-form-item prop="username">
           <el-input
             v-model="formData.username"
-            placeholder="请输入用户名"
+            :placeholder="t('login.usernamePlaceholder')"
             size="large"
             :prefix-icon="User"
           />
@@ -18,7 +18,7 @@
           <el-input
             v-model="formData.password"
             type="password"
-            placeholder="请输入密码"
+            :placeholder="t('login.passwordPlaceholder')"
             size="large"
             :prefix-icon="Lock"
             @keyup.enter="handleLogin"
@@ -32,7 +32,7 @@
             style="width: 100%"
             @click="handleLogin"
           >
-            登录
+            {{ t('login.submit') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -44,9 +44,11 @@
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
@@ -60,8 +62,8 @@ const formData = reactive({
 })
 
 const formRules: FormRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  username: [{ required: true, message: t('login.usernamePlaceholder'), trigger: 'blur' }],
+  password: [{ required: true, message: t('login.passwordPlaceholder'), trigger: 'blur' }]
 }
 
 const handleLogin = async () => {
@@ -73,7 +75,7 @@ const handleLogin = async () => {
     loading.value = true
     try {
       await userStore.login(formData.username, formData.password)
-      ElMessage.success('登录成功')
+      ElMessage.success(t('login.success'))
       const redirect = (route.query.redirect as string) || '/'
       router.push(redirect)
     } catch {

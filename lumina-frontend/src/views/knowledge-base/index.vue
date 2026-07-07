@@ -1,26 +1,26 @@
 <template>
   <div class="kb-page">
-    <PageHeader title="知识库联邦" description="三级可见性知识库管理（私有 / 团队 / 公共）+ Agent 挂载" />
+    <PageHeader :title="t('knowledgeBase.title')" :description="t('knowledgeBase.description')" />
 
     <el-card shadow="never">
       <div class="card-header">
         <el-input v-model="queryName" placeholder="按名称搜索" clearable style="width: 200px" @change="loadKbs" />
-        <el-button type="primary" @click="openDialog">新建知识库</el-button>
+        <el-button type="primary" @click="openDialog">{{ t('knowledgeBase.create') }}</el-button>
       </div>
 
       <el-table v-loading="loading" :data="kbs" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column label="可见性" width="100">
+        <el-table-column prop="name" :label="t('knowledgeBase.name')" min-width="150" />
+        <el-table-column prop="description" :label="t('common.description')" min-width="200" show-overflow-tooltip />
+        <el-table-column :label="t('knowledgeBase.visibility')" width="100">
           <template #default="{ row }">
             <el-tag :type="visibilityType(row.visibility)" size="small">{{ visibilityLabel(row.visibility) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column prop="createTime" :label="t('common.createTime')" width="170" />
+        <el-table-column :label="t('common.actions')" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button link type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button link type="danger" @click="handleDelete(row.id)">{{ t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -40,14 +40,14 @@
       <el-table v-if="agentKbs.length > 0" :data="agentKbs" stripe size="small">
         <el-table-column prop="id" label="KB ID" width="80" />
         <el-table-column prop="name" label="知识库名称" min-width="150" />
-        <el-table-column label="可见性" width="100">
+        <el-table-column :label="t('knowledgeBase.visibility')" width="100">
           <template #default="{ row }">
             <el-tag :type="visibilityType(row.visibility)" size="small">{{ visibilityLabel(row.visibility) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="80">
+        <el-table-column :label="t('common.actions')" width="80">
           <template #default="{ row }">
-            <el-button link type="danger" @click="handleUnmount(row.id)">卸载</el-button>
+            <el-button link type="danger" @click="handleUnmount(row.id)">{{ t('knowledgeBase.unmount') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -55,7 +55,7 @@
 
       <el-divider v-if="agentKbs.length > 0" />
       <el-form v-if="agentKbs.length > 0" :inline="true">
-        <el-form-item label="挂载知识库">
+        <el-form-item :label="t('knowledgeBase.mountKb')">
           <el-select v-model="mountKbId" placeholder="选择知识库" style="width: 200px">
             <el-option v-for="kb in kbs" :key="kb.id" :label="kb.name" :value="kb.id" />
           </el-select>
@@ -66,15 +66,15 @@
       </el-form>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" title="新建知识库" width="500px">
+    <el-dialog v-model="dialogVisible" :title="t('knowledgeBase.create')" width="500px">
       <el-form :model="form" label-width="80px">
-        <el-form-item label="名称" required>
+        <el-form-item :label="t('knowledgeBase.name')" required>
           <el-input v-model="form.name" placeholder="例如：产品文档库" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item :label="t('common.description')">
           <el-input v-model="form.description" type="textarea" :rows="2" />
         </el-form-item>
-        <el-form-item label="可见性">
+        <el-form-item :label="t('knowledgeBase.visibility')">
           <el-radio-group v-model="form.visibility">
             <el-radio value="PRIVATE">私有（仅创建者）</el-radio>
             <el-radio value="TEAM">团队（同租户）</el-radio>
@@ -83,8 +83,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleCreate">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="handleCreate">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -92,6 +92,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import {
@@ -103,6 +104,8 @@ import {
   unmountKnowledgeBase,
   type KnowledgeBaseVO
 } from '@/api/modules/knowledge-base'
+
+const { t } = useI18n()
 
 const queryName = ref('')
 const loading = ref(false)
@@ -116,7 +119,7 @@ const agentKbs = ref<KnowledgeBaseVO[]>([])
 const form = reactive({ name: '', description: '', visibility: 'PRIVATE' })
 
 const visibilityType = (v: string) => ({ PRIVATE: 'info', TEAM: 'warning', PUBLIC: 'success' }[v] || 'info')
-const visibilityLabel = (v: string) => ({ PRIVATE: '私有', TEAM: '团队', PUBLIC: '公共' }[v] || v)
+const visibilityLabel = (v: string) => ({ PRIVATE: t('knowledgeBase.private'), TEAM: t('knowledgeBase.team'), PUBLIC: t('knowledgeBase.public') }[v] || v)
 
 const loadKbs = async () => {
   loading.value = true
@@ -149,7 +152,7 @@ const handleCreate = async () => {
 }
 
 const handleDelete = async (id: number) => {
-  await ElMessageBox.confirm('删除知识库将解除所有 Agent 挂载，确认？', '提示', { type: 'warning' })
+  await ElMessageBox.confirm(t('knowledgeBase.deleteConfirm'), t('common.tip'), { type: 'warning' })
   await deleteKnowledgeBase(id)
   ElMessage.success('已删除')
   await loadKbs()
@@ -163,7 +166,7 @@ const loadAgentKbs = async () => {
 const handleMount = async () => {
   if (!mountKbId.value) { ElMessage.warning('请选择知识库'); return }
   await mountKnowledgeBase(mountAgentId.value, mountKbId.value)
-  ElMessage.success('已挂载')
+  ElMessage.success(t('knowledgeBase.mounted'))
   await loadAgentKbs()
 }
 

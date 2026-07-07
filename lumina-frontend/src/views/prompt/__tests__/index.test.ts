@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key })
+}))
+
 vi.mock('@/api/modules/prompt', () => ({
   listPrompts: vi.fn(),
   createPrompt: vi.fn(),

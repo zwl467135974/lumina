@@ -1,28 +1,28 @@
 <template>
   <div class="agent-detail-page">
-    <page-header :title="`Agent 详情 - ${agentName}`">
+    <page-header :title="`${t('agent.detail')} - ${agentName}`">
       <el-button @click="goBack">返回</el-button>
     </page-header>
 
     <el-card v-loading="loading">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="Agent ID">{{ agentId }}</el-descriptions-item>
-        <el-descriptions-item label="Agent 名称">{{ agentName }}</el-descriptions-item>
-        <el-descriptions-item label="类型">{{ agentType }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
+        <el-descriptions-item :label="t('agent.name')">{{ agentName }}</el-descriptions-item>
+        <el-descriptions-item :label="t('agent.type')">{{ agentType }}</el-descriptions-item>
+        <el-descriptions-item :label="t('common.status')">
           <el-tag :type="status === 1 ? 'success' : 'info'">
-            {{ status === 1 ? '启用' : '禁用' }}
+            {{ status === 1 ? t('common.enable') : t('common.disable') }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="描述" :span="2">{{ description }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ createTime }}</el-descriptions-item>
+        <el-descriptions-item :label="t('common.description')" :span="2">{{ description }}</el-descriptions-item>
+        <el-descriptions-item :label="t('common.createTime')">{{ createTime }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ updateTime }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
     <el-card class="prompt-card" shadow="never" v-loading="promptLoading">
       <template #header>
-        <span>运行时 Prompt</span>
+        <span>{{ t('agent.runtimePrompt') }}</span>
       </template>
       <template v-if="currentPrompt">
         <div class="prompt-header">
@@ -66,18 +66,18 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="submittingTask" :disabled="status !== 1" @click="submitAsyncTask">
-            提交后台任务
+            {{ t('agent.executeAsync') }}
           </el-button>
         </el-form-item>
       </el-form>
 
       <el-descriptions v-if="currentTask" class="task-result" :column="2" border>
         <el-descriptions-item label="任务 UUID" :span="2">{{ currentTask.taskUuid }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
+        <el-descriptions-item :label="t('common.status')">
           <el-tag :type="taskStatusType(currentTask.status)">{{ currentTask.status }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="耗时">{{ currentTask.durationMs ?? '-' }} ms</el-descriptions-item>
-        <el-descriptions-item v-if="currentTask.result" label="结果" :span="2">
+        <el-descriptions-item v-if="currentTask.result" :label="t('agent.taskResult')" :span="2">
           <el-input :model-value="currentTask.result" type="textarea" :rows="5" readonly />
         </el-descriptions-item>
         <el-descriptions-item v-if="currentTask.errorMessage" label="错误" :span="2">
@@ -91,6 +91,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { getAgent, submitAgentTask, streamAgentTask, type AgentTaskVO, type TaskProgressEvent } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
@@ -99,6 +100,7 @@ import AgentChat from '@/components/agent/AgentChat.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const loading = ref(false)
 const agentId = ref<number>(0)
@@ -167,7 +169,7 @@ const submitAsyncTask = async () => {
   try {
     const res = await submitAgentTask(agentId.value, { task: asyncTaskText.value.trim() })
     currentTask.value = res.data
-    ElMessage.success('后台任务已提交')
+    ElMessage.success(t('agent.asyncSubmitted'))
     startTaskStream(res.data.taskUuid)
   } finally {
     submittingTask.value = false

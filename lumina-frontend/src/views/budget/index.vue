@@ -1,9 +1,9 @@
 <template>
   <div class="budget-page">
-    <PageHeader title="预算管理" description="Agent 执行成本预算管控与告警">
+    <PageHeader :title="t('budget.title')" :description="t('budget.description')">
       <template #actions>
-        <el-button type="primary" @click="showCreateDialog">新建规则</el-button>
-        <el-button @click="loadUsage">刷新</el-button>
+        <el-button type="primary" @click="showCreateDialog">{{ t('budget.createRule') }}</el-button>
+        <el-button @click="loadUsage">{{ t('common.refresh') }}</el-button>
       </template>
     </PageHeader>
 
@@ -37,8 +37,8 @@
     <el-card shadow="never" class="rules-card">
       <template #header>预算规则</template>
       <el-table :data="rules" stripe v-loading="rulesLoading">
-        <el-table-column prop="ruleName" label="名称" min-width="150" />
-        <el-table-column prop="scopeType" label="范围" width="100">
+        <el-table-column prop="ruleName" :label="t('budget.ruleName')" min-width="150" />
+        <el-table-column prop="scopeType" :label="t('budget.scope')" width="100">
           <template #default="{ row }">
             <el-tag size="small">{{ row.scopeType }}</el-tag>
           </template>
@@ -55,18 +55,18 @@
         <el-table-column prop="alertThreshold" label="告警阈值" width="100">
           <template #default="{ row }">{{ row.alertThreshold }}%</template>
         </el-table-column>
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column :label="t('common.actions')" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">{{ t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
     <!-- 新建对话框 -->
-    <el-dialog v-model="dialogVisible" title="新建预算规则" width="500px" :close-on-click-modal="false">
+    <el-dialog v-model="dialogVisible" :title="t('budget.createRule')" width="500px" :close-on-click-modal="false">
       <el-form :model="formData" label-width="100px">
-        <el-form-item label="规则名称" required>
+        <el-form-item :label="t('budget.ruleName')" required>
           <el-input v-model="formData.ruleName" placeholder="如：客服 Agent 日预算" />
         </el-form-item>
         <el-form-item label="范围类型" required>
@@ -85,18 +85,18 @@
             <el-radio value="MONTHLY">月预算</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="预算上限" required>
+        <el-form-item :label="t('budget.limit')" required>
           <el-input-number v-model="formData.limitAmount" :min="0.01" :precision="4" :step="1" style="width: 100%" />
           <span class="form-hint">单位：元</span>
         </el-form-item>
-        <el-form-item label="告警阈值">
+        <el-form-item :label="t('budget.alert')">
           <el-slider v-model="formData.alertThreshold" :min="10" :max="99" :step="5" show-input style="width: 100%" />
           <span class="form-hint">达到此百分比时记录告警日志</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSave" :loading="saving">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -104,12 +104,15 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import {
   listBudgetRules, createBudgetRule, deleteBudgetRule, getBudgetUsage,
   type BudgetRuleVO, type BudgetUsageVO, type BudgetRuleDTO
 } from '@/api/modules/budget'
+
+const { t } = useI18n()
 
 const rules = ref<BudgetRuleVO[]>([])
 const usageList = ref<BudgetUsageVO[]>([])
@@ -173,11 +176,11 @@ const handleSave = async () => {
   saving.value = true
   try {
     await createBudgetRule({ ...formData })
-    ElMessage.success('创建成功')
+    ElMessage.success(t('common.createSuccess'))
     dialogVisible.value = false
     await Promise.all([loadRules(), loadUsage()])
   } catch (e: any) {
-    ElMessage.error(e.message || '创建失败')
+    ElMessage.error(e.message || t('common.failed'))
   } finally {
     saving.value = false
   }
@@ -185,9 +188,9 @@ const handleSave = async () => {
 
 const handleDelete = async (id: number) => {
   try {
-    await ElMessageBox.confirm('确认删除此预算规则？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('budget.deleteConfirm'), t('common.tip'), { type: 'warning' })
     await deleteBudgetRule(id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('common.deleteSuccess'))
     await Promise.all([loadRules(), loadUsage()])
   } catch { /* cancelled */ }
 }

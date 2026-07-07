@@ -1,57 +1,57 @@
 <template>
   <div class="system-tenant-page">
-    <page-header title="租户管理">
+    <page-header :title="t('system.tenant.title')">
       <el-button type="primary" v-permission="'tenant:create'" @click="handleCreate">
         <el-icon><Plus /></el-icon>
-        新建租户
+        {{ t('common.create') }}
       </el-button>
     </page-header>
 
     <el-card>
       <el-form :model="queryForm" inline>
-        <el-form-item label="租户名称">
-          <el-input v-model="queryForm.tenantName" placeholder="请输入租户名称" clearable />
+        <el-form-item :label="t('system.tenant.tenantName')">
+          <el-input v-model="queryForm.tenantName" :placeholder="t('system.tenant.tenantNamePlaceholder')" clearable />
         </el-form-item>
-        <el-form-item label="租户编码">
-          <el-input v-model="queryForm.tenantCode" placeholder="请输入租户编码" clearable />
+        <el-form-item :label="t('system.tenant.tenantCode')">
+          <el-input v-model="queryForm.tenantCode" :placeholder="t('system.tenant.tenantCodePlaceholder')" clearable />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="请选择" clearable>
-            <el-option label="启用" :value="1" />
-            <el-option label="禁用" :value="0" />
+        <el-form-item :label="t('common.status')">
+          <el-select v-model="queryForm.status" :placeholder="t('common.pleaseSelect')" clearable>
+            <el-option :label="t('common.enable')" :value="1" />
+            <el-option :label="t('common.disable')" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="loadData">{{ t('common.query') }}</el-button>
+          <el-button @click="handleReset">{{ t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
 
       <el-table :data="tableData" v-loading="loading" border style="margin-top: 20px">
         <el-table-column prop="tenantId" label="ID" width="80" />
-        <el-table-column prop="tenantName" label="租户名称" width="200" />
-        <el-table-column prop="tenantCode" label="租户编码" width="200" />
-        <el-table-column prop="contact" label="联系人" width="150" />
-        <el-table-column prop="phone" label="联系电话" width="150" />
-        <el-table-column prop="email" label="邮箱" width="200" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="tenantName" :label="t('system.tenant.tenantName')" width="200" />
+        <el-table-column prop="tenantCode" :label="t('system.tenant.tenantCode')" width="200" />
+        <el-table-column prop="contact" :label="t('system.tenant.contact')" width="150" />
+        <el-table-column prop="phone" :label="t('system.tenant.phone')" width="150" />
+        <el-table-column prop="email" :label="t('system.tenant.email')" width="200" />
+        <el-table-column prop="status" :label="t('common.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">
-              {{ row.status === 1 ? '启用' : '禁用' }}
+              {{ row.status === 1 ? t('common.enable') : t('common.disable') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="240" fixed="right">
+        <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
+        <el-table-column :label="t('common.actions')" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" v-permission="'tenant:update'" @click="handleEdit(row)">
-              编辑
+              {{ t('common.edit') }}
             </el-button>
             <el-button link type="primary" v-permission="'tenant:status'" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? '禁用' : '启用' }}
+              {{ row.status === 1 ? t('common.disable') : t('common.enable') }}
             </el-button>
             <el-button link type="danger" v-permission="'tenant:delete'" @click="handleDelete(row)">
-              删除
+              {{ t('common.delete') }}
             </el-button>
           </template>
         </el-table-column>
@@ -77,29 +77,29 @@
       @close="handleDialogClose"
     >
       <el-form :model="formData" :rules="formRules" ref="formRef" label-width="100px">
-        <el-form-item label="租户名称" prop="tenantName">
-          <el-input v-model="formData.tenantName" placeholder="请输入租户名称" />
+        <el-form-item :label="t('system.tenant.tenantName')" prop="tenantName">
+          <el-input v-model="formData.tenantName" :placeholder="t('system.tenant.tenantNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="租户编码" prop="tenantCode">
+        <el-form-item :label="t('system.tenant.tenantCode')" prop="tenantCode">
           <el-input
             v-model="formData.tenantCode"
-            placeholder="请输入租户编码"
+            :placeholder="t('system.tenant.tenantCodePlaceholder')"
             :disabled="isEdit"
           />
         </el-form-item>
-        <el-form-item label="联系人" prop="contact">
-          <el-input v-model="formData.contact" placeholder="请输入联系人姓名" />
+        <el-form-item :label="t('system.tenant.contact')" prop="contact">
+          <el-input v-model="formData.contact" :placeholder="t('system.tenant.contactPlaceholder')" />
         </el-form-item>
-        <el-form-item label="联系电话" prop="phone">
-          <el-input v-model="formData.phone" placeholder="请输入联系电话" />
+        <el-form-item :label="t('system.tenant.phone')" prop="phone">
+          <el-input v-model="formData.phone" :placeholder="t('system.tenant.phonePlaceholder')" />
         </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="formData.email" placeholder="请输入邮箱" />
+        <el-form-item :label="t('system.tenant.email')" prop="email">
+          <el-input v-model="formData.email" :placeholder="t('system.tenant.emailPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmit">{{ t('common.ok') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -107,6 +107,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import {
@@ -119,6 +120,8 @@ import {
 import { useTable } from '@/composables/useTable'
 import type { TenantVO, CreateTenantDTO, UpdateTenantDTO, QueryTenantDTO } from '@/types/api'
 import PageHeader from '@/components/common/PageHeader.vue'
+
+const { t } = useI18n()
 
 const queryForm = reactive<QueryTenantDTO>({
   tenantName: '',
@@ -146,17 +149,17 @@ const formData = reactive<CreateTenantDTO & { email?: string }>({
 
 const formRules: FormRules = {
   tenantName: [
-    { required: true, message: '请输入租户名称', trigger: 'blur' }
+    { required: true, message: t('system.tenant.tenantNameRequired'), trigger: 'blur' }
   ],
   tenantCode: [
-    { required: true, message: '请输入租户编码', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9_-]+$/, message: '租户编码只能包含字母、数字、下划线和连字符', trigger: 'blur' }
+    { required: true, message: t('system.tenant.tenantCodeRequired'), trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_-]+$/, message: t('system.tenant.tenantCodePattern'), trigger: 'blur' }
   ],
   email: [
-    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+    { type: 'email', message: t('common.emailInvalid'), trigger: 'blur' }
   ],
   phone: [
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: t('common.phoneInvalid'), trigger: 'blur' }
   ]
 }
 
@@ -170,14 +173,14 @@ const handleReset = () => {
 
 // 创建租户
 const handleCreate = () => {
-  dialogTitle.value = '新建租户'
+  dialogTitle.value = t('system.tenant.create')
   isEdit.value = false
   dialogVisible.value = true
 }
 
 // 编辑租户
 const handleEdit = (row: TenantVO) => {
-  dialogTitle.value = '编辑租户'
+  dialogTitle.value = t('system.tenant.edit')
   isEdit.value = true
   editingTenantId.value = row.tenantId
   formData.tenantName = row.tenantName
@@ -202,10 +205,10 @@ const handleSubmit = async () => {
             email: formData.email
           }
           await updateTenant(editingTenantId.value, updateData)
-          ElMessage.success('更新成功')
+          ElMessage.success(t('common.updateSuccess'))
         } else {
           await createTenant(formData as CreateTenantDTO)
-          ElMessage.success('创建成功')
+          ElMessage.success(t('common.createSuccess'))
         }
         dialogVisible.value = false
         loadData()
@@ -231,14 +234,16 @@ const handleDialogClose = () => {
 
 // 切换租户状态
 const handleToggleStatus = async (row: TenantVO) => {
-  const action = row.status === 1 ? '禁用' : '启用'
+  const action = row.status === 1 ? t('common.disable') : t('common.enable')
   try {
-    await ElMessageBox.confirm(`确定要${action}租户 ${row.tenantName} 吗？`, '提示', {
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      t('system.tenant.toggleStatusConfirm', { action, name: row.tenantName }),
+      t('common.tip'),
+      { type: 'warning' }
+    )
     const newStatus = row.status === 1 ? 0 : 1
     await updateTenantStatus(row.tenantId, newStatus)
-    ElMessage.success(`${action}成功`)
+    ElMessage.success(row.status === 1 ? t('common.disableSuccess') : t('common.enableSuccess'))
     loadData()
   } catch (error) {
     // 用户取消
@@ -248,11 +253,13 @@ const handleToggleStatus = async (row: TenantVO) => {
 // 删除租户
 const handleDelete = async (row: TenantVO) => {
   try {
-    await ElMessageBox.confirm(`确定要删除租户 ${row.tenantName} 吗？`, '提示', {
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      t('system.tenant.deleteConfirm', { name: row.tenantName }),
+      t('common.tip'),
+      { type: 'warning' }
+    )
     await deleteTenant(row.tenantId)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('common.deleteSuccess'))
     loadData()
   } catch (error) {
     // 用户取消

@@ -1,6 +1,6 @@
 <template>
   <div class="workflow-page">
-    <PageHeader title="工作流管理" description="创建、管理和执行多 Agent 协作工作流">
+    <PageHeader :title="t('workflow.title')" :description="t('workflow.description')">
       <template #actions>
         <el-button type="primary" @click="$router.push('/workflow/designer')">可视化新建</el-button>
         <el-button @click="showCreateDialog">YAML 新建</el-button>
@@ -11,17 +11,17 @@
     <!-- 搜索栏 -->
     <el-card shadow="never" class="search-card">
       <el-form inline>
-        <el-form-item label="名称">
+        <el-form-item :label="t('common.description')">
           <el-input v-model="searchName" placeholder="搜索工作流名称" clearable style="width: 200px" @keyup.enter="loadList" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchStatus" placeholder="全部" clearable style="width: 120px">
-            <el-option label="草稿" :value="0" />
-            <el-option label="已发布" :value="1" />
+        <el-form-item :label="t('common.status')">
+          <el-select v-model="searchStatus" :placeholder="t('common.all')" clearable style="width: 120px">
+            <el-option :label="t('workflow.draft')" :value="0" />
+            <el-option :label="t('workflow.published')" :value="1" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadList">查询</el-button>
+          <el-button type="primary" @click="loadList">{{ t('common.query') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -29,39 +29,39 @@
     <!-- 列表 -->
     <el-card shadow="never" class="list-card">
       <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="version" label="版本" width="80" />
-        <el-table-column label="状态" width="100">
+        <el-table-column prop="name" :label="t('workflow.name')" min-width="150" />
+        <el-table-column prop="description" :label="t('common.description')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="version" :label="t('prompt.version')" width="80" />
+        <el-table-column :label="t('common.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-              {{ row.status === 1 ? '已发布' : '草稿' }}
+              {{ row.status === 1 ? t('workflow.published') : t('workflow.draft') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170">
+        <el-table-column prop="createTime" :label="t('common.createTime')" width="170">
           <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column :label="t('common.actions')" width="280" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="showInstances(row)">实例</el-button>
             <el-button size="small" @click="$router.push(`/workflow/designer/${row.id}`)">可视化编辑</el-button>
-            <el-button v-if="row.status === 0" size="small" type="success" @click="handlePublish(row.id)">发布</el-button>
-            <el-button v-if="row.status === 1" size="small" type="primary" @click="showExecuteDialog(row)">执行</el-button>
-            <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">删除</el-button>
+            <el-button v-if="row.status === 0" size="small" type="success" @click="handlePublish(row.id)">{{ t('prompt.publish') }}</el-button>
+            <el-button v-if="row.status === 1" size="small" type="primary" @click="showExecuteDialog(row)">{{ t('workflow.execute') }}</el-button>
+            <el-button size="small" @click="showEditDialog(row)">{{ t('common.edit') }}</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(row.id)">{{ t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
     <!-- 新建/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑工作流' : '新建工作流'" width="800px" :close-on-click-modal="false">
+    <el-dialog v-model="dialogVisible" :title="editingId ? t('workflow.edit') : t('workflow.create')" width="800px" :close-on-click-modal="false">
       <el-form :model="formData" label-width="100px">
-        <el-form-item label="名称" required>
+        <el-form-item :label="t('common.description')" required>
           <el-input v-model="formData.name" placeholder="工作流名称" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item :label="t('common.description')">
           <el-input v-model="formData.description" placeholder="简短描述" />
         </el-form-item>
         <el-form-item label="YAML 定义" required>
@@ -69,8 +69,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSave" :loading="saving">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
@@ -86,12 +86,12 @@
     </el-dialog>
 
     <!-- 执行对话框 -->
-    <el-dialog v-model="executeDialogVisible" title="执行工作流" width="700px" :close-on-click-modal="false">
+    <el-dialog v-model="executeDialogVisible" :title="t('workflow.execute')" width="700px" :close-on-click-modal="false">
       <el-form :model="executeForm" label-width="80px">
-        <el-form-item label="工作流">
+        <el-form-item :label="t('workflow.title')">
           <span>{{ executeTarget?.name }}</span>
         </el-form-item>
-        <el-form-item label="输入参数">
+        <el-form-item :label="t('workflow.inputParams')">
           <el-input v-model="executeForm.inputsJson" type="textarea" :rows="4" placeholder='JSON 格式，如 {"task": "分析这段代码"}' />
         </el-form-item>
       </el-form>
@@ -138,7 +138,7 @@
 
       <template #footer>
         <el-button @click="executeDialogVisible = false">关闭</el-button>
-        <el-button v-if="!streaming && streamEvents.length === 0" type="primary" @click="handleExecute" :loading="executing">执行</el-button>
+        <el-button v-if="!streaming && streamEvents.length === 0" type="primary" @click="handleExecute" :loading="executing">{{ t('workflow.execute') }}</el-button>
         <el-button v-if="!streaming && streamEvents.length > 0" type="primary" @click="viewResult">查看详情</el-button>
       </template>
     </el-dialog>
@@ -147,7 +147,7 @@
     <el-drawer v-model="instanceDrawerVisible" :title="`${instanceTarget?.name} - 执行实例`" size="70%">
       <el-table :data="instances" v-loading="instancesLoading" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column label="状态" width="120">
+        <el-table-column :label="t('common.status')" width="120">
           <template #default="{ row }">
             <el-tag :type="instanceStatusType(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
@@ -157,9 +157,9 @@
         <el-table-column prop="createTime" label="执行时间" width="170">
           <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100">
+        <el-table-column :label="t('common.actions')" width="100">
           <template #default="{ row }">
-            <el-button size="small" @click="viewInstanceDetail(row)">详情</el-button>
+            <el-button size="small" @click="viewInstanceDetail(row)">{{ t('common.detail') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -170,6 +170,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import {
@@ -180,6 +181,7 @@ import {
 } from '@/api/modules/workflow'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const list = ref<WorkflowDefinitionVO[]>([])
 const loading = ref(false)
@@ -234,15 +236,15 @@ const handleSave = async () => {
   try {
     if (editingId.value) {
       await updateWorkflow(editingId.value, { ...formData })
-      ElMessage.success('更新成功')
+      ElMessage.success(t('common.updateSuccess'))
     } else {
       await createWorkflow({ ...formData })
-      ElMessage.success('创建成功')
+      ElMessage.success(t('common.createSuccess'))
     }
     dialogVisible.value = false
     loadList()
   } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
+    ElMessage.error(e.message || t('common.failed'))
   } finally {
     saving.value = false
   }
@@ -250,9 +252,9 @@ const handleSave = async () => {
 
 const handleDelete = async (id: number) => {
   try {
-    await ElMessageBox.confirm('确认删除此工作流？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('workflow.deleteConfirm'), t('common.tip'), { type: 'warning' })
     await deleteWorkflow(id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('common.deleteSuccess'))
     loadList()
   } catch { /* cancelled */ }
 }
@@ -260,7 +262,7 @@ const handleDelete = async (id: number) => {
 const handlePublish = async (id: number) => {
   try {
     await publishWorkflow(id)
-    ElMessage.success('已发布')
+    ElMessage.success(t('workflow.published'))
     loadList()
   } catch (e: any) {
     ElMessage.error(e.message || '发布失败')

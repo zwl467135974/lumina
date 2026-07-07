@@ -1,26 +1,26 @@
 <template>
   <div class="task-page">
-    <PageHeader title="异步任务" description="所有 Agent 异步执行任务的列表与状态" />
+    <PageHeader :title="t('task.title')" :description="t('task.description')" />
 
     <el-card shadow="never">
       <el-form :inline="true" class="filter-form">
-        <el-form-item label="状态">
-          <el-select v-model="filterStatus" placeholder="全部" clearable style="width: 140px" @change="loadTasks">
-            <el-option label="排队中" value="QUEUED" />
-            <el-option label="执行中" value="RUNNING" />
-            <el-option label="已完成" value="COMPLETED" />
-            <el-option label="失败" value="FAILED" />
-            <el-option label="已取消" value="CANCELLED" />
+        <el-form-item :label="t('task.status')">
+          <el-select v-model="filterStatus" :placeholder="t('common.all')" clearable style="width: 140px" @change="loadTasks">
+            <el-option :label="t('task.queued')" value="QUEUED" />
+            <el-option :label="t('task.running')" value="RUNNING" />
+            <el-option :label="t('task.completed')" value="COMPLETED" />
+            <el-option :label="t('task.failed')" value="FAILED" />
+            <el-option :label="t('task.cancelled')" value="CANCELLED" />
           </el-select>
         </el-form-item>
         <el-form-item label="Agent ID">
           <el-input-number v-model="filterAgentId" :min="1" :controls="false" style="width: 100px" @change="loadTasks" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadTasks">查询</el-button>
-          <el-button @click="resetFilter">重置</el-button>
-          <el-button v-if="autoRefresh" type="success" plain @click="stopAutoRefresh">停止刷新</el-button>
-          <el-button v-else type="warning" plain @click="startAutoRefresh">自动刷新</el-button>
+          <el-button type="primary" @click="loadTasks">{{ t('common.search') }}</el-button>
+          <el-button @click="resetFilter">{{ t('common.refresh') }}</el-button>
+          <el-button v-if="autoRefresh" type="success" plain @click="stopAutoRefresh">{{ t('task.stopRefresh') }}</el-button>
+          <el-button v-else type="warning" plain @click="startAutoRefresh">{{ t('task.autoRefresh') }}</el-button>
         </el-form-item>
       </el-form>
 
@@ -30,24 +30,24 @@
             <span class="uuid-text">{{ row.taskUuid.substring(0, 8) }}...</span>
           </template>
         </el-table-column>
-        <el-table-column prop="agentId" label="Agent" width="80" />
-        <el-table-column prop="inputText" label="输入" min-width="200" show-overflow-tooltip />
-        <el-table-column label="状态" width="100">
+        <el-table-column prop="agentId" :label="t('task.agentId')" width="80" />
+        <el-table-column prop="inputText" :label="t('task.input')" min-width="200" show-overflow-tooltip />
+        <el-table-column :label="t('task.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="totalTokens" label="Token" width="90">
+        <el-table-column prop="totalTokens" :label="t('task.tokenUsage')" width="90">
           <template #default="{ row }">{{ row.totalTokens || '-' }}</template>
         </el-table-column>
-        <el-table-column label="耗时" width="90">
+        <el-table-column :label="t('task.duration')" width="90">
           <template #default="{ row }">{{ row.durationMs ? (row.durationMs / 1000).toFixed(1) + 's' : '-' }}</template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column prop="createTime" :label="t('task.createTime')" width="170" />
+        <el-table-column :label="t('common.actions')" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="viewDetail(row)">详情</el-button>
-            <el-button v-if="row.status === 'QUEUED' || row.status === 'RUNNING'" link type="danger" @click="handleCancel(row.taskUuid)">取消</el-button>
+            <el-button link type="primary" @click="viewDetail(row)">{{ t('common.detail') }}</el-button>
+            <el-button v-if="row.status === 'QUEUED' || row.status === 'RUNNING'" link type="danger" @click="handleCancel(row.taskUuid)">{{ t('common.cancel') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -65,15 +65,15 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="detailVisible" title="任务详情" width="700px">
+    <el-dialog v-model="detailVisible" :title="t('task.detail')" width="700px">
       <el-descriptions v-if="detailTask" :column="2" border>
         <el-descriptions-item label="任务 UUID" :span="2">{{ detailTask.taskUuid }}</el-descriptions-item>
         <el-descriptions-item label="Agent ID">{{ detailTask.agentId }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
+        <el-descriptions-item :label="t('task.status')">
           <el-tag :type="statusType(detailTask.status)" size="small">{{ statusLabel(detailTask.status) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="输入" :span="2">{{ detailTask.inputText }}</el-descriptions-item>
-        <el-descriptions-item label="结果" :span="2">
+        <el-descriptions-item :label="t('task.input')" :span="2">{{ detailTask.inputText }}</el-descriptions-item>
+        <el-descriptions-item :label="t('task.result')" :span="2">
           <div class="task-result">{{ detailTask.result || '-' }}</div>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailTask.errorMessage" label="错误" :span="2">
@@ -82,8 +82,8 @@
         <el-descriptions-item label="输入 Token">{{ detailTask.promptTokens || 0 }}</el-descriptions-item>
         <el-descriptions-item label="输出 Token">{{ detailTask.completionTokens || 0 }}</el-descriptions-item>
         <el-descriptions-item label="总 Token">{{ detailTask.totalTokens || 0 }}</el-descriptions-item>
-        <el-descriptions-item label="耗时">{{ detailTask.durationMs ? (detailTask.durationMs / 1000).toFixed(2) + 's' : '-' }}</el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ detailTask.createTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('task.duration')">{{ detailTask.durationMs ? (detailTask.durationMs / 1000).toFixed(2) + 's' : '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('task.createTime')">{{ detailTask.createTime || '-' }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ detailTask.updateTime || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -92,9 +92,12 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { cancelAgentTask, listAgentTasks, type AgentTaskVO } from '@/api/modules/agent'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const tasks = ref<AgentTaskVO[]>([])
@@ -121,11 +124,11 @@ const statusType = (status: string) => {
 
 const statusLabel = (status: string) => {
   const map: Record<string, string> = {
-    QUEUED: '排队中',
-    RUNNING: '执行中',
-    COMPLETED: '已完成',
-    FAILED: '失败',
-    CANCELLED: '已取消'
+    QUEUED: t('task.queued'),
+    RUNNING: t('task.running'),
+    COMPLETED: t('task.completed'),
+    FAILED: t('task.failed'),
+    CANCELLED: t('task.cancelled')
   }
   return map[status] || status
 }
@@ -159,7 +162,7 @@ const viewDetail = (row: AgentTaskVO) => {
 }
 
 const handleCancel = async (taskUuid: string) => {
-  await ElMessageBox.confirm('确认取消该任务？', '提示', { type: 'warning' })
+  await ElMessageBox.confirm(t('task.cancelConfirm'), '提示', { type: 'warning' })
   await cancelAgentTask(taskUuid)
   ElMessage.success('已发送取消请求')
   await loadTasks()

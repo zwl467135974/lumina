@@ -1,18 +1,18 @@
 <template>
   <div class="agent-list-page">
-    <page-header title="Agent 列表">
+    <page-header :title="t('agent.list')">
       <el-button type="primary" @click="handleCreate">
         <el-icon><Plus /></el-icon>
-        新建 Agent
+        {{ t('agent.create') }}
       </el-button>
     </page-header>
 
     <el-card>
       <el-form :model="queryForm" inline>
-        <el-form-item label="Agent 名称">
+        <el-form-item :label="t('agent.name')">
           <el-input v-model="queryForm.agentName" placeholder="请输入" clearable />
         </el-form-item>
-        <el-form-item label="类型">
+        <el-form-item :label="t('agent.type')">
           <el-select v-model="queryForm.agentType" placeholder="请选择" clearable>
             <el-option label="ReAct" value="ReAct" />
             <el-option label="Simple" value="simple" />
@@ -21,16 +21,16 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="reloadData">查询</el-button>
+          <el-button type="primary" @click="reloadData">{{ t('common.search') }}</el-button>
           <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
 
       <el-table :data="tableData" v-loading="loading" border style="margin-top: 20px">
         <el-table-column prop="agentId" label="ID" width="80" />
-        <el-table-column prop="agentName" label="Agent 名称" />
-        <el-table-column prop="agentType" label="类型" />
-        <el-table-column label="运行时 Prompt" min-width="220">
+        <el-table-column prop="agentName" :label="t('agent.name')" />
+        <el-table-column prop="agentType" :label="t('agent.type')" />
+        <el-table-column :label="t('agent.runtimePrompt')" min-width="220">
           <template #default="{ row }">
             <div class="prompt-cell">
               <template v-if="activePromptMap[getPromptKey(row.agentType)]">
@@ -47,8 +47,8 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="description" :label="t('agent.description')" show-overflow-tooltip />
+        <el-table-column prop="status" :label="t('common.status')" width="100">
           <template #default="{ row }">
             <el-switch
               :model-value="row.status === 1"
@@ -58,11 +58,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column :label="t('common.actions')" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleView(row)">查看</el-button>
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="primary" @click="handleEdit(row)">{{ t('common.edit') }}</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">{{ t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -84,6 +84,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { listAgents, deleteAgent, updateAgent } from '@/api/modules/agent'
@@ -93,6 +94,7 @@ import { useTable } from '@/composables/useTable'
 import PageHeader from '@/components/common/PageHeader.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const queryForm = reactive<QueryAgentDTO>({
   agentName: '',
@@ -149,11 +151,11 @@ const handleEdit = (row: AgentVO) => {
 
 const handleDelete = async (row: AgentVO) => {
   try {
-    await ElMessageBox.confirm('确定要删除该 Agent 吗？', '提示', {
+    await ElMessageBox.confirm(t('agent.deleteConfirm'), '提示', {
       type: 'warning'
     })
     await deleteAgent(row.agentId)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('common.success'))
     reloadData()
   } catch {
     // 用户取消或删除失败

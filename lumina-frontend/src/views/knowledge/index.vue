@@ -1,15 +1,15 @@
 <template>
   <div class="knowledge-page">
     <div class="page-header">
-      <h2>知识库管理</h2>
+      <h2>{{ t('knowledge.title') }}</h2>
       <div class="actions">
-        <el-button @click="loadDocuments" :loading="loading">刷新</el-button>
+        <el-button @click="loadDocuments" :loading="loading">{{ t('common.refresh') }}</el-button>
       </div>
     </div>
 
     <!-- 上传区 -->
     <el-card shadow="never" class="section-card">
-      <template #header><span>上传文档</span></template>
+      <template #header><span>{{ t('knowledge.upload') }}</span></template>
       <el-upload
         ref="uploadRef"
         :auto-upload="true"
@@ -23,7 +23,7 @@
           拖拽文件到此处，或<em>点击上传</em>
         </div>
         <template #tip>
-          <div class="upload-tip">支持 TXT / Markdown / PDF / Word（.doc/.docx），单文件最大 50MB</div>
+          <div class="upload-tip">{{ t('knowledge.formatTip') }}</div>
         </template>
       </el-upload>
       <div v-if="uploading" class="upload-progress">
@@ -34,19 +34,19 @@
 
     <!-- 文档列表 -->
     <el-card shadow="never" class="section-card">
-      <template #header><span>文档列表（共 {{ total }} 条）</span></template>
+      <template #header><span>{{ t('knowledge.documents') }}（共 {{ total }} 条）</span></template>
       <el-table :data="documents" v-loading="loading" stripe size="small">
-        <el-table-column prop="title" label="文档标题" min-width="200" show-overflow-tooltip />
-        <el-table-column label="格式" width="90">
+        <el-table-column prop="title" :label="t('knowledge.documentTitle')" min-width="200" show-overflow-tooltip />
+        <el-table-column :label="t('knowledge.format')" width="90">
           <template #default="{ row }">
             <el-tag :type="formatTagType(row.format)" size="small">{{ row.format }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="chunkCount" label="切片数" width="90" />
-        <el-table-column label="文件大小" width="100">
+        <el-table-column :label="t('knowledge.fileSize')" width="100">
           <template #default="{ row }">{{ formatFileSize(row.fileSize) }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="90">
+        <el-table-column :label="t('common.status')" width="90">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'warning'" size="small">
               {{ statusText(row.status) }}
@@ -56,9 +56,9 @@
         <el-table-column label="上传时间" width="170">
           <template #default="{ row }">{{ row.createTime }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column :label="t('common.actions')" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -78,11 +78,11 @@
 
     <!-- 检索测试 -->
     <el-card shadow="never" class="section-card">
-      <template #header><span>检索测试</span></template>
+      <template #header><span>{{ t('knowledge.search') }}</span></template>
       <div class="search-bar">
         <el-input
           v-model="searchQuery"
-          placeholder="输入问题测试知识库检索..."
+          :placeholder="t('knowledge.searchPlaceholder')"
           clearable
           @keyup.enter="handleSearch"
         />
@@ -104,6 +104,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Loading } from '@element-plus/icons-vue'
 import {
@@ -114,6 +115,8 @@ import {
   type KnowledgeDocumentVO,
   type SearchResult
 } from '@/api/modules/knowledge'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const uploading = ref(false)
@@ -185,7 +188,7 @@ const handleUpload = async (options: { file: File }) => {
 
 const handleDelete = async (row: KnowledgeDocumentVO) => {
   try {
-    await ElMessageBox.confirm(`确认删除文档「${row.title}」？关联的向量数据也将一并清理。`, '提示', {
+    await ElMessageBox.confirm(`确认删除文档「${row.title}」？关联的向量数据也将一并清理。`, t('common.tip'), {
       type: 'warning'
     })
     await deleteDocument(row.documentUuid)

@@ -2,15 +2,17 @@
   <div class="not-found-page">
     <div class="not-found-content">
       <h1>404</h1>
-      <p>抱歉，您访问的页面不存在</p>
-      <el-button type="primary" @click="goHome">返回首页</el-button>
+      <p>{{ t('error.notFound') }}</p>
+      <el-button type="primary" @click="goHome">{{ t('error.backHome') }}</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const goHome = () => {

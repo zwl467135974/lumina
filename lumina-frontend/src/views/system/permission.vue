@@ -1,25 +1,25 @@
 <template>
   <div class="system-permission-page">
-    <page-header title="权限管理">
+    <page-header :title="t('system.permission.title')">
       <el-button type="primary" v-permission="'permission:create'" @click="handleCreate">
         <el-icon><Plus /></el-icon>
-        新建权限
+        {{ t('common.create') }}
       </el-button>
     </page-header>
 
     <el-card>
       <el-form :model="queryForm" inline>
-        <el-form-item label="权限名称">
-          <el-input v-model="queryForm.permissionName" placeholder="请输入权限名称" clearable />
+        <el-form-item :label="t('system.permission.permissionName')">
+          <el-input v-model="queryForm.permissionName" :placeholder="t('system.permission.permissionNamePlaceholder')" clearable />
         </el-form-item>
-        <el-form-item label="权限编码">
-          <el-input v-model="queryForm.permissionCode" placeholder="请输入权限编码" clearable />
+        <el-form-item :label="t('system.permission.permissionCode')">
+          <el-input v-model="queryForm.permissionCode" :placeholder="t('system.permission.permissionCodePlaceholder')" clearable />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadPermissionTree">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
-          <el-button @click="expandAll">展开全部</el-button>
-          <el-button @click="collapseAll">折叠全部</el-button>
+          <el-button type="primary" @click="loadPermissionTree">{{ t('common.query') }}</el-button>
+          <el-button @click="handleReset">{{ t('common.reset') }}</el-button>
+          <el-button @click="expandAll">{{ t('system.permission.expandAll') }}</el-button>
+          <el-button @click="collapseAll">{{ t('system.permission.collapseAll') }}</el-button>
         </el-form-item>
       </el-form>
 
@@ -34,21 +34,21 @@
         ref="tableRef"
       >
         <el-table-column prop="permissionId" label="ID" width="80" />
-        <el-table-column prop="permissionName" label="权限名称" width="200" />
-        <el-table-column prop="permissionCode" label="权限编码" width="200" />
-        <el-table-column prop="resourcePath" label="资源路径" show-overflow-tooltip />
-        <el-table-column prop="description" label="描述" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column prop="permissionName" :label="t('system.permission.permissionName')" width="200" />
+        <el-table-column prop="permissionCode" :label="t('system.permission.permissionCode')" width="200" />
+        <el-table-column prop="resourcePath" :label="t('system.permission.resourcePath')" show-overflow-tooltip />
+        <el-table-column prop="description" :label="t('common.description')" show-overflow-tooltip />
+        <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
+        <el-table-column :label="t('common.actions')" width="280" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" v-permission="'permission:create'" @click="handleCreateChild(row)">
-              添加子权限
+              {{ t('system.permission.addChild') }}
             </el-button>
             <el-button link type="primary" v-permission="'permission:update'" @click="handleEdit(row)">
-              编辑
+              {{ t('common.edit') }}
             </el-button>
             <el-button link type="danger" v-permission="'permission:delete'" @click="handleDelete(row)">
-              删除
+              {{ t('common.delete') }}
             </el-button>
           </template>
         </el-table-column>
@@ -63,42 +63,42 @@
       @close="handleDialogClose"
     >
       <el-form :model="formData" :rules="formRules" ref="formRef" label-width="100px">
-        <el-form-item label="权限名称" prop="permissionName">
-          <el-input v-model="formData.permissionName" placeholder="请输入权限名称" />
+        <el-form-item :label="t('system.permission.permissionName')" prop="permissionName">
+          <el-input v-model="formData.permissionName" :placeholder="t('system.permission.permissionNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="权限编码" prop="permissionCode">
+        <el-form-item :label="t('system.permission.permissionCode')" prop="permissionCode">
           <el-input
             v-model="formData.permissionCode"
-            placeholder="请输入权限编码，如：user:create"
+            :placeholder="t('system.permission.permissionCodeEditPlaceholder')"
             :disabled="isEdit"
           />
         </el-form-item>
-        <el-form-item label="资源路径" prop="resourcePath">
-          <el-input v-model="formData.resourcePath" placeholder="请输入资源路径，如：/api/v1/users" />
+        <el-form-item :label="t('system.permission.resourcePath')" prop="resourcePath">
+          <el-input v-model="formData.resourcePath" :placeholder="t('system.permission.resourcePathPlaceholder')" />
         </el-form-item>
-        <el-form-item label="父级权限" prop="parentId">
+        <el-form-item :label="t('system.permission.parent')" prop="parentId">
           <el-tree-select
             v-model="formData.parentId"
             :data="parentPermissionTree"
             :props="{ label: 'permissionName', value: 'permissionId' }"
-            placeholder="请选择父级权限（不选则为顶级权限）"
+            :placeholder="t('system.permission.parentPlaceholder')"
             clearable
             check-strictly
             :render-after-expand="false"
           />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
+        <el-form-item :label="t('common.description')" prop="description">
           <el-input
             v-model="formData.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入权限描述"
+            :placeholder="t('system.permission.descriptionPlaceholder')"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmit">{{ t('common.ok') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -106,6 +106,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import {
@@ -116,6 +117,8 @@ import {
 } from '@/api/modules/system-permission'
 import type { PermissionVO, CreatePermissionDTO, UpdatePermissionDTO, QueryPermissionDTO } from '@/types/api'
 import PageHeader from '@/components/common/PageHeader.vue'
+
+const { t } = useI18n()
 
 const queryForm = reactive<QueryPermissionDTO>({
   permissionName: '',
@@ -143,14 +146,14 @@ const formData = reactive<CreatePermissionDTO & { description?: string }>({
 
 const formRules: FormRules = {
   permissionName: [
-    { required: true, message: '请输入权限名称', trigger: 'blur' }
+    { required: true, message: t('system.permission.permissionNameRequired'), trigger: 'blur' }
   ],
   permissionCode: [
-    { required: true, message: '请输入权限编码', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9:_-]+$/, message: '权限编码格式不正确', trigger: 'blur' }
+    { required: true, message: t('system.permission.permissionCodeRequired'), trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9:_-]+$/, message: t('system.permission.permissionCodeInvalid'), trigger: 'blur' }
   ],
   resourcePath: [
-    { required: true, message: '请输入资源路径', trigger: 'blur' }
+    { required: true, message: t('system.permission.resourcePathRequired'), trigger: 'blur' }
   ]
 }
 
@@ -182,7 +185,7 @@ const loadPermissionTree = async () => {
     permissionTree.value = res.data
   } catch (error) {
     console.error('加载权限树失败:', error)
-    ElMessage.error('加载权限树失败')
+    ElMessage.error(t('system.permission.loadTreeFailed'))
     permissionTree.value = []
   } finally {
     loading.value = false
@@ -225,7 +228,7 @@ const collapseAll = () => {
 
 // 创建权限
 const handleCreate = () => {
-  dialogTitle.value = '新建权限'
+  dialogTitle.value = t('system.permission.create')
   isEdit.value = false
   formData.parentId = undefined
   dialogVisible.value = true
@@ -233,7 +236,7 @@ const handleCreate = () => {
 
 // 创建子权限
 const handleCreateChild = (row: PermissionVO) => {
-  dialogTitle.value = '新建子权限'
+  dialogTitle.value = t('system.permission.createChild')
   isEdit.value = false
   formData.parentId = row.permissionId
   dialogVisible.value = true
@@ -241,7 +244,7 @@ const handleCreateChild = (row: PermissionVO) => {
 
 // 编辑权限
 const handleEdit = (row: PermissionVO) => {
-  dialogTitle.value = '编辑权限'
+  dialogTitle.value = t('system.permission.edit')
   isEdit.value = true
   editingPermissionId.value = row.permissionId
   formData.permissionName = row.permissionName
@@ -266,10 +269,10 @@ const handleSubmit = async () => {
             parentId: formData.parentId
           }
           await updatePermission(editingPermissionId.value, updateData)
-          ElMessage.success('更新成功')
+          ElMessage.success(t('common.updateSuccess'))
         } else {
           await createPermission(formData as CreatePermissionDTO)
-          ElMessage.success('创建成功')
+          ElMessage.success(t('common.createSuccess'))
         }
         dialogVisible.value = false
         loadPermissionTree()
@@ -297,20 +300,20 @@ const handleDialogClose = () => {
 const handleDelete = async (row: PermissionVO) => {
   // 检查是否有子权限
   if (row.children && row.children.length > 0) {
-    ElMessage.warning('该权限存在子权限，请先删除子权限')
+    ElMessage.warning(t('system.permission.hasChildren'))
     return
   }
 
   try {
     await ElMessageBox.confirm(
-      `确定要删除权限 ${row.permissionName} 吗？`,
-      '提示',
+      t('system.permission.deleteConfirm', { name: row.permissionName }),
+      t('common.tip'),
       {
         type: 'warning'
       }
     )
     await deletePermission(row.permissionId)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('common.deleteSuccess'))
     loadPermissionTree()
   } catch (error) {
     // 用户取消

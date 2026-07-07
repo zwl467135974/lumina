@@ -1,26 +1,26 @@
 <template>
   <div class="cost-page">
-    <PageHeader title="成本仪表盘" description="Agent 执行 Token 消费与费用汇总" />
+    <PageHeader :title="t('cost.title')" :description="t('cost.description')" />
 
     <el-row :gutter="16" v-loading="loading">
       <el-col :span="6">
         <el-card shadow="hover">
-          <el-statistic title="完成任务数" :value="summary?.taskCount ?? 0" />
+          <el-statistic :title="t('cost.taskCount')" :value="summary?.taskCount ?? 0" />
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="hover">
-          <el-statistic title="总 Token" :value="summary?.totalTokens ?? 0" />
+          <el-statistic :title="t('cost.totalTokens')" :value="summary?.totalTokens ?? 0" />
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="hover">
-          <el-statistic title="输入 Token" :value="summary?.totalPromptTokens ?? 0" />
+          <el-statistic :title="t('cost.inputTokens')" :value="summary?.totalPromptTokens ?? 0" />
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="hover">
-          <el-statistic title="输出 Token" :value="summary?.totalCompletionTokens ?? 0" />
+          <el-statistic :title="t('cost.outputTokens')" :value="summary?.totalCompletionTokens ?? 0" />
         </el-card>
       </el-col>
     </el-row>
@@ -36,11 +36,11 @@
     <el-card shadow="never" class="trend-card">
       <template #header>
         <div class="trend-header">
-          <span>消费趋势</span>
+          <span>{{ t('cost.trend') }}</span>
           <el-radio-group v-model="trendDays" size="small" @change="loadTrend">
-            <el-radio-button :value="7">近 7 天</el-radio-button>
-            <el-radio-button :value="30">近 30 天</el-radio-button>
-            <el-radio-button :value="90">近 90 天</el-radio-button>
+            <el-radio-button :value="7">{{ t('cost.days7') }}</el-radio-button>
+            <el-radio-button :value="30">{{ t('cost.days30') }}</el-radio-button>
+            <el-radio-button :value="90">{{ t('cost.days90') }}</el-radio-button>
           </el-radio-group>
         </div>
       </template>
@@ -51,7 +51,7 @@
     </el-card>
 
     <el-card shadow="never" class="top-card">
-      <template #header>Top Agent 消费</template>
+      <template #header>{{ t('cost.topAgents') }}</template>
       <el-table :data="summary?.topAgents || []" stripe>
         <el-table-column prop="agentId" label="Agent ID" width="120" />
         <el-table-column prop="tokens" label="Token 用量" />
@@ -67,6 +67,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, BarChart } from 'echarts/charts'
@@ -76,6 +77,8 @@ import PageHeader from '@/components/common/PageHeader.vue'
 import { getCostSummary, getCostTrend, type CostSummary, type CostTrendPoint } from '@/api/modules/cost'
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent])
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const trendLoading = ref(false)

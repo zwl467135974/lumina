@@ -9,6 +9,10 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key })
+}))
+
 vi.mock('@/api/modules/agent', () => ({
   createAgent: vi.fn(),
   updateAgent: vi.fn(),

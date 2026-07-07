@@ -1,9 +1,9 @@
 <template>
   <div class="tool-monitor">
     <div class="page-header">
-      <h2>工具监控</h2>
+      <h2>{{ t('monitor.title') }}</h2>
       <div class="actions">
-        <el-button @click="loadAll" :loading="loading">刷新</el-button>
+        <el-button @click="loadAll" :loading="loading">{{ t('common.refresh') }}</el-button>
         <el-button type="danger" plain @click="handleClear">清空记录</el-button>
       </div>
     </div>
@@ -12,16 +12,16 @@
     <el-card shadow="never" class="section-card">
       <template #header><span>调用统计</span></template>
       <el-table :data="statsList" v-loading="loading" stripe size="small">
-        <el-table-column prop="toolName" label="工具名称" min-width="140" />
-        <el-table-column prop="totalInvocations" label="调用次数" width="100" sortable />
-        <el-table-column label="成功率" width="110">
+        <el-table-column prop="toolName" :label="t('monitor.toolName')" min-width="140" />
+        <el-table-column prop="totalInvocations" :label="t('monitor.callCount')" width="100" sortable />
+        <el-table-column :label="t('monitor.successRate')" width="110">
           <template #default="{ row }">
             <el-tag :type="rateType(row.successRate)" size="small">
               {{ (row.successRate * 100).toFixed(1) }}%
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="平均耗时" width="100">
+        <el-table-column :label="t('monitor.avgDuration')" width="100">
           <template #default="{ row }">{{ row.avgDurationMs.toFixed(0) }}ms</template>
         </el-table-column>
         <el-table-column label="最大耗时" width="100">
@@ -39,8 +39,8 @@
     <el-card shadow="never" class="section-card">
       <template #header><span>熔断器状态</span></template>
       <el-table :data="breakerList" stripe size="small">
-        <el-table-column prop="toolName" label="工具名称" min-width="140" />
-        <el-table-column label="状态" width="120">
+        <el-table-column prop="toolName" :label="t('monitor.toolName')" min-width="140" />
+        <el-table-column :label="t('common.status')" width="120">
           <template #default="{ row }">
             <el-tag :type="row.open ? 'danger' : 'success'" size="small">
               {{ row.open ? '熔断中' : '正常' }}
@@ -67,7 +67,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="耗时" width="80">
+        <el-table-column :label="t('monitor.duration')" width="80">
           <template #default="{ row }">{{ row.durationMs }}ms</template>
         </el-table-column>
         <el-table-column prop="error" label="错误信息" min-width="200" show-overflow-tooltip />
@@ -78,6 +78,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getToolStats,
@@ -88,6 +89,8 @@ import {
   type ToolInvocation,
   type BreakerState
 } from '@/api/modules/tools'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const statsMap = ref<Record<string, ToolStats>>({})
@@ -125,7 +128,7 @@ const loadAll = async () => {
 
 const handleClear = async () => {
   try {
-    await ElMessageBox.confirm('确认清空所有调用记录与统计？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm('确认清空所有调用记录与统计？', t('common.tip'), { type: 'warning' })
     await clearToolInvocations()
     ElMessage.success('已清空')
     loadAll()
