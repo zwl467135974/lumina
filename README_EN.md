@@ -26,16 +26,19 @@ Lumina is an enterprise-grade AI Agent platform built on [AgentScope Java](https
 ### Core Features
 
 - **AgentScope Integration** - Native ReAct Agent with tool calling and streaming output
-- **RAG Knowledge Base** - Document upload → chunking → vectorization → retrieval-augmented generation (Qdrant + multi-provider embeddings)
+- **Workflow Orchestration** - DAG-based workflow engine with 6 node types (Agent / Condition / Loop / Parallel / Transform / Human) + 5 collaboration templates
+- **Prompt Management** - Versioned prompt templates with DB-backed activation and runtime resolution
+- **Agent Evaluation** - YAML datasets + 4 scorers (exact match / contains / semantic similarity / LLM judge) + A/B comparison + CSV export
+- **RAG Knowledge Base** - Document upload → chunking → vectorization → retrieval-augmented generation (Qdrant + multi-provider embeddings) + source visualization
 - **Microservice Architecture** - Spring Cloud Alibaba with service discovery, config management, and load balancing
 - **Simplified Layered Architecture** - Clear separation: API, Service, Domain, Infrastructure
 - **Multi-turn Dialog & Memory** - Session-scoped context persistence (Redis hot memory + DB cold storage), history replay, token usage tracking
+- **Async Task Execution** - Submit and return immediately, background thread pool execution, dedicated task list page
 - **Full Observability** - MDC structured logging + audit trail + Micrometer metrics (Prometheus/Grafana) + OpenTelemetry tracing (Jaeger)
-- **Workflow Orchestration** - DAG-based workflow engine with 6 node types (Agent / Condition / Loop / Parallel / Transform / Human)
-- **Prompt Management** - Versioned prompt templates with DB-backed activation and runtime resolution
 - **Multi-LLM Support** - DashScope, OpenAI/DeepSeek, Claude, Ollama
-- **Security** - Prompt injection detection, output PII sanitization, multi-tenant RBAC
-- **Cost Management** - Token-based cost calculation with model pricing and dashboards
+- **Security** - Prompt injection detection, output PII sanitization, rate limiting (Redis sliding window), content moderation, multi-tenant RBAC
+- **Cost Management** - Token-based cost calculation with model pricing, trend charts, and dashboards
+- **Engineering** - Unified error codes, Flyway migrations (V1-V14), gateway rate limiting, tool circuit breaker
 - **Frontend** - Dynamic menus, Agent debug panel, dark theme, i18n
 
 ---
@@ -161,11 +164,18 @@ Open http://localhost:3000
 | POST | `/api/v1/agents/{id}/execute/stream` | Execute Agent (SSE streaming) |
 | POST | `/api/v1/agents/{id}/execute/multimodal` | Execute with images |
 | POST | `/api/v1/agents/{id}/execute/async` | Submit async task |
+| GET | `/api/v1/agents/tasks` | List async tasks |
 | GET | `/api/v1/agents/tasks/{uuid}` | Query async task status |
 | GET | `/api/v1/workflows/templates` | Workflow templates |
 | POST | `/api/v1/workflows/{id}/execute` | Execute workflow |
 | GET | `/api/v1/prompts/{name}/active` | Get active prompt |
 | GET | `/api/v1/cost/summary` | Cost summary |
+| GET | `/api/v1/cost/trend` | Cost trend |
+| POST | `/api/v1/evaluations/datasets` | Create evaluation dataset |
+| POST | `/api/v1/evaluations/datasets/{id}/runs` | Run evaluation |
+| GET | `/api/v1/evaluations/datasets/{id}/trend` | Evaluation trend |
+| GET | `/api/v1/evaluations/runs/compare` | A/B compare two runs |
+| GET | `/api/v1/evaluations/runs/{id}/export` | Export CSV |
 
 ---
 
@@ -176,7 +186,7 @@ Open http://localhost:3000
 | Language | Java 21 |
 | Framework | Spring Boot 3.3.5, Spring Cloud 2023.0.3 |
 | AI Engine | AgentScope 1.0.7 |
-| Database | MySQL 8.0, Flyway V1-V11 |
+| Database | MySQL 8.0, Flyway V1-V14 |
 | ORM | MyBatis-Plus 3.5.7 |
 | Cache | Redis 7 + Redisson 3.24.3 |
 | Search | Qdrant (RAG vector store) |

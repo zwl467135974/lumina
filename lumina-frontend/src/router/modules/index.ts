@@ -77,6 +77,16 @@ export const agentRoutes: AppRouteRecordRaw[] = [
           requiresAuth: true,
           hidden: true
         }
+      },
+      {
+        path: 'tasks',
+        name: 'AgentTasks',
+        component: () => import('@/views/task/index.vue'),
+        meta: {
+          title: '异步任务',
+          requiresAuth: true,
+          keepAlive: true
+        }
       }
     ]
   }

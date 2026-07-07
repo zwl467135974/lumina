@@ -39,7 +39,10 @@ describe('user store', () => {
     it('sets token and userInfo on successful login', async () => {
       const mockLoginData = {
         token: 'jwt-token-123',
-        userInfo: { userId: 1, username: 'admin' }
+        userId: 1,
+        username: 'admin',
+        roles: ['SUPER_ADMIN'],
+        permissions: ['*']
       }
       vi.mocked(loginApi).mockResolvedValue({
         code: 200, msg: 'ok', data: mockLoginData, timestamp: Date.now()
@@ -52,14 +55,14 @@ describe('user store', () => {
       await store.login('admin', 'password')
 
       expect(store.token).toBe('jwt-token-123')
-      expect(store.userInfo).toEqual({ userId: 1, username: 'admin' })
+      expect(store.userInfo).toEqual(mockLoginData)
       expect(loginApi).toHaveBeenCalledWith({ username: 'admin', password: 'password' })
     })
 
     it('loads menus after login', async () => {
       vi.mocked(loginApi).mockResolvedValue({
         code: 200, msg: 'ok',
-        data: { token: 'tok', userInfo: { userId: 1, username: 'admin' } },
+        data: { token: 'tok', userId: 1, username: 'admin', roles: [], permissions: [] },
         timestamp: Date.now()
       })
       const mockMenus = [{ name: 'dashboard', path: '/dashboard', title: 'Dashboard' }]

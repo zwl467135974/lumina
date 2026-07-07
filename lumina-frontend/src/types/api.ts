@@ -74,9 +74,8 @@ export interface LoginDTO {
   password: string
 }
 
-export interface LoginVO {
+export interface LoginVO extends UserInfo {
   token: string
-  userInfo: UserInfo
 }
 
 export interface UserVO {

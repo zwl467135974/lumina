@@ -28,15 +28,16 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、流式输出
 - **工作流编排引擎** - DAG 引擎支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 5 种协作模板
 - **Prompt 版本管理** - DB 持久化、版本发布/激活、Agent 执行链路运行时动态生效
-- **RAG 知识库** - 文档上传 → 切片 → 向量化 → 检索增强（Qdrant REST + 多 Embedding 提供商）
+- **Agent 评估框架** - YAML 数据集 + 4 种评分器（精确/包含/语义相似度/LLM Judge）+ A/B 对比 + CSV 导出
+- **RAG 知识库** - 文档上传 → 切片 → 向量化 → 检索增强（Qdrant REST + 多 Embedding 提供商）+ 来源可视化
 - **微服务架构** - 基于 Spring Cloud Alibaba，支持服务注册、配置管理、负载均衡
 - **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
 - **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
-- **异步任务执行** - 提交后立即返回 taskId，后台线程池执行，支持状态查询与结果获取
-- **成本管理** - 模型价格表 + Token 用量计费 + 消费汇总仪表盘
-- **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）
+- **异步任务执行** - 提交后立即返回 taskId，后台线程池执行，状态查询与独立列表页管理
+- **成本管理** - 模型价格表 + Token 用量计费 + 消费汇总仪表盘 + 趋势图表
+- **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）+ 频率限制 + 内容审核
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V11)、网关限流、API 版本策略、工具调用熔断器
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V14)、网关限流、API 版本策略、工具调用熔断器
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
@@ -166,7 +167,7 @@ $env:DASHSCOPE_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V11），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V14），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -552,9 +553,15 @@ npm install
 - ✅ Agent 调试面板：工具调用记录 + 推理过程展示
 
 **生产可用性（P3）**
-- ✅ 异步任务执行：提交即返回 taskId，后台线程池执行，状态查询（Flyway V10）
-- ✅ 成本管理：模型价格表 + Token 计费 + 消费汇总仪表盘（Flyway V11）
-- ✅ 安全防护：Prompt 注入检测（11 种模式）+ 输出 PII 脱敏
+- ✅ 异步任务执行：提交即返回 taskId，后台线程池执行，状态查询 + 独立任务列表页（Flyway V10）
+- ✅ 成本管理：模型价格表 + Token 计费 + 消费汇总仪表盘 + 趋势图表（Flyway V11）
+- ✅ 安全防护：Prompt 注入检测（11 种模式）+ 输出 PII 脱敏 + 频率限制（Redis 滑动窗口）+ 内容审核
+
+**Agent 评估框架（E1）**
+- ✅ YAML 数据集管理 + 文件上传导入
+- ✅ 4 种评分器：精确匹配 / 关键词包含 / 语义相似度（Embedding 余弦） / LLM Judge（1-5 分制）
+- ✅ 评估报告：分类统计 + ECharts 柱状图 + 历史趋势折线图
+- ✅ 异步评估（大数据集）+ A/B 两次评估对比 + CSV 导出（Flyway V13-V14）
 
 **部署 + 文档（P4-P5）**
 - ✅ Helm Chart 全量模板（Gateway / Business-Base / Agent-Service / Frontend / Ingress + HPA）
@@ -562,13 +569,13 @@ npm install
 - ✅ Apache 2.0 License + CHANGELOG.md
 
 **测试**
-- ✅ 后端 300+ 单元测试（全 8 模块 `mvn verify` 通过）
+- ✅ 后端 355 单元测试（全 8 模块 `mvn verify` 通过）
 - ✅ 前端 80 测试（66 工具/Store + 14 组件）
 - ✅ CI/CD 双流水线（GitHub Actions：后端 mvn verify + 前端 pnpm build + pnpm test）
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V11 + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V14 + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
