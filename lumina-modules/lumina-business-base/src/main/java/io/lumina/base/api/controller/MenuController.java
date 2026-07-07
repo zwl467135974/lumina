@@ -1,24 +1,33 @@
 package io.lumina.base.api.controller;
 
+import io.lumina.base.infrastructure.entity.PermissionDO;
+import io.lumina.base.infrastructure.mapper.PermissionMapper;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * 菜单 Controller（动态菜单，按用户权限过滤）
+ * 菜单 Controller（动态菜单，从权限表查询 + 按用户权限过滤）
+ *
+ * <p>菜单数据来源于 {@code lumina_permission} 表中 {@code permission_type=1}（菜单类型）
+ * 的记录。通过 parent_id 构建树形结构，按当前用户的权限进行过滤。
+ *
+ * <p>新增模块只需在权限表中插入菜单类型记录，无需修改本类。
  *
  * @author Lumina Team
- * @since 1.2.0
+ * @since 1.0.0
  */
 @Slf4j
 @RestController
@@ -26,141 +35,57 @@ import java.util.List;
 @Tag(name = "菜单管理", description = "动态菜单接口")
 public class MenuController {
 
+    @Autowired
+    private PermissionMapper permissionMapper;
+
     /**
      * 获取当前用户的菜单树
      */
     @GetMapping
-    @Operation(summary = "获取当前用户菜单", description = "按用户权限过滤菜单树")
+    @Operation(summary = "获取当前用户菜单", description = "从权限表查询菜单类型记录，按用户权限过滤")
     public R<List<MenuVO>> getCurrentUserMenus() {
-        List<MenuVO> allMenus = buildMenuTree();
-        List<MenuVO> filtered = filterByPermissions(allMenus);
+        List<PermissionDO> allMenus = permissionMapper.selectAllPermissions().stream()
+                .filter(p -> p.getPermissionType() == 1)
+                .filter(p -> p.getVisible() == 1)
+                .filter(p -> p.getStatus() == 1)
+                .toList();
+
+        List<MenuVO> filtered = buildAndFilterMenuTree(allMenus);
         log.debug("用户 {} 菜单加载完成: {} 项", BaseContext.getUsername(), filtered.size());
         return R.success(filtered);
     }
 
     /**
-     * 构建完整菜单树
+     * 构建菜单树并按用户权限过滤
      */
-    private List<MenuVO> buildMenuTree() {
-        List<MenuVO> menus = new ArrayList<>();
+    private List<MenuVO> buildAndFilterMenuTree(List<PermissionDO> allMenus) {
+        Map<Long, List<PermissionDO>> byParent = allMenus.stream()
+                .collect(Collectors.groupingBy(PermissionDO::getParentId));
 
-        // Agent 管理
-        MenuVO agent = new MenuVO();
-        agent.setName("Agent");
-        agent.setPath("/agent");
-        agent.setTitle("Agent 管理");
-        agent.setIcon("Agent");
-        agent.setRedirect("/agent/list");
-        agent.setChildren(Arrays.asList(
-                child("AgentList", "/agent/list", "Agent 列表", "agent:list", true),
-                child("AgentTasks", "/agent/tasks", "异步任务", "agent:tasks", true)
-        ));
-        menus.add(agent);
-
-        // 工作流管理
-        MenuVO workflow = new MenuVO();
-        workflow.setName("Workflow");
-        workflow.setPath("/workflow");
-        workflow.setTitle("工作流管理");
-        workflow.setIcon("Connection");
-        workflow.setRedirect("/workflow");
-        menus.add(workflow);
-
-        // 知识库
-        MenuVO knowledge = new MenuVO();
-        knowledge.setName("Knowledge");
-        knowledge.setPath("/knowledge");
-        knowledge.setTitle("知识库");
-        knowledge.setIcon("Document");
-        menus.add(knowledge);
-
-        // Prompt 管理
-        MenuVO prompt = new MenuVO();
-        prompt.setName("Prompt");
-        prompt.setPath("/prompt");
-        prompt.setTitle("Prompt 管理");
-        prompt.setIcon("EditPen");
-        menus.add(prompt);
-
-        // 评估
-        MenuVO evaluation = new MenuVO();
-        evaluation.setName("Evaluation");
-        evaluation.setPath("/evaluation");
-        evaluation.setTitle("Agent 评估");
-        evaluation.setIcon("DataAnalysis");
-        menus.add(evaluation);
-
-        // 系统管理
-        MenuVO system = new MenuVO();
-        system.setName("System");
-        system.setPath("/system");
-        system.setTitle("系统管理");
-        system.setIcon("Setting");
-        system.setRedirect("/system/user");
-        system.setChildren(Arrays.asList(
-                child("SystemUser", "/system/user", "用户管理", "system:user:list", false),
-                child("SystemRole", "/system/role", "角色管理", "system:role:list", false),
-                child("SystemPermission", "/system/permission", "权限管理", "system:permission:list", false),
-                child("SystemTenant", "/system/tenant", "租户管理", "system:tenant:list", false),
-                child("SystemAudit", "/system/audit", "审计日志", null, false)
-        ));
-        menus.add(system);
-
-        // 监控中心
-        MenuVO monitor = new MenuVO();
-        monitor.setName("Monitor");
-        monitor.setPath("/monitor");
-        monitor.setTitle("监控中心");
-        monitor.setIcon("Monitor");
-        monitor.setRedirect("/monitor/tools");
-        monitor.setChildren(List.of(
-                child("MonitorTools", "/monitor/tools", "工具监控", null, false)
-        ));
-        menus.add(monitor);
-
-        return menus;
-    }
-
-    private MenuVO child(String name, String path, String title, String permission, boolean keepAlive) {
-        MenuVO m = new MenuVO();
-        m.setName(name);
-        m.setPath(path);
-        m.setTitle(title);
-        m.setPermission(permission);
-        m.setKeepAlive(keepAlive);
-        return m;
+        return buildChildren(byParent, 0L);
     }
 
     /**
-     * 按用户权限递归过滤菜单（超管可见全部）
+     * 递归构建子菜单（过滤无权限的节点）
      */
-    private List<MenuVO> filterByPermissions(List<MenuVO> menus) {
-        if (menus == null) return List.of();
-        if (BaseContext.isSuperAdmin()) return menus;
+    private List<MenuVO> buildChildren(Map<Long, List<PermissionDO>> byParent, Long parentId) {
+        List<PermissionDO> children = byParent.get(parentId);
+        if (children == null || children.isEmpty()) {
+            return List.of();
+        }
 
         List<MenuVO> result = new ArrayList<>();
-        for (MenuVO menu : menus) {
-            if (!hasPermission(menu)) {
+        for (PermissionDO perm : children) {
+            if (!hasPermission(perm)) {
                 continue;
             }
 
-            MenuVO copy = new MenuVO();
-            copy.setName(menu.getName());
-            copy.setPath(menu.getPath());
-            copy.setTitle(menu.getTitle());
-            copy.setIcon(menu.getIcon());
-            copy.setRedirect(menu.getRedirect());
-            copy.setPermission(menu.getPermission());
-            copy.setKeepAlive(menu.getKeepAlive());
-
-            if (menu.getChildren() != null && !menu.getChildren().isEmpty()) {
-                List<MenuVO> filteredChildren = filterByPermissions(menu.getChildren());
-                if (filteredChildren.isEmpty()) {
-                    continue;
-                }
-                copy.setChildren(filteredChildren);
+            MenuVO menu = toMenuVO(perm);
+            List<MenuVO> subChildren = buildChildren(byParent, perm.getPermissionId());
+            if (!subChildren.isEmpty()) {
+                menu.setChildren(subChildren);
             }
-            result.add(copy);
+            result.add(menu);
         }
         return result;
     }
@@ -168,11 +93,30 @@ public class MenuController {
     /**
      * 检查当前用户是否有该菜单的权限
      */
-    private boolean hasPermission(MenuVO menu) {
-        if (menu.getPermission() == null || menu.getPermission().isBlank()) {
+    private boolean hasPermission(PermissionDO perm) {
+        if (BaseContext.isSuperAdmin()) {
             return true;
         }
-        return BaseContext.hasPermission(menu.getPermission());
+        String code = perm.getPermissionCode();
+        if (code == null || code.isBlank()) {
+            return true;
+        }
+        return BaseContext.hasPermission(code);
+    }
+
+    /**
+     * PermissionDO → MenuVO 转换
+     */
+    private MenuVO toMenuVO(PermissionDO perm) {
+        MenuVO menu = new MenuVO();
+        menu.setName(perm.getPermissionCode());
+        menu.setPath(perm.getPath() != null ? perm.getPath() : "");
+        menu.setTitle(perm.getPermissionName());
+        menu.setIcon(perm.getIcon());
+        menu.setPermission(perm.getPermissionCode());
+        menu.setComponent(perm.getComponent());
+        menu.setKeepAlive(false);
+        return menu;
     }
 
     /**
@@ -185,9 +129,8 @@ public class MenuController {
         private String title;
         private String icon;
         private String redirect;
-        /** 权限标识（null=无需权限） */
+        private String component;
         private String permission;
-        /** 是否缓存 */
         private Boolean keepAlive;
         private List<MenuVO> children;
     }

@@ -91,21 +91,16 @@ const localizeTitle = (title?: string): string => {
 /**
  * 侧边栏菜单列表
  *
- * 后端动态下发菜单优先；后端未下发的路由（如工作流）由前端静态补充。
+ * Dashboard 作为首页固定显示；其余菜单由后端权限表动态下发。
  */
 const menuList = computed<MenuVO[]>(() => {
-  const backendMenus = userStore.menus
-  const extras: MenuVO[] = []
-  if (!backendMenus.some(m => m.path?.includes('workflow'))) {
-    extras.push({ name: 'workflow', path: '/workflow/list', title: t('menu.workflow'), icon: 'Connection' } as MenuVO)
-  }
-  if (!backendMenus.some(m => m.path?.includes('prompt'))) {
-    extras.push({ name: 'prompt', path: '/prompt', title: t('menu.prompt'), icon: 'EditPen' } as MenuVO)
-  }
-  if (!backendMenus.some(m => m.path?.includes('cost'))) {
-    extras.push({ name: 'cost', path: '/cost', title: t('menu.cost'), icon: 'Money' } as MenuVO)
-  }
-  return [...backendMenus, ...extras]
+  const dashboard: MenuVO = {
+    name: 'Dashboard',
+    path: '/',
+    title: t('menu.dashboard'),
+    icon: 'Odometer'
+  } as MenuVO
+  return [dashboard, ...userStore.menus]
 })
 
 /**
