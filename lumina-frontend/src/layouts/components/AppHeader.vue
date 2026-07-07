@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { Fold, Expand, Moon, Sunny } from '@element-plus/icons-vue'
 import { useAppStore, useUserStore } from '@/stores'
@@ -96,7 +96,7 @@ const handleCommand = async (command: string) => {
       // 用户取消
     }
   } else if (command === 'profile') {
-    // 跳转到个人信息页
+    ElMessage.info('个人中心功能开发中')
   }
 }
 </script>

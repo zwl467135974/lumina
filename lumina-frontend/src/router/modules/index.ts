@@ -153,6 +153,15 @@ export const systemRoutes: AppRouteRecordRaw[] = [
           requiresAuth: true,
           permissions: ['tenant:view']
         }
+      },
+      {
+        path: 'audit',
+        name: 'SystemAudit',
+        component: () => import('@/views/system/audit.vue'),
+        meta: {
+          title: '审计日志',
+          requiresAuth: true
+        }
       }
     ]
   }

@@ -52,10 +52,19 @@ public class MenuController {
         agent.setIcon("Agent");
         agent.setRedirect("/agent/list");
         agent.setChildren(Arrays.asList(
-                child("AgentList", "/agent/list", "Agent 列表", null, true),
-                child("AgentCreate", "/agent/create", "创建 Agent", "agent:create", false)
+                child("AgentList", "/agent/list", "Agent 列表", "agent:list", true),
+                child("AgentTasks", "/agent/tasks", "异步任务", "agent:tasks", true)
         ));
         menus.add(agent);
+
+        // 工作流管理
+        MenuVO workflow = new MenuVO();
+        workflow.setName("Workflow");
+        workflow.setPath("/workflow");
+        workflow.setTitle("工作流管理");
+        workflow.setIcon("Connection");
+        workflow.setRedirect("/workflow");
+        menus.add(workflow);
 
         // 知识库
         MenuVO knowledge = new MenuVO();
@@ -64,6 +73,22 @@ public class MenuController {
         knowledge.setTitle("知识库");
         knowledge.setIcon("Document");
         menus.add(knowledge);
+
+        // Prompt 管理
+        MenuVO prompt = new MenuVO();
+        prompt.setName("Prompt");
+        prompt.setPath("/prompt");
+        prompt.setTitle("Prompt 管理");
+        prompt.setIcon("EditPen");
+        menus.add(prompt);
+
+        // 评估
+        MenuVO evaluation = new MenuVO();
+        evaluation.setName("Evaluation");
+        evaluation.setPath("/evaluation");
+        evaluation.setTitle("Agent 评估");
+        evaluation.setIcon("DataAnalysis");
+        menus.add(evaluation);
 
         // 系统管理
         MenuVO system = new MenuVO();
@@ -76,7 +101,8 @@ public class MenuController {
                 child("SystemUser", "/system/user", "用户管理", "system:user:list", false),
                 child("SystemRole", "/system/role", "角色管理", "system:role:list", false),
                 child("SystemPermission", "/system/permission", "权限管理", "system:permission:list", false),
-                child("SystemTenant", "/system/tenant", "租户管理", "system:tenant:list", false)
+                child("SystemTenant", "/system/tenant", "租户管理", "system:tenant:list", false),
+                child("SystemAudit", "/system/audit", "审计日志", null, false)
         ));
         menus.add(system);
 
