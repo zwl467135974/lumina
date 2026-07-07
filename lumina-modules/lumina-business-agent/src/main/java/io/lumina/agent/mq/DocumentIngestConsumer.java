@@ -10,6 +10,7 @@ import io.agentscope.core.rag.reader.SplitStrategy;
 import io.agentscope.core.rag.reader.TextReader;
 import io.agentscope.core.rag.reader.WordReader;
 import io.agentscope.core.rag.store.VDBStoreBase;
+import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.infrastructure.entity.KnowledgeDocumentDO;
 import io.lumina.agent.infrastructure.mapper.KnowledgeDocumentMapper;
 import io.lumina.framework.config.RocketMQConfig;
@@ -52,6 +53,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
 
     @Autowired
     private KnowledgeDocumentMapper documentMapper;
+
+    @Autowired(required = false)
+    private RagProperties ragProperties;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -97,16 +101,29 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
 
     private List<Document> parseDocument(Path filePath, String format, int chunkSize, int overlap) {
         ReaderInput input = ReaderInput.fromPath(filePath);
+        SplitStrategy splitStrategy = getSplitStrategy();
         switch (format) {
             case "pdf":
-                return new PDFReader(chunkSize, SplitStrategy.PARAGRAPH, overlap).read(input).block();
+                return new PDFReader(chunkSize, splitStrategy, overlap).read(input).block();
             case "doc":
             case "docx":
-                return new WordReader(chunkSize, SplitStrategy.PARAGRAPH, overlap,
+                return new WordReader(chunkSize, splitStrategy, overlap,
                         false, true, io.agentscope.core.rag.reader.TableFormat.MARKDOWN).read(input).block();
             default:
-                return new TextReader(chunkSize, SplitStrategy.PARAGRAPH, overlap).read(input).block();
+                return new TextReader(chunkSize, splitStrategy, overlap).read(input).block();
         }
+    }
+
+    private SplitStrategy getSplitStrategy() {
+        if (ragProperties != null && ragProperties.getReader() != null) {
+            String strategy = ragProperties.getReader().getSplitStrategy();
+            if (strategy != null) {
+                try {
+                    return SplitStrategy.valueOf(strategy.toUpperCase());
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        return SplitStrategy.PARAGRAPH;
     }
 
     private void updateStatus(String uuid, int status, int chunkCount, String vectorDocIdsJson) {

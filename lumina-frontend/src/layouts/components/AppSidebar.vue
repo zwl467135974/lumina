@@ -22,9 +22,10 @@
           <el-menu-item
             v-for="child in menu.children"
             :key="child.path"
-            :index="child.path"
+            :index="resolvePath(menu.path, child.path)"
           >
-            {{ localizeTitle(child.title) }}
+            <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
+            <template #title>{{ localizeTitle(child.title) }}</template>
           </el-menu-item>
         </el-sub-menu>
         <!-- 无子菜单：单级菜单项 -->
@@ -86,6 +87,13 @@ const localizeTitle = (title?: string): string => {
   if (!title) return ''
   const key = titleKeyMap[title]
   return key ? t(key) : title
+}
+
+const resolvePath = (parent?: string, child?: string) => {
+  if (!child) return parent || '/'
+  if (child.startsWith('/')) return child
+  const base = parent?.replace(/\/$/, '') || ''
+  return `${base}/${child}`
 }
 
 /**

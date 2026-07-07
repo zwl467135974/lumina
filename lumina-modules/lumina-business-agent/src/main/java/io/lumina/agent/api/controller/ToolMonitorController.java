@@ -3,6 +3,7 @@ package io.lumina.agent.api.controller;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecord;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
+import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.common.core.R;
 import jakarta.validation.constraints.Min;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,23 @@ public class ToolMonitorController {
 
     @Autowired(required = false)
     private ToolCircuitBreaker circuitBreaker;
+
+    @Autowired(required = false)
+    private io.lumina.agent.manager.EnhancedToolManager toolManager;
+
+    /**
+     * 查询已注册工具定义，供 Agent 配置页选择可用工具。
+     */
+    @GetMapping
+    public R<List<ToolVO>> tools() {
+        if (toolManager == null) {
+            return R.success(Collections.emptyList());
+        }
+        return R.success(toolManager.getAllTools().stream()
+                .filter(ToolDefinition::isEnabled)
+                .map(ToolVO::from)
+                .toList());
+    }
 
     /**
      * 查询所有工具的调用统计
@@ -98,5 +116,16 @@ public class ToolMonitorController {
             recorder.clear();
         }
         return R.success();
+    }
+
+    public record ToolVO(String name, String label, String description, String category) {
+        private static ToolVO from(ToolDefinition definition) {
+            return new ToolVO(
+                    definition.getName(),
+                    definition.getName(),
+                    definition.getDescription(),
+                    definition.getCategory()
+            );
+        }
     }
 }

@@ -87,6 +87,7 @@ lumina:
     # 内容审核开关
     content-moderation:
       enabled: ${CONTENT_MODERATION_ENABLED:true}
+      strict: ${CONTENT_MODERATION_STRICT:false}
     # LLM 配置
     llm:
       # 模型类型（dashscope/openai/anthropic/ollama，openai 兼容 DeepSeek/GLM/Moonshot 等）

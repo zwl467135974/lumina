@@ -36,6 +36,17 @@ export interface BreakerState {
   openedAt: number
 }
 
+export interface ToolDefinitionVO {
+  name: string
+  label: string
+  description: string | null
+  category: string | null
+}
+
+export function getTools() {
+  return request.get<R<ToolDefinitionVO[]>>('/api/v1/tools')
+}
+
 export function getToolStats() {
   return request.get<R<Record<string, ToolStats>>>('/api/v1/tools/stats')
 }

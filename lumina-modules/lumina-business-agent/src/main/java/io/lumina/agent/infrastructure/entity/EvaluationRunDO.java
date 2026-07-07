@@ -24,6 +24,8 @@ public class EvaluationRunDO {
     private String datasetName;
     private Long agentId;
     private String agentType;
+    private String modelName;
+    private String provider;
     private String scoringMethod;
     private BigDecimal thresholdValue;
     private Integer totalCases;

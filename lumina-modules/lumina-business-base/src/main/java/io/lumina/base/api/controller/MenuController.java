@@ -85,6 +85,9 @@ public class MenuController {
             if (!subChildren.isEmpty()) {
                 menu.setChildren(subChildren);
             }
+            if ((menu.getPath() == null || menu.getPath().isBlank()) && subChildren.isEmpty()) {
+                continue;
+            }
             result.add(menu);
         }
         return result;

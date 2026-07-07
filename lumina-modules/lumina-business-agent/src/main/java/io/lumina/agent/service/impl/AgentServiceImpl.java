@@ -73,6 +73,9 @@ public class AgentServiceImpl implements AgentService {
     @Autowired(required = false)
     private io.lumina.agent.security.ContentModerationService contentModerationService;
 
+    @org.springframework.beans.factory.annotation.Value("${lumina.agent.content-moderation.strict:false}")
+    private boolean contentModerationStrict;
+
     /**
      * Domain -> DO 转换
      */
@@ -487,7 +490,7 @@ public class AgentServiceImpl implements AgentService {
      */
     private void moderateContent(String task) {
         if (contentModerationService != null) {
-            io.lumina.agent.security.ModerationResult result = contentModerationService.moderate(task);
+            io.lumina.agent.security.ModerationResult result = contentModerationService.moderate(task, contentModerationStrict);
             if (!result.isAllowed()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, result.getReason());
             }

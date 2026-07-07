@@ -29,6 +29,7 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -66,6 +67,9 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final ObjectMapper jsonMapper = new ObjectMapper();
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final Executor evaluationExecutor;
+
+    @Autowired
+    private io.lumina.agent.security.OutputSanitizer outputSanitizer;
 
     public EvaluationServiceImpl(EvaluationDatasetMapper datasetMapper,
                                  EvaluationRunMapper runMapper,
@@ -171,6 +175,9 @@ public class EvaluationServiceImpl implements EvaluationService {
         run.setStatus("COMPLETED");
         run.setTenantId(currentTenantId());
         run.setCreateBy(BaseContext.getUserId());
+        String[] modelInfo = resolveModelInfo(agent);
+        run.setModelName(modelInfo[0]);
+        run.setProvider(modelInfo[1]);
         try {
             run.setResultsJson(jsonMapper.writeValueAsString(results));
         } catch (JsonProcessingException e) {
@@ -375,13 +382,14 @@ public class EvaluationServiceImpl implements EvaluationService {
         try {
             AgentConfig evalConfig = buildEvalConfig(agent);
             ExecuteResult executeResult = agentExecutionEngine.executeSync(agent.getAgentType(), testCase.getInput(), evalConfig, null);
-            caseResult.setActual(executeResult.getResult());
+            String actualOutput = outputSanitizer != null ? outputSanitizer.sanitize(executeResult.getResult()) : executeResult.getResult();
+            caseResult.setActual(actualOutput);
             caseResult.setLatencyMs(executeResult.getDuration() == null ? System.currentTimeMillis() - start : executeResult.getDuration());
             fillTokenUsage(caseResult, executeResult.getTokenUsage());
             if (!Boolean.TRUE.equals(executeResult.getSuccess())) {
                 caseResult.setErrorMessage(executeResult.getError());
             }
-            ScoreResult scoreResult = scorer.score(testCase, executeResult.getResult());
+            ScoreResult scoreResult = scorer.score(testCase, actualOutput);
             caseResult.setScore(scoreResult.getScore());
             caseResult.setScoreDetail(scoreResult.getDetail());
             caseResult.setPassed(scoreResult.getScore() >= threshold && Boolean.TRUE.equals(executeResult.getSuccess()));
@@ -513,5 +521,17 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     private Long currentTenantId() {
         return BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+    }
+
+    private String[] resolveModelInfo(AgentDO agent) {
+        if (agent.getLlmConfig() != null && !agent.getLlmConfig().isBlank()) {
+            try {
+                var config = jsonMapper.readTree(agent.getLlmConfig());
+                String modelName = config.has("modelName") ? config.get("modelName").asText() : null;
+                String modelType = config.has("modelType") ? config.get("modelType").asText() : null;
+                if (modelName != null) return new String[]{modelName, modelType != null ? modelType : "default"};
+            } catch (Exception ignored) {}
+        }
+        return new String[]{null, null};
     }
 }

@@ -136,15 +136,15 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
             switch (format) {
                 case "pdf":
-                    docs = new PDFReader(chunkSize, SplitStrategy.PARAGRAPH, overlap).read(input).block();
+                    docs = new PDFReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
                     break;
                 case "doc":
                 case "docx":
-                    docs = new WordReader(chunkSize, SplitStrategy.PARAGRAPH, overlap,
+                    docs = new WordReader(chunkSize, getSplitStrategy(), overlap,
                             false, true, io.agentscope.core.rag.reader.TableFormat.MARKDOWN).read(input).block();
                     break;
                 default:
-                    docs = new TextReader(chunkSize, SplitStrategy.PARAGRAPH, overlap).read(input).block();
+                    docs = new TextReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
             }
 
             Files.deleteIfExists(tempFile);
@@ -275,6 +275,18 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             list.add(item);
         }
         return list;
+    }
+
+    private io.agentscope.core.rag.reader.SplitStrategy getSplitStrategy() {
+        if (ragProperties != null && ragProperties.getReader() != null) {
+            String strategy = ragProperties.getReader().getSplitStrategy();
+            if (strategy != null) {
+                try {
+                    return io.agentscope.core.rag.reader.SplitStrategy.valueOf(strategy.toUpperCase());
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        return SplitStrategy.PARAGRAPH;
     }
 
     private String getFormat(String filename) {

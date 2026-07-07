@@ -170,6 +170,7 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAgent, updateAgent, getAgent } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
+import { getTools, type ToolDefinitionVO } from '@/api/modules/tools'
 import type { CreateAgentDTO, UpdateAgentDTO } from '@/types/api'
 import PageHeader from '@/components/common/PageHeader.vue'
 
@@ -187,14 +188,7 @@ const formRef = ref<FormInstance>()
 const promptLoading = ref(false)
 const currentPrompt = ref<PromptVO | null>(null)
 
-// 可用工具列表
-const availableTools = [
-  { name: 'web_search', label: '网络搜索', description: '搜索互联网获取最新信息' },
-  { name: 'web_reader', label: '网页阅读', description: '读取并解析网页内容' },
-  { name: 'code_interpreter', label: '代码执行', description: '执行 Python 代码进行计算和分析' },
-  { name: 'file_manager', label: '文件管理', description: '读写、管理本地文件' },
-  { name: 'database', label: '数据库操作', description: '查询和操作数据库' }
-]
+const availableTools = ref<ToolDefinitionVO[]>([])
 
 const selectedTools = ref<string[]>([])
 
@@ -229,6 +223,16 @@ const loadActivePrompt = async () => {
     currentPrompt.value = null
   } finally {
     promptLoading.value = false
+  }
+}
+
+const loadTools = async () => {
+  try {
+    const res = await getTools()
+    availableTools.value = res.data || []
+  } catch (error) {
+    console.error('加载工具列表失败:', error)
+    availableTools.value = []
   }
 }
 
@@ -325,6 +329,7 @@ const handleBack = () => {
 }
 
 onMounted(async () => {
+  await loadTools()
   await loadAgentDetail()
   await loadActivePrompt()
 })

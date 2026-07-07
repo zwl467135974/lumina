@@ -87,8 +87,21 @@ public class DefaultContentModerationService implements ContentModerationService
             return ModerationResult.allowed();
         }
         ModerationResult result = moderate(text);
-        if (strict && result.isAllowed()) {
-            return result;
+        if (strict && result.isAllowed() && text != null) {
+            String lower = text.toLowerCase();
+            for (CategoryRule rule : RULES) {
+                for (var pattern : rule.patterns()) {
+                    var matcher = pattern.matcher(lower);
+                    if (matcher.find()) {
+                        log.warn("内容审核拦截（strict 模式）: category={}, rule={}", rule.category(), rule.description());
+                        return ModerationResult.blocked(
+                                String.format("内容包含%s相关敏感内容，请修改后重试", rule.description()),
+                                rule.category(),
+                                0.95
+                        );
+                    }
+                }
+            }
         }
         return result;
     }
