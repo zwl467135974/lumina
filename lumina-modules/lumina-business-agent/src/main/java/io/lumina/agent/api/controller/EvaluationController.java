@@ -7,6 +7,7 @@ import io.lumina.agent.evaluation.model.RunReport;
 import io.lumina.agent.infrastructure.entity.EvaluationRunDO;
 import io.lumina.agent.service.EvaluationService;
 import io.lumina.common.core.R;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Agent 评估 API
@@ -102,5 +104,54 @@ public class EvaluationController {
     @GetMapping("/datasets/{id}/trend")
     public R<List<EvaluationRunDO>> getRunTrend(@PathVariable Long id) {
         return R.success(evaluationService.getRunTrend(id));
+    }
+
+    /**
+     * 对比两次评估结果（A/B 对比）
+     */
+    @GetMapping("/runs/compare")
+    public R<Map<String, Object>> compareRuns(
+            @RequestParam("runA") Long runA,
+            @RequestParam("runB") Long runB) {
+        log.info("对比评估: runA={}, runB={}", runA, runB);
+        return R.success(evaluationService.compareRuns(runA, runB));
+    }
+
+    /**
+     * 导出评估报告为 CSV
+     */
+    @GetMapping("/runs/{id}/export")
+    public void exportRunCsv(@PathVariable Long id, HttpServletResponse response) {
+        log.info("导出评估报告 CSV: runId={}", id);
+        RunReport report = evaluationService.getRunReport(id);
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=evaluation_" + id + ".csv");
+
+        try {
+            var writer = response.getWriter();
+            writer.write("\uFEFF"); // BOM for Excel UTF-8
+            writer.write("Case ID,Category,Input,Expected,Actual,Score,Passed,Latency(ms),Error\n");
+            for (var result : report.getResults()) {
+                writer.write(String.format("%s,%s,\"%s\",\"%s\",\"%s\",%.3f,%s,%d,%s\n",
+                        escapeCsv(result.getCaseId()),
+                        escapeCsv(result.getCategory()),
+                        escapeCsv(result.getInput()),
+                        escapeCsv(result.getExpected()),
+                        escapeCsv(result.getActual()),
+                        result.getScore(),
+                        result.isPassed() ? "PASS" : "FAIL",
+                        result.getLatencyMs(),
+                        escapeCsv(result.getErrorMessage())));
+            }
+            writer.flush();
+        } catch (Exception e) {
+            log.error("CSV 导出失败", e);
+        }
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        return value.replace("\"", "\"\"");
     }
 }

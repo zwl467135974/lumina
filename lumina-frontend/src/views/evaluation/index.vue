@@ -139,9 +139,10 @@
           <template #default="{ row }">{{ Number(row.avgScore).toFixed(3) }}</template>
         </el-table-column>
         <el-table-column prop="createTime" label="时间" width="180" />
-        <el-table-column label="操作" width="100">
+        <el-table-column label="操作" width="170">
           <template #default="{ row }">
             <el-button link type="primary" @click="loadReport(row.id)">查看</el-button>
+            <el-button link type="info" @click="startCompare(row.id)">对比</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -167,6 +168,50 @@
         <el-button type="primary" :loading="savingDataset" @click="handleCreateDataset">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="compareDialogVisible" title="A/B 评估对比" width="800px">
+      <div v-if="compareData" class="compare-content">
+        <el-row :gutter="16" class="metric-row">
+          <el-col :span="6">
+            <el-statistic title="通过率变化"
+              :value="(compareData.passRateDiff * 100).toFixed(1) + '%'"
+              :value-style="{ color: compareData.passRateDiff >= 0 ? '#67c23a' : '#f56c6c' }" />
+          </el-col>
+          <el-col :span="6">
+            <el-statistic title="平均分变化"
+              :value="compareData.avgScoreDiff.toFixed(4)"
+              :value-style="{ color: compareData.avgScoreDiff >= 0 ? '#67c23a' : '#f56c6c' }" />
+          </el-col>
+          <el-col :span="4"><el-statistic title="提升" :value="compareData.improved" /></el-col>
+          <el-col :span="4"><el-statistic title="退步" :value="compareData.regressed" /></el-col>
+          <el-col :span="4"><el-statistic title="持平" :value="compareData.unchanged" /></el-col>
+        </el-row>
+        <el-table :data="compareData.cases" stripe max-height="400">
+          <el-table-column prop="caseId" label="用例" width="120" />
+          <el-table-column prop="category" label="分类" width="100" />
+          <el-table-column label="分数A" width="80">
+            <template #default="{ row }">{{ row.scoreA.toFixed(3) }}</template>
+          </el-table-column>
+          <el-table-column label="分数B" width="80">
+            <template #default="{ row }">{{ row.scoreB.toFixed(3) }}</template>
+          </el-table-column>
+          <el-table-column label="变化" width="80">
+            <template #default="{ row }">
+              <span :style="{ color: row.scoreDiff > 0 ? '#67c23a' : row.scoreDiff < 0 ? '#f56c6c' : '#909399' }">
+                {{ row.scoreDiff > 0 ? '+' : '' }}{{ row.scoreDiff.toFixed(3) }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="趋势" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.trend === 'IMPROVED' ? 'success' : row.trend === 'REGRESSED' ? 'danger' : 'info'" size="small">
+                {{ row.trend === 'IMPROVED' ? '↑' : row.trend === 'REGRESSED' ? '↓' : '→' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -180,6 +225,7 @@ import VChart from 'vue-echarts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
 import {
+  compareEvaluationRuns,
   createEvaluationDataset,
   deleteEvaluationDataset,
   getEvaluationRunReport,
@@ -437,6 +483,28 @@ const handleFileImport = async (file: File) => {
     // error handled by interceptor
   }
   return false // prevent default upload
+}
+
+// A/B compare
+const compareDialogVisible = ref(false)
+const compareData = ref<Record<string, any> | null>(null)
+const compareFirstRun = ref<number | null>(null)
+
+const startCompare = async (runId: number) => {
+  if (compareFirstRun.value === null) {
+    compareFirstRun.value = runId
+    ElMessage.info(`已选择 Run #${runId} 作为基准，请点击另一条记录进行对比`)
+  } else if (compareFirstRun.value === runId) {
+    ElMessage.warning('不能与自身对比')
+  } else {
+    try {
+      const res = await compareEvaluationRuns(compareFirstRun.value, runId)
+      compareData.value = res.data
+      compareDialogVisible.value = true
+    } finally {
+      compareFirstRun.value = null
+    }
+  }
 }
 
 const loadReport = async (id: number) => {

@@ -8,6 +8,7 @@ import io.lumina.agent.infrastructure.entity.EvaluationRunDO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Agent 评估服务
@@ -38,6 +39,11 @@ public interface EvaluationService {
     Long runEvaluationAsync(Long datasetId, EvaluationRunDTO dto);
 
     RunReport getRunReport(Long runId);
+
+    /**
+     * 对比两次评估结果（按用例 ID 对齐，显示分数变化）
+     */
+    Map<String, Object> compareRuns(Long runIdA, Long runIdB);
 
     List<EvaluationRunDO> listRuns(Long datasetId);
 

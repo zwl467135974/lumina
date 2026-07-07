@@ -266,6 +266,54 @@ public class EvaluationServiceImpl implements EvaluationService {
     }
 
     @Override
+    public Map<String, Object> compareRuns(Long runIdA, Long runIdB) {
+        RunReport reportA = getRunReport(runIdA);
+        RunReport reportB = getRunReport(runIdB);
+
+        Map<String, CaseResult> mapA = reportA.getResults().stream()
+                .collect(Collectors.toMap(r -> r.getCaseId() != null ? r.getCaseId() : r.getInput(),
+                        r -> r, (a, b) -> a));
+
+        List<Map<String, Object>> caseComparison = new ArrayList<>();
+        int improved = 0, regressed = 0, unchanged = 0;
+
+        for (CaseResult resultB : reportB.getResults()) {
+            String key = resultB.getCaseId() != null ? resultB.getCaseId() : resultB.getInput();
+            CaseResult resultA = mapA.get(key);
+            if (resultA == null) continue;
+
+            double scoreDiff = resultB.getScore() - resultA.getScore();
+            String trend = scoreDiff > 0.001 ? "IMPROVED" : scoreDiff < -0.001 ? "REGRESSED" : "UNCHANGED";
+            if ("IMPROVED".equals(trend)) improved++;
+            else if ("REGRESSED".equals(trend)) regressed++;
+            else unchanged++;
+
+            Map<String, Object> caseEntry = new HashMap<>();
+            caseEntry.put("caseId", key);
+            caseEntry.put("category", resultB.getCategory());
+            caseEntry.put("input", resultB.getInput());
+            caseEntry.put("scoreA", resultA.getScore());
+            caseEntry.put("scoreB", resultB.getScore());
+            caseEntry.put("scoreDiff", Math.round(scoreDiff * 1000) / 1000.0);
+            caseEntry.put("passedA", resultA.isPassed());
+            caseEntry.put("passedB", resultB.isPassed());
+            caseEntry.put("trend", trend);
+            caseComparison.add(caseEntry);
+        }
+
+        return Map.of(
+                "runA", Map.of("runId", runIdA, "passRate", reportA.getPassRate(), "avgScore", reportA.getAvgScore()),
+                "runB", Map.of("runId", runIdB, "passRate", reportB.getPassRate(), "avgScore", reportB.getAvgScore()),
+                "passRateDiff", Math.round((reportB.getPassRate() - reportA.getPassRate()) * 1000) / 1000.0,
+                "avgScoreDiff", Math.round((reportB.getAvgScore() - reportA.getAvgScore()) * 10000) / 10000.0,
+                "improved", improved,
+                "regressed", regressed,
+                "unchanged", unchanged,
+                "cases", caseComparison
+        );
+    }
+
+    @Override
     public List<EvaluationRunDO> listRuns(Long datasetId) {
         LambdaQueryWrapper<EvaluationRunDO> wrapper = new LambdaQueryWrapper<EvaluationRunDO>()
                 .eq(EvaluationRunDO::getTenantId, currentTenantId())

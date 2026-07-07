@@ -110,6 +110,10 @@ export function getEvaluationTrend(datasetId: number) {
   return request.get<R<EvaluationRunRecord[]>>(`/api/v1/evaluations/datasets/${datasetId}/trend`)
 }
 
+export function compareEvaluationRuns(runA: number, runB: number) {
+  return request.get<R<Record<string, any>>>('/api/v1/evaluations/runs/compare', { params: { runA, runB } })
+}
+
 export function importEvaluationDataset(file: File, name?: string, agentType?: string, description?: string) {
   const formData = new FormData()
   formData.append('file', file)
