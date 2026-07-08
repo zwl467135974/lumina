@@ -2,79 +2,20 @@ server:
   port: 8082
 
 spring:
-  main:
-    allow-bean-definition-overriding: true
   application:
     name: lumina-business-base
+
   cloud:
     nacos:
       discovery:
-        server-addr: localhost:8848
-        namespace: dev
-        group: LUMINA_GROUP
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:LUMINA_GROUP}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:LUMINA_GROUP}
+        file-extension: yaml
 
   config:
     import: nacos:lumina-business-base.yaml
-
-  datasource:
-    type: com.alibaba.druid.pool.DruidDataSource
-    druid:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
-      username: ${SPRING_DATASOURCE_USERNAME:root}
-      password: ${SPRING_DATASOURCE_PASSWORD:root123}
-      initial-size: 5
-      min-idle: 5
-      max-active: 20
-  flyway:
-    encoding: UTF-8
-    out-of-order: true
-    # 数据库版本化迁移（base 服务负责 schema，其他服务不引入 flyway 依赖）
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 1
-    locations: classpath:db/migration
-
-mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: io.lumina.base.infrastructure.entity
-  configuration:
-    map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
-  global-config:
-    db-config:
-      id-type: auto
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-
-# Lumina 配置
-lumina:
-  jwt:
-    # JWT 密钥（生产环境必须通过环境变量 LUMINA_JWT_SECRET 设置足够长的随机串）
-    secret-key: ${LUMINA_JWT_SECRET:dev-only-secret-please-change-for-production-use-at-least-32-chars}
-    # Token 过期时间（毫秒，默认 7 天 = 604800000 毫秒）
-    expiration: 604800000
-
-logging:
-  level:
-    io.lumina: DEBUG
-    org.springframework: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
-
-# 监控端点（Actuator + Micrometer Prometheus + OpenTelemetry 追踪）
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,metrics
-  metrics:
-    tags:
-      application: ${spring.application.name}
-  tracing:
-    sampling:
-      probability: ${OTEL_SAMPLING_PROBABILITY:1.0}
-  otlp:
-    tracing:
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}

@@ -1,74 +1,65 @@
-# Nacos 配置文件
+# Nacos 配置目录
 
-本目录存放各服务的 Nacos 配置 YAML 文件，按 Data ID = `${spring.application.name}.yaml` 命名。
+本目录下的 YAML 文件是需要导入到 Nacos 配置中心的服务配置。
 
-## Nacos 配置参数
+## 架构说明
 
-| 参数 | 值 |
-|------|-----|
-| Namespace | `dev` |
-| Group | `LUMINA_GROUP` |
-| File Extension | `yaml` |
-| Server | `localhost:8848` |
-
-## 配置项说明
-
-### Gateway 专属
-- 路由白名单、JWT 密钥、限流参数
-- Redis 连接配置
-
-### Business-Base 专属
-- 数据库连接、Flyway 迁移、MyBatis-Plus
-- JWT 密钥与过期时间
-
-### Agent-Service 专属
-- LLM 配置（模型类型、API Key、温度等）
-- RAG 配置（向量存储、Embedding 提供商、Qdrant）
-- 文件存储（本地/MinIO）
-- RocketMQ 消息队列
-- 内容审核开关
-
-## 使用方式
-
-### 1. 启用 Nacos 配置中心
-
-在各个服务的 `application.yml` 中确保以下配置生效：
-
-```yaml
-spring:
-  cloud:
-    nacos:
-      config:
-        server-addr: localhost:8848
-        namespace: dev
-        group: LUMINA_GROUP
-        file-extension: yaml
-        enabled: true
+```
+本地 application.yml（极简）          nacos-config/*.yaml（完整业务配置）
+┌──────────────────────────┐         ┌──────────────────────────────┐
+│ server.port              │         │ spring.datasource (MySQL)    │
+│ spring.application.name  │         │ spring.data.redis (Redis)    │
+│ spring.cloud.nacos       │ ──┐     │ spring.flyway                │
+│ spring.config.import     │   │     │ mybatis-plus                 │
+└──────────────────────────┘   │     │ lumina.* (JWT/LLM/RAG/...)   │
+                               └────→│ spring.cloud.gateway.routes  │
+                                     │ logging / management         │
+                                     └──────────────────────────────┘
 ```
 
-### 2. 将配置文件导入 Nacos
+**本地 `application.yml` 只保留 Nacos 连接配置**，所有业务配置通过 `spring.config.import` 从 Nacos 拉取。
 
-通过 Nacos 控制台 `http://localhost:8848/nacos` 进入 **配置管理 → 配置列表**：
+## 文件说明
 
-1. 选择命名空间 `dev`
-2. 点击 `+` 新建配置
-3. Data ID 分别填写：
-   - `lumina-gateway.yaml`
-   - `lumina-business-base.yaml`
-   - `lumina-agent-service.yaml`
-4. Group 选择 `LUMINA_GROUP`
-5. 配置格式选择 `YAML`
-6. 将对应文件内容粘贴到配置内容区
-7. 发布
+| 文件 | Nacos Data ID | 服务 | 内容 |
+|------|---------------|------|------|
+| `lumina-gateway.yaml` | `lumina-gateway.yaml` | Gateway (8080) | 网关路由 + Redis + JWT + 限流 |
+| `lumina-business-base.yaml` | `lumina-business-base.yaml` | Base (8082) | MySQL + Flyway + MyBatis + JWT |
+| `lumina-agent-service.yaml` | `lumina-agent-service.yaml` | Agent (8081) | MySQL + RocketMQ + LLM + RAG + 存储 |
 
-### 3. 本地开发模式
+## Nacos 配置
 
-本地开发时可将 Nacos Config 关闭，改用本地 `application.yml`：
+- **Server**: `localhost:8848`
+- **Namespace**: `dev`
+- **Group**: `LUMINA_GROUP`
+- **Data ID**: 文件名（如 `lumina-gateway.yaml`）
+- **Format**: YAML
 
-```yaml
-spring:
-  cloud:
-    nacos:
-      config:
-        enabled: false
-```
+## 导入方式
+
+1. 启动 Nacos
+2. 在 Nacos 控制台创建 namespace `dev`
+3. 在 `dev` namespace 下创建配置：
+   - Group: `LUMINA_GROUP`
+   - Data ID: `lumina-gateway.yaml` / `lumina-business-base.yaml` / `lumina-agent-service.yaml`
+   - 格式: YAML
+   - 内容: 复制本目录下对应文件的内容
+4. 启动服务（自动从 Nacos 拉取配置）
+
+## 环境变量
+
+配置中使用 `${}` 占位符，可通过环境变量覆盖：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `NACOS_SERVER_ADDR` | `localhost:8848` | Nacos 地址 |
+| `NACOS_NAMESPACE` | `dev` | Nacos namespace |
+| `NACOS_GROUP` | `LUMINA_GROUP` | Nacos group |
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://localhost:3306/lumina_dev...` | MySQL 连接 |
+| `SPRING_DATASOURCE_PASSWORD` | `123456` | MySQL 密码 |
+| `SPRING_DATA_REDIS_HOST` | `localhost` | Redis 地址 |
+| `SPRING_DATA_REDIS_PASSWORD` | (空) | Redis 密码 |
+| `LLM_API_KEY` | (空) | LLM API Key |
+| `LLM_TYPE` | `dashscope` | LLM 提供商 |
+| `LLM_MODEL` | `qwen-plus` | LLM 模型 |
+| `RAG_ENABLED` | `false` | 是否启用 RAG |

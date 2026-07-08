@@ -5,163 +5,17 @@ spring:
   application:
     name: lumina-agent-service
 
-  # 文件上传限制（知识库文档）
-  servlet:
-    multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
-
-  # RocketMQ 消息队列
-  rocketmq:
-    name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
-    producer:
-      group: lumina-producer
-      send-message-timeout: 5000
-
   cloud:
     nacos:
       discovery:
-        server-addr: localhost:8848
-        namespace: dev
-        group: LUMINA_GROUP
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:LUMINA_GROUP}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:LUMINA_GROUP}
+        file-extension: yaml
+
   config:
     import: nacos:lumina-agent-service.yaml
-
-  # 数据源配置
-  datasource:
-    type: com.alibaba.druid.pool.DruidDataSource
-    druid:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
-      username: ${SPRING_DATASOURCE_USERNAME:root}
-      password: ${SPRING_DATASOURCE_PASSWORD:root123}
-      initial-size: 5
-      min-idle: 5
-      max-active: 20
-      max-wait: 60000
-      time-between-eviction-runs-millis: 60000
-      min-evictable-idle-time-millis: 300000
-      validation-query: SELECT 1
-      test-while-idle: true
-      test-on-borrow: false
-      test-on-return: false
-      pool-prepared-statements: true
-      max-pool-prepared-statement-per-connection-size: 20
-
-# 知识库异步消费开关
-rocketmq:
-  consumer:
-    knowledge-ingest:
-      enabled: ${MQ_KNOWLEDGE_ASYNC:true}
-    # Agent 异步任务消费开关（设为 true 时通过 RocketMQ 派发，false 时使用本地线程池）
-    agent-task:
-      enabled: ${MQ_AGENT_TASK_ASYNC:false}
-
-# MyBatis-Plus 配置
-mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: io.lumina.*.infrastructure.entity
-  configuration:
-    map-underscore-to-camel-case: true
-    cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-  global-config:
-    db-config:
-      id-type: auto
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-
-# Lumina Agent 配置
-lumina:
-  # 文件存储
-  storage:
-    type: ${STORAGE_TYPE:local}
-    local:
-      base-path: ${STORAGE_LOCAL_PATH:./data/files}
-      url-prefix: /api/v1/files
-    minio:
-      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-      access-key: ${MINIO_ACCESS_KEY:minioadmin}
-      secret-key: ${MINIO_SECRET_KEY:minioadmin}
-      bucket: ${MINIO_BUCKET:lumina-files}
-  agent:
-    # 内容审核开关
-    content-moderation:
-      enabled: ${CONTENT_MODERATION_ENABLED:true}
-      strict: ${CONTENT_MODERATION_STRICT:false}
-    # LLM 配置
-    llm:
-      # 模型类型（dashscope/openai/anthropic/ollama，openai 兼容 DeepSeek/GLM/Moonshot 等）
-      type: ${LLM_TYPE:dashscope}
-      # API Key
-      api-key: ${LLM_API_KEY:}
-      # 模型名称
-      model: ${LLM_MODEL:qwen-plus}
-      # API Base URL（OpenAI 兼容服务使用）
-      base-url: ${LLM_BASE_URL:}
-      # 温度参数
-      temperature: ${LLM_TEMPERATURE:0.7}
-      # 最大 Token 数
-      max-tokens: ${LLM_MAX_TOKENS:2000}
-      # 流式输出
-      stream: ${LLM_STREAM:false}
-
-  # RAG 知识库配置
-  rag:
-    # 是否启用 RAG（true 时自动创建 Knowledge bean 并注入 Agent）
-    enabled: ${RAG_ENABLED:false}
-    # 向量存储类型（memory=内存模式开发用 / qdrant=生产）
-    store-type: ${RAG_STORE_TYPE:memory}
-    # RAG 检索模式（generic=自动检索 / agentic=Agent 自主决定）
-    mode: ${RAG_MODE:generic}
-    # Embedding 配置
-    embedding:
-      # 提供商（dashscope/openai/ollama，openai 适用于硅基流动等兼容服务）
-      provider: ${RAG_EMBEDDING_PROVIDER:dashscope}
-      # API Key（独立配置，不填则复用 LLM_API_KEY）
-      api-key: ${RAG_EMBEDDING_API_KEY:}
-      # Base URL（OpenAI 兼容服务，如硅基流动 https://api.siliconflow.cn/v1）
-      base-url: ${RAG_EMBEDDING_BASE_URL:}
-      # 模型名称
-      model: ${RAG_EMBEDDING_MODEL:text-embedding-v3}
-      # 向量维度（需与模型一致）
-      dimensions: ${RAG_EMBEDDING_DIMENSIONS:1024}
-    # 检索配置
-    retrieve:
-      limit: 3
-      score-threshold: 0.3
-    # 文档切片配置
-    reader:
-      chunk-size: 512
-      overlap: 50
-      split-strategy: PARAGRAPH
-    # Qdrant 配置
-    qdrant:
-      host: ${QDRANT_HOST:localhost:6334}
-      collection: ${QDRANT_COLLECTION:lumina_knowledge}
-      tls: ${QDRANT_TLS:false}
-
-# 日志配置
-logging:
-  level:
-    io.lumina: DEBUG
-    org.springframework: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
-
-# 监控端点（Actuator + Micrometer Prometheus + OpenTelemetry 追踪）
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,metrics
-  metrics:
-    tags:
-      application: ${spring.application.name}
-  tracing:
-    sampling:
-      probability: ${OTEL_SAMPLING_PROBABILITY:1.0}
-  otlp:
-    tracing:
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}

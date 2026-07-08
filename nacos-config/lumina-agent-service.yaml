@@ -5,15 +5,22 @@
 # Namespace: dev
 # ============================================================
 
-# ---- 数据源配置 ----
 spring:
+  main:
+    allow-bean-definition-overriding: true
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     druid:
       driver-class-name: com.mysql.cj.jdbc.Driver
       url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
       username: ${SPRING_DATASOURCE_USERNAME:root}
-      password: ${SPRING_DATASOURCE_PASSWORD:root123}
+      password: ${SPRING_DATASOURCE_PASSWORD:123456}
       initial-size: 5
       min-idle: 5
       max-active: 20
@@ -27,14 +34,12 @@ spring:
       pool-prepared-statements: true
       max-pool-prepared-statement-per-connection-size: 20
 
-  # RocketMQ 消息队列
   rocketmq:
     name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
     producer:
       group: lumina-producer
       send-message-timeout: 5000
 
-# ---- RocketMQ Consumer 开关 ----
 rocketmq:
   consumer:
     knowledge-ingest:
@@ -42,7 +47,6 @@ rocketmq:
     agent-task:
       enabled: ${MQ_AGENT_TASK_ASYNC:false}
 
-# ---- MyBatis-Plus ----
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: io.lumina.*.infrastructure.entity
@@ -57,9 +61,7 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
-# ---- Lumina Agent 配置 ----
 lumina:
-  # 文件存储
   storage:
     type: ${STORAGE_TYPE:local}
     local:
@@ -84,7 +86,6 @@ lumina:
       max-tokens: ${LLM_MAX_TOKENS:2000}
       stream: ${LLM_STREAM:false}
 
-  # RAG 知识库配置
   rag:
     enabled: ${RAG_ENABLED:false}
     store-type: ${RAG_STORE_TYPE:memory}
@@ -107,7 +108,6 @@ lumina:
       collection: ${QDRANT_COLLECTION:lumina_knowledge}
       tls: ${QDRANT_TLS:false}
 
-# ---- 日志 ----
 logging:
   level:
     io.lumina: DEBUG
@@ -115,7 +115,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
 
-# ---- Actuator 监控 ----
 management:
   endpoints:
     web:
@@ -127,3 +126,6 @@ management:
   tracing:
     sampling:
       probability: ${OTEL_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
