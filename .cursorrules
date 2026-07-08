@@ -1,3 +1,4 @@
+<!-- AI Rules Sync: This file mirrors .cursorrules content. Keep .cursorrules / CLAUDE.md / AGENTS.md / .github/copilot-instructions.md in sync.
 # Lumina 项目开发规则
 
 本文件定义了 Lumina 框架项目的开发规范和 AI 助手应遵循的规则。
@@ -55,6 +56,12 @@
 - **用途**: 会话与记忆管理规范
 - **路径**: `skills/lumina_conversation/SKILL.md`
 - **触发条件**: 处理多轮对话、记忆管理、流式输出时
+
+### 11. lumina_frontend_design
+- **用途**: 前端 UI 设计规范与设计系统（自进化）
+- **路径**: `skills/lumina_frontend_design/SKILL.md`
+- **触发条件**: 创建/修改 Vue 组件、CSS/SCSS、布局、主题、动画时
+- **自进化**: 每次使用后更新 `lumina-frontend/DESIGN.md` 和 `.agents/ui-learnings.md`
 
 ## 技能包使用说明
 

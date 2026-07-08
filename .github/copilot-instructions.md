@@ -57,6 +57,12 @@
 - **路径**: `skills/lumina_conversation/SKILL.md`
 - **触发条件**: 处理多轮对话、记忆管理、流式输出时
 
+### 11. lumina_frontend_design
+- **用途**: 前端 UI 设计规范与设计系统（自进化）
+- **路径**: `skills/lumina_frontend_design/SKILL.md`
+- **触发条件**: 创建/修改 Vue 组件、CSS/SCSS、布局、主题、动画时
+- **自进化**: 每次使用后更新 `lumina-frontend/DESIGN.md` 和 `.agents/ui-learnings.md`
+
 ## 技能包使用说明
 
 1. **自动识别**: AI 助手应根据用户请求和代码上下文自动识别需要使用的技能包
