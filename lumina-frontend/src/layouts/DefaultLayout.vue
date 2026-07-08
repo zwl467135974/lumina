@@ -16,7 +16,7 @@
             :key="item.path"
             :to="item.path"
           >
-            {{ item.meta?.title || item.name }}
+            {{ localizeBreadcrumbTitle(item.meta?.title, item.name) }}
           </el-breadcrumb-item>
         </el-breadcrumb>
       </div>
@@ -36,13 +36,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
+import { localizeTitle } from '@/utils'
 import AppSidebar from './components/AppSidebar.vue'
 import AppHeader from './components/AppHeader.vue'
 import type { RouteRecordRaw } from 'vue-router'
 
 const route = useRoute()
 const appStore = useAppStore()
+const { t } = useI18n()
 
 withDefaults(defineProps<{
   menuRoutes: RouteRecordRaw[]
@@ -58,6 +61,10 @@ const breadcrumbs = computed(() => {
     meta: r.meta as { title?: string } | undefined
   }))
 })
+
+function localizeBreadcrumbTitle(title?: string, name?: string): string {
+  return localizeTitle(title, t) || name || ''
+}
 </script>
 
 <style scoped>

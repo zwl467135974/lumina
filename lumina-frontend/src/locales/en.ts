@@ -38,13 +38,16 @@ export default {
     emailInvalid: 'Please enter a valid email address',
     phoneInvalid: 'Please enter a valid phone number',
     yes: 'Yes',
-    no: 'No'
+    no: 'No',
+    expand: 'Expand',
+    collapse: 'Collapse'
   },
   menu: {
     dashboard: 'Dashboard',
     agent: 'Agents',
     agentList: 'Agent List',
     agentTasks: 'Async Tasks',
+    workflowRoot: 'Workflow',
     workflow: 'Workflows',
     knowledge: 'Knowledge',
     knowledgeBase: 'Knowledge Federation',
@@ -57,6 +60,8 @@ export default {
     role: 'Roles',
     permission: 'Permissions',
     tenant: 'Tenants',
+    audit: 'Audit Logs',
+    monitorCenter: 'Monitoring',
     monitor: 'Tool Monitor'
   },
   header: {
@@ -64,7 +69,14 @@ export default {
     lightMode: 'Light Mode',
     logout: 'Logout',
     profile: 'Profile',
-    language: 'Language'
+    language: 'Language',
+    notifications: 'Notifications',
+    noNotifications: 'No new notifications'
+  },
+  route: {
+    login: 'Login',
+    notFound: 'Page Not Found',
+    unauthorized: 'Unauthorized'
   },
   login: {
     title: 'Lumina AI Agent Platform',

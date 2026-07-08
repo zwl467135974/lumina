@@ -38,13 +38,16 @@ export default {
     emailInvalid: '请输入正确的邮箱地址',
     phoneInvalid: '请输入正确的手机号',
     yes: '是',
-    no: '否'
+    no: '否',
+    expand: '展开',
+    collapse: '收起'
   },
   menu: {
     dashboard: '仪表盘',
     agent: 'Agent 管理',
     agentList: 'Agent 列表',
     agentTasks: '异步任务',
+    workflowRoot: '工作流',
     workflow: '工作流管理',
     knowledge: '知识库',
     knowledgeBase: '知识库联邦',
@@ -57,6 +60,8 @@ export default {
     role: '角色管理',
     permission: '权限管理',
     tenant: '租户管理',
+    audit: '审计日志',
+    monitorCenter: '监控中心',
     monitor: '工具监控'
   },
   header: {
@@ -64,7 +69,14 @@ export default {
     lightMode: '亮色主题',
     logout: '退出登录',
     profile: '个人中心',
-    language: '语言'
+    language: '语言',
+    notifications: '通知',
+    noNotifications: '暂无新通知'
+  },
+  route: {
+    login: '登录',
+    notFound: '页面不存在',
+    unauthorized: '未授权'
   },
   login: {
     title: 'Lumina AI Agent 平台',

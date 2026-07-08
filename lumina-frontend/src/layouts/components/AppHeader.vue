@@ -2,7 +2,7 @@
   <header class="app-header">
     <!-- Left: Collapse Toggle + Breadcrumb -->
     <div class="header-left">
-      <button class="collapse-btn" @click="appStore.toggleSidebar()" :title="$t('common.collapse')">
+      <button class="collapse-btn" @click="appStore.toggleSidebar()" :title="collapseTitle">
         <el-icon :size="20">
           <Fold v-if="!appStore.sidebarCollapsed" />
           <Expand v-else />
@@ -16,7 +16,7 @@
           :key="item.path"
           :to="item.path"
         >
-          {{ item.meta?.title || item.name }}
+          {{ localizeBreadcrumbTitle(item.meta?.title, item.name) }}
         </el-breadcrumb-item>
       </el-breadcrumb>
     </div>
@@ -36,7 +36,7 @@
       </div>
 
       <!-- Theme Toggle -->
-      <button class="theme-toggle" @click="toggleTheme" :title="$t('common.theme')">
+      <button class="theme-toggle" @click="toggleTheme" :title="t('header.darkMode')">
         <el-icon :size="18" class="theme-icon">
           <Sunny v-if="isDark" />
           <Moon v-else />
@@ -46,14 +46,14 @@
       <!-- Notifications -->
       <el-popover placement="bottom-end" :width="320" trigger="click">
         <template #reference>
-          <button class="icon-btn" title="Notifications">
+          <button class="icon-btn" :title="t('header.notifications')">
             <el-badge :value="unreadCount" :hidden="!unreadCount" :max="99">
               <el-icon :size="18"><Bell /></el-icon>
             </el-badge>
           </button>
         </template>
         <div class="notification-panel">
-          <p class="notif-empty" v-if="!notifications?.length">No new notifications</p>
+          <p class="notif-empty" v-if="!notifications?.length">{{ t('header.noNotifications') }}</p>
           <!-- notification list would go here -->
         </div>
       </el-popover>
@@ -69,13 +69,10 @@
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item command="profile">
-              <el-icon><User /></el-icon>{{ $t('common.profile') }}
-            </el-dropdown-item>
-            <el-dropdown-item command="settings">
-              <el-icon><Setting /></el-icon>{{ $t('common.settings') }}
+              <el-icon><User /></el-icon>{{ $t('header.profile') }}
             </el-dropdown-item>
             <el-dropdown-item divided command="logout">
-              <el-icon><SwitchButton /></el-icon>{{ $t('common.logout') }}
+              <el-icon><SwitchButton /></el-icon>{{ $t('header.logout') }}
             </el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -87,8 +84,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
 import { useAppStore, useUserStore } from '@/stores'
 import { useRouter } from 'vue-router'
+import { localizeTitle } from '@/utils'
 import {
   Fold,
   Expand,
@@ -96,11 +95,10 @@ import {
   Moon,
   Bell,
   User,
-  Setting,
   SwitchButton
 } from '@element-plus/icons-vue'
 
-const { locale, availableLocales } = useI18n()
+const { locale, availableLocales, t } = useI18n()
 const appStore = useAppStore()
 const userStore = useUserStore()
 const router = useRouter()
@@ -115,12 +113,18 @@ defineProps<{
 }>()
 
 const isDark = computed(() => true) // always dark in Luminous theme
+const collapseTitle = computed(() => t(appStore.sidebarCollapsed ? 'common.expand' : 'common.collapse'))
 
 const unreadCount = computed(() => 0) // placeholder
 const notifications = computed(() => []) // placeholder
 
 function switchLocale(code: string) {
   locale.value = code
+  localStorage.setItem('lumina-lang', code)
+}
+
+function localizeBreadcrumbTitle(title?: string, name?: string): string {
+  return localizeTitle(title, t) || name || ''
 }
 
 function toggleTheme() {
@@ -129,9 +133,11 @@ function toggleTheme() {
 }
 
 function handleUserCommand(command: string) {
-  if (command === 'profile') router.push('/profile')
-  else if (command === 'settings') router.push('/settings')
-  else if (command === 'logout') userStore.logout()
+  if (command === 'profile') {
+    ElMessage.info(t('header.profile'))
+  } else if (command === 'logout') {
+    userStore.logout().then(() => router.push('/login'))
+  }
 }
 </script>
 
