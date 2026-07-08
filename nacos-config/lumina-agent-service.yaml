@@ -9,6 +9,12 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:123456}
+
   servlet:
     multipart:
       max-file-size: 50MB
