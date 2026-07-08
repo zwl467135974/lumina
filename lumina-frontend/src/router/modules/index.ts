@@ -327,16 +327,10 @@ export const evaluationRoutes: AppRouteRecordRaw[] = [
   }
 ]
 
-// 知识库联邦路由
+// 知识库联邦路由（已合并到知识库页面，重定向）
 export const knowledgeBaseRoutes: AppRouteRecordRaw[] = [
   {
     path: '/knowledge-base',
-    name: 'KnowledgeBase',
-    component: () => import('@/views/knowledge-base/index.vue'),
-    meta: {
-      title: '知识库联邦',
-      icon: 'Collection',
-      requiresAuth: true
-    }
+    redirect: '/knowledge'
   }
 ]

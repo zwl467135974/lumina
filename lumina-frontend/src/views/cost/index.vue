@@ -201,4 +201,18 @@ onMounted(() => {
 .chart-container { min-height: 320px; }
 
 .top-card { margin-top: 16px; }
+
+@media (max-width: 768px) {
+  :deep(.el-col) {
+    max-width: 100%;
+    flex: 0 0 100%;
+  }
+  :deep(.el-form--inline .el-form-item) {
+    display: block;
+    margin-right: 0;
+  }
+  :deep(.el-table) {
+    font-size: 12px;
+  }
+}
 </style>
