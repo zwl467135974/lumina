@@ -58,13 +58,19 @@ public class AgentRateLimiter {
 
         String key = KEY_PREFIX + agentId + ":" + identity;
 
-        RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
-        rateLimiter.trySetRate(RateType.OVERALL, maxRequests, windowSeconds, RateIntervalUnit.SECONDS);
+        try {
+            RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
+            rateLimiter.trySetRate(RateType.OVERALL, maxRequests, windowSeconds, RateIntervalUnit.SECONDS);
 
-        if (!rateLimiter.tryAcquire()) {
-            log.warn("Agent 频率限制触发: agentId={}, userId={}, max={}, window={}s",
-                    agentId, userId, maxRequests, windowSeconds);
-            throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED);
+            if (!rateLimiter.tryAcquire()) {
+                log.warn("Agent 频率限制触发: agentId={}, userId={}, max={}, window={}s",
+                        agentId, userId, maxRequests, windowSeconds);
+                throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED);
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("频率限制检查失败（Redis 可能不可用），放行请求: agentId={}, error={}", agentId, e.getMessage());
         }
     }
 }

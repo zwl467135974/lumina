@@ -400,22 +400,17 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             if (response != null) {
                 return response;
             } else {
-                log.warn("Agent 返回空响应");
-                String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
-                return Msg.builder().role(MsgRole.ASSISTANT).textContent(generateMockResponse(lastUserText)).build();
+                log.error("Agent 返回空响应，LLM 可能未正确配置");
+                throw new RuntimeException("LLM 返回空响应，请检查 API Key 和模型配置");
             }
 
         } catch (Exception e) {
             if (llmResilience.isCircuitBreakerOpen()) {
-                log.error("LLM 熔断器已开启，返回降级响应: {}", e.getMessage());
-                String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
-                return Msg.builder().role(MsgRole.ASSISTANT)
-                        .textContent("服务暂时不可用，请稍后重试。LLM 服务可能正在恢复中。")
-                        .build();
+                log.error("LLM 熔断器已开启: {}", e.getMessage());
+                throw new RuntimeException("LLM 服务暂时不可用（熔断器开启），请稍后重试", e);
             }
             log.error("AgentScope 执行失败: {}", e.getMessage(), e);
-            String lastUserText = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getTextContent();
-            return Msg.builder().role(MsgRole.ASSISTANT).textContent(generateMockResponse(lastUserText)).build();
+            throw new RuntimeException("Agent 执行失败: " + e.getMessage(), e);
         }
     }
 
@@ -464,9 +459,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         // 构建模型（按 modelType 路由到 DashScope/OpenAI/Anthropic/Ollama）
         Model model = chatModelFactory.create(llmConfig, agentProperties.getLlm(), getApiKey());
 
-        // 构建工具集
+        // 构建工具集（按 Agent 配置过滤）
         Toolkit toolkit = new Toolkit();
-        registerToolsToToolkit(toolkit);
+        registerToolsToToolkit(toolkit, config.getToolConfig());
 
         // 构建 ReActAgent
         ReActAgent.Builder agentBuilder = ReActAgent.builder()
@@ -595,7 +590,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * <p>将 EnhancedToolManager 管理的工具动态适配为 AgentTool 并注册到 Toolkit。
      * 支持从 @AgentTool 注解扫描的工具自动注册。
      */
-    private void registerToolsToToolkit(Toolkit toolkit) {
+    private void registerToolsToToolkit(Toolkit toolkit, AgentConfig.ToolConfig toolConfig) {
         if (enhancedToolManager == null) {
             log.debug("EnhancedToolManager 未配置，跳过工具注册");
             return;
@@ -607,25 +602,32 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             return;
         }
 
+        // 如果 Agent 配置了指定工具列表，只注册这些工具
+        java.util.Set<String> allowedTools = null;
+        if (toolConfig != null && toolConfig.getTools() != null && !toolConfig.getTools().isEmpty()) {
+            allowedTools = new java.util.HashSet<>(toolConfig.getTools());
+            log.info("Agent 限定工具: {}", allowedTools);
+        }
+
         int registeredCount = 0;
         for (ToolDefinition toolDef : tools) {
             try {
-                // 跳过未启用的工具
                 if (!toolDef.isEnabled()) {
                     log.debug("跳过未启用的工具: {}", toolDef.getName());
                     continue;
                 }
 
-                // 创建 AgentTool 适配器（注入可观测组件：调用记录 + 熔断器）
+                // 按 Agent 配置过滤工具
+                if (allowedTools != null && !allowedTools.contains(toolDef.getName())) {
+                    log.debug("跳过未授权工具: {}（不在 Agent 工具列表中）", toolDef.getName());
+                    continue;
+                }
+
                 ToolDefinitionToAgentToolAdapter adapter =
                         new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker, meterRegistry);
-
-                // 注册到 Toolkit
                 toolkit.registerAgentTool(adapter);
-
                 registeredCount++;
-                log.info("工具已注册到 AgentScope Toolkit: {} (分类: {})", 
-                        toolDef.getName(), 
+                log.info("工具已注册: {} (分类: {})", toolDef.getName(),
                         toolDef.getCategory() != null ? toolDef.getCategory() : "default");
 
             } catch (Exception e) {
@@ -645,25 +647,14 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             apiKey = System.getenv("DASHSCOPE_API_KEY");
         }
         if (apiKey == null || apiKey.isEmpty()) {
-            log.warn("未配置 LLM API Key，Agent 可能无法正常工作");
+            apiKey = System.getenv("LLM_API_KEY");
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            log.error("未配置 LLM API Key（lumina.agent.llm.api-key 或 DASHSCOPE_API_KEY），Agent 无法执行");
+            throw new IllegalStateException("LLM API Key 未配置，请在 Nacos 或环境变量中设置 lumina.agent.llm.api-key");
         }
         return apiKey;
     }
 
-
-    /**
-     * 生成模拟响应（降级方案）
-     */
-    private String generateMockResponse(String prompt) {
-        if (prompt.contains("search")) {
-            return "I found relevant information for your search query.";
-        } else if (prompt.contains("calculate")) {
-            return "Calculation completed successfully.";
-        } else {
-            return "I understand your request: " + prompt.substring(
-                    Math.min(50, prompt.length())) + "... Based on my analysis, " +
-                    "I would approach this systematically by considering all available options.";
-        }
-    }
 
 }

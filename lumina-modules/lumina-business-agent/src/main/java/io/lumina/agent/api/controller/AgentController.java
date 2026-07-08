@@ -184,8 +184,9 @@ public class AgentController {
     @PostMapping("/{id}/execute")
     public R<String> executeAgent(
             @PathVariable("id") Long id,
-            @RequestParam String task,
-            @RequestParam(required = false) String conversationId) {
+            @RequestBody java.util.Map<String, String> body) {
+        String task = body.get("task");
+        String conversationId = body.get("conversationId");
         log.info("执行 Agent: id={}, task={}, conversationId={}", id, task, conversationId);
 
         if (task == null || task.trim().isEmpty()) {

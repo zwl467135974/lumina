@@ -10,6 +10,7 @@ import io.lumina.agent.infrastructure.entity.PromptDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.common.core.BaseContext;
 import io.lumina.framework.storage.FileService;
 import io.lumina.framework.storage.entity.FileDO;
 import io.lumina.agent.model.MultimodalImage;
@@ -82,7 +83,17 @@ public class AgentServiceImpl implements AgentService {
     private AgentDO toDO(Agent agent) {
         AgentDO agentDO = new AgentDO();
         BeanUtils.copyProperties(agent, agentDO);
+        if (agentDO.getTenantId() == null) {
+            agentDO.setTenantId(BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L);
+        }
         return agentDO;
+    }
+
+    /**
+     * 获取当前租户 ID
+     */
+    private Long currentTenantId() {
+        return BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
     }
 
     /**
@@ -158,9 +169,11 @@ public class AgentServiceImpl implements AgentService {
     public void deleteAgent(Long agentId) {
         log.info("删除 Agent: id={}", agentId);
 
-        Agent agent = getAgentById(agentId);
+        AgentDO agentDO = agentMapper.selectById(agentId);
+        if (agentDO == null || !currentTenantId().equals(agentDO.getTenantId())) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存在 id=" + agentId);
+        }
 
-        // 逻辑删除
         agentMapper.deleteById(agentId);
 
         log.info("Agent 删除成功: id={}", agentId);
@@ -172,8 +185,8 @@ public class AgentServiceImpl implements AgentService {
 
         AgentDO agentDO = agentMapper.selectById(agentId);
 
-        if (agentDO == null) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存�? id=" + agentId);
+        if (agentDO == null || !currentTenantId().equals(agentDO.getTenantId())) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存在 id=" + agentId);
         }
 
         return toDomain(agentDO);
@@ -184,8 +197,8 @@ public class AgentServiceImpl implements AgentService {
         log.info("分页查询 Agent: name={}, type={}, pageNum={}, pageSize={}",
                 agentName, agentType, pageNum, pageSize);
 
-        // 构建查询条件
         LambdaQueryWrapper<AgentDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(AgentDO::getTenantId, currentTenantId());
         if (StringUtils.hasText(agentName)) {
             queryWrapper.like(AgentDO::getAgentName, agentName);
         }
@@ -193,7 +206,6 @@ public class AgentServiceImpl implements AgentService {
             queryWrapper.eq(AgentDO::getAgentType, agentType);
         }
 
-        // 分页查询
         Page<AgentDO> page = new Page<>(pageNum, pageSize);
         Page<AgentDO> doPage = agentMapper.selectPage(page, queryWrapper);
 

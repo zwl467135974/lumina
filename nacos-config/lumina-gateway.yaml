@@ -126,7 +126,7 @@ spring:
           args:
             retries: 3
             statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-            methods: GET,POST
+            methods: GET
             backoff:
               firstBackoff: 10ms
               maxBackoff: 50ms
