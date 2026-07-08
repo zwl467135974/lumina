@@ -24,6 +24,7 @@ public class PromptDO {
     private Integer version;
     private String content;
     private String description;
+    private String agentType;
     private String variables;
     private Integer status;
     private Integer isActive;

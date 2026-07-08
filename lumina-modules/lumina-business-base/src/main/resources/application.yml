@@ -18,4 +18,4 @@ spring:
         file-extension: yaml
 
   config:
-    import: nacos:lumina-business-base.yaml
+    import: optional:nacos:lumina-business-base.yaml
