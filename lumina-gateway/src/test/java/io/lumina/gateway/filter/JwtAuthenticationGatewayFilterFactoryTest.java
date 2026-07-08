@@ -26,7 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * JwtAuthenticationFilter 单元测试
+ * JwtAuthenticationGatewayFilterFactory 单元测试
  *
  * <p>覆盖白名单跳过、无 Token、无效 Token、有效 Token 等场景。
  *
@@ -34,9 +34,9 @@ import static org.mockito.Mockito.when;
  * @since 2.0.0
  */
 @ExtendWith(MockitoExtension.class)
-class JwtAuthenticationFilterTest {
+class JwtAuthenticationGatewayFilterFactoryTest {
 
-    private JwtAuthenticationFilter filterFactory;
+    private JwtAuthenticationGatewayFilterFactory filterFactory;
 
     @Mock
     private JwtUtil jwtUtil;
@@ -45,7 +45,7 @@ class JwtAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() {
-        filterFactory = new JwtAuthenticationFilter();
+        filterFactory = new JwtAuthenticationGatewayFilterFactory();
         whitelistConfig = new WhitelistConfig();
         whitelistConfig.setPaths(Arrays.asList("/api/v1/auth/login", "/actuator/**"));
         ReflectionTestUtils.setField(filterFactory, "jwtUtil", jwtUtil);
@@ -54,7 +54,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void whitelistPathBypassAuth() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
         MockServerHttpRequest request = MockServerHttpRequest
                 .post("/api/v1/auth/login")
                 .build();
@@ -70,7 +70,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void actuatorWildcardBypassAuth() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
         MockServerHttpRequest request = MockServerHttpRequest
                 .get("/actuator/health")
                 .build();
@@ -84,7 +84,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void missingAuthHeaderReturnsUnauthorized() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
         MockServerHttpRequest request = MockServerHttpRequest
                 .get("/api/v1/users")
                 .build();
@@ -99,7 +99,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void invalidAuthSchemeReturnsUnauthorized() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
         MockServerHttpRequest request = MockServerHttpRequest
                 .get("/api/v1/users")
                 .header(HttpHeaders.AUTHORIZATION, "Basic abc123")
@@ -115,7 +115,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void invalidTokenReturnsUnauthorized() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
         MockServerHttpRequest request = MockServerHttpRequest
                 .get("/api/v1/users")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
@@ -132,7 +132,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void validTokenInjectsUserHeadersAndPassesThrough() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
 
         LoginUser loginUser = new LoginUser();
         loginUser.setUserId(100L);
@@ -165,7 +165,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void tokenParseThrowsReturnsUnauthorized() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
         MockServerHttpRequest request = MockServerHttpRequest
                 .get("/api/v1/users")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer corrupt-token")
@@ -183,7 +183,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void nullTenantIdDefaultsToZero() {
-        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationFilter.Config());
+        GatewayFilter filter = filterFactory.apply(new JwtAuthenticationGatewayFilterFactory.Config());
 
         LoginUser loginUser = new LoginUser();
         loginUser.setUserId(1L);
