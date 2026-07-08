@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: lumina-business-base
+  main:
+    allow-bean-definition-overriding: true
 
   cloud:
     nacos:
@@ -19,3 +21,52 @@ spring:
 
   config:
     import: optional:nacos:lumina-business-base.yaml
+
+  # === 本地 fallback 配置（Nacos 不可用时使用） ===
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+      username: ${SPRING_DATASOURCE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_PASSWORD:123456}
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+
+  flyway:
+    encoding: UTF-8
+    out-of-order: true
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.lumina.base.infrastructure.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+lumina:
+  jwt:
+    secret-key: ${LUMINA_JWT_SECRET:dev-only-secret-please-change-for-production-use-at-least-32-chars}
+    expiration: 604800000
+
+logging:
+  level:
+    io.lumina: DEBUG
+    org.springframework: INFO

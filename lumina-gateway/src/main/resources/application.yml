@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: lumina-gateway
+  main:
+    allow-bean-definition-overriding: true
 
   cloud:
     nacos:
@@ -19,3 +21,103 @@ spring:
 
   config:
     import: optional:nacos:lumina-gateway.yaml
+
+  # === 本地 fallback 配置 ===
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+
+  cloud2:
+    gateway:
+      routes:
+        - id: lumina-base-auth-route
+          uri: lb://lumina-business-base
+          predicates: [Path=/api/v1/base/auth/**]
+          filters: [StripPrefix=0]
+        - id: lumina-base-fallback-route
+          uri: lb://lumina-business-base
+          predicates: [Path=/api/v1/base/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/agents/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-conversations-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/conversations/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-workflows-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/workflows/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-prompts-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/prompts/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-cost-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/cost/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-budget-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/budget/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-evaluations-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/evaluations/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-knowledge-bases-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/knowledge-bases/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-knowledge-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/knowledge/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-files-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/files/**]
+          filters: [StripPrefix=0]
+        - id: lumina-agent-tools-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/tools/**]
+          filters: [StripPrefix=0]
+        - id: lumina-auth-route
+          uri: lb://lumina-business-base
+          predicates: [Path=/api/v1/auth/**]
+          filters:
+            - RewritePath=/api/v1/auth/(?<segment>.*), /api/v1/base/auth/${segment}
+      default-filters:
+        - name: JwtAuthentication
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            methods: GET
+            backoff:
+              firstBackoff: 10ms
+              maxBackoff: 50ms
+              factor: 2
+              basedOnPreviousValue: false
+
+lumina:
+  jwt:
+    secret-key: ${LUMINA_JWT_SECRET:dev-only-secret-please-change-for-production-use-at-least-32-chars}
+    expiration: 604800000
+  whitelist:
+    paths:
+      - /api/v1/auth/login
+      - /api/v1/base/auth/login
+      - /actuator/health
+      - /actuator/info
+  gateway:
+    rate-limit:
+      global: 100
+      per-ip: 20
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    io.lumina: DEBUG
