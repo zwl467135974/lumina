@@ -19,6 +19,9 @@ public class PromptDTO {
 
     private String description;
 
+    /** 关联的 Agent 类型（如 assistant / customer-service） */
+    private String agentType;
+
     /** 变量列表（逗号分隔） */
     private String variables;
 }

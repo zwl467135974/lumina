@@ -50,6 +50,7 @@ public class PromptServiceImpl implements PromptService {
         entity.setVersion(1);
         entity.setContent(dto.getContent() != null ? dto.getContent() : "");
         entity.setDescription(dto.getDescription());
+        entity.setAgentType(dto.getAgentType());
         entity.setVariables(dto.getVariables());
         entity.setStatus(0);
         entity.setIsActive(0);
@@ -73,6 +74,7 @@ public class PromptServiceImpl implements PromptService {
 
         if (dto.getContent() != null) entity.setContent(dto.getContent());
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
+        if (dto.getAgentType() != null) entity.setAgentType(dto.getAgentType());
         if (dto.getVariables() != null) entity.setVariables(dto.getVariables());
         entity.setUpdateTime(LocalDateTime.now());
         promptMapper.updateById(entity);
@@ -125,6 +127,7 @@ public class PromptServiceImpl implements PromptService {
         entity.setVersion(nextVersion);
         entity.setContent(dto.getContent() != null ? dto.getContent() : source.getContent());
         entity.setDescription(dto.getDescription() != null ? dto.getDescription() : source.getDescription());
+        entity.setAgentType(source.getAgentType());
         entity.setVariables(dto.getVariables() != null ? dto.getVariables() : source.getVariables());
         entity.setStatus(0);
         entity.setIsActive(0);

@@ -10,6 +10,7 @@ export interface PromptVO {
   version: number
   content: string
   description?: string
+  agentType?: string
   variables?: string
   status: number
   isActive: number
@@ -22,6 +23,7 @@ export interface PromptDTO {
   name: string
   content?: string
   description?: string
+  agentType?: string
   variables?: string
 }
 

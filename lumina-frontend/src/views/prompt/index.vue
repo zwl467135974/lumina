@@ -44,6 +44,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="variables" label="变量" width="150" show-overflow-tooltip />
+        <el-table-column prop="agentType" label="Agent 类型" width="130">
+          <template #default="{ row }">
+            <el-tag v-if="row.agentType" size="small" type="warning">{{ row.agentType }}</el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="description" :label="t('common.description')" min-width="200" show-overflow-tooltip />
         <el-table-column prop="updateTime" label="更新时间" width="170">
           <template #default="{ row }">{{ formatDate(row.updateTime) }}</template>
@@ -66,6 +72,9 @@
       <el-form :model="formData" label-width="80px">
         <el-form-item :label="t('prompt.name')" required>
           <el-input v-model="formData.name" :disabled="!!editingId" placeholder="如 react / customer-service" />
+        </el-form-item>
+        <el-form-item label="Agent 类型">
+          <el-input v-model="formData.agentType" placeholder="如 assistant / customer-service（用于关联 Agent）" />
         </el-form-item>
         <el-form-item :label="t('common.description')">
           <el-input v-model="formData.description" placeholder="简短描述" />
@@ -145,7 +154,7 @@ const dialogVisible = ref(false)
 const editingId = ref<number | null>(null)
 const newVersionSourceId = ref<number | null>(null)
 const saving = ref(false)
-const formData = reactive<PromptDTO>({ name: '', content: '', description: '', variables: '' })
+const formData = reactive<PromptDTO>({ name: '', content: '', description: '', agentType: '', variables: '' })
 
 const dialogTitle = computed(() => {
   if (newVersionSourceId.value) return t('prompt.newVersion')
@@ -155,21 +164,21 @@ const dialogTitle = computed(() => {
 const showCreateDialog = () => {
   editingId.value = null
   newVersionSourceId.value = null
-  Object.assign(formData, { name: '', content: '', description: '', variables: '' })
+  Object.assign(formData, { name: '', content: '', description: '', agentType: '', variables: '' })
   dialogVisible.value = true
 }
 
 const showEditDialog = (row: PromptVO) => {
   editingId.value = row.id
   newVersionSourceId.value = null
-  Object.assign(formData, { name: row.name, content: row.content, description: row.description || '', variables: row.variables || '' })
+  Object.assign(formData, { name: row.name, content: row.content, description: row.description || '', agentType: row.agentType || '', variables: row.variables || '' })
   dialogVisible.value = true
 }
 
 const showNewVersionDialog = (row: PromptVO) => {
   editingId.value = null
   newVersionSourceId.value = row.id
-  Object.assign(formData, { name: row.name, content: row.content, description: row.description || '', variables: row.variables || '' })
+  Object.assign(formData, { name: row.name, content: row.content, description: row.description || '', agentType: row.agentType || '', variables: row.variables || '' })
   dialogVisible.value = true
 }
 
