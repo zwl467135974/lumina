@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="lumina-dashboard">
     <!-- Page Header -->
     <PageHeader :title="t('dashboard.title')" :description="t('dashboard.description')" class="dashboard-header" />
@@ -11,7 +11,7 @@
         class="stat-card"
         :class="[`stat-card--${stat.colorKey}`, { 'stat-card--clickable': stat.clickable }]"
         :style="{ animationDelay: `${0.1 + idx * 0.08}s` }"
-        @click="stat.clickable ? router.push(stat.route!) : undefined"
+        @click="stat.clickable && stat.route ? router.push(stat.route) : undefined"
       >
         <div class="stat-card__glow" />
         <div class="stat-card__icon-circle">
@@ -110,7 +110,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Monitor, List, DataLine, Money, Plus, Upload, DataAnalysis, Document } from '@element-plus/icons-vue'
 import { getStats, getRecentTasks } from '@/api/dashboard'
-import PageHeader from '@/components/PageHeader.vue'
+import PageHeader from '@/components/common/PageHeader.vue'
 
 const { t } = useI18n()
 const router = useRouter()

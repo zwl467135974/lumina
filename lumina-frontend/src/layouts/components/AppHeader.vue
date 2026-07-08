@@ -26,7 +26,7 @@
       <!-- Language Switch -->
       <div class="lang-switch">
         <button
-          v-for="lang in availableLocales"
+          v-for="lang in langOptions"
           :key="lang.code"
           :class="['lang-btn', { active: locale === lang.code }]"
           @click="switchLocale(lang.code)"
@@ -61,8 +61,8 @@
       <!-- User Dropdown -->
       <el-dropdown trigger="click" @command="handleUserCommand">
         <div class="user-avatar-wrapper">
-          <el-avatar :size="34" :src="userStore.avatar" class="user-avatar">
-            {{ userStore.nickname?.charAt(0)?.toUpperCase() || 'U' }}
+          <el-avatar :size="34" :src="userStore.userInfo?.avatar" class="user-avatar">
+            {{ userStore.userInfo?.nickname?.charAt(0)?.toUpperCase() || 'U' }}
           </el-avatar>
           <span class="avatar-glow" />
         </div>
@@ -87,8 +87,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppStore } from '@/stores/app'
-import { useUserStore } from '@/stores'
+import { useAppStore, useUserStore } from '@/stores'
 import { useRouter } from 'vue-router'
 import {
   Fold,
@@ -106,7 +105,12 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 const router = useRouter()
 
-const props = defineProps<{
+const langOptions = computed(() => availableLocales.map(code => ({
+  code,
+  label: code === 'zh-CN' ? 'ä¸­æ–‡' : 'EN'
+})))
+
+defineProps<{
   breadcrumbs?: Array<{ path: string; name?: string; meta?: { title?: string } }>
 }>()
 
@@ -133,7 +137,7 @@ function handleUserCommand(command: string) {
 
 <style scoped>
 /* ============================================================
-   AppHeader ¡ª Luminous Dark Theme
+   AppHeader ï¿½ï¿½ Luminous Dark Theme
    Design: glass backdrop, gradient edge, subtle animations
    ============================================================ */
 

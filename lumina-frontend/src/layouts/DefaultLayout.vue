@@ -44,7 +44,7 @@ import type { RouteRecordRaw } from 'vue-router'
 const route = useRoute()
 const appStore = useAppStore()
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   menuRoutes: RouteRecordRaw[]
 }>(), {
   menuRoutes: () => []

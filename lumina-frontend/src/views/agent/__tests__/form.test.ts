@@ -23,6 +23,10 @@ vi.mock('@/api/modules/prompt', () => ({
   getActivePrompt: vi.fn(),
 }))
 
+vi.mock('@/api/modules/tools', () => ({
+  getTools: vi.fn().mockResolvedValue({ code: 200, data: [], msg: 'ok', timestamp: 0 }),
+}))
+
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
 }))

@@ -51,13 +51,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useAppStore } from '@/stores/app'
+import { useAppStore } from '@/stores'
 import type { RouteRecordRaw } from 'vue-router'
 
 const appStore = useAppStore()
 const route = useRoute()
 
-const props = defineProps<{
+defineProps<{
   menuRoutes: RouteRecordRaw[]
 }>()
 

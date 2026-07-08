@@ -85,6 +85,8 @@ class AgentServiceImplTest {
         org.mockito.Mockito.lenient().when(outputSanitizer.sanitize(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
         org.mockito.Mockito.lenient().when(contentModerationService.moderate(any(String.class)))
                 .thenReturn(ModerationResult.allowed());
+        org.mockito.Mockito.lenient().when(contentModerationService.moderate(any(String.class), org.mockito.ArgumentMatchers.anyBoolean()))
+                .thenReturn(ModerationResult.allowed());
     }
 
     @Test
