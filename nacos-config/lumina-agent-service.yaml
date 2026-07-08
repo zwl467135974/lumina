@@ -40,13 +40,11 @@ spring:
       pool-prepared-statements: true
       max-pool-prepared-statement-per-connection-size: 20
 
-  rocketmq:
-    name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
-    producer:
-      group: lumina-producer
-      send-message-timeout: 5000
-
 rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+  producer:
+    group: lumina-producer
+    send-message-timeout: 5000
   consumer:
     knowledge-ingest:
       enabled: ${MQ_KNOWLEDGE_ASYNC:true}
