@@ -37,7 +37,7 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **成本管理** - 模型价格表 + Token 用量计费 + 消费汇总仪表盘 + 趋势图表
 - **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）+ 频率限制 + 内容审核
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V14)、网关限流、API 版本策略、工具调用熔断器
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V22)、网关限流、API 版本策略、工具调用熔断器
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
@@ -167,7 +167,7 @@ $env:DASHSCOPE_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V14），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V22），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -569,13 +569,13 @@ npm install
 - ✅ Apache 2.0 License + CHANGELOG.md
 
 **测试**
-- ✅ 后端 355 单元测试（全 8 模块 `mvn verify` 通过）
+- ✅ 后端 300 单元测试（全 6 模块 `mvn verify` 通过）
 - ✅ 前端 80 测试（66 工具/Store + 14 组件）
 - ✅ CI/CD 双流水线（GitHub Actions：后端 mvn verify + 前端 pnpm build + pnpm test）
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V14 + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V22 + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
@@ -585,8 +585,20 @@ npm install
 
 相关文档：
 - [v2.0.0 路线图](docs/zh/roadmap/v2.0路线图.md) - 完整需求文档与完成状态
+- [v3.0.0 路线图](docs/zh/roadmap/v3.0路线图.md) - 稳定化与生产就绪
 - [Prompt 运行时规则](docs/zh/design/Prompt运行时规则.md) - Prompt 生效规则说明
 - [部署指南](docs/zh/deployment/部署指南.md) - Docker Compose 一键部署 + 本地开发 + K8s 参考
+
+### v3.0.0 稳定化
+
+- ✅ 数据层修复：字段对齐 + Agent 配置全链路 + 权限种子覆盖所有模块
+- ✅ 接线断裂修复：Agent LLM 配置/工具、知识库 kbId、菜单 DB 驱动、成本真实模型
+- ✅ Luminous 暗色主题设计系统（130 CSS 变量 + Element Plus 覆盖）
+- ✅ i18n 全量国际化（350+ key，中英文切换）
+- ✅ Dashboard 首页 + 审计日志页 + 403/401 错误页
+- ✅ Nacos 配置统一（本地极简 + nacos-config 完整）
+- ✅ 前端设计技能包（自进化：DESIGN.md + ui-learnings.md）
+- ✅ Flyway V17-V22（权限/字段/模型/种子数据）
 
 ---
 

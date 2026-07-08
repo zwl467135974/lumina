@@ -360,7 +360,7 @@ watch(() => formData.agentType, () => {
 
     .el-divider__text {
       font-weight: 500;
-      color: #409eff;
+      color: var(--lumina-primary);
     }
   }
 

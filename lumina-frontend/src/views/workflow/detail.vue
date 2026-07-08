@@ -1,9 +1,9 @@
 <template>
   <div class="workflow-detail-page">
-    <PageHeader title="执行详情" :description="`实例 #${instanceId}`">
+    <PageHeader :title="t('workflow.detail')" :description="`实例 #${instanceId}`">
       <template #actions>
         <el-button @click="router.back()">返回</el-button>
-        <el-button @click="loadData">刷新</el-button>
+        <el-button @click="loadData">{{ t('common.refresh') }}</el-button>
       </template>
     </PageHeader>
 
@@ -12,13 +12,13 @@
       <el-descriptions :column="4" border>
         <el-descriptions-item label="工作流">{{ instance?.definitionName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="版本">v{{ instance?.definitionVersion || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
+        <el-descriptions-item :label="t('common.status')">
           <el-tag :type="statusType(instance?.status)" size="small">{{ instance?.status || '-' }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="当前节点">{{ instance?.currentNodeId || '-' }}</el-descriptions-item>
         <el-descriptions-item label="执行时间">{{ formatDate(instance?.createTime) }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ formatDate(instance?.updateTime) }}</el-descriptions-item>
-        <el-descriptions-item label="输入" :span="2">
+        <el-descriptions-item :label="t('task.input')" :span="2">
           <pre class="json-output">{{ formatJson(instance?.input) }}</pre>
         </el-descriptions-item>
         <el-descriptions-item label="输出" :span="2">
@@ -59,7 +59,7 @@
                 <span class="bubble-name">{{ log.nodeName || log.nodeId }}</span>
                 <el-tag size="small" type="info">{{ log.nodeType }}</el-tag>
                 <span v-if="log.status === 'COMPLETED'" class="bubble-status completed">✓ {{ log.durationMs }}ms</span>
-                <span v-else-if="log.status === 'FAILED'" class="bubble-status failed">❌ 失败</span>
+                <span v-else-if="log.status === 'FAILED'" class="bubble-status failed">❌ {{ t('task.failed') }}</span>
                 <span v-else class="bubble-status">{{ log.status }}</span>
               </div>
               <div v-if="log.output" class="bubble-result">{{ truncateOutput(log.output) }}</div>
@@ -93,7 +93,7 @@
             </div>
             <div v-if="log.nodeName" class="log-name">{{ log.nodeName }}</div>
             <div v-if="log.input" class="log-io">
-              <span class="io-label">输入：</span>
+              <span class="io-label">{{ t('task.input') }}：</span>
               <pre class="json-output">{{ formatJson(log.input) }}</pre>
             </div>
             <div v-if="log.output" class="log-io">
@@ -111,11 +111,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { getInstanceLogs, listInstances, type WorkflowInstanceVO, type WorkflowExecutionLogVO } from '@/api/modules/workflow'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const instanceId = Number(route.params.id)
 
 const instance = ref<WorkflowInstanceVO | null>(null)

@@ -7,7 +7,7 @@
           <el-button :type="mode === 'visual' ? 'primary' : ''" @click="mode = 'visual'">可视化</el-button>
           <el-button :type="mode === 'yaml' ? 'primary' : ''" @click="switchToYaml">YAML</el-button>
         </el-button-group>
-        <el-button type="success" @click="handleSave" :loading="saving">保存</el-button>
+        <el-button type="success" @click="handleSave" :loading="saving">{{ t('common.save') }}</el-button>
       </template>
     </PageHeader>
 
@@ -137,7 +137,7 @@
           <div class="property-title">工作流属性</div>
           <el-form label-width="80px" size="small">
             <el-form-item label="名称">
-              <el-input v-model="workflowMeta.name" placeholder="工作流名称" />
+              <el-input v-model="workflowMeta.name" :placeholder="t('workflow.name')" />
             </el-form-item>
             <el-form-item label="描述">
               <el-input v-model="workflowMeta.description" placeholder="简短描述" />
@@ -156,6 +156,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -170,8 +171,9 @@ import { getWorkflow, createWorkflow, updateWorkflow } from '@/api/modules/workf
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const workflowId = computed(() => route.params.id ? Number(route.params.id) : null)
-const title = computed(() => workflowId.value ? '编辑工作流' : '新建工作流')
+const title = computed(() => workflowId.value ? t('workflow.edit') : t('workflow.create'))
 const description = computed(() => '拖拽节点设计工作流，可视化编辑或 YAML 模式')
 
 const mode = ref<'visual' | 'yaml'>('visual')
@@ -304,10 +306,10 @@ const handleSave = async () => {
 
     if (workflowId.value) {
       await updateWorkflow(workflowId.value, data)
-      ElMessage.success('更新成功')
+      ElMessage.success(t('common.updateSuccess'))
     } else {
       await createWorkflow(data)
-      ElMessage.success('创建成功')
+      ElMessage.success(t('common.createSuccess'))
       router.push('/workflow/list')
     }
   } catch (e: any) {

@@ -79,9 +79,9 @@
         <el-descriptions-item v-if="detailTask.errorMessage" label="错误" :span="2">
           <span class="error-text">{{ detailTask.errorMessage }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="输入 Token">{{ detailTask.promptTokens || 0 }}</el-descriptions-item>
-        <el-descriptions-item label="输出 Token">{{ detailTask.completionTokens || 0 }}</el-descriptions-item>
-        <el-descriptions-item label="总 Token">{{ detailTask.totalTokens || 0 }}</el-descriptions-item>
+        <el-descriptions-item :label="t('cost.inputTokens')">{{ detailTask.promptTokens || 0 }}</el-descriptions-item>
+        <el-descriptions-item :label="t('cost.outputTokens')">{{ detailTask.completionTokens || 0 }}</el-descriptions-item>
+        <el-descriptions-item :label="t('cost.totalTokens')">{{ detailTask.totalTokens || 0 }}</el-descriptions-item>
         <el-descriptions-item :label="t('task.duration')">{{ detailTask.durationMs ? (detailTask.durationMs / 1000).toFixed(2) + 's' : '-' }}</el-descriptions-item>
         <el-descriptions-item :label="t('task.createTime')">{{ detailTask.createTime || '-' }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ detailTask.updateTime || '-' }}</el-descriptions-item>
@@ -162,7 +162,7 @@ const viewDetail = (row: AgentTaskVO) => {
 }
 
 const handleCancel = async (taskUuid: string) => {
-  await ElMessageBox.confirm(t('task.cancelConfirm'), '提示', { type: 'warning' })
+  await ElMessageBox.confirm(t('task.cancelConfirm'), t('common.tip'), { type: 'warning' })
   await cancelAgentTask(taskUuid)
   ElMessage.success('已发送取消请求')
   await loadTasks()
@@ -193,7 +193,7 @@ onUnmounted(() => {
 <style scoped>
 .task-page { padding: 0; }
 .filter-form { margin-bottom: 16px; }
-.uuid-text { font-family: Consolas, Monaco, monospace; color: #909399; }
+.uuid-text { font-family: Consolas, Monaco, monospace; color: var(--lumina-text-secondary); }
 .pagination-wrapper { margin-top: 16px; display: flex; justify-content: flex-end; }
 .task-result {
   max-height: 200px;
@@ -203,5 +203,5 @@ onUnmounted(() => {
   font-size: 13px;
   line-height: 1.6;
 }
-.error-text { color: #f56c6c; }
+.error-text { color: var(--lumina-danger); }
 </style>

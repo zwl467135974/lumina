@@ -22,6 +22,15 @@ export const basicRoutes: AppRouteRecordRaw[] = [
       title: '页面不存在',
       requiresAuth: false
     }
+  },
+  {
+    path: '/401',
+    name: 'Unauthorized',
+    component: () => import('@/views/error/401.vue'),
+    meta: {
+      title: '未授权',
+      requiresAuth: false
+    }
   }
 ]
 

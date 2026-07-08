@@ -196,9 +196,9 @@ const handleDelete = async (id: number) => {
 }
 
 const usageColor = (percent: number, threshold: number) => {
-  if (percent >= 100) return '#f56c6c'
-  if (percent >= threshold) return '#e6a23c'
-  return '#67c23a'
+  if (percent >= 100) return 'var(--lumina-danger)'
+  if (percent >= threshold) return 'var(--lumina-warning)'
+  return 'var(--lumina-success)'
 }
 
 onMounted(() => {

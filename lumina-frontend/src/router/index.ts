@@ -9,10 +9,6 @@ import { setupRouterGuards } from './guards'
 const routes = [
   {
     path: '/',
-    redirect: '/agent/list'
-  },
-  {
-    path: '/',
     component: () => import('@/layouts/DefaultLayout.vue'),
     children: [...agentRoutes, ...systemRoutes, ...knowledgeRoutes, ...monitorRoutes, ...workflowRoutes, ...promptRoutes, ...costRoutes, ...budgetRoutes, ...evaluationRoutes, ...knowledgeBaseRoutes]
   },

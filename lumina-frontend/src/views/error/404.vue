@@ -27,7 +27,7 @@ const goHome = () => {
   align-items: center;
   width: 100%;
   height: 100vh;
-  background-color: #f5f5f5;
+  background-color: var(--lumina-bg-page);
 }
 
 .not-found-content {
@@ -42,7 +42,7 @@ const goHome = () => {
 
   p {
     font-size: 18px;
-    color: #666;
+    color: var(--lumina-text-secondary);
     margin: 0 0 30px;
   }
 }

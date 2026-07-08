@@ -40,7 +40,7 @@
             <el-descriptions :column="2" border size="small" class="dataset-summary">
               <el-descriptions-item label="数据集">{{ selectedDataset.name }}</el-descriptions-item>
               <el-descriptions-item label="用例数">{{ selectedDataset.cases.length }}</el-descriptions-item>
-              <el-descriptions-item label="Agent 类型">{{ selectedDataset.agentType || '-' }}</el-descriptions-item>
+              <el-descriptions-item :label="t('agent.type')">{{ selectedDataset.agentType || '-' }}</el-descriptions-item>
               <el-descriptions-item :label="t('common.createTime')">{{ selectedDataset.createTime || '-' }}</el-descriptions-item>
             </el-descriptions>
 
@@ -86,7 +86,7 @@
       <el-row :gutter="16" class="metric-row">
         <el-col :span="6"><el-statistic title="通过用例" :value="`${currentReport.passedCases}/${currentReport.totalCases}`" /></el-col>
         <el-col :span="6"><el-statistic :title="t('evaluation.avgScore')" :value="currentReport.avgScore" :precision="3" /></el-col>
-        <el-col :span="6"><el-statistic title="平均延迟(ms)" :value="currentReport.avgLatencyMs" /></el-col>
+        <el-col :span="6"><el-statistic :title="t('evaluation.avgLatency') + '(ms)'" :value="currentReport.avgLatencyMs" /></el-col>
         <el-col :span="6"><el-statistic :title="t('evaluation.totalTokens')" :value="currentReport.totalTokens || 0" /></el-col>
       </el-row>
 
@@ -94,7 +94,7 @@
         <el-col :span="12">
           <div class="chart-title">{{ t('evaluation.categoryStats') }}</div>
           <v-chart v-if="categoryChartOption" :option="categoryChartOption" autoresize style="height: 280px" />
-          <el-empty v-else description="暂无分类数据" :image-size="40" />
+          <el-empty v-else :description="t('common.noData')" :image-size="40" />
         </el-col>
         <el-col :span="12">
           <div class="chart-title">{{ t('evaluation.trend') }}</div>
@@ -150,12 +150,12 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="datasetDialogVisible" title="新建评估数据集" width="760px">
+    <el-dialog v-model="datasetDialogVisible" :title="t('evaluation.createDataset')" width="760px">
       <el-form :model="datasetForm" label-width="110px">
         <el-form-item label="名称" required>
           <el-input v-model="datasetForm.name" placeholder="例如：客服 Agent 基础问答" />
         </el-form-item>
-        <el-form-item label="Agent 类型">
+        <el-form-item :label="t('agent.type')">
           <el-input v-model="datasetForm.agentType" placeholder="例如：assistant" />
         </el-form-item>
         <el-form-item :label="t('common.description')">
@@ -177,12 +177,12 @@
           <el-col :span="6">
             <el-statistic :title="t('evaluation.passRateChange')"
               :value="(compareData.passRateDiff * 100).toFixed(1) + '%'"
-              :value-style="{ color: compareData.passRateDiff >= 0 ? '#67c23a' : '#f56c6c' }" />
+              :value-style="{ color: compareData.passRateDiff >= 0 ? 'var(--lumina-success)' : 'var(--lumina-danger)' }" />
           </el-col>
           <el-col :span="6">
             <el-statistic :title="t('evaluation.scoreChange')"
               :value="compareData.avgScoreDiff.toFixed(4)"
-              :value-style="{ color: compareData.avgScoreDiff >= 0 ? '#67c23a' : '#f56c6c' }" />
+              :value-style="{ color: compareData.avgScoreDiff >= 0 ? 'var(--lumina-success)' : 'var(--lumina-danger)' }" />
           </el-col>
           <el-col :span="4"><el-statistic :title="t('evaluation.improved')" :value="compareData.improved" /></el-col>
           <el-col :span="4"><el-statistic :title="t('evaluation.regressed')" :value="compareData.regressed" /></el-col>
@@ -199,7 +199,7 @@
           </el-table-column>
           <el-table-column label="变化" width="80">
             <template #default="{ row }">
-              <span :style="{ color: row.scoreDiff > 0 ? '#67c23a' : row.scoreDiff < 0 ? '#f56c6c' : '#909399' }">
+              <span :style="{ color: row.scoreDiff > 0 ? 'var(--lumina-success)' : row.scoreDiff < 0 ? 'var(--lumina-danger)' : 'var(--lumina-text-secondary)' }">
                 {{ row.scoreDiff > 0 ? '+' : '' }}{{ row.scoreDiff.toFixed(3) }}
               </span>
             </template>
@@ -317,7 +317,7 @@ const categoryChartOption = computed(() => {
       type: 'bar',
       data: entries.map(e => Number((e[1].passRate * 100).toFixed(1)) / 100),
       itemStyle: {
-        color: (params: any) => params.value >= (currentReport.value?.threshold || 0.7) ? '#67c23a' : '#e6a23c'
+        color: (params: any) => params.value >= (currentReport.value?.threshold || 0.7) ? 'var(--lumina-success)' : 'var(--lumina-warning)'
       },
       barMaxWidth: 40,
       label: { show: true, position: 'top', formatter: (p: any) => `${(p.value * 100).toFixed(0)}%` }
@@ -345,7 +345,7 @@ const trendChartOption = computed(() => {
         type: 'line',
         data: passRates,
         smooth: true,
-        itemStyle: { color: '#409eff' },
+        itemStyle: { color: 'var(--lumina-primary)' },
         lineStyle: { width: 2 },
         label: { show: true, formatter: (p: any) => `${(p.value * 100).toFixed(0)}%` }
       },
@@ -355,7 +355,7 @@ const trendChartOption = computed(() => {
         yAxisIndex: 1,
         data: avgScores,
         smooth: true,
-        itemStyle: { color: '#67c23a' },
+        itemStyle: { color: 'var(--lumina-success)' },
         lineStyle: { width: 2, type: 'dashed' }
       }
     ]
@@ -418,7 +418,7 @@ const handleCreateDataset = async () => {
   savingDataset.value = true
   try {
     await createEvaluationDataset({ ...datasetForm })
-    ElMessage.success('数据集已创建')
+    ElMessage.success(t('common.createSuccess'))
     datasetDialogVisible.value = false
     await loadDatasets()
   } finally {
@@ -429,7 +429,7 @@ const handleCreateDataset = async () => {
 const handleDeleteDataset = async (id: number) => {
   await ElMessageBox.confirm(t('evaluation.deleteDatasetConfirm'), t('common.tip'), { type: 'warning' })
   await deleteEvaluationDataset(id)
-  ElMessage.success('已删除')
+  ElMessage.success(t('common.deleteSuccess'))
   if (selectedDataset.value?.id === id) {
     selectedDataset.value = null
     currentReport.value = null
@@ -535,7 +535,7 @@ onMounted(() => {
 .dataset-summary { margin-bottom: 16px; }
 .run-form { margin-top: 16px; }
 .metric-row { margin-bottom: 16px; }
-.chart-title { font-size: 14px; font-weight: 600; color: #606266; margin-bottom: 8px; }
+.chart-title { font-size: 14px; font-weight: 600; color: var(--lumina-text-secondary); margin-bottom: 8px; }
 .result-table { margin-top: 16px; }
 .async-tag { margin-left: 12px; }
 .yaml-input :deep(textarea) { font-family: Consolas, Monaco, monospace; }

@@ -4,6 +4,57 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.0.0] - 2026-07
+
+### 稳定化与生产就绪
+
+#### 数据层修复
+- Flyway V17: 8 模块权限 + 菜单路由 + 3 角色分配 + 示例 Agent/Prompt 种子数据
+- Flyway V18: 字段对齐（user real_name→nickname, tenant contact_name→contact 等）+ Agent 表增加 llm_config/tools/tenant_id
+- Flyway V19: Agent 任务增加 model_name/provider（成本计算精确化）
+- Flyway V20: 评估运行记录增加 model_name/provider
+- Flyway V21: 菜单图标与路径规范化
+- Flyway V22: 示例工作流种子数据
+
+#### 接线断裂修复（P0）
+- Agent LLM 配置/工具全链路打通（DTO→Domain→VO→执行引擎）
+- 知识库文档上传 kbId 关联（KnowledgeService→KnowledgeDocumentDO）
+- MenuController 从数据库权限表动态构建菜单树（不再硬编码）
+- Prompt agent_type 全链路（DO→DTO→Service→前端表单/列表）
+- 成本计算使用真实模型（AgentTaskDO.model_name → CostServiceImpl）
+- 评估使用 Agent 专属配置（buildEvalConfig 解析 llmConfig）
+- 异步评估不再产生重复行
+
+#### 前端 UI/UX
+- Luminous 暗色主题设计系统（130 CSS 变量 + Element Plus 覆盖）
+- Dashboard 首页（统计卡片 + 近期任务 + 快捷操作）
+- PageHeader 修复（description + #actions slot）
+- i18n 全量国际化（350+ key，20+ 页面 $t() 替换）
+- 暗色主题 CSS 变量化（消除硬编码 hex）
+- 403/401 错误页
+- Agent 状态 el-switch 切换
+- 评估/知识库 Agent 选择改为下拉
+- 审计日志查看页
+- 前端设计技能包（skills/lumina_frontend_design）+ 自进化设计文档
+
+#### 配置与部署
+- Nacos 配置统一（本地仅 Nacos 连接，业务配置全放 nacos-config）
+- Redis 无密码兼容（setPassword 空值跳过）
+- spring.config.import 使用 optional（CI 无 Nacos 可运行）
+- BCrypt 密码哈希修复
+- Flyway 编码 UTF-8 + out-of-order
+
+#### 联调修复
+- JwtAuthenticationFilter → JwtAuthenticationGatewayFilterFactory 重命名
+- MybatisPlusTenantConfig bean 覆盖 + 拦截器顺序
+- 前端 API 路径 /base 前缀对齐
+- 登录链路扁平结构适配
+- Vite proxy 统一走 Gateway + keep-alive
+
+### 测试基线
+- 后端 300 单元测试（全 6 模块通过）
+- 前端 80 测试（11 文件通过）
+
 ## [2.0.0] - 2026-07
 
 ### P0：测试补全 + 技术债清理

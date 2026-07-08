@@ -76,7 +76,7 @@
         <el-descriptions-item :label="t('common.status')">
           <el-tag :type="taskStatusType(currentTask.status)">{{ currentTask.status }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="耗时">{{ currentTask.durationMs ?? '-' }} ms</el-descriptions-item>
+        <el-descriptions-item :label="t('task.duration')">{{ currentTask.durationMs ?? '-' }} ms</el-descriptions-item>
         <el-descriptions-item v-if="currentTask.result" :label="t('agent.taskResult')" :span="2">
           <el-input :model-value="currentTask.result" type="textarea" :rows="5" readonly />
         </el-descriptions-item>

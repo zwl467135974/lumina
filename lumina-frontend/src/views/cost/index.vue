@@ -27,7 +27,7 @@
 
     <el-card shadow="never" class="cost-card">
       <div class="total-cost">
-        <span class="label">总费用（{{ summary?.currency || 'CNY' }}）</span>
+        <span class="label">{{ t('cost.totalCost') }}（{{ summary?.currency || 'CNY' }}）</span>
         <span class="value">¥ {{ summary?.totalCost?.toFixed(4) ?? '0.0000' }}</span>
       </div>
     </el-card>
@@ -46,7 +46,7 @@
       </template>
       <div v-loading="trendLoading" class="chart-container">
         <v-chart v-if="trendOption" :option="trendOption" autoresize style="height: 320px" />
-        <el-empty v-else description="暂无趋势数据" :image-size="60" />
+        <el-empty v-else :description="t('common.noData')" :image-size="60" />
       </div>
     </el-card>
 
@@ -60,7 +60,7 @@
         </el-table-column>
       </el-table>
       <el-empty v-if="!loading && (!summary?.topAgents || summary.topAgents.length === 0)"
-                description="暂无消费数据" />
+                 :description="t('common.noData')" />
     </el-card>
   </div>
 </template>
@@ -131,7 +131,7 @@ const trendOption = computed(() => {
         name: 'Token 用量',
         type: 'bar',
         data: tokens,
-        itemStyle: { color: '#409eff' },
+        itemStyle: { color: 'var(--lumina-primary)' },
         barMaxWidth: 30
       },
       {
@@ -140,7 +140,7 @@ const trendOption = computed(() => {
         yAxisIndex: 1,
         data: costs,
         smooth: true,
-        itemStyle: { color: '#67c23a' },
+        itemStyle: { color: 'var(--lumina-success)' },
         lineStyle: { width: 2 },
         areaStyle: { opacity: 0.1 }
       },
@@ -149,7 +149,7 @@ const trendOption = computed(() => {
         type: 'line',
         data: taskCounts,
         smooth: true,
-        itemStyle: { color: '#e6a23c' },
+        itemStyle: { color: 'var(--lumina-warning)' },
         lineStyle: { width: 1, type: 'dashed' }
       }
     ]
@@ -189,8 +189,8 @@ onMounted(() => {
 <style scoped>
 .cost-page { padding: 0; }
 .cost-card { margin-top: 16px; text-align: center; }
-.total-cost .label { font-size: 14px; color: #909399; margin-right: 12px; }
-.total-cost .value { font-size: 28px; font-weight: 700; color: #409eff; }
+.total-cost .label { font-size: 14px; color: var(--lumina-text-secondary); margin-right: 12px; }
+.total-cost .value { font-size: 28px; font-weight: 700; color: var(--lumina-primary); }
 
 .trend-card { margin-top: 16px; }
 .trend-header {
