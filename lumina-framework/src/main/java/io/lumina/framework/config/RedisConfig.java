@@ -51,13 +51,16 @@ public class RedisConfig {
     @ConditionalOnMissingBean
     public RedissonClient redissonClient() {
         Config config = new Config();
-        config.useSingleServer()
+        var singleServer = config.useSingleServer()
               .setAddress(String.format("redis://%s:%d", redisHost, redisPort))
               .setDatabase(redisDatabase)
-              .setPassword(redisPassword)
               .setConnectionPoolSize(64)
               .setConnectionMinimumIdleSize(10)
               .setConnectTimeout(redisTimeout);
+        // 无密码时不设置，避免发送 AUTH 命令导致连接被拒
+        if (redisPassword != null && !redisPassword.isBlank()) {
+            singleServer.setPassword(redisPassword);
+        }
         return Redisson.create(config);
     }
 
