@@ -31,7 +31,7 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+    private io.lumina.framework.cache.RedisCacheManager redisCacheManager;
 
     /**
      * 用户登录
@@ -84,8 +84,8 @@ public class AuthController {
                 String token = authorization.substring(7);
                 io.lumina.common.core.LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
                 if (loginUser != null && loginUser.getUserId() != null) {
-                    String member = loginUser.getUserId() + ":" + loginUser.getUsername();
-                    redisTemplate.opsForZSet().remove("online:users", member);
+                    redisCacheManager.zRemove("online:users",
+                            loginUser.getUserId() + ":" + loginUser.getUsername());
                     log.info("清除在线记录: userId={}", loginUser.getUserId());
                 }
             } catch (Exception e) {

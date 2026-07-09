@@ -2,6 +2,7 @@ package io.lumina.framework.cache;
 
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBucket;
+import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -248,5 +249,59 @@ public class RedisCacheManager {
         long ttl = bucket.remainTimeToLive();
         log.debug("获取缓存剩余时间: key={}, ttl={}s", key, ttl / 1000);
         return ttl / 1000; // 转换为秒
+    }
+
+    // ==================== 有序集合（ZSET）方法 ====================
+
+    /**
+     * 向有序集合添加成员
+     *
+     * @param key    集合键
+     * @param score  分数
+     * @param member 成员
+     * @return true 如果是新添加的
+     */
+    public boolean zAdd(String key, double score, String member) {
+        RScoredSortedSet<String> set = redissonClient.getScoredSortedSet(key);
+        boolean added = set.add(score, member);
+        log.debug("ZADD: key={}, score={}, member={}, added={}", key, score, member, added);
+        return added;
+    }
+
+    /**
+     * 从有序集合删除成员
+     *
+     * @param key    集合键
+     * @param member 成员
+     * @return true 如果删除成功
+     */
+    public boolean zRemove(String key, String member) {
+        RScoredSortedSet<String> set = redissonClient.getScoredSortedSet(key);
+        boolean removed = set.remove(member);
+        log.debug("ZREM: key={}, member={}, removed={}", key, member, removed);
+        return removed;
+    }
+
+    /**
+     * 获取有序集合的所有成员
+     *
+     * @param key 集合键
+     * @return 成员集合
+     */
+    public Collection<String> zRange(String key) {
+        RScoredSortedSet<String> set = redissonClient.getScoredSortedSet(key);
+        return set.readAll();
+    }
+
+    /**
+     * 获取有序集合中成员的分数
+     *
+     * @param key    集合键
+     * @param member 成员
+     * @return 分数，null 如果成员不存在
+     */
+    public Double zScore(String key, String member) {
+        RScoredSortedSet<String> set = redissonClient.getScoredSortedSet(key);
+        return set.getScore(member);
     }
 }
