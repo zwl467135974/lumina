@@ -143,16 +143,23 @@ Easing: `cubic-bezier(0.4, 0, 0.2, 1)` for all transitions.
 - Primary: `background: var(--lumina-primary)` 纯色，hover 变 `--lumina-primary-dark`
 - **去渐变、去微光伪元素、去 glow shadow、去 translateY**
 
-## Planned Components (Phase 2)
+## Implemented Components (Phase 2 ✅)
 
-| Component | Purpose |
-|-----------|---------|
-| `LumTablePanel` | 搜索表单 + 表格 + 分页组合 |
-| `LumFormDialog` | 表单对话框标准封装 |
-| `LumStatCard` | 统计卡片（Dashboard） |
-| `LumToolbar` | 工具栏（搜索 + 操作按钮） |
-| `LumEmptyState` | 空状态 |
-| `LumSearchInput` | 搜索输入（防抖 + icon） |
+| Component | Purpose | Usage |
+|-----------|---------|-------|
+| `LumTablePanel` | 搜索表单 + 表格 + 分页组合 | 配置式 searchFields + default slot 表格列 |
+| `LumFormDialog` | 表单对话框标准封装 | v-model + rules + auto validate |
+| `LumStatCard` | 统计卡片（Dashboard） | icon + label + value + 5 色变体 |
+| `LumSearchInput` | 搜索输入（防抖 + icon） | v-model + @search |
+| `LumEmptyState` | 空状态 | icon + description + action slot |
+
+使用方式：`import { LumTablePanel, type SearchField } from '@/components/common'`
+
+### LumTablePanel 迁移模式
+- 标准 CRUD 页面：searchFields 配置式 + 表格列 default slot
+- 无分页：不传 `:pagination` prop
+- 特殊控件（auto-refresh/input-number）：放 `toolbar-right` slot
+- 迁移 7 个页面：agent/prompt/workflow/task + system/tenant/role/user
 
 ## What NOT to Do
 

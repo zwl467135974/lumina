@@ -52,3 +52,18 @@
 - Observation: 从"暗色唯一"改"亮色默认+暗色可切"时，scoped :root 重复定义会覆盖全局 token
 - Action: ① 删除 login/dashboard 的 scoped :root 重复定义（它们强制暗色）② app store 加 theme 状态 + applyTheme 操作 document.documentElement.classList ③ main.ts 在 pinia 后 initTheme() 恢复 localStorage ④ EP 的 dark/css-vars.css 配合 html.dark 自动切换 EP 组件
 - Confidence: high
+
+## 2026-07-09 — LumTablePanel 迁移的标签嵌套陷阱
+- Observation: 从 el-card+el-table 迁移到 LumTablePanel 时，`</el-table></el-card>` 被替换为 `</LumTablePanel>`，但原来的最后一个 `</el-table-column>`（操作列关闭）仍保留，导致 `</el-table-column>` 出现两次，Vue SFC 编译报 "Invalid end tag"
+- Action: 迁移时检查操作列的 `</el-table-column>` 是否重复。vue-tsc 不报此错，只有 vite build 会报
+- Confidence: high
+
+## 2026-07-09 — 登录页暗色→亮色重做
+- Observation: 登录页整体是暗色设计（glow orbs + glass morphism + 暗色卡片/输入框 + 渐变按钮），简单替换颜色不够——整体视觉结构需要重做
+- Action: 完全重写：去 glow orbs/glass/渐变/pulse 动画，改用 --lumina-bg-page 浅灰背景 + 白色实色卡片 + 标准 EP 输入框 + 纯色按钮。493→210 行。间距/字体全部 token 化
+- Confidence: high
+
+## 2026-07-09 — 废弃 CSS 清理时机
+- Observation: dashboard 迁移到 LumStatCard 后，28 处 stat-card CSS 成为死代码（129 行），但不影响功能。留着增加维护噪音
+- Action: 迁移组件后立即清理废弃 CSS，不要留到"以后"。用 PowerShell `[System.IO.File]::ReadAllLines` + 按行删除大范围 CSS 最可靠
+- Confidence: high
