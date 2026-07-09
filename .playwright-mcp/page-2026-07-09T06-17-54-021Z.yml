@@ -1,0 +1,131 @@
+- generic [active] [ref=f9e1]:
+  - generic [ref=f9e51]:
+    - complementary [ref=f9e52]:
+      - heading "Lumina" [level=2] [ref=f9e54]
+      - menubar [ref=f9e55]:
+        - menuitem "仪表盘" [ref=f9e56] [cursor=pointer]:
+          - img [ref=f9e58]
+          - text: 仪表盘
+        - menuitem "Agent 管理" [ref=f9e62]:
+          - generic [ref=f9e63] [cursor=pointer]:
+            - img [ref=f9e65]
+            - generic [ref=f9e67]: Agent 管理
+            - img [ref=f9e69]
+        - menuitem "工作流管理" [ref=f9e71]:
+          - generic [ref=f9e72] [cursor=pointer]:
+            - img [ref=f9e74]
+            - generic [ref=f9e77]: 工作流管理
+            - img [ref=f9e79]
+        - menuitem "知识库" [ref=f9e81] [cursor=pointer]:
+          - img [ref=f9e83]
+          - text: 知识库
+        - menuitem "知识库联邦" [ref=f9e85] [cursor=pointer]:
+          - img [ref=f9e87]
+          - text: 知识库联邦
+        - menuitem "Prompt 管理" [ref=f9e90] [cursor=pointer]:
+          - img [ref=f9e92]
+          - text: Prompt 管理
+        - menuitem "成本仪表盘" [ref=f9e94] [cursor=pointer]:
+          - img [ref=f9e96]
+          - text: 成本仪表盘
+        - menuitem "预算管理" [ref=f9e100] [cursor=pointer]:
+          - img [ref=f9e102]
+          - text: 预算管理
+        - menuitem "Agent 评估" [ref=f9e106] [cursor=pointer]:
+          - img [ref=f9e108]
+          - text: Agent 评估
+        - menuitem "模型管理" [ref=f9e110] [cursor=pointer]:
+          - img [ref=f9e112]
+          - text: 模型管理
+        - menuitem "系统管理" [ref=f9e116]:
+          - generic [ref=f9e117] [cursor=pointer]:
+            - img [ref=f9e119]
+            - generic [ref=f9e121]: 系统管理
+            - img [ref=f9e123]
+    - generic [ref=f9e126]:
+      - banner [ref=f9e127]:
+        - generic [ref=f9e128]:
+          - button "收起" [ref=f9e129] [cursor=pointer]:
+            - img [ref=f9e131]
+          - navigation "Breadcrumb" [ref=f9e133]:
+            - link "仪表盘" [ref=f9e135]
+        - generic [ref=f9e136]:
+          - generic [ref=f9e137]:
+            - button "EN" [ref=f9e138] [cursor=pointer]
+            - button "中文" [ref=f9e139] [cursor=pointer]
+          - button "暗色主题" [ref=f9e140] [cursor=pointer]:
+            - img [ref=f9e142]
+          - button "通知" [ref=f9e144] [cursor=pointer]:
+            - img [ref=f9e147]
+          - button "系" [ref=f9e152] [cursor=pointer]:
+            - generic [ref=f9e153]: 系
+      - main [ref=f9e154]:
+        - generic [ref=f9e155]:
+          - generic [ref=f9e159]:
+            - heading "仪表盘" [level=2] [ref=f9e160]
+            - paragraph [ref=f9e161]: 系统概览与快捷入口
+          - generic [ref=f9e162]:
+            - generic [ref=f9e163] [cursor=pointer]:
+              - img [ref=f9e166]
+              - generic [ref=f9e168]:
+                - generic [ref=f9e169]: Agent 数量
+                - generic [ref=f9e170]: "0"
+            - generic [ref=f9e171] [cursor=pointer]:
+              - img [ref=f9e174]
+              - generic [ref=f9e176]:
+                - generic [ref=f9e177]: 今日任务
+                - generic [ref=f9e178]: "0"
+            - generic [ref=f9e179]:
+              - img [ref=f9e182]
+              - generic [ref=f9e184]:
+                - generic [ref=f9e185]: Token 消耗
+                - generic [ref=f9e186]: "0"
+            - generic [ref=f9e187]:
+              - img [ref=f9e190]
+              - generic [ref=f9e194]:
+                - generic [ref=f9e195]: 总费用
+                - generic [ref=f9e196]: ¥ 0.0000
+          - generic [ref=f9e197]:
+            - generic [ref=f9e198]:
+              - heading "近期任务" [level=2] [ref=f9e200]
+              - generic [ref=f9e202]:
+                - generic [ref=f9e203]:
+                  - table [ref=f9e205]:
+                    - rowgroup [ref=f9e212]:
+                      - row "任务 UUID Agent 输入 状态 时间" [ref=f9e213]:
+                        - columnheader "任务 UUID" [ref=f9e214]:
+                          - generic [ref=f9e215]: 任务 UUID
+                        - columnheader "Agent" [ref=f9e216]:
+                          - generic [ref=f9e217]: Agent
+                        - columnheader "输入" [ref=f9e218]:
+                          - generic [ref=f9e219]: 输入
+                        - columnheader "状态" [ref=f9e220]:
+                          - generic [ref=f9e221]: 状态
+                        - columnheader "时间" [ref=f9e222]:
+                          - generic [ref=f9e223]: 时间
+                  - generic [ref=f9e227]:
+                    - table:
+                      - rowgroup
+                    - generic [ref=f9e229]: No Data
+                - img [ref=f9e232]
+            - generic [ref=f9e234]:
+              - heading "快捷操作" [level=2] [ref=f9e236]
+              - generic [ref=f9e238]:
+                - generic [ref=f9e239] [cursor=pointer]:
+                  - img [ref=f9e242]
+                  - generic [ref=f9e244]:
+                    - generic [ref=f9e245]: 创建 Agent
+                    - generic [ref=f9e246]: 构建一个新的 AI Agent
+                - generic [ref=f9e247] [cursor=pointer]:
+                  - img [ref=f9e250]
+                  - generic [ref=f9e252]:
+                    - generic [ref=f9e253]: 上传文档
+                    - generic [ref=f9e254]: 添加文档到知识库
+                - generic [ref=f9e255] [cursor=pointer]:
+                  - img [ref=f9e258]
+                  - generic [ref=f9e260]:
+                    - generic [ref=f9e261]: 新建评估
+                    - generic [ref=f9e262]: 运行一组新的评估测试
+  - alert [ref=f9e263]:
+    - img [ref=f9e265]
+    - paragraph [ref=f9e267]: 登录成功

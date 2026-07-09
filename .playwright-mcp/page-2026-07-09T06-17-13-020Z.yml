@@ -1,0 +1,22 @@
+- generic [ref=f9e3]:
+  - generic [ref=f9e4]:
+    - generic [ref=f9e5]:
+      - button "EN" [ref=f9e6] [cursor=pointer]
+      - button "中文" [ref=f9e7] [cursor=pointer]
+    - button "暗色主题" [ref=f9e8] [cursor=pointer]:
+      - img [ref=f9e10]
+  - generic [ref=f9e12]:
+    - generic [ref=f9e13]:
+      - img [ref=f9e15]
+      - heading "Lumina" [level=1] [ref=f9e19]
+      - paragraph [ref=f9e20]: 智能代理管理平台
+    - generic [ref=f9e21]:
+      - generic [ref=f9e25]:
+        - img [ref=f9e28]
+        - textbox "请输入用户名" [ref=f9e30]
+      - generic [ref=f9e34]:
+        - img [ref=f9e37]
+        - textbox "请输入密码" [ref=f9e40]
+      - button "登录" [ref=f9e43] [cursor=pointer]:
+        - generic [ref=f9e44]: 登录
+    - paragraph [ref=f9e45]: Lumina AI Agent 平台 — 智能代理管理
