@@ -64,6 +64,7 @@ export default {
     permission: 'Permissions',
     tenant: 'Tenants',
     audit: 'Audit Logs',
+    model: 'Models',
     monitorCenter: 'Monitoring',
     monitor: 'Tool Monitor'
   },
@@ -406,6 +407,28 @@ export default {
       edit: 'Edit Tenant',
       toggleStatusConfirm: 'Are you sure you want to {action} tenant {name}?',
       deleteConfirm: 'Are you sure you want to delete tenant {name}?'
+    },
+    model: {
+      title: 'Model Management',
+      description: 'Centralized LLM provider management',
+      name: 'Config Name',
+      namePlaceholder: 'e.g. Production-Qwen',
+      nameRequired: 'Please enter config name',
+      provider: 'Provider',
+      providerRequired: 'Please select a provider',
+      baseUrl: 'Base URL',
+      baseUrlPlaceholder: 'Leave empty for built-in presets',
+      apiKey: 'API Key',
+      apiKeyPlaceholder: 'Enter API Key',
+      apiKeyKeepHint: 'Leave empty to keep current',
+      defaultModel: 'Default Model',
+      defaultParams: 'Default Params',
+      testConnection: 'Test',
+      testSuccess: 'Connection successful',
+      testFailed: 'Connection failed',
+      create: 'New Provider',
+      edit: 'Edit Provider',
+      deleteConfirm: 'Delete provider "{name}"?'
     }
   },
   monitor: {

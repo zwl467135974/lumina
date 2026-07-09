@@ -28,6 +28,7 @@ const titleKeyMap: Record<string, string> = {
   '角色管理': 'menu.role',
   '权限管理': 'menu.permission',
   '租户管理': 'menu.tenant',
+  '模型管理': 'menu.model',
   '审计日志': 'menu.audit',
   '监控中心': 'menu.monitorCenter',
   '工具监控': 'menu.monitor'

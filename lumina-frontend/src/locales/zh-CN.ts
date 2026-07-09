@@ -64,6 +64,7 @@ export default {
     permission: '权限管理',
     tenant: '租户管理',
     audit: '审计日志',
+    model: '模型管理',
     monitorCenter: '监控中心',
     monitor: '工具监控'
   },
@@ -406,6 +407,28 @@ export default {
       edit: '编辑租户',
       toggleStatusConfirm: '确定要{action}租户 {name} 吗？',
       deleteConfirm: '确定要删除租户 {name} 吗？'
+    },
+    model: {
+      title: '模型管理',
+      description: 'LLM 模型供应商集中管理',
+      name: '配置名称',
+      namePlaceholder: '如：生产环境-Qwen',
+      nameRequired: '请输入配置名称',
+      provider: '供应商',
+      providerRequired: '请选择供应商',
+      baseUrl: 'API 地址',
+      baseUrlPlaceholder: '留空使用内置预设',
+      apiKey: 'API Key',
+      apiKeyPlaceholder: '请输入 API Key',
+      apiKeyKeepHint: '留空表示不修改',
+      defaultModel: '默认模型',
+      defaultParams: '默认参数',
+      testConnection: '测试连接',
+      testSuccess: '连接成功',
+      testFailed: '连接失败',
+      create: '新建模型配置',
+      edit: '编辑模型配置',
+      deleteConfirm: '确认删除模型配置「{name}」？'
     }
   },
   monitor: {

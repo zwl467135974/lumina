@@ -171,6 +171,16 @@ export const systemRoutes: AppRouteRecordRaw[] = [
           title: '审计日志',
           requiresAuth: true
         }
+      },
+      {
+        path: 'models',
+        name: 'SystemModels',
+        component: () => import('@/views/system/models.vue'),
+        meta: {
+          title: '模型管理',
+          requiresAuth: true,
+          permissions: ['model:list']
+        }
       }
     ]
   }
