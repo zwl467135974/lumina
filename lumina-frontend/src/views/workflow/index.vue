@@ -1,35 +1,22 @@
 <template>
   <div class="workflow-page">
-    <PageHeader :title="t('workflow.title')" :description="t('workflow.description')">
-      <template #actions>
-        <el-button type="primary" @click="$router.push('/workflow/designer')">可视化新建</el-button>
-        <el-button @click="showCreateDialog">YAML 新建</el-button>
-        <el-button @click="showTemplateDialog">从模板创建</el-button>
+    <PageHeader :title="t('workflow.title')" :description="t('workflow.description')" />
+
+    <LumTablePanel
+      :search-model="queryForm"
+      :data="list"
+      :loading="loading"
+      :search-fields="searchFields"
+      @search="loadList"
+      @reset="handleReset"
+    >
+      <template #toolbar-left>
+        <el-button type="primary" @click="$router.push('/workflow/designer')">{{ t('workflow.visualEdit') }}</el-button>
+        <el-button @click="showCreateDialog">YAML {{ t('common.create') }}</el-button>
+        <el-button @click="showTemplateDialog">{{ t('workflow.templates') }}</el-button>
       </template>
-    </PageHeader>
 
-    <!-- 搜索栏 -->
-    <el-card shadow="never" class="search-card">
-      <el-form inline>
-        <el-form-item :label="t('common.description')">
-          <el-input v-model="searchName" placeholder="搜索工作流名称" clearable style="width: 200px" @keyup.enter="loadList" />
-        </el-form-item>
-        <el-form-item :label="t('common.status')">
-          <el-select v-model="searchStatus" :placeholder="t('common.all')" clearable style="width: 120px">
-            <el-option :label="t('workflow.draft')" :value="0" />
-            <el-option :label="t('workflow.published')" :value="1" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="loadList">{{ t('common.query') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <!-- 列表 -->
-    <el-card shadow="never" class="list-card">
-      <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="name" :label="t('workflow.name')" min-width="150" />
+      <el-table-column prop="name" :label="t('workflow.name')" min-width="150" />
         <el-table-column prop="description" :label="t('common.description')" min-width="200" show-overflow-tooltip />
         <el-table-column prop="version" :label="t('prompt.version')" width="80" />
         <el-table-column :label="t('common.status')" width="100">
@@ -59,8 +46,7 @@
             </el-dropdown>
           </template>
         </el-table-column>
-      </el-table>
-    </el-card>
+    </LumTablePanel>
 
     <!-- 新建/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="editingId ? t('workflow.edit') : t('workflow.create')" width="800px" :close-on-click-modal="false">
@@ -179,7 +165,7 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import PageHeader from '@/components/common/PageHeader.vue'
+import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
 import {
   listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow,
   publishWorkflow, streamExecuteWorkflow, listInstances, getWorkflowTemplates,
@@ -192,15 +178,28 @@ const { t } = useI18n()
 
 const list = ref<WorkflowDefinitionVO[]>([])
 const loading = ref(false)
-const searchName = ref('')
-const searchStatus = ref<number | undefined>(undefined)
+const queryForm = reactive({ name: '', status: undefined as number | undefined })
+
+const searchFields = computed<SearchField[]>(() => [
+  { prop: 'name', label: t('workflow.name'), type: 'input', placeholder: t('common.search') },
+  {
+    prop: 'status',
+    label: t('common.status'),
+    type: 'select',
+    placeholder: t('common.all'),
+    options: [
+      { label: t('workflow.draft'), value: 0 },
+      { label: t('workflow.published'), value: 1 }
+    ]
+  }
+])
 
 const loadList = async () => {
   loading.value = true
   try {
     const res = await listWorkflows({
-      name: searchName.value || undefined,
-      status: searchStatus.value,
+      name: queryForm.name || undefined,
+      status: queryForm.status,
       pageNum: 1,
       pageSize: 50
     })
@@ -210,6 +209,12 @@ const loadList = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleReset = () => {
+  queryForm.name = ''
+  queryForm.status = undefined
+  loadList()
 }
 
 // 对话框

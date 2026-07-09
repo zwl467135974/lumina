@@ -53,7 +53,7 @@ describe('Prompt 管理页', () => {
     const vm = w.vm as any
     await flushPromises()
     vi.mocked(listPrompts).mockClear()
-    vm.searchName = 'react'
+    vm.queryForm.name = 'react'
     await vm.loadList()
     expect(listPrompts).toHaveBeenCalledWith({ name: 'react', pageNum: 1, pageSize: 50 })
   })

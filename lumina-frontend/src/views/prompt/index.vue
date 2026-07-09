@@ -1,33 +1,29 @@
 <template>
   <div class="prompt-page">
-    <PageHeader :title="t('prompt.title')" :description="t('prompt.description')">
-      <template #actions>
+    <PageHeader :title="t('prompt.title')" :description="t('prompt.description')" />
+
+    <el-alert
+      type="info"
+      show-icon
+      :closable="false"
+      style="margin-bottom: var(--lumina-spacing-md)"
+      title="Prompt 生效规则"
+      description="Agent 执行时会将 Agent 类型转为小写匹配 Prompt 名称，例如 ReAct -> react、simple -> simple、tool -> tool。发布并激活后会立即影响后续执行；未匹配到激活版本时使用 agent-core 内置 Prompt。"
+    />
+
+    <LumTablePanel
+      :search-model="queryForm"
+      :data="list"
+      :loading="loading"
+      :search-fields="searchFields"
+      @search="loadList"
+      @reset="handleReset"
+    >
+      <template #toolbar-left>
         <el-button type="primary" @click="showCreateDialog">{{ t('prompt.create') }}</el-button>
       </template>
-    </PageHeader>
 
-    <el-card shadow="never" class="search-card">
-      <el-alert
-        type="info"
-        show-icon
-        :closable="false"
-        class="usage-alert"
-        title="Prompt 生效规则"
-        description="Agent 执行时会将 Agent 类型转为小写匹配 Prompt 名称，例如 ReAct -> react、simple -> simple、tool -> tool。发布并激活后会立即影响后续执行；未匹配到激活版本时使用 agent-core 内置 Prompt。"
-      />
-      <el-form inline>
-        <el-form-item :label="t('prompt.name')">
-          <el-input v-model="searchName" placeholder="搜索" clearable style="width: 200px" @keyup.enter="loadList" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="loadList">{{ t('common.query') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card shadow="never">
-      <el-table :data="list" v-loading="loading" stripe>
-        <el-table-column prop="name" :label="t('prompt.name')" min-width="150">
+      <el-table-column prop="name" :label="t('prompt.name')" min-width="150">
           <template #default="{ row }">
             <span>{{ row.name }}</span>
             <el-tag v-if="row.isActive === 1" size="small" type="success" style="margin-left: 6px">{{ t('prompt.activate') }}</el-tag>
@@ -71,8 +67,7 @@
             </el-dropdown>
           </template>
         </el-table-column>
-      </el-table>
-    </el-card>
+    </LumTablePanel>
 
     <!-- 新建/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px" :close-on-click-modal="false">
@@ -131,7 +126,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import PageHeader from '@/components/common/PageHeader.vue'
+import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
 import {
   listPrompts, createPrompt, updatePrompt, publishPrompt,
   newPromptVersion, deletePrompt, getPromptVersions,
@@ -142,18 +137,27 @@ const { t } = useI18n()
 
 const list = ref<PromptVO[]>([])
 const loading = ref(false)
-const searchName = ref('')
+const queryForm = reactive({ name: '' })
+
+const searchFields = computed<SearchField[]>(() => [
+  { prop: 'name', label: t('prompt.name'), type: 'input', placeholder: t('common.search') }
+])
 
 const loadList = async () => {
   loading.value = true
   try {
-    const res = await listPrompts({ name: searchName.value || undefined, pageNum: 1, pageSize: 50 })
+    const res = await listPrompts({ name: queryForm.name || undefined, pageNum: 1, pageSize: 50 })
     list.value = res.data || []
   } catch {
     list.value = []
   } finally {
     loading.value = false
   }
+}
+
+const handleReset = () => {
+  queryForm.name = ''
+  loadList()
 }
 
 // 对话框

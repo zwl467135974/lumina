@@ -2,30 +2,24 @@
   <div class="task-page">
     <PageHeader :title="t('task.title')" :description="t('task.description')" />
 
-    <el-card shadow="never">
-      <el-form :inline="true" class="filter-form">
-        <el-form-item :label="t('task.status')">
-          <el-select v-model="filterStatus" :placeholder="t('common.all')" clearable style="width: 140px" @change="loadTasks">
-            <el-option :label="t('task.queued')" value="QUEUED" />
-            <el-option :label="t('task.running')" value="RUNNING" />
-            <el-option :label="t('task.completed')" value="COMPLETED" />
-            <el-option :label="t('task.failed')" value="FAILED" />
-            <el-option :label="t('task.cancelled')" value="CANCELLED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Agent ID">
-          <el-input-number v-model="filterAgentId" :min="1" :controls="false" style="width: 100px" @change="loadTasks" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="loadTasks">{{ t('common.search') }}</el-button>
-          <el-button @click="resetFilter">{{ t('common.refresh') }}</el-button>
-          <el-button v-if="autoRefresh" type="success" plain @click="stopAutoRefresh">{{ t('task.stopRefresh') }}</el-button>
-          <el-button v-else type="warning" plain @click="startAutoRefresh">{{ t('task.autoRefresh') }}</el-button>
-        </el-form-item>
-      </el-form>
+    <LumTablePanel
+      :search-model="queryForm"
+      :data="tasks"
+      :loading="loading"
+      :pagination="pagination"
+      :search-fields="searchFields"
+      :page-sizes="[10, 20, 50]"
+      @search="loadTasks"
+      @reset="resetFilter"
+      @page-change="onPageChange"
+      @size-change="onSizeChange"
+    >
+      <template #toolbar-right>
+        <el-button v-if="autoRefresh" type="success" plain @click="stopAutoRefresh">{{ t('task.stopRefresh') }}</el-button>
+        <el-button v-else type="warning" plain @click="startAutoRefresh">{{ t('task.autoRefresh') }}</el-button>
+      </template>
 
-      <el-table v-loading="loading" :data="tasks" stripe>
-        <el-table-column prop="taskUuid" label="任务 UUID" min-width="200" show-overflow-tooltip>
+      <el-table-column prop="taskUuid" :label="t('task.taskUuid')" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="uuid-text">{{ row.taskUuid.substring(0, 8) }}...</span>
           </template>
@@ -50,20 +44,7 @@
             <el-button v-if="row.status === 'QUEUED' || row.status === 'RUNNING'" link type="danger" @click="handleCancel(row.taskUuid)">{{ t('common.cancel') }}</el-button>
           </template>
         </el-table-column>
-      </el-table>
-
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="pageNum"
-          v-model:page-size="pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next"
-          @size-change="loadTasks"
-          @current-change="loadTasks"
-        />
-      </div>
-    </el-card>
+    </LumTablePanel>
 
     <el-dialog v-model="detailVisible" :title="t('task.detail')" width="700px">
       <el-descriptions v-if="detailTask" :column="2" border>
@@ -91,25 +72,39 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import PageHeader from '@/components/common/PageHeader.vue'
+import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
 import { cancelAgentTask, listAgentTasks, type AgentTaskVO } from '@/api/modules/agent'
 
 const { t } = useI18n()
 
 const loading = ref(false)
 const tasks = ref<AgentTaskVO[]>([])
-const total = ref(0)
-const pageNum = ref(1)
-const pageSize = ref(20)
-const filterStatus = ref('')
-const filterAgentId = ref<number | undefined>(undefined)
+const queryForm = reactive({ status: '', agentId: '' })
+const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 const detailVisible = ref(false)
 const detailTask = ref<AgentTaskVO | null>(null)
 const autoRefresh = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const searchFields = computed<SearchField[]>(() => [
+  {
+    prop: 'status',
+    label: t('task.status'),
+    type: 'select',
+    placeholder: t('common.all'),
+    options: [
+      { label: t('task.queued'), value: 'QUEUED' },
+      { label: t('task.running'), value: 'RUNNING' },
+      { label: t('task.completed'), value: 'COMPLETED' },
+      { label: t('task.failed'), value: 'FAILED' },
+      { label: t('task.cancelled'), value: 'CANCELLED' }
+    ]
+  },
+  { prop: 'agentId', label: 'Agent ID', type: 'input', placeholder: t('common.pleaseInput') }
+])
 
 const statusType = (status: string) => {
   const map: Record<string, string> = {
@@ -137,22 +132,25 @@ const loadTasks = async () => {
   loading.value = true
   try {
     const res = await listAgentTasks({
-      status: filterStatus.value || undefined,
-      agentId: filterAgentId.value,
-      pageNum: pageNum.value,
-      pageSize: pageSize.value
+      status: queryForm.status || undefined,
+      agentId: queryForm.agentId ? Number(queryForm.agentId) : undefined,
+      pageNum: pagination.pageNum,
+      pageSize: pagination.pageSize
     })
     tasks.value = res.data.list || []
-    total.value = res.data.total || 0
+    pagination.total = res.data.total || 0
   } finally {
     loading.value = false
   }
 }
 
+const onPageChange = (page: number) => { pagination.pageNum = page; loadTasks() }
+const onSizeChange = (size: number) => { pagination.pageSize = size; pagination.pageNum = 1; loadTasks() }
+
 const resetFilter = () => {
-  filterStatus.value = ''
-  filterAgentId.value = undefined
-  pageNum.value = 1
+  queryForm.status = ''
+  queryForm.agentId = ''
+  pagination.pageNum = 1
   loadTasks()
 }
 
