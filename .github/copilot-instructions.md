@@ -63,6 +63,16 @@
 - **触发条件**: 创建/修改 Vue 组件、CSS/SCSS、布局、主题、动画时
 - **自进化**: 每次使用后更新 `lumina-frontend/DESIGN.md` 和 `.agents/ui-learnings.md`
 
+### 12. lumina_redis
+- **用途**: Redis 操作规范
+- **路径**: `skills/lumina_redis/SKILL.md`
+- **触发条件**: 任何涉及 Redis 读写的后端代码（禁止直接用 RedisTemplate/RedissonClient，必须走 RedisCacheManager）
+
+### 13. lumina_flyway
+- **用途**: Flyway 迁移规范
+- **路径**: `skills/lumina_flyway/SKILL.md`
+- **触发条件**: 创建数据库迁移文件、INSERT 种子数据、ALTER TABLE 时
+
 ## 技能包使用说明
 
 1. **自动识别**: AI 助手应根据用户请求和代码上下文自动识别需要使用的技能包
@@ -90,6 +100,26 @@
 4. **数据库操作**: 使用 MyBatis-Plus（见 `lumina_mybatis_plus` skill）
 5. **JSON 处理**: 使用 Jackson（见 `lumina_json_serialization` skill）
 6. **领域建模**: 遵循领域模型实践（见 `lumina_domain_model` skill）
+7. **Redis 操作**: 必须走 RedisCacheManager（见 `lumina_redis` skill）
+8. **Flyway 迁移**: 写 SQL 前先检查已有约定（见 `lumina_flyway` skill）
+
+## 后端编码前置检查清单（Pre-Delivery Checklist）
+
+每次新增后端模块/功能时，必须执行以下检查：
+
+- [ ] **加载技能包**: 写代码前 load `lumina_architecture` + `lumina_api_design` + `lumina_mybatis_plus` + `lumina_redis`(如涉及Redis) + `lumina_flyway`(如涉及SQL)
+- [ ] **先读已有代码**: 读一个同类已有模块（如 Tenant）作为模板，确认 import 路径、基类、命名约定
+- [ ] **分层完整**: Controller → Service → ServiceImpl → Mapper（禁止 Controller 直接注入 Mapper）
+- [ ] **Domain 层**: 有业务逻辑的模块必须有 Domain Entity（参考 Agent/Tenant）
+- [ ] **写操作事务**: Service 的 create/update/delete 方法标注 `@Transactional(rollbackFor = Exception.class)`
+- [ ] **异常用 ErrorCode**: `throw new BusinessException(ErrorCode.XXX)` 而非硬编码字符串
+- [ ] **校验注解**: DTO 用 `@NotBlank`/`@Size`/`@Min`/`@Max`，Controller 用 `@Valid`
+- [ ] **Controller 注解**: `@Slf4j` + `@Validated` + `@RequiredArgsConstructor`
+- [ ] **@Audit 规范**: module 用小写（如 `"llm_provider"`），action 用标准枚举（CREATE/UPDATE/DELETE）
+- [ ] **Redis 操作**: 通过 `RedisCacheManager`，禁止直接用 `RedisTemplate`/`RedissonClient`
+- [ ] **SQL 列名**: INSERT 语句的列名必须与已有迁移一致（先 grep 检查）
+- [ ] **API 路径**: RESTful 命名 + 检查 Gateway 路由是否覆盖
+- [ ] **编译验证**: `mvn compile` 通过
 
 ## Git Commit 规范
 
