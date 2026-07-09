@@ -1,0 +1,143 @@
+- generic [ref=e51]:
+  - complementary [ref=e52]:
+    - heading "Lumina" [level=2] [ref=e54]
+    - menubar [ref=e55]:
+      - menuitem "仪表盘" [ref=e56] [cursor=pointer]:
+        - img [ref=e58]
+        - text: 仪表盘
+      - menuitem "Agent 管理" [ref=e62]:
+        - generic [ref=e63] [cursor=pointer]:
+          - img [ref=e65]
+          - generic [ref=e67]: Agent 管理
+          - img [ref=e69]
+      - menuitem "工作流管理" [expanded] [ref=e71]:
+        - generic [ref=e72] [cursor=pointer]:
+          - img [ref=e74]
+          - generic [ref=e77]: 工作流管理
+          - img [ref=e79]
+        - menu [ref=e270]:
+          - menuitem "工作流列表" [ref=e269] [cursor=pointer]
+      - menuitem "知识库" [ref=e81] [cursor=pointer]:
+        - img [ref=e83]
+        - text: 知识库
+      - menuitem "知识库联邦" [ref=e85] [cursor=pointer]:
+        - img [ref=e87]
+        - text: 知识库联邦
+      - menuitem "Prompt 管理" [ref=e90] [cursor=pointer]:
+        - img [ref=e92]
+        - text: Prompt 管理
+      - menuitem "成本仪表盘" [ref=e94] [cursor=pointer]:
+        - img [ref=e96]
+        - text: 成本仪表盘
+      - menuitem "预算管理" [ref=e100] [cursor=pointer]:
+        - img [ref=e102]
+        - text: 预算管理
+      - menuitem "Agent 评估" [ref=e106] [cursor=pointer]:
+        - img [ref=e108]
+        - text: Agent 评估
+      - menuitem "模型管理" [ref=e110] [cursor=pointer]:
+        - img [ref=e112]
+        - text: 模型管理
+      - menuitem "系统管理" [ref=e116]:
+        - generic [ref=e117] [cursor=pointer]:
+          - img [ref=e119]
+          - generic [ref=e121]: 系统管理
+          - img [ref=e123]
+  - generic [ref=e126]:
+    - banner [ref=e127]:
+      - generic [ref=e128]:
+        - button "收起" [ref=e129] [cursor=pointer]:
+          - img [ref=e131]
+        - navigation "Breadcrumb" [ref=e133]:
+          - generic [ref=e271]:
+            - link "工作流" [ref=e272]
+            - text: /
+          - link "编辑工作流" [ref=e383]
+      - generic [ref=e136]:
+        - generic [ref=e137]:
+          - button "EN" [ref=e138] [cursor=pointer]
+          - button "中文" [ref=e139] [cursor=pointer]
+        - button "暗色主题" [ref=e140] [cursor=pointer]:
+          - img [ref=e142]
+        - button "通知" [ref=e144] [cursor=pointer]:
+          - img [ref=e147]
+        - button "系" [ref=e152] [cursor=pointer]:
+          - generic [ref=e153]: 系
+    - main [ref=e154]:
+      - generic [ref=e386]:
+        - generic [ref=e387]:
+          - generic [ref=e390]:
+            - heading "编辑工作流" [level=2] [ref=e391]
+            - paragraph [ref=e392]: 拖拽节点设计工作流，可视化编辑或 YAML 模式
+          - generic [ref=e393]:
+            - button "返回" [ref=e394] [cursor=pointer]:
+              - generic [ref=e395]: 返回
+            - generic [ref=e396]:
+              - button "可视化" [ref=e397] [cursor=pointer]:
+                - generic [ref=e398]: 可视化
+              - button "YAML" [active] [ref=e399] [cursor=pointer]:
+                - generic [ref=e400]: YAML
+            - button "保存" [ref=e401] [cursor=pointer]:
+              - generic [ref=e402]: 保存
+        - generic [ref=e403]:
+          - generic [ref=e404]:
+            - generic [ref=e405]: 节点类型
+            - generic [ref=e406]:
+              - generic [ref=e407]:
+                - generic [ref=e408]: ▶
+                - generic [ref=e409]: 开始
+              - generic [ref=e410]:
+                - generic [ref=e411]: ⏹
+                - generic [ref=e412]: 结束
+              - generic [ref=e413]:
+                - generic [ref=e414]: 🤖
+                - generic [ref=e415]: Agent
+              - generic [ref=e416]:
+                - generic [ref=e417]: 🌐
+                - generic [ref=e418]: HTTP 请求
+              - generic [ref=e419]:
+                - generic [ref=e420]: 🔀
+                - generic [ref=e421]: 条件分支
+              - generic [ref=e422]:
+                - generic [ref=e423]: 🔁
+                - generic [ref=e424]: 循环
+              - generic [ref=e425]:
+                - generic [ref=e426]: ⚡
+                - generic [ref=e427]: 并行
+              - generic [ref=e428]:
+                - generic [ref=e429]: ⏱
+                - generic [ref=e430]: 延迟
+              - generic [ref=e431]:
+                - generic [ref=e432]: 📝
+                - generic [ref=e433]: 代码执行
+              - generic [ref=e434]:
+                - generic [ref=e435]: 🔄
+                - generic [ref=e436]: 数据转换
+              - generic [ref=e437]:
+                - generic [ref=e438]: ✋
+                - generic [ref=e439]: 人工审批
+            - generic [ref=e440]: 拖拽节点到画布
+          - generic [ref=e521]:
+            - textbox "输入工作流 YAML..." [ref=e523]: "name: 客服意图分类路由 description: 示例工作流：意图分类 Agent → 条件路由 → 退款/通用 Agent → 汇总输出 nodes: - id: classify type: agent name: classify agentId: 2 input: $.complaint output: category - id: route type: condition name: route expression: '#category.contains(''refund'')' branches: - condition: true to: refund-agent - condition: false to: general-agent - id: refund-agent type: agent name: refund-agent agentId: 2 input: $.complaint output: refund_result - id: general-agent type: agent name: general-agent agentId: 1 input: $.complaint output: general_result edges: - from: classify to: route"
+            - button "从 YAML 同步到画布" [ref=e525] [cursor=pointer]:
+              - generic [ref=e526]: 从 YAML 同步到画布
+          - generic [ref=e499]:
+            - generic [ref=e500]: 工作流属性
+            - generic [ref=e501]:
+              - generic [ref=e502]:
+                - generic [ref=e503]: 名称
+                - textbox "名称" [ref=e507]:
+                  - /placeholder: 工作流名称
+                  - text: 客服意图分类路由
+              - generic [ref=e508]:
+                - generic [ref=e509]: 描述
+                - textbox "描述" [ref=e513]:
+                  - /placeholder: 简短描述
+                  - text: 示例工作流：意图分类 Agent → 条件路由 → 退款/通用 Agent → 汇总输出
+            - generic [ref=e514]:
+              - generic [ref=e515]:
+                - generic [ref=e516]: 节点数
+                - generic [ref=e517]: "4"
+              - generic [ref=e518]:
+                - generic [ref=e519]: 连接数
+                - generic [ref=e520]: "1"

@@ -94,7 +94,8 @@ export default {
     passwordPlaceholder: '请输入密码',
     submit: '登录',
     loading: '登录中…',
-    success: '登录成功'
+    success: '登录成功',
+    footerHint: 'Lumina AI Agent 平台 — 智能代理管理'
   },
   dashboard: {
     title: '仪表盘',
@@ -106,8 +107,16 @@ export default {
     recentTasks: '近期任务',
     quickActions: '快捷操作',
     createAgent: '创建 Agent',
+    createAgentDesc: '构建一个新的 AI Agent',
     uploadDoc: '上传文档',
-    newEvaluation: '新建评估'
+    uploadDocDesc: '添加文档到知识库',
+    newEvaluation: '新建评估',
+    newEvaluationDesc: '运行一组新的评估测试',
+    taskUuid: '任务 UUID',
+    agent: 'Agent',
+    input: '输入',
+    status: '状态',
+    time: '时间'
   },
   agent: {
     title: 'Agent 管理',

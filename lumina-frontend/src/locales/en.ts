@@ -94,7 +94,8 @@ export default {
     passwordPlaceholder: 'Please enter password',
     submit: 'Login',
     loading: 'Logging in…',
-    success: 'Login successful'
+    success: 'Login successful',
+    footerHint: 'Lumina AI Agent Platform — Intelligent Agent Management'
   },
   dashboard: {
     title: 'Dashboard',
@@ -106,8 +107,16 @@ export default {
     recentTasks: 'Recent Tasks',
     quickActions: 'Quick Actions',
     createAgent: 'Create Agent',
+    createAgentDesc: 'Build a new AI agent',
     uploadDoc: 'Upload Document',
-    newEvaluation: 'New Evaluation'
+    uploadDocDesc: 'Add documents to knowledge base',
+    newEvaluation: 'New Evaluation',
+    newEvaluationDesc: 'Run a new evaluation suite',
+    taskUuid: 'Task UUID',
+    agent: 'Agent',
+    input: 'Input',
+    status: 'Status',
+    time: 'Time'
   },
   agent: {
     title: 'Agent Management',

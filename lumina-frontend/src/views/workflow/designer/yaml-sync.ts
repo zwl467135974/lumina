@@ -125,6 +125,22 @@ export function yamlToGraph(yamlStr: string): {
     })
   })
 
+  // 从 condition 节点的 branches 解析额外的 edges
+  rawNodes.forEach((raw) => {
+    if ((raw.type === 'condition' || raw.type === 'loop' || raw.type === 'parallel') && raw.branches) {
+      raw.branches.forEach((branch: Record<string, any>, bidx: number) => {
+        if (branch.to) {
+          edges.push({
+            id: `edge-branch-${raw.id}-${bidx}`,
+            source: raw.id,
+            target: branch.to,
+            sourceHandle: null
+          })
+        }
+      })
+    }
+  })
+
   return {
     nodes,
     edges,

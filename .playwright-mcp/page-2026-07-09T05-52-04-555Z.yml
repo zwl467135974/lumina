@@ -1,0 +1,133 @@
+- generic [ref=e51]:
+  - complementary [ref=e52]:
+    - heading "Lumina" [level=2] [ref=e54]
+    - menubar [ref=e55]:
+      - menuitem "仪表盘" [ref=e56] [cursor=pointer]:
+        - img [ref=e58]
+        - text: 仪表盘
+      - menuitem "Agent 管理" [ref=e62]:
+        - generic [ref=e63] [cursor=pointer]:
+          - img [ref=e65]
+          - generic [ref=e67]: Agent 管理
+          - img [ref=e69]
+      - menuitem "工作流管理" [expanded] [ref=e71]:
+        - generic [ref=e72] [cursor=pointer]:
+          - img [ref=e74]
+          - generic [ref=e77]: 工作流管理
+          - img [ref=e79]
+        - menu [ref=e270]:
+          - menuitem "工作流列表" [active] [ref=e269] [cursor=pointer]
+      - menuitem "知识库" [ref=e81] [cursor=pointer]:
+        - img [ref=e83]
+        - text: 知识库
+      - menuitem "知识库联邦" [ref=e85] [cursor=pointer]:
+        - img [ref=e87]
+        - text: 知识库联邦
+      - menuitem "Prompt 管理" [ref=e90] [cursor=pointer]:
+        - img [ref=e92]
+        - text: Prompt 管理
+      - menuitem "成本仪表盘" [ref=e94] [cursor=pointer]:
+        - img [ref=e96]
+        - text: 成本仪表盘
+      - menuitem "预算管理" [ref=e100] [cursor=pointer]:
+        - img [ref=e102]
+        - text: 预算管理
+      - menuitem "Agent 评估" [ref=e106] [cursor=pointer]:
+        - img [ref=e108]
+        - text: Agent 评估
+      - menuitem "模型管理" [ref=e110] [cursor=pointer]:
+        - img [ref=e112]
+        - text: 模型管理
+      - menuitem "系统管理" [ref=e116]:
+        - generic [ref=e117] [cursor=pointer]:
+          - img [ref=e119]
+          - generic [ref=e121]: 系统管理
+          - img [ref=e123]
+  - generic [ref=e126]:
+    - banner [ref=e127]:
+      - generic [ref=e128]:
+        - button "收起" [ref=e129] [cursor=pointer]:
+          - img [ref=e131]
+        - navigation "Breadcrumb" [ref=e133]:
+          - generic [ref=e271]:
+            - link "工作流" [ref=e272]
+            - text: /
+          - link "工作流管理" [ref=e274]
+      - generic [ref=e136]:
+        - generic [ref=e137]:
+          - button "EN" [ref=e138] [cursor=pointer]
+          - button "中文" [ref=e139] [cursor=pointer]
+        - button "暗色主题" [ref=e140] [cursor=pointer]:
+          - img [ref=e142]
+        - button "通知" [ref=e144] [cursor=pointer]:
+          - img [ref=e147]
+        - button "系" [ref=e152] [cursor=pointer]:
+          - generic [ref=e153]: 系
+    - main [ref=e154]:
+      - generic [ref=e155]:
+        - generic [ref=e159]:
+          - heading "仪表盘" [level=2] [ref=e160]
+          - paragraph [ref=e161]: 系统概览与快捷入口
+        - generic [ref=e162]:
+          - generic [ref=e163] [cursor=pointer]:
+            - img [ref=e166]
+            - generic [ref=e168]:
+              - generic [ref=e169]: Agent 数量
+              - generic [ref=e170]: "2"
+          - generic [ref=e171] [cursor=pointer]:
+            - img [ref=e174]
+            - generic [ref=e176]:
+              - generic [ref=e177]: 今日任务
+              - generic [ref=e178]: "0"
+          - generic [ref=e179]:
+            - img [ref=e182]
+            - generic [ref=e184]:
+              - generic [ref=e185]: Token 消耗
+              - generic [ref=e186]: "0"
+          - generic [ref=e187]:
+            - img [ref=e190]
+            - generic [ref=e194]:
+              - generic [ref=e195]: 总费用
+              - generic [ref=e196]: ¥ 0.0000
+        - generic [ref=e197]:
+          - generic [ref=e198]:
+            - heading "近期任务" [level=2] [ref=e200]
+            - generic [ref=e203]:
+              - table [ref=e205]:
+                - rowgroup [ref=e212]:
+                  - row "dashboard.taskUuid dashboard.agent dashboard.input dashboard.status dashboard.time" [ref=e213]:
+                    - columnheader "dashboard.taskUuid" [ref=e214]:
+                      - generic [ref=e215]: dashboard.taskUuid
+                    - columnheader "dashboard.agent" [ref=e216]:
+                      - generic [ref=e217]: dashboard.agent
+                    - columnheader "dashboard.input" [ref=e218]:
+                      - generic [ref=e219]: dashboard.input
+                    - columnheader "dashboard.status" [ref=e220]:
+                      - generic [ref=e221]: dashboard.status
+                    - columnheader "dashboard.time" [ref=e222]:
+                      - generic [ref=e223]: dashboard.time
+              - generic [ref=e227]:
+                - table:
+                  - rowgroup
+                - generic [ref=e229]: No Data
+            - generic [ref=e230]:
+              - img [ref=e232]
+              - generic [ref=e234]: 暂无数据
+          - generic [ref=e235]:
+            - heading "快捷操作" [level=2] [ref=e237]
+            - generic [ref=e239]:
+              - generic [ref=e240] [cursor=pointer]:
+                - img [ref=e243]
+                - generic [ref=e245]:
+                  - generic [ref=e246]: 创建 Agent
+                  - generic [ref=e247]: dashboard.createAgentDesc
+              - generic [ref=e248] [cursor=pointer]:
+                - img [ref=e251]
+                - generic [ref=e253]:
+                  - generic [ref=e254]: 上传文档
+                  - generic [ref=e255]: dashboard.uploadDocDesc
+              - generic [ref=e256] [cursor=pointer]:
+                - img [ref=e259]
+                - generic [ref=e261]:
+                  - generic [ref=e262]: 新建评估
+                  - generic [ref=e263]: dashboard.newEvaluationDesc

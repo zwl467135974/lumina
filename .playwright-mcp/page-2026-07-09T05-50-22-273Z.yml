@@ -1,0 +1,22 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "EN" [ref=e6] [cursor=pointer]
+      - button "中文" [ref=e7] [cursor=pointer]
+    - button "暗色主题" [ref=e8] [cursor=pointer]:
+      - img [ref=e10]
+  - generic [ref=e12]:
+    - generic [ref=e13]:
+      - img [ref=e15]
+      - heading "Lumina" [level=1] [ref=e19]
+      - paragraph [ref=e20]: 智能代理管理平台
+    - generic [ref=e21]:
+      - generic [ref=e25]:
+        - img [ref=e28]
+        - textbox "请输入用户名" [ref=e30]
+      - generic [ref=e34]:
+        - img [ref=e37]
+        - textbox "请输入密码" [ref=e40]
+      - button "登录" [ref=e43] [cursor=pointer]:
+        - generic [ref=e44]: 登录
+    - paragraph [ref=e45]: login.footerHint

@@ -1,0 +1,134 @@
+- generic [ref=e51]:
+  - complementary [ref=e52]:
+    - heading "Lumina" [level=2] [ref=e54]
+    - menubar [ref=e55]:
+      - menuitem "仪表盘" [ref=e56] [cursor=pointer]:
+        - img [ref=e58]
+        - text: 仪表盘
+      - menuitem "Agent 管理" [ref=e62]:
+        - generic [ref=e63] [cursor=pointer]:
+          - img [ref=e65]
+          - generic [ref=e67]: Agent 管理
+          - img [ref=e69]
+      - menuitem "工作流管理" [expanded] [ref=e71]:
+        - generic [ref=e72] [cursor=pointer]:
+          - img [ref=e74]
+          - generic [ref=e77]: 工作流管理
+          - img [ref=e79]
+        - menu [ref=e270]:
+          - menuitem "工作流列表" [ref=e269] [cursor=pointer]
+      - menuitem "知识库" [ref=e81] [cursor=pointer]:
+        - img [ref=e83]
+        - text: 知识库
+      - menuitem "知识库联邦" [ref=e85] [cursor=pointer]:
+        - img [ref=e87]
+        - text: 知识库联邦
+      - menuitem "Prompt 管理" [ref=e90] [cursor=pointer]:
+        - img [ref=e92]
+        - text: Prompt 管理
+      - menuitem "成本仪表盘" [ref=e94] [cursor=pointer]:
+        - img [ref=e96]
+        - text: 成本仪表盘
+      - menuitem "预算管理" [ref=e100] [cursor=pointer]:
+        - img [ref=e102]
+        - text: 预算管理
+      - menuitem "Agent 评估" [ref=e106] [cursor=pointer]:
+        - img [ref=e108]
+        - text: Agent 评估
+      - menuitem "模型管理" [ref=e110] [cursor=pointer]:
+        - img [ref=e112]
+        - text: 模型管理
+      - menuitem "系统管理" [ref=e116]:
+        - generic [ref=e117] [cursor=pointer]:
+          - img [ref=e119]
+          - generic [ref=e121]: 系统管理
+          - img [ref=e123]
+  - generic [ref=e126]:
+    - banner [ref=e127]:
+      - generic [ref=e128]:
+        - button "收起" [ref=e129] [cursor=pointer]:
+          - img [ref=e131]
+        - navigation "Breadcrumb" [ref=e133]:
+          - generic [ref=e271]:
+            - link "工作流" [ref=e272]
+            - text: /
+          - link "编辑工作流" [ref=e383]
+      - generic [ref=e136]:
+        - generic [ref=e137]:
+          - button "EN" [ref=e138] [cursor=pointer]
+          - button "中文" [ref=e139] [cursor=pointer]
+        - button "暗色主题" [ref=e140] [cursor=pointer]:
+          - img [ref=e142]
+        - button "通知" [ref=e144] [cursor=pointer]:
+          - img [ref=e147]
+        - button "系" [ref=e152] [cursor=pointer]:
+          - generic [ref=e153]: 系
+    - main [ref=e154]:
+      - generic [ref=e275]:
+        - generic [ref=e279]:
+          - heading "工作流管理" [level=2] [ref=e280]
+          - paragraph [ref=e281]: DAG 工作流编排与管理
+        - generic [ref=e283]:
+          - generic [ref=e285]:
+            - generic [ref=e286]:
+              - generic [ref=e287]: 工作流名称
+              - textbox "工作流名称" [ref=e291]:
+                - /placeholder: 搜索
+            - generic [ref=e293]:
+              - generic [ref=e294]: 状态
+              - generic [ref=e297] [cursor=pointer]:
+                - generic:
+                  - combobox "状态" [ref=e299]
+                  - generic [ref=e300]: 全部
+                - img [ref=e303]
+            - generic [ref=e306]:
+              - button "搜索" [ref=e307] [cursor=pointer]:
+                - generic [ref=e308]:
+                  - img [ref=e310]
+                  - text: 搜索
+              - button "重置" [ref=e312] [cursor=pointer]:
+                - generic [ref=e313]: 重置
+          - generic [ref=e315]:
+            - button "可视化编辑" [ref=e316] [cursor=pointer]:
+              - generic [ref=e317]: 可视化编辑
+            - button "YAML 新建" [ref=e318] [cursor=pointer]:
+              - generic [ref=e319]: YAML 新建
+            - button "模板" [ref=e320] [cursor=pointer]:
+              - generic [ref=e321]: 模板
+          - generic [ref=e323]:
+            - table [ref=e325]:
+              - rowgroup [ref=e333]:
+                - row "工作流名称 描述 版本 状态 创建时间 操作" [ref=e334]:
+                  - columnheader "工作流名称" [ref=e335]:
+                    - generic [ref=e336]: 工作流名称
+                  - columnheader "描述" [ref=e337]:
+                    - generic [ref=e338]: 描述
+                  - columnheader "版本" [ref=e339]:
+                    - generic [ref=e340]: 版本
+                  - columnheader "状态" [ref=e341]:
+                    - generic [ref=e342]: 状态
+                  - columnheader "创建时间" [ref=e343]:
+                    - generic [ref=e344]: 创建时间
+                  - columnheader "操作" [ref=e345]:
+                    - generic [ref=e346]: 操作
+            - table [ref=e351]:
+              - rowgroup [ref=e359]:
+                - row "客服意图分类路由 示例工作流：意图分类 Agent → 条件路由 → 退款/通用 Agent → 汇总输出 1 已发布 2026-07-08 15:43:32 实例 可视化编辑 更多" [ref=e360]:
+                  - cell "客服意图分类路由" [ref=e361]:
+                    - generic [ref=e362]: 客服意图分类路由
+                  - cell "示例工作流：意图分类 Agent → 条件路由 → 退款/通用 Agent → 汇总输出" [ref=e363]:
+                    - generic [ref=e364]: 示例工作流：意图分类 Agent → 条件路由 → 退款/通用 Agent → 汇总输出
+                  - cell "1" [ref=e365]:
+                    - generic [ref=e366]: "1"
+                  - cell "已发布" [ref=e367]:
+                    - generic [ref=e370]: 已发布
+                  - cell "2026-07-08 15:43:32" [ref=e371]:
+                    - generic [ref=e372]: 2026-07-08 15:43:32
+                  - cell "实例 可视化编辑 更多" [ref=e373]:
+                    - generic [ref=e374]:
+                      - button "实例" [ref=e375] [cursor=pointer]:
+                        - generic [ref=e376]: 实例
+                      - button "可视化编辑" [active] [ref=e377] [cursor=pointer]:
+                        - generic [ref=e378]: 可视化编辑
+                      - button "更多" [ref=e380] [cursor=pointer]:
+                        - generic [ref=e381]: 更多

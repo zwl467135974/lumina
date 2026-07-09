@@ -440,6 +440,11 @@ if (workflowId.value) {
   pointer-events: none;
 }
 
+/* 修复 Vue Flow Background SVG 拦截节点点击事件 */
+.canvas-area :deep(.vue-flow__background) {
+  pointer-events: none !important;
+}
+
 /* YAML 编辑 */
 .yaml-editor-area { padding: 12px; height: 100%; display: flex; flex-direction: column; gap: 8px; }
 .yaml-textarea :deep(.el-textarea__inner) {
