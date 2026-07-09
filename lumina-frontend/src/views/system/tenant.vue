@@ -1,73 +1,49 @@
 <template>
   <div class="system-tenant-page">
-    <page-header :title="t('system.tenant.title')">
-      <el-button type="primary" v-permission="'tenant:create'" @click="handleCreate">
-        <el-icon><Plus /></el-icon>
-        {{ t('common.create') }}
-      </el-button>
-    </page-header>
+    <PageHeader :title="t('system.tenant.title')" />
 
-    <el-card>
-      <el-form :model="queryForm" inline>
-        <el-form-item :label="t('system.tenant.tenantName')">
-          <el-input v-model="queryForm.tenantName" :placeholder="t('system.tenant.tenantNamePlaceholder')" clearable />
-        </el-form-item>
-        <el-form-item :label="t('system.tenant.tenantCode')">
-          <el-input v-model="queryForm.tenantCode" :placeholder="t('system.tenant.tenantCodePlaceholder')" clearable />
-        </el-form-item>
-        <el-form-item :label="t('common.status')">
-          <el-select v-model="queryForm.status" :placeholder="t('common.pleaseSelect')" clearable>
-            <el-option :label="t('common.enable')" :value="1" />
-            <el-option :label="t('common.disable')" :value="0" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="loadData">{{ t('common.query') }}</el-button>
-          <el-button @click="handleReset">{{ t('common.reset') }}</el-button>
-        </el-form-item>
-      </el-form>
+    <LumTablePanel
+      :search-model="queryForm"
+      :data="tableData"
+      :loading="loading"
+      :pagination="pagination"
+      :search-fields="searchFields"
+      @search="loadData"
+      @reset="handleReset"
+      @page-change="handlePageChange"
+      @size-change="handleSizeChange"
+    >
+      <template #toolbar-left>
+        <el-button type="primary" v-permission="'tenant:create'" @click="handleCreate">
+          <el-icon><Plus /></el-icon>
+          {{ t('common.create') }}
+        </el-button>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border style="margin-top: 20px">
-        <el-table-column prop="tenantId" label="ID" width="80" />
-        <el-table-column prop="tenantName" :label="t('system.tenant.tenantName')" width="200" />
-        <el-table-column prop="tenantCode" :label="t('system.tenant.tenantCode')" width="200" />
-        <el-table-column prop="contact" :label="t('system.tenant.contact')" width="150" />
-        <el-table-column prop="phone" :label="t('system.tenant.phone')" width="150" />
-        <el-table-column prop="email" :label="t('system.tenant.email')" width="200" />
-        <el-table-column prop="status" :label="t('common.status')" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
-              {{ row.status === 1 ? t('common.enable') : t('common.disable') }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
-        <el-table-column :label="t('common.actions')" width="240" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" v-permission="'tenant:update'" @click="handleEdit(row)">
-              {{ t('common.edit') }}
-            </el-button>
-            <el-button link type="primary" v-permission="'tenant:status'" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? t('common.disable') : t('common.enable') }}
-            </el-button>
-            <el-button link type="danger" v-permission="'tenant:delete'" @click="handleDelete(row)">
-              {{ t('common.delete') }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        style="margin-top: 20px; justify-content: flex-end"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
-    </el-card>
+      <el-table-column prop="tenantId" label="ID" width="80" />
+      <el-table-column prop="tenantName" :label="t('system.tenant.tenantName')" width="200" />
+      <el-table-column prop="tenantCode" :label="t('system.tenant.tenantCode')" width="200" />
+      <el-table-column prop="contact" :label="t('system.tenant.contact')" width="150" />
+      <el-table-column prop="phone" :label="t('system.tenant.phone')" width="150" />
+      <el-table-column prop="email" :label="t('system.tenant.email')" width="200" />
+      <el-table-column prop="status" :label="t('common.status')" width="100">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'info'">
+            {{ row.status === 1 ? t('common.enable') : t('common.disable') }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
+      <el-table-column :label="t('common.actions')" width="200" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" v-permission="'tenant:update'" @click="handleEdit(row)">{{ t('common.edit') }}</el-button>
+          <el-button link type="primary" v-permission="'tenant:status'" @click="handleToggleStatus(row)">
+            {{ row.status === 1 ? t('common.disable') : t('common.enable') }}
+          </el-button>
+          <el-button link type="danger" v-permission="'tenant:delete'" @click="handleDelete(row)">{{ t('common.delete') }}</el-button>
+        </template>
+      </el-table-column>
+    </LumTablePanel>
 
     <!-- 创建/编辑租户对话框 -->
     <el-dialog
@@ -106,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -119,7 +95,7 @@ import {
 } from '@/api/modules/system-tenant'
 import { useTable } from '@/composables/useTable'
 import type { TenantVO, CreateTenantDTO, UpdateTenantDTO, QueryTenantDTO } from '@/types/api'
-import PageHeader from '@/components/common/PageHeader.vue'
+import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
 
 const { t } = useI18n()
 
@@ -128,6 +104,21 @@ const queryForm = reactive<QueryTenantDTO>({
   tenantCode: '',
   status: undefined
 })
+
+const searchFields = computed<SearchField[]>(() => [
+  { prop: 'tenantName', label: t('system.tenant.tenantName'), type: 'input', placeholder: t('system.tenant.tenantNamePlaceholder') },
+  { prop: 'tenantCode', label: t('system.tenant.tenantCode'), type: 'input', placeholder: t('system.tenant.tenantCodePlaceholder') },
+  {
+    prop: 'status',
+    label: t('common.status'),
+    type: 'select',
+    placeholder: t('common.pleaseSelect'),
+    options: [
+      { label: t('common.enable'), value: 1 },
+      { label: t('common.disable'), value: 0 }
+    ]
+  }
+])
 
 const { loading, tableData, pagination, loadData, handlePageChange, handleSizeChange } = useTable<TenantVO>(
   (params) => getTenantList({ ...queryForm, ...params })
@@ -270,25 +261,3 @@ onMounted(() => {
   loadData()
 })
 </script>
-
-<style scoped lang="scss">
-.system-tenant-page {
-  :deep(.el-pagination) {
-    display: flex;
-  }
-}
-
-@media (max-width: 768px) {
-  :deep(.el-col) {
-    max-width: 100%;
-    flex: 0 0 100%;
-  }
-  :deep(.el-form--inline .el-form-item) {
-    display: block;
-    margin-right: 0;
-  }
-  :deep(.el-table) {
-    font-size: 12px;
-  }
-}
-</style>

@@ -1,34 +1,26 @@
 <template>
   <div class="system-role-page">
-    <page-header :title="t('system.role.title')">
-      <el-button type="primary" v-permission="'role:create'" @click="handleCreate">
-        <el-icon><Plus /></el-icon>
-        {{ t('common.create') }}
-      </el-button>
-    </page-header>
+    <PageHeader :title="t('system.role.title')" />
 
-    <el-card>
-      <el-form :model="queryForm" inline>
-        <el-form-item :label="t('system.role.roleName')">
-          <el-input v-model="queryForm.roleName" :placeholder="t('system.role.roleNamePlaceholder')" clearable />
-        </el-form-item>
-        <el-form-item :label="t('system.role.roleCode')">
-          <el-input v-model="queryForm.roleCode" :placeholder="t('system.role.roleCodePlaceholder')" clearable />
-        </el-form-item>
-        <el-form-item :label="t('common.status')">
-          <el-select v-model="queryForm.status" :placeholder="t('common.pleaseSelect')" clearable>
-            <el-option :label="t('common.enable')" :value="1" />
-            <el-option :label="t('common.disable')" :value="0" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="loadData">{{ t('common.query') }}</el-button>
-          <el-button @click="handleReset">{{ t('common.reset') }}</el-button>
-        </el-form-item>
-      </el-form>
+    <LumTablePanel
+      :search-model="queryForm"
+      :data="tableData"
+      :loading="loading"
+      :pagination="pagination"
+      :search-fields="searchFields"
+      @search="loadData"
+      @reset="handleReset"
+      @page-change="handlePageChange"
+      @size-change="handleSizeChange"
+    >
+      <template #toolbar-left>
+        <el-button type="primary" v-permission="'role:create'" @click="handleCreate">
+          <el-icon><Plus /></el-icon>
+          {{ t('common.create') }}
+        </el-button>
+      </template>
 
-      <el-table :data="tableData" v-loading="loading" border style="margin-top: 20px">
-        <el-table-column prop="roleId" label="ID" width="80" />
+      <el-table-column prop="roleId" label="ID" width="80" />
         <el-table-column prop="roleName" :label="t('system.role.roleName')" width="200" />
         <el-table-column prop="roleCode" :label="t('system.role.roleCode')" width="200" />
         <el-table-column prop="description" :label="t('common.description')" show-overflow-tooltip />
@@ -61,19 +53,7 @@
             </el-dropdown>
           </template>
         </el-table-column>
-      </el-table>
-
-      <el-pagination
-        v-model:current-page="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        style="margin-top: 20px; justify-content: flex-end"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
-    </el-card>
+    </LumTablePanel>
 
     <!-- 创建/编辑角色对话框 -->
     <el-dialog
@@ -135,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -150,7 +130,7 @@ import {
 import { getPermissionTree } from '@/api/modules/system-permission'
 import { useTable } from '@/composables/useTable'
 import type { RoleVO, CreateRoleDTO, UpdateRoleDTO, QueryRoleDTO, PermissionVO } from '@/types/api'
-import PageHeader from '@/components/common/PageHeader.vue'
+import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
 
 const { t } = useI18n()
 
@@ -159,6 +139,21 @@ const queryForm = reactive<QueryRoleDTO>({
   roleCode: '',
   status: undefined
 })
+
+const searchFields = computed<SearchField[]>(() => [
+  { prop: 'roleName', label: t('system.role.roleName'), type: 'input', placeholder: t('system.role.roleNamePlaceholder') },
+  { prop: 'roleCode', label: t('system.role.roleCode'), type: 'input', placeholder: t('system.role.roleCodePlaceholder') },
+  {
+    prop: 'status',
+    label: t('common.status'),
+    type: 'select',
+    placeholder: t('common.pleaseSelect'),
+    options: [
+      { label: t('common.enable'), value: 1 },
+      { label: t('common.disable'), value: 0 }
+    ]
+  }
+])
 
 const { loading, tableData, pagination, loadData, handlePageChange, handleSizeChange } = useTable<RoleVO>(
   (params) => getRoleList({ ...queryForm, ...params })
