@@ -64,9 +64,9 @@ spring:
           predicates: [Path=/api/v1/agents/**]
           filters: [StripPrefix=0]
 
-        - id: lumina-agent-llm-providers-route
+        - id: lumina-llm-providers-route
           uri: lb://lumina-agent-service
-          predicates: [Path=/api/v1/agent/llm-providers/**]
+          predicates: [Path=/api/v1/llm-providers/**]
           filters: [StripPrefix=0]
 
         - id: lumina-agent-conversations-route

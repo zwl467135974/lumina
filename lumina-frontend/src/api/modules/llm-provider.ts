@@ -36,25 +36,25 @@ export interface QueryLlmProviderDTO {
 }
 
 export function getLlmProviderList(params?: QueryLlmProviderDTO) {
-  return request.get<R<LlmProviderVO[]>>('/api/v1/agent/llm-providers', { params })
+  return request.get<R<LlmProviderVO[]>>('/api/v1/llm-providers', { params })
 }
 
 export function getLlmProviderById(id: number) {
-  return request.get<R<LlmProviderVO>>(`/api/v1/agent/llm-providers/${id}`)
+  return request.get<R<LlmProviderVO>>(`/api/v1/llm-providers/${id}`)
 }
 
 export function createLlmProvider(data: CreateLlmProviderDTO) {
-  return request.post<R<LlmProviderVO>>('/api/v1/agent/llm-providers', data)
+  return request.post<R<LlmProviderVO>>('/api/v1/llm-providers', data)
 }
 
 export function updateLlmProvider(id: number, data: CreateLlmProviderDTO) {
-  return request.put<R<LlmProviderVO>>(`/api/v1/agent/llm-providers/${id}`, data)
+  return request.put<R<LlmProviderVO>>(`/api/v1/llm-providers/${id}`, data)
 }
 
 export function deleteLlmProvider(id: number) {
-  return request.delete<R<void>>(`/api/v1/agent/llm-providers/${id}`)
+  return request.delete<R<void>>(`/api/v1/llm-providers/${id}`)
 }
 
 export function testLlmProvider(id: number) {
-  return request.post<R<boolean>>(`/api/v1/agent/llm-providers/${id}/test`)
+  return request.post<R<boolean>>(`/api/v1/llm-providers/${id}/test`)
 }

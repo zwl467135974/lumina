@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/agent/llm-providers")
+@RequestMapping("/api/v1/llm-providers")
 @RequiredArgsConstructor
 public class LlmProviderController {
 

@@ -27,11 +27,11 @@ SET @menuId = LAST_INSERT_ID();
 
 INSERT INTO `lumina_permission` (`parent_id`, `permission_code`, `permission_name`, `permission_type`, `path`, `sort_order`)
 VALUES
-    (@menuId, 'model:list',   '查看', 2, 'GET:/api/v1/agent/llm-providers',          1),
-    (@menuId, 'model:create', '创建', 2, 'POST:/api/v1/agent/llm-providers',         2),
-    (@menuId, 'model:update', '编辑', 2, 'PUT:/api/v1/agent/llm-providers/*',        3),
-    (@menuId, 'model:delete', '删除', 2, 'DELETE:/api/v1/agent/llm-providers/*',     4),
-    (@menuId, 'model:test',   '测试', 2, 'POST:/api/v1/agent/llm-providers/*/test',  5);
+    (@menuId, 'model:list',   '查看', 2, 'GET:/api/v1/llm-providers',          1),
+    (@menuId, 'model:create', '创建', 2, 'POST:/api/v1/llm-providers',         2),
+    (@menuId, 'model:update', '编辑', 2, 'PUT:/api/v1/llm-providers/*',        3),
+    (@menuId, 'model:delete', '删除', 2, 'DELETE:/api/v1/llm-providers/*',     4),
+    (@menuId, 'model:test',   '测试', 2, 'POST:/api/v1/llm-providers/*/test',  5);
 
 -- 给 admin 角色分配权限
 INSERT IGNORE INTO `lumina_role_permission` (`role_id`, `permission_id`)
