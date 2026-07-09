@@ -134,6 +134,39 @@
           />
         </el-form-item>
 
+        <el-form-item label="Top P">
+          <el-slider
+            v-model="formData.llmConfig.topP"
+            :min="0"
+            :max="1"
+            :step="0.05"
+            show-input
+            :show-input-controls="false"
+          />
+        </el-form-item>
+
+        <el-form-item label="Frequency Penalty">
+          <el-slider
+            v-model="formData.llmConfig.frequencyPenalty"
+            :min="-2"
+            :max="2"
+            :step="0.1"
+            show-input
+            :show-input-controls="false"
+          />
+        </el-form-item>
+
+        <el-form-item label="Presence Penalty">
+          <el-slider
+            v-model="formData.llmConfig.presencePenalty"
+            :min="-2"
+            :max="2"
+            :step="0.1"
+            show-input
+            :show-input-controls="false"
+          />
+        </el-form-item>
+
         <el-divider content-position="left">工具配置</el-divider>
 
         <el-form-item label="可用工具">
@@ -150,6 +183,51 @@
               </div>
             </el-checkbox>
           </el-checkbox-group>
+        </el-form-item>
+
+        <el-divider content-position="left">知识库挂载</el-divider>
+
+        <el-form-item label="关联知识库">
+          <el-select
+            v-model="selectedKbIds"
+            multiple
+            filterable
+            :placeholder="t('common.pleaseSelect')"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="kb in availableKbs"
+              :key="kb.id"
+              :label="kb.name"
+              :value="kb.id"
+            />
+          </el-select>
+          <div v-if="availableKbs.length === 0" class="form-tip">
+            暂无可用知识库，请先在知识库页面创建
+          </div>
+        </el-form-item>
+
+        <el-divider content-position="left">高级配置</el-divider>
+
+        <el-form-item label="限流（请求/分钟）">
+          <el-input-number
+            v-model="formData.rateLimit"
+            :min="0"
+            :max="10000"
+            :step="10"
+            style="width: 100%"
+          />
+          <div class="form-tip">0 表示不限制</div>
+        </el-form-item>
+
+        <el-form-item label="最大并发数">
+          <el-input-number
+            v-model="formData.maxConcurrent"
+            :min="0"
+            :max="100"
+            style="width: 100%"
+          />
+          <div class="form-tip">0 表示不限制</div>
         </el-form-item>
 
         <el-form-item>
@@ -171,6 +249,7 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createAgent, updateAgent, getAgent } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import { getTools, type ToolDefinitionVO } from '@/api/modules/tools'
+import { listKnowledgeBases } from '@/api/modules/knowledge-base'
 import type { CreateAgentDTO, UpdateAgentDTO } from '@/types/api'
 import PageHeader from '@/components/common/PageHeader.vue'
 
@@ -203,10 +282,18 @@ const formData = reactive({
     apiKey: '',
     baseUrl: '',
     temperature: 0.7,
-    maxTokens: 4096
+    maxTokens: 4096,
+    topP: 0.9,
+    frequencyPenalty: 0,
+    presencePenalty: 0
   },
-  tools: [] as string[]
+  tools: [] as string[],
+  rateLimit: 0,
+  maxConcurrent: 0
 })
+
+const availableKbs = ref<Array<{ id: number; name: string }>>([])
+const selectedKbIds = ref<number[]>([])
 
 const promptName = computed(() => formData.agentType.toLowerCase())
 
@@ -328,8 +415,18 @@ const handleBack = () => {
   router.push('/agent')
 }
 
+const loadKnowledgeBases = async () => {
+  try {
+    const res = await listKnowledgeBases()
+    availableKbs.value = (res.data || []).map((kb: any) => ({ id: kb.id, name: kb.name }))
+  } catch {
+    availableKbs.value = []
+  }
+}
+
 onMounted(async () => {
   await loadTools()
+  await loadKnowledgeBases()
   await loadAgentDetail()
   await loadActivePrompt()
 })
@@ -341,6 +438,11 @@ watch(() => formData.agentType, () => {
 
 <style scoped lang="scss">
 .agent-form-page {
+  .form-tip {
+    font-size: 12px;
+    color: var(--lumina-text-muted);
+    margin-top: 4px;
+  }
   max-width: 1000px;
   margin: 0 auto;
 
