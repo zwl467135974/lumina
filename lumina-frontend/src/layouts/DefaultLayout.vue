@@ -51,7 +51,7 @@ const breadcrumbs = computed(() => {
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: var(--lumina-bg-base);
+  background: var(--lumina-bg-page);
 }
 
 .main-container {
@@ -61,7 +61,7 @@ const breadcrumbs = computed(() => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--lumina-bg-base);
+  background: var(--lumina-bg-page);
 }
 
 .page-content {
@@ -69,7 +69,7 @@ const breadcrumbs = computed(() => {
   overflow-y: auto;
   overflow-x: auto;
   padding: var(--lumina-spacing-lg);
-  background: var(--lumina-bg-base);
+  background: var(--lumina-bg-page);
   scrollbar-width: thin;
   scrollbar-color: var(--lumina-border) transparent;
 }
