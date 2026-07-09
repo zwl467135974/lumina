@@ -19,22 +19,21 @@ CREATE TABLE IF NOT EXISTS `lumina_llm_provider` (
     INDEX `idx_tenant` (`tenant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='LLM 模型供应商配置';
 
--- 插入权限种子
-INSERT INTO `lumina_permission` (`parent_id`, `name`, `permission_code`, `type`, `resource_path`, `sort_order`, `icon`, `status`)
-VALUES
-    (0, '模型管理', 'system:model', 1, '/system/models', 65, 'Coin', 1);
+-- 插入权限种子（列名对齐 lumina_permission 表: permission_name/permission_type/path）
+INSERT INTO `lumina_permission` (`parent_id`, `permission_code`, `permission_name`, `permission_type`, `path`, `icon`, `sort_order`)
+VALUES (0, 'system:model', '模型管理', 1, '/system/models', 'Coin', 65);
 
 SET @menuId = LAST_INSERT_ID();
 
-INSERT INTO `lumina_permission` (`parent_id`, `name`, `permission_code`, `type`, `resource_path`, `sort_order`, `status`)
+INSERT INTO `lumina_permission` (`parent_id`, `permission_code`, `permission_name`, `permission_type`, `path`, `sort_order`)
 VALUES
-    (@menuId, '查看', 'model:list',   2, 'GET:/api/v1/agent/llm-providers',     1, 1),
-    (@menuId, '创建', 'model:create', 2, 'POST:/api/v1/agent/llm-providers',    2, 1),
-    (@menuId, '编辑', 'model:update', 2, 'PUT:/api/v1/agent/llm-providers/*',   3, 1),
-    (@menuId, '删除', 'model:delete', 2, 'DELETE:/api/v1/agent/llm-providers/*',4, 1),
-    (@menuId, '测试', 'model:test',   2, 'POST:/api/v1/agent/llm-providers/*/test', 5, 1);
+    (@menuId, 'model:list',   '查看', 2, 'GET:/api/v1/agent/llm-providers',          1),
+    (@menuId, 'model:create', '创建', 2, 'POST:/api/v1/agent/llm-providers',         2),
+    (@menuId, 'model:update', '编辑', 2, 'PUT:/api/v1/agent/llm-providers/*',        3),
+    (@menuId, 'model:delete', '删除', 2, 'DELETE:/api/v1/agent/llm-providers/*',     4),
+    (@menuId, 'model:test',   '测试', 2, 'POST:/api/v1/agent/llm-providers/*/test',  5);
 
 -- 给 admin 角色分配权限
-INSERT INTO `lumina_role_permission` (`role_id`, `permission_id`)
-SELECT 1, permission_id FROM `lumina_permission`
-WHERE permission_code IN ('system:model', 'model:list', 'model:create', 'model:update', 'model:delete', 'model:test');
+INSERT IGNORE INTO `lumina_role_permission` (`role_id`, `permission_id`)
+SELECT 1, `permission_id` FROM `lumina_permission`
+WHERE `permission_code` IN ('system:model', 'model:list', 'model:create', 'model:update', 'model:delete', 'model:test');
