@@ -2,6 +2,23 @@
   <div class="login-page">
     <div class="login-bg-layer"></div>
 
+    <!-- Language + Theme Switch -->
+    <div class="login-toolbar">
+      <div class="login-lang">
+        <button
+          v-for="lang in langOptions"
+          :key="lang.code"
+          :class="['login-lang-btn', { active: locale === lang.code }]"
+          @click="switchLocale(lang.code)"
+        >
+          {{ lang.label }}
+        </button>
+      </div>
+      <button class="login-theme-btn" @click="appStore.toggleTheme()" :title="appStore.theme === 'dark' ? t('header.lightMode') : t('header.darkMode')">
+        <el-icon :size="18"><Sunny v-if="appStore.theme === 'dark'" /><Moon v-else /></el-icon>
+      </button>
+    </div>
+
     <div class="login-card">
       <!-- Brand Logo -->
       <div class="login-brand">
@@ -72,19 +89,30 @@
   </div>
 </template>
 
-<script setup>
-import { ref, reactive } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Lock } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { User, Lock, Sunny, Moon } from '@element-plus/icons-vue'
+import { ElMessage, type FormInstance } from 'element-plus'
 import { useI18n } from 'vue-i18n'
-import { useUserStore } from '@/stores'
+import { useUserStore, useAppStore } from '@/stores'
 
-const { t } = useI18n()
+const { t, locale, availableLocales } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
+const appStore = useAppStore()
 
-const formRef = ref(null)
+const langOptions = computed(() => availableLocales.map(code => ({
+  code,
+  label: code === 'zh-CN' ? '中文' : 'EN'
+})))
+
+function switchLocale(code: string) {
+  locale.value = code
+  localStorage.setItem('lumina-lang', code)
+}
+
+const formRef = ref<FormInstance>()
 const loading = ref(false)
 
 const formData = reactive({
@@ -111,7 +139,7 @@ async function handleLogin() {
     await userStore.login(formData.username, formData.password)
     ElMessage.success(t('login.success'))
     router.push('/')
-  } catch (err) {
+  } catch (err: any) {
     ElMessage.error(err?.message || t('login.error'))
   } finally {
     loading.value = false
@@ -137,7 +165,72 @@ async function handleLogin() {
   padding: var(--lumina-spacing-lg);
 }
 
-/* ---------- 背景装饰：极淡点阵 ---------- */
+/* ---------- 右上角工具栏（语言 + 主题） ---------- */
+.login-toolbar {
+  position: absolute;
+  top: var(--lumina-spacing-lg);
+  right: var(--lumina-spacing-lg);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--lumina-spacing-sm);
+}
+
+.login-lang {
+  display: flex;
+  align-items: center;
+  background: var(--lumina-bg-card);
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-full);
+  padding: 2px;
+}
+
+.login-lang-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--lumina-radius-full);
+  background: transparent;
+  color: var(--lumina-text-secondary);
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-xs);
+  font-weight: var(--lumina-font-weight-medium);
+  cursor: pointer;
+  transition:
+    color var(--lumina-transition-fast),
+    background var(--lumina-transition-fast);
+}
+
+.login-lang-btn:hover {
+  color: var(--lumina-text-primary);
+}
+
+.login-lang-btn.active {
+  background: var(--lumina-primary);
+  color: #ffffff;
+}
+
+.login-theme-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--lumina-border);
+  border-radius: var(--lumina-radius-full);
+  background: var(--lumina-bg-card);
+  color: var(--lumina-text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--lumina-transition-fast),
+    border-color var(--lumina-transition-fast);
+}
+
+.login-theme-btn:hover {
+  color: var(--lumina-primary);
+  border-color: var(--lumina-border-hover);
+}
+
+/* ---------- 背景装饰 ---------- */
 .login-bg-layer {
   position: absolute;
   inset: 0;
