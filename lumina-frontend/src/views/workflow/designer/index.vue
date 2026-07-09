@@ -126,6 +126,64 @@
                 <el-input v-model="selectedNode.data.properties.decisionVar" />
               </el-form-item>
             </template>
+
+            <template v-else-if="selectedNode.data.nodeType === 'http'">
+              <el-form-item label="请求方法">
+                <el-select v-model="selectedNode.data.properties.method" style="width: 100%">
+                  <el-option label="GET" value="GET" />
+                  <el-option label="POST" value="POST" />
+                  <el-option label="PUT" value="PUT" />
+                  <el-option label="DELETE" value="DELETE" />
+                  <el-option label="PATCH" value="PATCH" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="URL">
+                <el-input v-model="selectedNode.data.properties.url" placeholder="https://api.example.com/data" />
+              </el-form-item>
+              <el-form-item label="Headers">
+                <el-input v-model="selectedNode.data.properties.headers" type="textarea" :rows="2" placeholder='{"Content-Type": "application/json"}' />
+              </el-form-item>
+              <el-form-item label="Body">
+                <el-input v-model="selectedNode.data.properties.body" type="textarea" :rows="3" placeholder="请求体（POST/PUT）" />
+              </el-form-item>
+              <el-form-item label="响应变量">
+                <el-input v-model="selectedNode.data.properties.responseVar" placeholder="httpResult" />
+              </el-form-item>
+            </template>
+
+            <template v-else-if="selectedNode.data.nodeType === 'delay'">
+              <el-form-item label="等待时长">
+                <el-input-number v-model="selectedNode.data.properties.duration" :min="1" style="width: 100%" />
+              </el-form-item>
+              <el-form-item label="时间单位">
+                <el-select v-model="selectedNode.data.properties.timeUnit" style="width: 100%">
+                  <el-option label="秒" value="seconds" />
+                  <el-option label="分钟" value="minutes" />
+                  <el-option label="小时" value="hours" />
+                </el-select>
+              </el-form-item>
+            </template>
+
+            <template v-else-if="selectedNode.data.nodeType === 'code'">
+              <el-form-item label="语言">
+                <el-select v-model="selectedNode.data.properties.language" style="width: 100%">
+                  <el-option label="JavaScript" value="javascript" />
+                  <el-option label="Python" value="python" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="脚本">
+                <el-input v-model="selectedNode.data.properties.script" type="textarea" :rows="6" placeholder="// 输入脚本代码" style="font-family: var(--lumina-font-mono)" />
+              </el-form-item>
+              <el-form-item label="输出变量">
+                <el-input v-model="selectedNode.data.properties.outputVar" placeholder="codeResult" />
+              </el-form-item>
+            </template>
+
+            <template v-else-if="selectedNode.data.nodeType === 'start' || selectedNode.data.nodeType === 'end'">
+              <div style="color: var(--lumina-text-muted); font-size: 12px; padding: 8px 0">
+                此节点无需配置属性
+              </div>
+            </template>
           </el-form>
 
           <el-button type="danger" size="small" @click="deleteNode(selectedNode.id)" style="width: 100%">
