@@ -35,6 +35,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+
     /**
      * Domain -> DO 转换
      */
@@ -99,6 +102,13 @@ public class UserServiceImpl implements UserService {
         loginVO.setExpiration(System.currentTimeMillis() + JwtUtil.DEFAULT_EXPIRATION_TIME);
 
         log.info("用户登录成功: userId={}, username={}", user.getUserId(), user.getUsername());
+
+        // 记录在线状态到 Redis
+        redisTemplate.opsForZSet().add(
+                "online:users",
+                user.getUserId() + ":" + user.getUsername(),
+                System.currentTimeMillis()
+        );
 
         return loginVO;
     }

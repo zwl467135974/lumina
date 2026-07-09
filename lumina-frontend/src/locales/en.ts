@@ -67,6 +67,7 @@ export default {
     model: 'Models',
     menu: 'Menus',
     dict: 'Dictionaries',
+    online: 'Online Users',
     monitorCenter: 'Monitoring',
     monitor: 'Tool Monitor'
   },
@@ -452,6 +453,16 @@ export default {
       create: 'New Menu',
       edit: 'Edit Menu',
       deleteConfirm: 'Delete menu "{name}"? All child menus will also be deleted'
+    },
+    online: {
+      title: 'Online Users',
+      description: 'Currently logged in users',
+      searchPlaceholder: 'Search username',
+      count: 'online',
+      loginTime: 'Login Time',
+      forceLogout: 'Force Logout',
+      forceConfirm: 'Force logout user "{name}"?',
+      forceSuccess: 'User has been forced offline'
     },
     dict: {
       title: 'Dictionary Management',

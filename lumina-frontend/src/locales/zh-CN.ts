@@ -67,6 +67,7 @@ export default {
     model: '模型管理',
     menu: '菜单管理',
     dict: '字典管理',
+    online: '在线用户',
     monitorCenter: '监控中心',
     monitor: '工具监控'
   },
@@ -452,6 +453,16 @@ export default {
       create: '新增菜单',
       edit: '编辑菜单',
       deleteConfirm: '确认删除菜单「{name}」？其子菜单也将被删除'
+    },
+    online: {
+      title: '在线用户',
+      description: '当前登录的用户列表',
+      searchPlaceholder: '搜索用户名',
+      count: '人在线',
+      loginTime: '登录时间',
+      forceLogout: '强制下线',
+      forceConfirm: '确认强制下线用户「{name}」？',
+      forceSuccess: '已强制下线'
     },
     dict: {
       title: '字典管理',

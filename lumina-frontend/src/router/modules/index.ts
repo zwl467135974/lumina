@@ -181,6 +181,15 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'online',
+        name: 'SystemOnline',
+        component: () => import('@/views/system/online.vue'),
+        meta: {
+          title: '在线用户',
+          requiresAuth: true
+        }
+      },
+      {
         path: 'tenant',
         name: 'SystemTenant',
         component: () => import('@/views/system/tenant.vue'),

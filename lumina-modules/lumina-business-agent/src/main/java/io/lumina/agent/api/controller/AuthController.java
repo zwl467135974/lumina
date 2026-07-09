@@ -30,6 +30,9 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+
     /**
      * 用户登录
      */
@@ -72,12 +75,23 @@ public class AuthController {
      * 用户登出
      */
     @PostMapping("/logout")
-    public R<Void> logout() {
+    public R<Void> logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
         log.info("用户登出");
 
-        // 在 JWT 模式下，服务端不需要做太多处理
-        // 客户端删除本地存储的 Token 即可
-        // 如果需要实现 Token 黑名单，可以使用 Redis
+        // 从 token 解析 userId，清除 Redis 在线记录
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            try {
+                String token = authorization.substring(7);
+                io.lumina.common.core.LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
+                if (loginUser != null && loginUser.getUserId() != null) {
+                    String member = loginUser.getUserId() + ":" + loginUser.getUsername();
+                    redisTemplate.opsForZSet().remove("online:users", member);
+                    log.info("清除在线记录: userId={}", loginUser.getUserId());
+                }
+            } catch (Exception e) {
+                log.warn("登出时解析 token 失败（可能已过期）: {}", e.getMessage());
+            }
+        }
 
         return R.success();
     }
