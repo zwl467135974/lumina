@@ -95,9 +95,10 @@ const menuList = computed<MenuVO[]>(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, var(--lumina-bg-base) 0%, #1a1040 60%, var(--lumina-bg-base) 100%);
+  background: var(--lumina-bg-elevated);
+  border-right: 1px solid var(--lumina-border);
   overflow: hidden;
-  box-shadow: 2px 0 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--lumina-shadow-sm);
   transition: width var(--lumina-transition-base);
 }
 
@@ -112,8 +113,8 @@ const menuList = computed<MenuVO[]>(() => {
   align-items: center;
   justify-content: center;
   height: 56px;
-  background: rgba(var(--lumina-primary-rgb), 0.08);
-  border-bottom: 1px solid rgba(var(--lumina-primary-rgb), 0.15);
+  background: rgba(var(--lumina-primary-rgb), 0.04);
+  border-bottom: 1px solid var(--lumina-border);
 }
 
 .sidebar-logo h2 {
@@ -122,7 +123,7 @@ const menuList = computed<MenuVO[]>(() => {
   font-size: var(--lumina-font-size-xl);
   font-weight: var(--lumina-font-weight-bold);
   color: transparent;
-  background: linear-gradient(135deg, var(--lumina-primary-light), var(--lumina-accent));
+  background: linear-gradient(135deg, var(--lumina-primary), var(--lumina-accent));
   background-clip: text;
   -webkit-background-clip: text;
   letter-spacing: -0.02em;
@@ -201,7 +202,7 @@ const menuList = computed<MenuVO[]>(() => {
 }
 
 .sidebar-menu :deep(.el-menu--inline) {
-  background: rgba(var(--lumina-bg-base-rgb, 15, 23, 42), 0.5) !important;
+  background: var(--lumina-bg-hover) !important;
   border-radius: var(--lumina-radius-sm);
   margin: 2px 0;
   padding: 4px 0;

@@ -42,3 +42,13 @@
 - Observation: prompt/workflow 主表 6 个按钮塞 280px 列，user 5 个塞 320px，英文 i18n 后更糟
 - Action: 按钮 ≥ 4 时，前 2 个高频按钮直接显示 + `el-dropdown` 折叠其余。`@command="(cmd, row) => handleRowCommand(cmd, row)"` 统一分发。列宽收到 180-200px。`v-permission` 在 `el-dropdown-item` 上同样生效
 - Confidence: high
+
+## 2026-07-09 — v2 设计语言迁移 "Studio Indigo"
+- Observation: v1 "Luminous"（紫×琥珀双色渐变 + 暗色唯一 + glow 泛滥）太花哨，不符合企业级定位
+- Action: 整体迁移到 Tailwind Indigo #4f46e5 单色 + 亮色默认/暗色可切 + 去 glow（改 focus ring）+ 去 button 渐变（改纯色）。variables.scss 完全重写，:root 为亮色，.dark 覆盖暗色。EP 的 dark/css-vars.css 已引入配合 .dark class
+- Confidence: high
+
+## 2026-07-09 — 主题切换实现要点
+- Observation: 从"暗色唯一"改"亮色默认+暗色可切"时，scoped :root 重复定义会覆盖全局 token
+- Action: ① 删除 login/dashboard 的 scoped :root 重复定义（它们强制暗色）② app store 加 theme 状态 + applyTheme 操作 document.documentElement.classList ③ main.ts 在 pinia 后 initTheme() 恢复 localStorage ④ EP 的 dark/css-vars.css 配合 html.dark 自动切换 EP 组件
+- Confidence: high

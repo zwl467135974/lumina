@@ -112,7 +112,7 @@ defineProps<{
   breadcrumbs?: Array<{ path: string; name?: string; meta?: { title?: string } }>
 }>()
 
-const isDark = computed(() => true) // always dark in Luminous theme
+const isDark = computed(() => appStore.theme === 'dark')
 const collapseTitle = computed(() => t(appStore.sidebarCollapsed ? 'common.expand' : 'common.collapse'))
 
 const unreadCount = computed(() => 0) // placeholder
@@ -128,8 +128,7 @@ function localizeBreadcrumbTitle(title?: string, name?: string): string {
 }
 
 function toggleTheme() {
-  // Theme is always dark for Luminous; toggle could switch accent
-  console.warn('Theme locked to Luminous dark')
+  appStore.toggleTheme()
 }
 
 function handleUserCommand(command: string) {
@@ -159,16 +158,11 @@ function handleUserCommand(command: string) {
   z-index: var(--lumina-z-sticky);
 
   /* Glass backdrop */
-  background: linear-gradient(
-    180deg,
-    rgba(15, 23, 42, 0.98) 0%,
-    rgba(15, 23, 42, 0.92) 100%
-  );
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--lumina-bg-base);
+  border-bottom: 1px solid var(--lumina-border);
 }
 
-/* Gradient border line at bottom */
+/* Subtle top border accent */
 .app-header::after {
   content: '';
   position: absolute;
@@ -176,14 +170,7 @@ function handleUserCommand(command: string) {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(var(--lumina-primary-rgb), 0.15) 20%,
-    rgba(var(--lumina-primary-rgb), 0.25) 50%,
-    rgba(var(--lumina-primary-rgb), 0.15) 80%,
-    transparent 100%
-  );
+  background: var(--lumina-border);
   pointer-events: none;
 }
 

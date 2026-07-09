@@ -5,6 +5,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import pinia from './stores'
+import { useAppStore } from './stores/modules/app'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
@@ -21,6 +22,10 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(pinia)
+
+// 初始化主题（从 localStorage 恢复）
+useAppStore().initTheme()
+
 app.use(router)
 app.use(i18n)
 app.use(ElementPlus)

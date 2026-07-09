@@ -69,7 +69,7 @@ code, pre, kbd, samp {
 code {
   padding: 2px 6px;
   border-radius: var(--lumina-radius-sm);
-  background: rgba(124, 58, 237, 0.12);
+  background: rgba(var(--lumina-primary-rgb), 0.12);
   color: var(--lumina-primary-light);
   font-size: 0.875em;
 }
@@ -101,7 +101,7 @@ a {
 
 // Selection
 ::selection {
-  background: rgba(124, 58, 237, 0.3);
+  background: rgba(var(--lumina-primary-rgb), 0.3);
   color: var(--lumina-text-primary);
 }
 
@@ -213,7 +213,7 @@ img {
 .el-table {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
-  --el-table-header-bg-color: rgba(30, 41, 59, 0.6);
+  --el-table-header-bg-color: var(--lumina-bg-elevated);
   --el-table-row-hover-bg-color: var(--lumina-bg-hover);
   --el-table-border-color: var(--lumina-border);
   --el-table-text-color: var(--lumina-text-primary);
@@ -237,7 +237,7 @@ img {
 
   // Stripe effect
   &.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-    background-color: rgba(30, 41, 59, 0.3);
+    background-color: var(--lumina-bg-hover);
   }
 
   // Expand arrow
@@ -270,89 +270,63 @@ img {
   border-radius: var(--lumina-radius-sm);
   @include transition-interact(base);
 
-  // === Primary Button (渐变 + 微光) ===
+  // === Primary Button（纯色企业级，去渐变/微光/glow） ===
   &.el-button--primary {
-    @include gradient-bg(var(--lumina-primary), var(--lumina-primary-dark));
-    border: none;
+    background: var(--lumina-primary);
+    border: 1px solid var(--lumina-primary);
     color: #ffffff;
-    position: relative;
-    overflow: hidden;
-
-    // 微光伪元素
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        135deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.1) 50%,
-        transparent 100%
-      );
-      opacity: 0;
-      transition: opacity var(--lumina-transition-fast);
-    }
 
     &:hover {
-      box-shadow: var(--lumina-shadow-glow);
-      transform: translateY(-1px);
-
-      &::before {
-        opacity: 1;
-      }
+      background: var(--lumina-primary-dark);
+      border-color: var(--lumina-primary-dark);
     }
 
     &:active {
-      transform: translateY(0);
-      box-shadow: none;
+      background: var(--lumina-primary-dark);
+      border-color: var(--lumina-primary-dark);
     }
 
     &.is-disabled,
     &:disabled {
       background: var(--lumina-disabled-bg);
+      border-color: var(--lumina-disabled-border);
       color: var(--lumina-disabled-text);
-      box-shadow: none;
-      transform: none;
-
-      &::before {
-        display: none;
-      }
     }
   }
 
   // === Success Button ===
   &.el-button--success {
-    @include gradient-bg(var(--lumina-success), var(--lumina-success-dark));
-    border: none;
+    background: var(--lumina-success);
+    border: 1px solid var(--lumina-success);
     color: #ffffff;
 
     &:hover {
-      box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
-      transform: translateY(-1px);
+      background: var(--lumina-success-dark);
+      border-color: var(--lumina-success-dark);
     }
   }
 
   // === Warning Button ===
   &.el-button--warning {
-    @include gradient-bg(var(--lumina-warning), var(--lumina-warning-dark));
-    border: none;
-    color: #000000;
+    background: var(--lumina-warning);
+    border: 1px solid var(--lumina-warning);
+    color: #ffffff;
 
     &:hover {
-      box-shadow: 0 0 16px rgba(245, 158, 11, 0.3);
-      transform: translateY(-1px);
+      background: var(--lumina-warning-dark);
+      border-color: var(--lumina-warning-dark);
     }
   }
 
   // === Danger Button ===
   &.el-button--danger {
-    @include gradient-bg(var(--lumina-danger), var(--lumina-danger-dark));
-    border: none;
+    background: var(--lumina-danger);
+    border: 1px solid var(--lumina-danger);
     color: #ffffff;
 
     &:hover {
-      box-shadow: 0 0 16px rgba(239, 68, 68, 0.3);
-      transform: translateY(-1px);
+      background: var(--lumina-danger-dark);
+      border-color: var(--lumina-danger-dark);
     }
   }
 
@@ -387,7 +361,7 @@ img {
 
     &:hover {
       opacity: 1;
-      background: rgba(124, 58, 237, 0.1);
+      background: rgba(var(--lumina-primary-rgb), 0.1);
     }
   }
 
@@ -566,11 +540,7 @@ img {
     }
 
     &.is-active {
-      background: linear-gradient(
-        135deg,
-        rgba(124, 58, 237, 0.15),
-        rgba(124, 58, 237, 0.05)
-      );
+      background: rgba(var(--lumina-primary-rgb), 0.08);
       color: var(--lumina-primary-light);
       font-weight: var(--lumina-font-weight-medium);
       position: relative;
@@ -759,32 +729,32 @@ img {
 
   // Type variants
   &.el-tag--primary {
-    --el-tag-bg-color: rgba(124, 58, 237, 0.12);
-    --el-tag-border-color: rgba(124, 58, 237, 0.3);
+    --el-tag-bg-color: rgba(var(--lumina-primary-rgb), 0.12);
+    --el-tag-border-color: rgba(var(--lumina-primary-rgb), 0.3);
     --el-tag-text-color: var(--lumina-primary-light);
   }
 
   &.el-tag--success {
-    --el-tag-bg-color: rgba(16, 185, 129, 0.12);
-    --el-tag-border-color: rgba(16, 185, 129, 0.3);
+    --el-tag-bg-color: rgba(var(--lumina-success-rgb), 0.12);
+    --el-tag-border-color: rgba(var(--lumina-success-rgb), 0.3);
     --el-tag-text-color: var(--lumina-success-light);
   }
 
   &.el-tag--warning {
-    --el-tag-bg-color: rgba(245, 158, 11, 0.12);
-    --el-tag-border-color: rgba(245, 158, 11, 0.3);
+    --el-tag-bg-color: rgba(var(--lumina-warning-rgb), 0.12);
+    --el-tag-border-color: rgba(var(--lumina-warning-rgb), 0.3);
     --el-tag-text-color: var(--lumina-accent-light);
   }
 
   &.el-tag--danger {
-    --el-tag-bg-color: rgba(239, 68, 68, 0.12);
-    --el-tag-border-color: rgba(239, 68, 68, 0.3);
+    --el-tag-bg-color: rgba(var(--lumina-danger-rgb), 0.12);
+    --el-tag-border-color: rgba(var(--lumina-danger-rgb), 0.3);
     --el-tag-text-color: var(--lumina-danger-light);
   }
 
   &.el-tag--info {
-    --el-tag-bg-color: rgba(59, 130, 246, 0.12);
-    --el-tag-border-color: rgba(59, 130, 246, 0.3);
+    --el-tag-bg-color: rgba(var(--lumina-info-rgb), 0.12);
+    --el-tag-border-color: rgba(var(--lumina-info-rgb), 0.3);
     --el-tag-text-color: var(--lumina-info-light);
   }
 
@@ -912,7 +882,7 @@ img {
     }
 
     &.is-active {
-      background: linear-gradient(135deg, var(--lumina-primary), var(--lumina-primary-dark));
+      background: var(--lumina-primary);
       border-color: transparent;
       color: #ffffff;
       font-weight: var(--lumina-font-weight-semibold);
@@ -1021,7 +991,7 @@ img {
     .el-select .el-input__wrapper,
     .el-textarea__inner {
       border-color: var(--lumina-danger) !important;
-      box-shadow: 0 0 0 1px var(--lumina-danger) inset, 0 0 8px rgba(239, 68, 68, 0.2);
+      box-shadow: 0 0 0 1px var(--lumina-danger) inset, 0 0 8px rgba(var(--lumina-danger-rgb), 0.2);
     }
   }
 
@@ -1148,7 +1118,7 @@ img {
 // === Descriptions ===
 .el-descriptions {
   --el-descriptions-table-border: 1px solid var(--lumina-border);
-  --el-descriptions-item-bordered-label-background: rgba(30, 41, 59, 0.4);
+  --el-descriptions-item-bordered-label-background: var(--lumina-bg-elevated);
 
   font-family: var(--lumina-font-body);
 
@@ -1193,7 +1163,7 @@ img {
 
 // === Loading ===
 .el-loading-mask {
-  background-color: rgba(15, 23, 42, 0.7);
+  background-color: var(--lumina-bg-mask);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
 
@@ -1272,29 +1242,29 @@ img {
 
   &.el-message--success,
   &.el-notification--success {
-    background-color: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
+    background-color: rgba(var(--lumina-success-rgb), 0.1);
+    border-color: rgba(var(--lumina-success-rgb), 0.3);
     color: var(--lumina-success-light);
   }
 
   &.el-message--warning,
   &.el-notification--warning {
-    background-color: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.3);
+    background-color: rgba(var(--lumina-warning-rgb), 0.1);
+    border-color: rgba(var(--lumina-warning-rgb), 0.3);
     color: var(--lumina-accent-light);
   }
 
   &.el-message--error,
   &.el-notification--error {
-    background-color: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
+    background-color: rgba(var(--lumina-danger-rgb), 0.1);
+    border-color: rgba(var(--lumina-danger-rgb), 0.3);
     color: var(--lumina-danger-light);
   }
 
   &.el-message--info,
   &.el-notification--info {
-    background-color: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.3);
+    background-color: rgba(var(--lumina-info-rgb), 0.1);
+    border-color: rgba(var(--lumina-info-rgb), 0.3);
     color: var(--lumina-info-light);
   }
 }
@@ -1367,7 +1337,7 @@ img {
 
   .el-progress-bar__inner {
     border-radius: var(--lumina-radius-full);
-    @include gradient-bg(var(--lumina-primary), var(--lumina-primary-dark));
+    background: var(--lumina-primary);
   }
 
   .el-progress__text {
@@ -1376,15 +1346,15 @@ img {
   }
 
   &.el-progress--success .el-progress-bar__inner {
-    @include gradient-bg(var(--lumina-success), var(--lumina-success-dark));
+    background: var(--lumina-success);
   }
 
   &.el-progress--warning .el-progress-bar__inner {
-    @include gradient-bg(var(--lumina-warning), var(--lumina-warning-dark));
+    background: var(--lumina-warning);
   }
 
   &.el-progress--exception .el-progress-bar__inner {
-    @include gradient-bg(var(--lumina-danger), var(--lumina-danger-dark));
+    background: var(--lumina-danger);
   }
 }
 
@@ -1396,7 +1366,7 @@ img {
   }
 
   .el-slider__bar {
-    background: linear-gradient(90deg, var(--lumina-primary), var(--lumina-primary-light));
+    background: var(--lumina-primary);
     border-radius: var(--lumina-radius-full);
   }
 
@@ -1636,26 +1606,26 @@ img {
   font-family: var(--lumina-font-body);
 
   &.el-alert--success {
-    background-color: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
+    background-color: rgba(var(--lumina-success-rgb), 0.1);
+    border-color: rgba(var(--lumina-success-rgb), 0.3);
     color: var(--lumina-success-light);
   }
 
   &.el-alert--warning {
-    background-color: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.3);
+    background-color: rgba(var(--lumina-warning-rgb), 0.1);
+    border-color: rgba(var(--lumina-warning-rgb), 0.3);
     color: var(--lumina-accent-light);
   }
 
   &.el-alert--error {
-    background-color: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
+    background-color: rgba(var(--lumina-danger-rgb), 0.1);
+    border-color: rgba(var(--lumina-danger-rgb), 0.3);
     color: var(--lumina-danger-light);
   }
 
   &.el-alert--info {
-    background-color: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.3);
+    background-color: rgba(var(--lumina-info-rgb), 0.1);
+    border-color: rgba(var(--lumina-info-rgb), 0.3);
     color: var(--lumina-info-light);
   }
 }
@@ -1778,7 +1748,7 @@ img {
 
   &.is-online::before {
     background: var(--lumina-success);
-    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 6px rgba(var(--lumina-success-rgb), 0.5);
   }
 
   &.is-offline::before {
@@ -1787,7 +1757,7 @@ img {
 
   &.is-warning::before {
     background: var(--lumina-warning);
-    box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 6px rgba(var(--lumina-warning-rgb), 0.5);
   }
 
   &.is-idle::before {

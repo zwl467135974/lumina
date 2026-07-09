@@ -149,33 +149,7 @@ async function handleLogin() {
 
 <style scoped>
 /* ============================================
-   Design Tokens (scoped)
-   ============================================ */
-.login-page {
-  --lumina-primary: #7c3aed;
-  --lumina-primary-light: #a78bfa;
-  --lumina-primary-dark: #5b21b6;
-  --lumina-primary-glow: rgba(124, 58, 237, 0.25);
-  --lumina-accent: #f59e0b;
-  --lumina-accent-light: #fbbf24;
-  --lumina-bg-base: #0f172a;
-  --lumina-bg-elevated: #1e293b;
-  --lumina-bg-card: #1e293b;
-  --lumina-text-primary: #f1f5f9;
-  --lumina-text-secondary: #94a3b8;
-  --lumina-text-muted: #64748b;
-  --lumina-radius-md: 10px;
-  --lumina-radius-lg: 16px;
-  --lumina-radius-xl: 24px;
-  --lumina-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --lumina-shadow-glow: 0 0 20px var(--lumina-primary-glow);
-  --lumina-transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --lumina-font-display: 'Outfit', -apple-system, sans-serif;
-  --lumina-font-body: 'IBM Plex Sans', -apple-system, sans-serif;
-}
-
-/* ============================================
-   Page Wrapper �� Background
+   Login Page — 企业级亮色
    ============================================ */
 .login-page {
   position: relative;

@@ -1,30 +1,32 @@
 ﻿// ============================================================
-//  Lumina Design Token System — "Luminous" Dark Theme
-//  品牌: Indigo-Violet #7c3aed × Amber #f59e0b
-//  目标: 定义 --lumina-* CSS 自定义属性 & 映射 Element Plus
+//  Lumina Design Token System v2 — "Studio Indigo"
+//  品牌: Indigo #4f46e5 (Tailwind Indigo-600)
+//  主题: 亮色默认 + .dark 暗色覆盖
+//  目标: 企业级、克制、专业 (Linear/Notion 风)
 // ============================================================
 
 // ----------------------------------------------------------
-//  1. Brand Colors — 品牌色
+//  1. Brand Colors — Tailwind Indigo 色阶
 // ----------------------------------------------------------
 :root {
-  --lumina-primary: #7c3aed;
-  --lumina-primary-rgb: 124, 58, 237;
-  --lumina-primary-light: #a78bfa;
-  --lumina-primary-light-rgb: 167, 139, 250;
-  --lumina-primary-dark: #5b21b6;
-  --lumina-primary-dark-rgb: 91, 33, 182;
-  --lumina-primary-glow: rgba(124, 58, 237, 0.25);
+  --lumina-primary: #4f46e5;
+  --lumina-primary-rgb: 79, 70, 229;
+  --lumina-primary-light: #818cf8;
+  --lumina-primary-light-rgb: 129, 140, 248;
+  --lumina-primary-dark: #3730a3;
+  --lumina-primary-dark-rgb: 55, 48, 163;
+  --lumina-primary-glow: rgba(79, 70, 229, 0.12);
 
-  --lumina-accent: #f59e0b;
-  --lumina-accent-rgb: 245, 158, 11;
-  --lumina-accent-light: #fbbf24;
-  --lumina-accent-light-rgb: 251, 191, 36;
-  --lumina-accent-glow: rgba(245, 158, 11, 0.25);
+  // accent 不再是独立色系，改为 indigo 同系浅色（去掉 v1 的琥珀色）
+  --lumina-accent: #6366f1;
+  --lumina-accent-rgb: 99, 102, 241;
+  --lumina-accent-light: #818cf8;
+  --lumina-accent-light-rgb: 129, 140, 248;
+  --lumina-accent-glow: rgba(99, 102, 241, 0.12);
 }
 
 // ----------------------------------------------------------
-//  2. Semantic Colors — 语义色
+//  2. Semantic Colors — 语义色（亮暗通用）
 // ----------------------------------------------------------
 :root {
   --lumina-success: #10b981;
@@ -49,85 +51,86 @@
 }
 
 // ----------------------------------------------------------
-//  3. Surface Colors — 表面 / 背景色
+//  3. Surface Colors — 亮色主题（默认）
 // ----------------------------------------------------------
 :root {
-  --lumina-bg-base: #0f172a;
-  --lumina-bg-elevated: #1e293b;
-  --lumina-bg-overlay: #1e293b;
-  --lumina-bg-card: #1e293b;
-  --lumina-bg-input: #0f172a;
-  --lumina-bg-hover: rgba(255, 255, 255, 0.04);
-  --lumina-bg-active: rgba(124, 58, 237, 0.12);
-  --lumina-bg-selected: rgba(124, 58, 237, 0.08);
+  --lumina-bg-base: #ffffff;
+  --lumina-bg-elevated: #f8fafc;
+  --lumina-bg-overlay: #ffffff;
+  --lumina-bg-card: #ffffff;
+  --lumina-bg-input: #ffffff;
+  --lumina-bg-hover: rgba(0, 0, 0, 0.03);
+  --lumina-bg-active: rgba(79, 70, 229, 0.06);
+  --lumina-bg-selected: rgba(79, 70, 229, 0.04);
   --lumina-bg-tooltip: #1e293b;
-  --lumina-bg-popover: #1e293b;
-  --lumina-bg-mask: rgba(0, 0, 0, 0.6);
-  --lumina-bg-page: #0f172a;
+  --lumina-bg-popover: #ffffff;
+  --lumina-bg-mask: rgba(15, 23, 42, 0.45);
+  --lumina-bg-page: #f8fafc;
 }
 
 // ----------------------------------------------------------
-//  4. Border Colors — 边框色
+//  4. Border Colors — 亮色主题
 // ----------------------------------------------------------
 :root {
-  --lumina-border: #334155;
-  --lumina-border-light: #475569;
-  --lumina-border-lighter: #64748b;
-  --lumina-border-dark: #1e293b;
-  --lumina-border-hover: #7c3aed;
-  --lumina-border-focus: #7c3aed;
+  --lumina-border: #e2e8f0;
+  --lumina-border-light: #f1f5f9;
+  --lumina-border-lighter: #f8fafc;
+  --lumina-border-dark: #cbd5e1;
+  --lumina-border-hover: #4f46e5;
+  --lumina-border-focus: #4f46e5;
 }
 
 // ----------------------------------------------------------
-//  5. Text Colors — 文字色
+//  5. Text Colors — 亮色主题
 // ----------------------------------------------------------
 :root {
-  --lumina-text-primary: #f1f5f9;
-  --lumina-text-regular: #cbd5e1;
-  --lumina-text-secondary: #94a3b8;
-  --lumina-text-muted: #64748b;
-  --lumina-text-placeholder: #475569;
-  --lumina-text-disabled: #475569;
-  --lumina-text-inverse: #0f172a;
+  --lumina-text-primary: #0f172a;
+  --lumina-text-regular: #334155;
+  --lumina-text-secondary: #64748b;
+  --lumina-text-muted: #94a3b8;
+  --lumina-text-placeholder: #94a3b8;
+  --lumina-text-disabled: #cbd5e1;
+  --lumina-text-inverse: #ffffff;
 }
 
 // ----------------------------------------------------------
-//  6. Fill Colors — 填充色 (Element Plus needs these)
+//  6. Fill Colors
 // ----------------------------------------------------------
 :root {
-  --lumina-fill: #334155;
-  --lumina-fill-light: #475569;
-  --lumina-fill-lighter: #1e293b;
-  --lumina-fill-dark: #64748b;
-  --lumina-fill-blank: #0f172a;
+  --lumina-fill: #f1f5f9;
+  --lumina-fill-light: #f8fafc;
+  --lumina-fill-lighter: #ffffff;
+  --lumina-fill-dark: #e2e8f0;
+  --lumina-fill-blank: #ffffff;
 }
 
 // ----------------------------------------------------------
-//  7. Shadows — 阴影层阶
+//  7. Shadows — 企业级 elevation（去 glow）
 // ----------------------------------------------------------
 :root {
-  --lumina-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --lumina-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --lumina-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --lumina-shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.6);
-  --lumina-shadow-glow: 0 0 20px var(--lumina-primary-glow);
-  --lumina-shadow-glow-accent: 0 0 20px var(--lumina-accent-glow);
+  --lumina-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --lumina-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --lumina-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --lumina-shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.16);
+  // glow 改为 focus ring（3px ring 而非 20px glow）
+  --lumina-shadow-glow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  --lumina-shadow-glow-accent: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
 // ----------------------------------------------------------
-//  8. Border Radius — 圆角
+//  8. Border Radius
 // ----------------------------------------------------------
 :root {
   --lumina-radius-sm: 6px;
-  --lumina-radius-md: 10px;
-  --lumina-radius-lg: 16px;
-  --lumina-radius-xl: 24px;
+  --lumina-radius-md: 8px;
+  --lumina-radius-lg: 12px;
+  --lumina-radius-xl: 16px;
   --lumina-radius-full: 9999px;
   --lumina-radius-circle: 50%;
 }
 
 // ----------------------------------------------------------
-//  9. Spacing — 间距
+//  9. Spacing
 // ----------------------------------------------------------
 :root {
   --lumina-spacing-xs: 4px;
@@ -140,26 +143,25 @@
 }
 
 // ----------------------------------------------------------
-//  10. Transitions — 过渡
+//  10. Transitions
 // ----------------------------------------------------------
 :root {
   --lumina-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --lumina-transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --lumina-transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --lumina-transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --lumina-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
   --lumina-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --lumina-ease-out: cubic-bezier(0, 0, 0.2, 1);
   --lumina-ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
 // ----------------------------------------------------------
-//  11. Typography — 排版
+//  11. Typography
 // ----------------------------------------------------------
 :root {
   --lumina-font-display: 'Outfit', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --lumina-font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --lumina-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
-  // Font sizes
   --lumina-font-size-xs: 12px;
   --lumina-font-size-sm: 13px;
   --lumina-font-size-base: 14px;
@@ -170,21 +172,19 @@
   --lumina-font-size-3xl: 30px;
   --lumina-font-size-4xl: 36px;
 
-  // Font weights
   --lumina-font-weight-light: 300;
   --lumina-font-weight-normal: 400;
   --lumina-font-weight-medium: 500;
   --lumina-font-weight-semibold: 600;
   --lumina-font-weight-bold: 700;
 
-  // Line heights
   --lumina-line-height-tight: 1.25;
   --lumina-line-height-base: 1.5;
   --lumina-line-height-relaxed: 1.75;
 }
 
 // ----------------------------------------------------------
-//  12. Z-Index Scale — 层级
+//  12. Z-Index Scale
 // ----------------------------------------------------------
 :root {
   --lumina-z-dropdown: 1000;
@@ -198,36 +198,97 @@
 }
 
 // ----------------------------------------------------------
-//  13. Misc Tokens
+//  13. Misc Tokens — 亮色
 // ----------------------------------------------------------
 :root {
-  --lumina-disabled-opacity: 0.4;
+  --lumina-disabled-opacity: 0.5;
+  --lumina-disabled-bg: #f1f5f9;
+  --lumina-disabled-text: #94a3b8;
+  --lumina-disabled-border: #e2e8f0;
+
+  --lumina-scrollbar-width: 6px;
+  --lumina-scrollbar-track: #f1f5f9;
+  --lumina-scrollbar-thumb: #cbd5e1;
+  --lumina-scrollbar-thumb-hover: #94a3b8;
+}
+
+// ============================================================
+//  .dark 暗色主题覆盖
+//  通过 <html class="dark"> 或 document.documentElement.classList 切换
+// ============================================================
+.dark {
+  // Brand colors 保持不变（靛蓝在亮暗下通用）
+
+  // Surface
+  --lumina-bg-base: #0f172a;
+  --lumina-bg-elevated: #1e293b;
+  --lumina-bg-overlay: #1e293b;
+  --lumina-bg-card: #1e293b;
+  --lumina-bg-input: #0f172a;
+  --lumina-bg-hover: rgba(255, 255, 255, 0.04);
+  --lumina-bg-active: rgba(99, 102, 241, 0.12);
+  --lumina-bg-selected: rgba(99, 102, 241, 0.08);
+  --lumina-bg-tooltip: #1e293b;
+  --lumina-bg-popover: #1e293b;
+  --lumina-bg-mask: rgba(0, 0, 0, 0.6);
+  --lumina-bg-page: #0f172a;
+
+  // Border
+  --lumina-border: #334155;
+  --lumina-border-light: #475569;
+  --lumina-border-lighter: #1e293b;
+  --lumina-border-dark: #1e293b;
+
+  // Text
+  --lumina-text-primary: #f1f5f9;
+  --lumina-text-regular: #cbd5e1;
+  --lumina-text-secondary: #94a3b8;
+  --lumina-text-muted: #64748b;
+  --lumina-text-placeholder: #475569;
+  --lumina-text-disabled: #334155;
+  --lumina-text-inverse: #0f172a;
+
+  // Fill
+  --lumina-fill: #334155;
+  --lumina-fill-light: #475569;
+  --lumina-fill-lighter: #1e293b;
+  --lumina-fill-dark: #64748b;
+  --lumina-fill-blank: #0f172a;
+
+  // Shadow（暗色下阴影更深）
+  --lumina-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --lumina-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --lumina-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --lumina-shadow-xl: 0 12px 36px rgba(0, 0, 0, 0.6);
+  --lumina-shadow-glow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+
+  // Disabled
   --lumina-disabled-bg: #1e293b;
   --lumina-disabled-text: #475569;
   --lumina-disabled-border: #334155;
 
   // Scrollbar
-  --lumina-scrollbar-width: 6px;
   --lumina-scrollbar-track: #1e293b;
   --lumina-scrollbar-thumb: #475569;
   --lumina-scrollbar-thumb-hover: #64748b;
 }
 
 // ============================================================
-//  Element Plus 变量映射 (全局覆盖)
-//  将 Lumina 令牌映射到 Element Plus 的 CSS 变量命名空间
+//  Element Plus 变量映射（全局覆盖）
+//  将 Lumina 令牌映射到 Element Plus CSS 变量命名空间
+//  亮暗主题通过 .dark 自动切换（因为引用的是 --lumina-* token）
 // ============================================================
 :root {
-  // --- Element Plus Primary Color ---
+  // --- EP Primary Color ---
   --el-color-primary: var(--lumina-primary);
   --el-color-primary-light-3: var(--lumina-primary-light);
-  --el-color-primary-light-5: rgba(124, 58, 237, 0.5);
-  --el-color-primary-light-7: rgba(124, 58, 237, 0.3);
-  --el-color-primary-light-8: rgba(124, 58, 237, 0.2);
-  --el-color-primary-light-9: rgba(124, 58, 237, 0.1);
+  --el-color-primary-light-5: rgba(79, 70, 229, 0.5);
+  --el-color-primary-light-7: rgba(79, 70, 229, 0.3);
+  --el-color-primary-light-8: rgba(79, 70, 229, 0.2);
+  --el-color-primary-light-9: rgba(79, 70, 229, 0.1);
   --el-color-primary-dark-2: var(--lumina-primary-dark);
 
-  // --- Element Plus Semantic Colors ---
+  // --- EP Semantic Colors ---
   --el-color-success: var(--lumina-success);
   --el-color-success-light-3: var(--lumina-success-light);
   --el-color-success-light-5: rgba(16, 185, 129, 0.5);
@@ -256,111 +317,68 @@
   --el-color-info-light-9: rgba(59, 130, 246, 0.1);
   --el-color-info-dark-2: var(--lumina-info-dark);
 
-  // --- Element Plus Background Colors ---
+  // --- EP Background Colors ---
   --el-bg-color: var(--lumina-bg-base);
   --el-bg-color-page: var(--lumina-bg-page);
   --el-bg-color-overlay: var(--lumina-bg-overlay);
 
-  // --- Element Plus Text Colors ---
+  // --- EP Text Colors ---
   --el-text-color-primary: var(--lumina-text-primary);
   --el-text-color-regular: var(--lumina-text-regular);
   --el-text-color-secondary: var(--lumina-text-secondary);
   --el-text-color-placeholder: var(--lumina-text-placeholder);
   --el-text-color-disabled: var(--lumina-text-disabled);
 
-  // --- Element Plus Border Colors ---
+  // --- EP Border Colors ---
   --el-border-color: var(--lumina-border);
   --el-border-color-light: var(--lumina-border-light);
   --el-border-color-lighter: var(--lumina-border-lighter);
-  --el-border-color-extra-light: rgba(71, 85, 105, 0.5);
+  --el-border-color-extra-light: rgba(226, 232, 240, 0.5);
   --el-border-color-dark: var(--lumina-border-dark);
   --el-border-color-hover: var(--lumina-border-hover);
 
-  // --- Element Plus Fill Colors ---
+  // --- EP Fill Colors ---
   --el-fill-color: var(--lumina-fill);
   --el-fill-color-light: var(--lumina-fill-light);
   --el-fill-color-lighter: var(--lumina-fill-lighter);
   --el-fill-color-blank: var(--lumina-fill-blank);
   --el-fill-color-dark: var(--lumina-fill-dark);
 
-  // --- Element Plus Box Shadow ---
+  // --- EP Box Shadow ---
   --el-box-shadow-light: var(--lumina-shadow-sm);
   --el-box-shadow: var(--lumina-shadow-md);
   --el-box-shadow-dark: var(--lumina-shadow-lg);
-  --el-box-shadow-lighter: 0 1px 6px rgba(0, 0, 0, 0.25);
+  --el-box-shadow-lighter: 0 1px 4px rgba(0, 0, 0, 0.04);
 
-  // --- Element Plus Border Radius ---
+  // --- EP Border Radius ---
   --el-border-radius-base: var(--lumina-radius-sm);
   --el-border-radius-small: 4px;
   --el-border-radius-round: var(--lumina-radius-full);
   --el-border-radius-circle: var(--lumina-radius-circle);
 
-  // --- Element Plus Disabled ---
+  // --- EP Disabled ---
   --el-disabled-bg-color: var(--lumina-disabled-bg);
   --el-disabled-text-color: var(--lumina-disabled-text);
   --el-disabled-border-color: var(--lumina-disabled-border);
 
-  // --- Element Plus Font ---
+  // --- EP Font ---
   --el-font-size-base: var(--lumina-font-size-base);
   --el-font-size-small: var(--lumina-font-size-sm);
   --el-font-size-large: var(--lumina-font-size-md);
   --el-font-size-extra-large: var(--lumina-font-size-xl);
 
-  // --- Element Plus Transition ---
-  --el-transition-duration: 0.25s;
+  // --- EP Transition ---
+  --el-transition-duration: 0.2s;
   --el-transition-duration-fast: 0.15s;
-  --el-transition-duration-slow: 0.4s;
+  --el-transition-duration-slow: 0.35s;
 
-  // --- Element Plus Misc ---
+  // --- EP Misc ---
   --el-color-white: #ffffff;
   --el-color-black: #000000;
   --el-overlay-color: var(--lumina-bg-mask);
-  --el-overlay-color-light: rgba(0, 0, 0, 0.7);
-  --el-overlay-color-lighter: rgba(0, 0, 0, 0.5);
+  --el-overlay-color-light: rgba(15, 23, 42, 0.5);
+  --el-overlay-color-lighter: rgba(15, 23, 42, 0.3);
 
-  // --el-mask-color (别名)
   --el-mask-color: var(--lumina-bg-mask);
-  --el-mask-color-extra-light: rgba(0, 0, 0, 0.3);
-}
-
-// ----------------------------------------------------------
-//  .dark 类显式保留 — 该项目以暗色为基准
-//  确保与浅色主题切换兼容
-// ----------------------------------------------------------
-.dark {
-  --lumina-primary: #7c3aed;
-  --lumina-primary-light: #a78bfa;
-  --lumina-primary-dark: #5b21b6;
-
-  --lumina-accent: #f59e0b;
-  --lumina-accent-light: #fbbf24;
-
-  --lumina-bg-base: #0f172a;
-  --lumina-bg-elevated: #1e293b;
-  --lumina-bg-overlay: #1e293b;
-  --lumina-bg-card: #1e293b;
-  --lumina-bg-input: #0f172a;
-
-  --lumina-border: #334155;
-  --lumina-border-light: #475569;
-
-  --lumina-text-primary: #f1f5f9;
-  --lumina-text-regular: #cbd5e1;
-  --lumina-text-secondary: #94a3b8;
-  --lumina-text-muted: #64748b;
-
-  // Re-map Element Plus for dark class
-  --el-color-primary: var(--lumina-primary);
-  --el-bg-color: var(--lumina-bg-base);
-  --el-bg-color-page: var(--lumina-bg-page);
-  --el-bg-color-overlay: var(--lumina-bg-overlay);
-  --el-text-color-primary: var(--lumina-text-primary);
-  --el-text-color-regular: var(--lumina-text-regular);
-  --el-text-color-secondary: var(--lumina-text-secondary);
-  --el-border-color: var(--lumina-border);
-  --el-border-color-light: var(--lumina-border-light);
-  --el-fill-color: var(--lumina-fill);
-  --el-fill-color-light: var(--lumina-fill-light);
-  --el-fill-color-lighter: var(--lumina-fill-lighter);
-  --el-fill-color-blank: var(--lumina-fill-blank);
+  --el-mask-color-extra-light: rgba(15, 23, 42, 0.2);
 }
