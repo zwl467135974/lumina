@@ -65,6 +65,8 @@ export default {
     tenant: '租户管理',
     audit: '审计日志',
     model: '模型管理',
+    menu: '菜单管理',
+    dict: '字典管理',
     monitorCenter: '监控中心',
     monitor: '工具监控'
   },

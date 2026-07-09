@@ -172,6 +172,15 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'dict',
+        name: 'SystemDict',
+        component: () => import('@/views/system/dict.vue'),
+        meta: {
+          title: '字典管理',
+          requiresAuth: true
+        }
+      },
+      {
         path: 'tenant',
         name: 'SystemTenant',
         component: () => import('@/views/system/tenant.vue'),

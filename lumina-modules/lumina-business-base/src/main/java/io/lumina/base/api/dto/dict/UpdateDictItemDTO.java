@@ -1,0 +1,33 @@
+package io.lumina.base.api.dto.dict;
+
+import io.lumina.common.core.BaseDTO;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+/**
+ * 更新字典项 DTO（dictType 不可修改）
+ *
+ * @author Lumina Team
+ * @since 1.0.0
+ */
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class UpdateDictItemDTO extends BaseDTO {
+
+    @NotBlank(message = "字典标签不能为空")
+    @Size(max = 100, message = "字典标签最多100个字符")
+    private String dictLabel;
+
+    @NotBlank(message = "字典值不能为空")
+    @Size(max = 100, message = "字典值最多100个字符")
+    private String dictValue;
+
+    private Integer sortOrder;
+
+    private Integer status;
+
+    @Size(max = 255, message = "备注最多255个字符")
+    private String remark;
+}

@@ -65,6 +65,8 @@ export default {
     tenant: 'Tenants',
     audit: 'Audit Logs',
     model: 'Models',
+    menu: 'Menus',
+    dict: 'Dictionaries',
     monitorCenter: 'Monitoring',
     monitor: 'Tool Monitor'
   },
