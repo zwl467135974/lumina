@@ -163,6 +163,15 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'menu',
+        name: 'SystemMenu',
+        component: () => import('@/views/system/menu.vue'),
+        meta: {
+          title: '菜单管理',
+          requiresAuth: true
+        }
+      },
+      {
         path: 'tenant',
         name: 'SystemTenant',
         component: () => import('@/views/system/tenant.vue'),

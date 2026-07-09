@@ -169,6 +169,10 @@ export interface PermissionVO {
   permissionName: string
   permissionCode: string
   resourcePath: string
+  type?: number
+  icon?: string
+  sortOrder?: number
+  status?: number
   description?: string
   parentId?: number
   children?: PermissionVO[]
