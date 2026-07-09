@@ -2,9 +2,11 @@ package io.lumina.agent.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.lumina.agent.api.dto.KnowledgeBaseDTO;
+import io.lumina.agent.infrastructure.entity.AgentDO;
 import io.lumina.agent.infrastructure.entity.AgentKnowledgeBaseDO;
 import io.lumina.agent.infrastructure.entity.KnowledgeBaseDO;
 import io.lumina.agent.infrastructure.mapper.AgentKnowledgeBaseMapper;
+import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.infrastructure.mapper.KnowledgeBaseMapper;
 import io.lumina.agent.service.KnowledgeBaseService;
 import io.lumina.common.core.BaseContext;
@@ -34,6 +36,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
     private final KnowledgeBaseMapper kbMapper;
     private final AgentKnowledgeBaseMapper agentKbMapper;
+    private final AgentMapper agentMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -84,7 +87,9 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void mountKnowledgeBase(Long agentId, Long kbId) {
-        getKbOrThrow(kbId);
+        checkAgentOwnership(agentId);
+        KnowledgeBaseDO kb = getKbOrThrow(kbId);
+        checkTenantAccess(kb);
         Long count = agentKbMapper.selectCount(new LambdaQueryWrapper<AgentKnowledgeBaseDO>()
                 .eq(AgentKnowledgeBaseDO::getAgentId, agentId)
                 .eq(AgentKnowledgeBaseDO::getKbId, kbId));
@@ -102,9 +107,11 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void unmountKnowledgeBase(Long agentId, Long kbId) {
+        checkAgentOwnership(agentId);
         agentKbMapper.delete(new LambdaQueryWrapper<AgentKnowledgeBaseDO>()
                 .eq(AgentKnowledgeBaseDO::getAgentId, agentId)
-                .eq(AgentKnowledgeBaseDO::getKbId, kbId));
+                .eq(AgentKnowledgeBaseDO::getKbId, kbId)
+                .eq(AgentKnowledgeBaseDO::getTenantId, currentTenantId()));
         log.info("卸载知识库: agentId={}, kbId={}", agentId, kbId);
     }
 
@@ -152,6 +159,13 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private void checkTenantAccess(KnowledgeBaseDO kb) {
         if (!currentTenantId().equals(kb.getTenantId())) {
             throw new BusinessException(403, "无权访问该知识库");
+        }
+    }
+
+    private void checkAgentOwnership(Long agentId) {
+        AgentDO agent = agentMapper.selectById(agentId);
+        if (agent == null || !currentTenantId().equals(agent.getTenantId())) {
+            throw new BusinessException(403, "无权操作该 Agent");
         }
     }
 

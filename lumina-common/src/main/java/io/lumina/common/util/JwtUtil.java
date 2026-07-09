@@ -5,6 +5,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.lumina.common.core.LoginUser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -23,12 +24,15 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class JwtUtil {
+public class JwtUtil implements InitializingBean {
+
+    private static final String DEFAULT_SECRET_KEY =
+            "dev-only-secret-please-change-for-production-use-at-least-32-chars";
 
     /**
      * JWT 密钥（从配置文件/环境变量读取；默认值仅供开发，生产必须由 LUMINA_JWT_SECRET 覆盖）
      */
-    @Value("${lumina.jwt.secret-key:dev-only-secret-please-change-for-production-use-at-least-32-chars}")
+    @Value("${lumina.jwt.secret-key:" + DEFAULT_SECRET_KEY + "}")
     private String secretKey;
 
     /**
@@ -38,6 +42,13 @@ public class JwtUtil {
     private long expirationTime;
 
     public static final long DEFAULT_EXPIRATION_TIME = 604800000L;
+
+    @Override
+    public void afterPropertiesSet() {
+        if (DEFAULT_SECRET_KEY.equals(secretKey)) {
+            log.warn("JWT 正在使用默认开发密钥，生产环境必须通过 lumina.jwt.secret-key 配置独立密钥");
+        }
+    }
 
     /**
      * 生成密钥

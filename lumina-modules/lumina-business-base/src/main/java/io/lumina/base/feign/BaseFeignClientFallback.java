@@ -17,7 +17,7 @@ public class BaseFeignClientFallback implements FallbackFactory<BaseFeignClient>
         return new BaseFeignClient() {
             @Override
             public R<Long> createUser(CreateUserDTO dto) {
-                log.error("Feign调用失败: createUser, dto={}", dto, cause);
+                log.error("Feign调用失败: createUser, username={}", dto.getUsername(), cause);
                 return R.fail("服务暂时不可用");
             }
 

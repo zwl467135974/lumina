@@ -261,19 +261,27 @@ public class BaseContext {
     public static void initFromHeaders(String userIdHeader, String usernameHeader,
                                        String tenantIdHeader, String rolesHeader,
                                        String permissionsHeader) {
+        Long userId = parseLongHeader("X-User-Id", userIdHeader);
+        Long tenantId = parseLongHeader("X-Tenant-Id", tenantIdHeader);
+        String[] roles = (rolesHeader != null && !rolesHeader.isEmpty()) ? rolesHeader.split(",") : null;
+        String[] permissions = (permissionsHeader != null && !permissionsHeader.isEmpty())
+                ? permissionsHeader.split(",") : null;
+
+        setCurrent(new LoginContext(tenantId, userId, usernameHeader, roles, permissions));
+
+        log.debug("BaseContext 初始化完成: userId={}, username={}, tenantId={}, roles={}",
+                userId, usernameHeader, tenantId, roles);
+    }
+
+    private static Long parseLongHeader(String headerName, String value) {
+        if (value == null) {
+            return null;
+        }
         try {
-            Long userId = userIdHeader != null ? Long.valueOf(userIdHeader) : null;
-            Long tenantId = tenantIdHeader != null ? Long.valueOf(tenantIdHeader) : null;
-            String[] roles = (rolesHeader != null && !rolesHeader.isEmpty()) ? rolesHeader.split(",") : null;
-            String[] permissions = (permissionsHeader != null && !permissionsHeader.isEmpty())
-                    ? permissionsHeader.split(",") : null;
-
-            setCurrent(new LoginContext(tenantId, userId, usernameHeader, roles, permissions));
-
-            log.debug("BaseContext 初始化完成: userId={}, username={}, tenantId={}, roles={}",
-                    userId, usernameHeader, tenantId, roles);
-        } catch (Exception e) {
-            log.error("BaseContext 初始化失败", e);
+            return Long.valueOf(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "请求头 " + headerName + " 的值不是合法数字: " + value, e);
         }
     }
 }

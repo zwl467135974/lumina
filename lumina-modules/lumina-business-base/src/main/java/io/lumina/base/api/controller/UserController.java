@@ -129,6 +129,7 @@ public class UserController {
      * 根据用户名获取用户
      */
     @GetMapping("/username/{username}")
+    @RequirePermission("system:user:query")
     @Operation(summary = "根据用户名获取用户", description = "根据用户名查询用户信息，通常用于登录验证")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "查询成功"),

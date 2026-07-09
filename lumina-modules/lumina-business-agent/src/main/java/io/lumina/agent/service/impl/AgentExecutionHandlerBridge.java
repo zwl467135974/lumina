@@ -31,7 +31,9 @@ public class AgentExecutionHandlerBridge implements AgentExecutionHandler {
         log.info("编排引擎委托 Agent 执行: agentId={}, taskLen={}", agentId, task != null ? task.length() : 0);
 
         AgentDO agent = agentMapper.selectById(agentId);
-        if (agent == null) {
+        Long currentTenantId = io.lumina.common.core.BaseContext.getTenantId() != null
+                ? io.lumina.common.core.BaseContext.getTenantId() : 0L;
+        if (agent == null || !currentTenantId.equals(agent.getTenantId())) {
             throw new RuntimeException("Agent 不存在: " + agentId);
         }
         if (agent.getStatus() != 1) {

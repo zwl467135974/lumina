@@ -106,6 +106,10 @@ public class BudgetServiceImpl implements BudgetService {
         if (rule == null || rule.getIsDeleted() == 1) {
             throw new BusinessException(ErrorCode.BUDGET_RULE_NOT_FOUND);
         }
+        Long currentTenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+        if (!currentTenantId.equals(rule.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         rule.setIsDeleted(1);
         rule.setUpdateTime(LocalDateTime.now());
         budgetRuleMapper.updateById(rule);

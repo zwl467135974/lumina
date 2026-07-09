@@ -5,6 +5,7 @@ import io.lumina.base.api.dto.tenant.CreateTenantDTO;
 import io.lumina.base.api.dto.tenant.TenantQueryDTO;
 import io.lumina.base.api.dto.tenant.UpdateTenantDTO;
 import io.lumina.base.api.vo.tenant.TenantVO;
+import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.TenantService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
@@ -35,6 +36,7 @@ public class TenantController {
      */
     @Audit(module = "tenant", action = "CREATE")
     @PostMapping
+    @RequirePermission("system:tenant:create")
     public R<Long> createTenant(@Valid @RequestBody CreateTenantDTO dto) {
         log.info("创建租户请求: tenantCode={}", dto.getTenantCode());
         Long tenantId = tenantService.createTenant(dto);
@@ -46,6 +48,7 @@ public class TenantController {
      */
     @Audit(module = "tenant", action = "UPDATE")
     @PutMapping("/{tenantId}")
+    @RequirePermission("system:tenant:update")
     public R<Boolean> updateTenant(@PathVariable Long tenantId, @Valid @RequestBody UpdateTenantDTO dto) {
         log.info("更新租户请求: tenantId={}", tenantId);
         dto.setTenantId(tenantId);
@@ -58,6 +61,7 @@ public class TenantController {
      */
     @Audit(module = "tenant", action = "DELETE")
     @DeleteMapping("/{tenantId}")
+    @RequirePermission("system:tenant:delete")
     public R<Boolean> deleteTenant(@PathVariable Long tenantId) {
         log.info("删除租户请求: tenantId={}", tenantId);
         Boolean result = tenantService.deleteTenant(tenantId);
@@ -68,6 +72,7 @@ public class TenantController {
      * 获取租户详情
      */
     @GetMapping("/{tenantId}")
+    @RequirePermission("system:tenant:query")
     public R<TenantVO> getTenantById(@PathVariable Long tenantId) {
         log.info("查询租户详情: tenantId={}", tenantId);
         TenantVO tenantVO = tenantService.getTenantById(tenantId);
@@ -78,6 +83,7 @@ public class TenantController {
      * 分页查询租户
      */
     @GetMapping
+    @RequirePermission("system:tenant:list")
     public R<Page<TenantVO>> listTenants(@Valid TenantQueryDTO dto) {
         log.info("分页查询租户: current={}, size={}", dto.getCurrent(), dto.getSize());
         Page<TenantVO> page = tenantService.listTenants(dto);

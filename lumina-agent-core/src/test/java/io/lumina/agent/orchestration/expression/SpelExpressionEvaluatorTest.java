@@ -3,9 +3,11 @@ package io.lumina.agent.orchestration.expression;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * SpelExpressionEvaluator 单元测试
@@ -44,10 +46,10 @@ class SpelExpressionEvaluatorTest {
     }
 
     @Test
-    void evaluateMethod() {
-        Map<String, Object> vars = Map.of("text", "hello world");
-        Object result = evaluator.evaluate("#text.toUpperCase()", vars);
-        assertThat(result).isEqualTo("HELLO WORLD");
+    void evaluateCollectionIndex() {
+        Map<String, Object> vars = Map.of("list", List.of("a", "b", "c"));
+        Object result = evaluator.evaluate("#list[1]", vars);
+        assertThat(result).isEqualTo("b");
     }
 
     @Test
@@ -71,17 +73,17 @@ class SpelExpressionEvaluatorTest {
     }
 
     @Test
-    void evaluateContains() {
-        Map<String, Object> vars = Map.of("text", "error: something went wrong");
-        Object result = evaluator.evaluate("#text.contains('error')", vars);
-        assertThat(result).isEqualTo(true);
+    void evaluateTypeReferenceBlocked() {
+        Map<String, Object> vars = Map.of("name", "test");
+        assertThatThrownBy(() -> evaluator.evaluate("T(java.lang.Runtime)", vars))
+                .isInstanceOf(Exception.class);
     }
 
     @Test
-    void evaluateLength() {
-        Map<String, Object> vars = Map.of("text", "hello");
-        Object result = evaluator.evaluate("#text.length()", vars);
-        assertThat(result).isEqualTo(5);
+    void evaluateMapPropertyAccess() {
+        Map<String, Object> vars = Map.of("user", Map.of("name", "Alice"));
+        Object result = evaluator.evaluate("#user['name']", vars);
+        assertThat(result).isEqualTo("Alice");
     }
 
     @Test

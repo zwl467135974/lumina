@@ -6,6 +6,7 @@ import io.lumina.base.api.dto.role.CreateRoleDTO;
 import io.lumina.base.api.dto.role.RoleQueryDTO;
 import io.lumina.base.api.dto.role.UpdateRoleDTO;
 import io.lumina.base.api.vo.role.RoleVO;
+import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.RoleService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
@@ -37,6 +38,7 @@ public class RoleController {
      */
     @Audit(module = "role", action = "CREATE")
     @PostMapping
+    @RequirePermission("system:role:create")
     public R<Long> createRole(@Valid @RequestBody CreateRoleDTO dto) {
         log.info("创建角色请求: roleCode={}", dto.getRoleCode());
         Long roleId = roleService.createRole(dto);
@@ -48,6 +50,7 @@ public class RoleController {
      */
     @Audit(module = "role", action = "UPDATE")
     @PutMapping("/{roleId}")
+    @RequirePermission("system:role:update")
     public R<Boolean> updateRole(@PathVariable Long roleId, @Valid @RequestBody UpdateRoleDTO dto) {
         log.info("更新角色请求: roleId={}", roleId);
         dto.setRoleId(roleId);
@@ -60,6 +63,7 @@ public class RoleController {
      */
     @Audit(module = "role", action = "DELETE")
     @DeleteMapping("/{roleId}")
+    @RequirePermission("system:role:delete")
     public R<Boolean> deleteRole(@PathVariable Long roleId) {
         log.info("删除角色请求: roleId={}", roleId);
         Boolean result = roleService.deleteRole(roleId);
@@ -70,6 +74,7 @@ public class RoleController {
      * 获取角色详情
      */
     @GetMapping("/{roleId}")
+    @RequirePermission("system:role:query")
     public R<RoleVO> getRoleById(@PathVariable Long roleId) {
         log.info("查询角色详情: roleId={}", roleId);
         RoleVO roleVO = roleService.getRoleById(roleId);
@@ -83,6 +88,7 @@ public class RoleController {
      * /{roleId} 匹配，"all" 转 Long 失败触发「参数类型不匹配」。
      */
     @GetMapping("/all")
+    @RequirePermission("system:role:list")
     public R<List<RoleVO>> listAllRoles() {
         RoleQueryDTO dto = new RoleQueryDTO();
         dto.setCurrent(1);
@@ -95,6 +101,7 @@ public class RoleController {
      * 分页查询角色
      */
     @GetMapping
+    @RequirePermission("system:role:list")
     public R<Page<RoleVO>> listRoles(@Valid RoleQueryDTO dto) {
         log.info("分页查询角色: current={}, size={}", dto.getCurrent(), dto.getSize());
         Page<RoleVO> page = roleService.listRoles(dto);
@@ -105,6 +112,7 @@ public class RoleController {
      * 分配权限
      */
     @PostMapping("/{roleId}/permissions")
+    @RequirePermission("system:role:assign")
     public R<Boolean> assignPermissions(@PathVariable Long roleId, @Valid @RequestBody AssignPermissionDTO dto) {
         log.info("分配权限请求: roleId={}", roleId);
         dto.setRoleId(roleId);
@@ -116,6 +124,7 @@ public class RoleController {
      * 获取角色权限ID列表
      */
     @GetMapping("/{roleId}/permissions")
+    @RequirePermission("system:role:query")
     public R<List<Long>> getRolePermissionIds(@PathVariable Long roleId) {
         log.info("查询角色权限: roleId={}", roleId);
         List<Long> permissionIds = roleService.getRolePermissionIds(roleId);

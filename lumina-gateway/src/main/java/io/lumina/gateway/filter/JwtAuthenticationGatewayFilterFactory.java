@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -26,11 +27,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<JwtAuthenticationGatewayFilterFactory.Config> {
 
+    private static final String TOKEN_BLACKLIST_KEY_PREFIX = "token:blacklist:";
+
+    private static final String[] TRUSTED_IDENTITY_HEADERS = {
+            "X-User-Id", "X-Username", "X-Tenant-Id", "X-Roles", "X-Permissions"
+    };
+
     @Autowired
     private JwtUtil jwtUtil;
 
     @Autowired
     private WhitelistConfig whitelistConfig;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     public JwtAuthenticationGatewayFilterFactory() {
         super(Config.class);
@@ -67,11 +77,23 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
                     return exchange.getResponse().setComplete();
                 }
 
+                // 检查 Token 是否在黑名单中（已登出 / 已撤销）
+                if (isTokenBlacklisted(token)) {
+                    log.warn("Token 已在黑名单中: path={}", path);
+                    exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                    return exchange.getResponse().setComplete();
+                }
+
                 // 解析 token 获取用户信息
                 LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
 
                 // 将用户信息添加到请求 header，传递给下游服务
                 exchange.getRequest().mutate()
+                        .headers(h -> {
+                            for (String name : TRUSTED_IDENTITY_HEADERS) {
+                                h.remove(name);
+                            }
+                        })
                         .header("X-User-Id", String.valueOf(loginUser.getUserId()))
                         .header("X-Username", loginUser.getUsername())
                         .header("X-Tenant-Id", loginUser.getTenantId() != null ? String.valueOf(loginUser.getTenantId()) : "0")
@@ -93,5 +115,15 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
 
     public static class Config {
         // 配置属性（如果需要）
+    }
+
+    private boolean isTokenBlacklisted(String token) {
+        try {
+            Boolean exists = stringRedisTemplate.hasKey(TOKEN_BLACKLIST_KEY_PREFIX + token);
+            return Boolean.TRUE.equals(exists);
+        } catch (Exception e) {
+            log.warn("Token 黑名单检查失败，降级放行: {}", e.getMessage());
+            return false;
+        }
     }
 }

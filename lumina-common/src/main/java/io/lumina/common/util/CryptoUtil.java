@@ -1,5 +1,7 @@
 package io.lumina.common.util;
 
+import lombok.extern.slf4j.Slf4j;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -14,8 +16,10 @@ import java.util.Base64;
  * <p>
  * 密钥从环境变量 {@code LUMINA_CRYPTO_KEY} 读取，未设置时使用内置默认密钥（仅限开发环境）。
  */
+@Slf4j
 public final class CryptoUtil {
 
+    private static final String DEFAULT_KEY = "lumina-dev-default-key-do-not-use-in-production";
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH = 128;
@@ -26,7 +30,8 @@ public final class CryptoUtil {
     static {
         String envKey = System.getenv("LUMINA_CRYPTO_KEY");
         if (envKey == null || envKey.isBlank()) {
-            envKey = "lumina-dev-default-key-do-not-use-in-production";
+            log.warn("CryptoUtil 正在使用默认开发密钥，生产环境必须通过 LUMINA_CRYPTO_KEY 环境变量配置独立密钥");
+            envKey = DEFAULT_KEY;
         }
         try {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");

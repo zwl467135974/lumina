@@ -62,6 +62,14 @@ class WhitelistConfigTest {
     }
 
     @Test
+    void prefixDoesNotMatchSibling() {
+        config.setPaths(Collections.singletonList("/api/v1/auth"));
+        assertThat(config.isWhitelisted("/api/v1/authInfo")).isFalse();
+        assertThat(config.isWhitelisted("/api/v1/authentication")).isFalse();
+        assertThat(config.isWhitelisted("/api/v1/authority")).isFalse();
+    }
+
+    @Test
     void emptyWhitelist() {
         config.setPaths(Collections.emptyList());
         assertThat(config.isWhitelisted("/api/v1/agents")).isFalse();

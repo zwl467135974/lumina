@@ -40,8 +40,8 @@ public class WhitelistConfig {
                 String prefix = whitePath.substring(0, whitePath.length() - 3);
                 return path.startsWith(prefix);
             }
-            // 路径前缀匹配
-            if (path.startsWith(whitePath)) {
+            // 路径前缀匹配（带斜杠，防止 /api/login 匹配 /api/loginInfo）
+            if (path.startsWith(whitePath + "/")) {
                 return true;
             }
             return false;

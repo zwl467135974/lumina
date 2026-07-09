@@ -202,6 +202,9 @@ public class PromptServiceImpl implements PromptService {
         if (entity == null || entity.getIsDeleted() == 1) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Prompt 不存在");
         }
+        if (!currentTenant().equals(entity.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         return entity;
     }
 

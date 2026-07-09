@@ -66,15 +66,13 @@ public class LoopNodeExecutor implements NodeExecutor {
             items.add(collection);
         }
 
-        log.info("循环节点遍历: id={}, items={}", loopNode.getId(), items.size());
+        int iterations = Math.min(items.size(), loopNode.getMaxIterations());
+        log.info("循环节点遍历: id={}, items={}, iterations={}", loopNode.getId(), items.size(), iterations);
 
-        List<Object> results = new ArrayList<>();
-        for (int i = 0; i < items.size() && i < loopNode.getMaxIterations(); i++) {
-            ctx.setVariable(loopNode.getItemVar(), items.get(i));
-            ctx.setVariable("_loopIndex", i);
-        }
+        ctx.setVariable("__loopItems__", items);
+        ctx.setVariable("__loopItemVar__", loopNode.getItemVar());
 
-        return new LoopSignal(items.size(), loopNode.getLoopTarget(), loopNode.getExitTarget());
+        return new LoopSignal(iterations, loopNode.getLoopTarget(), loopNode.getExitTarget());
     }
 
     private Object handleConditionLoop(LoopNode loopNode, WorkflowContext ctx) {

@@ -132,6 +132,13 @@ public class PermissionServiceImpl implements PermissionService {
         return list.stream().map(this::toVO).collect(Collectors.toList());
     }
 
+    @Override
+    public List<PermissionVO> listAllPermissions() {
+        return permissionMapper.selectAllPermissions().stream()
+                .map(this::toVO)
+                .collect(Collectors.toList());
+    }
+
     private List<PermissionVO> buildTree(List<PermissionDO> permissions, Long parentId) {
         List<PermissionVO> tree = new ArrayList<>();
 

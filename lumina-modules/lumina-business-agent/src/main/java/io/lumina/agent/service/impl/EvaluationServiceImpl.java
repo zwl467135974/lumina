@@ -159,6 +159,9 @@ public class EvaluationServiceImpl implements EvaluationService {
         EvaluationDatasetDO dataset = getDatasetDO(datasetId);
         AgentDO agent = Optional.ofNullable(agentMapper.selectById(dto.getAgentId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_FOUND));
+        if (!currentTenantId().equals(agent.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         List<TestCase> cases = parseCases(dataset.getCasesYaml());
         ScoringMethod method = dto.getScoringMethod() == null ? ScoringMethod.EXACT_MATCH : dto.getScoringMethod();
         EvaluationScorer scorer = Optional.ofNullable(scorerMap.get(method))
@@ -193,6 +196,9 @@ public class EvaluationServiceImpl implements EvaluationService {
         EvaluationDatasetDO dataset = getDatasetDO(datasetId);
         AgentDO agent = Optional.ofNullable(agentMapper.selectById(dto.getAgentId()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.AGENT_NOT_FOUND));
+        if (!currentTenantId().equals(agent.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
 
         EvaluationRunDO placeholder = new EvaluationRunDO();
         placeholder.setDatasetId(datasetId);

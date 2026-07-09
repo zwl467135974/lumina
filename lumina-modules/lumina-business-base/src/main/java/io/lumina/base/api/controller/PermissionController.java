@@ -3,6 +3,7 @@ package io.lumina.base.api.controller;
 import io.lumina.base.api.dto.permission.CreatePermissionDTO;
 import io.lumina.base.api.dto.permission.UpdatePermissionDTO;
 import io.lumina.base.api.vo.permission.PermissionVO;
+import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.PermissionService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
@@ -33,6 +34,7 @@ public class PermissionController {
      * 获取权限树
      */
     @GetMapping("/tree")
+    @RequirePermission("system:permission:list")
     public R<List<PermissionVO>> getPermissionTree() {
         log.info("查询权限树");
         List<PermissionVO> tree = permissionService.getPermissionTree();
@@ -44,6 +46,7 @@ public class PermissionController {
      */
     @Audit(module = "permission", action = "CREATE")
     @PostMapping
+    @RequirePermission("system:permission:create")
     public R<Long> createPermission(@Valid @RequestBody CreatePermissionDTO dto) {
         log.info("创建权限请求: permissionCode={}", dto.getPermissionCode());
         Long permissionId = permissionService.createPermission(dto);
@@ -55,6 +58,7 @@ public class PermissionController {
      */
     @Audit(module = "permission", action = "UPDATE")
     @PutMapping("/{permissionId}")
+    @RequirePermission("system:permission:update")
     public R<Boolean> updatePermission(@PathVariable Long permissionId, @Valid @RequestBody UpdatePermissionDTO dto) {
         log.info("更新权限请求: permissionId={}", permissionId);
         dto.setPermissionId(permissionId);
@@ -67,6 +71,7 @@ public class PermissionController {
      */
     @Audit(module = "permission", action = "DELETE")
     @DeleteMapping("/{permissionId}")
+    @RequirePermission("system:permission:delete")
     public R<Boolean> deletePermission(@PathVariable Long permissionId) {
         log.info("删除权限请求: permissionId={}", permissionId);
         Boolean result = permissionService.deletePermission(permissionId);
@@ -77,6 +82,7 @@ public class PermissionController {
      * 获取权限详情
      */
     @GetMapping("/{permissionId}")
+    @RequirePermission("system:permission:query")
     public R<PermissionVO> getPermissionById(@PathVariable Long permissionId) {
         log.info("查询权限详情: permissionId={}", permissionId);
         PermissionVO permissionVO = permissionService.getPermissionById(permissionId);
@@ -87,6 +93,7 @@ public class PermissionController {
      * 按类型查询权限
      */
     @GetMapping("/type/{permissionType}")
+    @RequirePermission("system:permission:list")
     public R<List<PermissionVO>> listByType(@PathVariable Integer permissionType) {
         log.info("按类型查询权限: permissionType={}", permissionType);
         List<PermissionVO> list = permissionService.listByType(permissionType);

@@ -1,14 +1,15 @@
 package io.lumina.base.api.controller;
 
-import io.lumina.base.infrastructure.entity.PermissionDO;
-import io.lumina.base.infrastructure.mapper.PermissionMapper;
+import io.lumina.base.annotation.RequirePermission;
+import io.lumina.base.api.vo.permission.PermissionVO;
+import io.lumina.base.service.PermissionService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,21 +31,22 @@ import java.util.stream.Collectors;
  * @since 1.0.0
  */
 @Slf4j
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/base/menus")
 @Tag(name = "菜单管理", description = "动态菜单接口")
 public class MenuController {
 
-    @Autowired
-    private PermissionMapper permissionMapper;
+    private final PermissionService permissionService;
 
     /**
      * 获取当前用户的菜单树
      */
     @GetMapping
+    @RequirePermission("system:menu:list")
     @Operation(summary = "获取当前用户菜单", description = "从权限表查询菜单类型记录，按用户权限过滤")
     public R<List<MenuVO>> getCurrentUserMenus() {
-        List<PermissionDO> allMenus = permissionMapper.selectAllPermissions().stream()
+        List<PermissionVO> allMenus = permissionService.listAllPermissions().stream()
                 .filter(p -> p.getPermissionType() == 1)
                 .filter(p -> p.getVisible() == 1)
                 .filter(p -> p.getStatus() == 1)
@@ -58,9 +60,9 @@ public class MenuController {
     /**
      * 构建菜单树并按用户权限过滤
      */
-    private List<MenuVO> buildAndFilterMenuTree(List<PermissionDO> allMenus) {
-        Map<Long, List<PermissionDO>> byParent = allMenus.stream()
-                .collect(Collectors.groupingBy(PermissionDO::getParentId));
+    private List<MenuVO> buildAndFilterMenuTree(List<PermissionVO> allMenus) {
+        Map<Long, List<PermissionVO>> byParent = allMenus.stream()
+                .collect(Collectors.groupingBy(PermissionVO::getParentId));
 
         return buildChildren(byParent, 0L);
     }
@@ -68,14 +70,14 @@ public class MenuController {
     /**
      * 递归构建子菜单（过滤无权限的节点）
      */
-    private List<MenuVO> buildChildren(Map<Long, List<PermissionDO>> byParent, Long parentId) {
-        List<PermissionDO> children = byParent.get(parentId);
+    private List<MenuVO> buildChildren(Map<Long, List<PermissionVO>> byParent, Long parentId) {
+        List<PermissionVO> children = byParent.get(parentId);
         if (children == null || children.isEmpty()) {
             return List.of();
         }
 
         List<MenuVO> result = new ArrayList<>();
-        for (PermissionDO perm : children) {
+        for (PermissionVO perm : children) {
             if (!hasPermission(perm)) {
                 continue;
             }
@@ -96,7 +98,7 @@ public class MenuController {
     /**
      * 检查当前用户是否有该菜单的权限
      */
-    private boolean hasPermission(PermissionDO perm) {
+    private boolean hasPermission(PermissionVO perm) {
         if (BaseContext.isSuperAdmin()) {
             return true;
         }
@@ -108,9 +110,9 @@ public class MenuController {
     }
 
     /**
-     * PermissionDO → MenuVO 转换
+     * PermissionVO → MenuVO 转换
      */
-    private MenuVO toMenuVO(PermissionDO perm) {
+    private MenuVO toMenuVO(PermissionVO perm) {
         MenuVO menu = new MenuVO();
         menu.setName(perm.getPermissionCode());
         menu.setPath(perm.getPath() != null ? perm.getPath() : "");

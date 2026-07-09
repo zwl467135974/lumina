@@ -136,6 +136,10 @@ public class WorkflowServiceImpl implements WorkflowService {
         if (entity == null || entity.getIsDeleted() == 1) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "工作流不存在");
         }
+        Long currentTenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+        if (!currentTenantId.equals(entity.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         return entity;
     }
 

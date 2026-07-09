@@ -188,8 +188,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Override
     public KnowledgeDocumentDO getDocumentStatus(String uuid) {
+        Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         LambdaQueryWrapper<KnowledgeDocumentDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeDocumentDO::getDocumentUuid, uuid);
+        wrapper.eq(KnowledgeDocumentDO::getTenantId, tenantId);
         wrapper.select(KnowledgeDocumentDO::getDocumentUuid, KnowledgeDocumentDO::getTitle,
                 KnowledgeDocumentDO::getStatus, KnowledgeDocumentDO::getChunkCount,
                 KnowledgeDocumentDO::getFileSize, KnowledgeDocumentDO::getCreateTime);
@@ -223,8 +225,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Override
     public void deleteDocument(String uuid) {
+        Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         LambdaQueryWrapper<KnowledgeDocumentDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeDocumentDO::getDocumentUuid, uuid);
+        wrapper.eq(KnowledgeDocumentDO::getTenantId, tenantId);
         KnowledgeDocumentDO doc = documentMapper.selectOne(wrapper);
         if (doc == null) return;
 

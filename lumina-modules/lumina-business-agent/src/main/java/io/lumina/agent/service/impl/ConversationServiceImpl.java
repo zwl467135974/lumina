@@ -92,6 +92,10 @@ public class ConversationServiceImpl implements ConversationService {
         if (conv == null) {
             throw new BusinessException(ErrorCode.CONVERSATION_NOT_FOUND, "会话不存在: " + uuid);
         }
+        Long currentTenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+        if (!currentTenantId.equals(conv.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         return conv;
     }
 

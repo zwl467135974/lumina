@@ -156,7 +156,11 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             recordNodeTimer(node.getClass().getSimpleName(), "success", duration);
 
             if (result instanceof ParallelNodeExecutor.ParallelSignal signal) {
-                return executeParallelBranches(definition, signal, ctx);
+                return executeParallelBranches(definition, node, signal, ctx);
+            }
+
+            if (result instanceof LoopNodeExecutor.LoopSignal signal) {
+                return executeLoop(definition, node, signal, ctx);
             }
 
             return determineNextNode(definition, node, result, ctx);
@@ -194,26 +198,31 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
     /**
      * 执行并行分支（Virtual Thread fan-out / fan-in）
      *
-     * <p>每个分支获得一份上下文快照，独立执行子链，完成后将结果按分支名合并到主上下文。
+     * <p>每个分支获得一份上下文快照（深拷贝 variables / nodeResults / nodeStatuses），
+     * 独立执行子链，完成后将结果按分支名合并到主上下文。
      *
-     * @return 合并后的结果 Map，或 null（控制流由调用方的 edge 决定后续）
+     * @return 并行节点之后的下一个节点 ID（由 outgoing edge 决定），或 null 表示工作流结束
      */
     private String executeParallelBranches(WorkflowDefinition definition,
+                                            WorkflowNode node,
                                             ParallelNodeExecutor.ParallelSignal signal,
                                             WorkflowContext ctx) {
+        Set<String> originalVarKeys = new HashSet<>(ctx.getVariables().keySet());
+
         try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
             var futures = signal.branches().stream()
                     .map(branch -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
                         try {
+                            WorkflowContext branchCtx = copyContext(ctx);
                             log.info("并行分支启动: {}", branch.name());
-                            executeChain(definition, branch.startNode(), ctx);
-                            Object branchResult = ctx.getNodeResult(branch.startNode());
+                            executeChain(definition, branch.startNode(), branchCtx);
+                            Object branchResult = branchCtx.getNodeResult(branch.startNode());
                             log.info("并行分支完成: {}, resultLen={}", branch.name(),
                                     branchResult != null ? branchResult.toString().length() : 0);
-                            return Map.entry(branch.name(), branchResult);
+                            return Map.entry(branch, branchCtx);
                         } catch (Exception e) {
                             log.error("并行分支异常: {}", branch.name(), e);
-                            return Map.entry(branch.name(), (Object) null);
+                            return Map.entry(branch, copyContext(ctx));
                         }
                     }, executor))
                     .toList();
@@ -229,7 +238,14 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             java.util.Map<String, Object> merged = new java.util.LinkedHashMap<>();
             for (var f : futures) {
                 var entry = f.join();
-                merged.put(entry.getKey(), entry.getValue());
+                ParallelNodeExecutor.ParallelBranchInfo branch = entry.getKey();
+                WorkflowContext branchCtx = entry.getValue();
+                Object branchResult = branchCtx.getNodeResult(branch.startNode());
+                merged.put(branch.name(), branchResult);
+
+                branchCtx.getVariables().entrySet().stream()
+                        .filter(e -> !originalVarKeys.contains(e.getKey()))
+                        .forEach(e -> ctx.setVariable(branch.name() + "_" + e.getKey(), e.getValue()));
             }
 
             ctx.setNodeResult("__parallel_merged__", merged);
@@ -240,17 +256,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             log.info("并行分支合并完成: branches={}", merged.size());
         }
 
-        List<WorkflowEdge> outgoing = definition.getOutgoingEdges("__parallel_merged__");
-        if (outgoing.isEmpty()) {
-            for (WorkflowNode n : definition.getNodes()) {
-                var edges = definition.getOutgoingEdges(n.getId());
-                if (!edges.isEmpty() && edges.stream().anyMatch(e -> true)) {
-                    continue;
-                }
-            }
-        }
-
-        return null;
+        return determineNextNode(definition, node, null, ctx);
     }
 
     /**
@@ -273,6 +279,51 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
 
             currentNodeId = executeNode(definition, node, ctx);
         }
+    }
+
+    /**
+     * 深拷贝工作流上下文（复制 variables / nodeResults / nodeStatuses map）
+     */
+    private WorkflowContext copyContext(WorkflowContext source) {
+        WorkflowContext copy = new WorkflowContext();
+        copy.setInstanceId(source.getInstanceId());
+        copy.setWorkflowName(source.getWorkflowName());
+        copy.setTenantId(source.getTenantId());
+        copy.setUserId(source.getUserId());
+        copy.setVariables(new HashMap<>(source.getVariables()));
+        copy.setNodeResults(new HashMap<>(source.getNodeResults()));
+        copy.setNodeStatuses(new HashMap<>(source.getNodeStatuses()));
+        copy.setCurrentNodeId(source.getCurrentNodeId());
+        copy.setStatus(source.getStatus());
+        copy.setErrorMessage(source.getErrorMessage());
+        return copy;
+    }
+
+    /**
+     * 执行循环节点
+     *
+     * <p>根据 {@link LoopNodeExecutor.LoopSignal} 的迭代次数，重复执行 loopTarget 子图，
+     * 每轮设置当前元素（itemVar）和迭代索引（_loopIndex），完成后路由到 exitTarget。
+     */
+    @SuppressWarnings("unchecked")
+    private String executeLoop(WorkflowDefinition definition, WorkflowNode loopNode,
+                               LoopNodeExecutor.LoopSignal signal, WorkflowContext ctx) {
+        List<Object> items = ctx.getVariable("__loopItems__");
+        String itemVar = ctx.getVariable("__loopItemVar__");
+
+        for (int i = 0; i < signal.iterations(); i++) {
+            if (items != null && i < items.size() && itemVar != null) {
+                ctx.setVariable(itemVar, items.get(i));
+            }
+            ctx.setVariable("_loopIndex", i);
+            log.debug("循环迭代 {}/{}: loopTarget={}", i + 1, signal.iterations(), signal.loopTarget());
+            executeChain(definition, signal.loopTarget(), ctx);
+        }
+
+        if (signal.exitTarget() != null && !signal.exitTarget().isBlank()) {
+            return signal.exitTarget();
+        }
+        return determineNextNode(definition, loopNode, null, ctx);
     }
 
     private void evaluateOutputs(WorkflowDefinition definition, WorkflowContext ctx) {

@@ -425,8 +425,8 @@ public class AgentServiceImpl implements AgentService {
         moderateContent(task);
 
         AgentDO agent = agentMapper.selectById(agentId);
-        if (agent == null) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND);
+        if (agent == null || !currentTenantId().equals(agent.getTenantId())) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存在 id=" + agentId);
         }
         if (agent.getStatus() != 1) {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);

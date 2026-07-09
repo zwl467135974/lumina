@@ -19,4 +19,11 @@ public interface PermissionService {
     PermissionVO getPermissionById(Long permissionId);
 
     List<PermissionVO> listByType(Integer permissionType);
+
+    /**
+     * 查询全部权限（扁平列表，按父 ID 和排序序号排列）
+     *
+     * @return 权限列表
+     */
+    List<PermissionVO> listAllPermissions();
 }
