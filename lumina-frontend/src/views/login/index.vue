@@ -33,17 +33,17 @@
               <circle cx="32" cy="35" r="5" fill="url(#logoGlowCenter)" />
               <defs>
                 <linearGradient id="logoGrad" x1="0" y1="0" x2="64" y2="64">
-                  <stop offset="0%" stop-color="#a78bfa" />
-                  <stop offset="100%" stop-color="#f59e0b" />
+                  <stop offset="0%" stop-color="#818cf8" />
+                  <stop offset="100%" stop-color="#6366f1" />
                 </linearGradient>
                 <linearGradient id="logoGradInner" x1="64" y1="0" x2="0" y2="64">
-                  <stop offset="0%" stop-color="#f59e0b" />
-                  <stop offset="100%" stop-color="#a78bfa" />
+                  <stop offset="0%" stop-color="#6366f1" />
+                  <stop offset="100%" stop-color="#818cf8" />
                 </linearGradient>
                 <radialGradient id="logoGlowCenter" cx="0.5" cy="0.5" r="0.5">
-                  <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9" />
-                  <stop offset="50%" stop-color="#a78bfa" stop-opacity="0.4" />
-                  <stop offset="100%" stop-color="#7c3aed" stop-opacity="0" />
+                  <stop offset="0%" stop-color="#6366f1" stop-opacity="0.9" />
+                  <stop offset="50%" stop-color="#818cf8" stop-opacity="0.4" />
+                  <stop offset="100%" stop-color="#4f46e5" stop-opacity="0" />
                 </radialGradient>
               </defs>
             </svg>
@@ -168,7 +168,7 @@ async function handleLogin() {
   inset: 0;
   background-image:
     /* Subtle dot grid */
-    radial-gradient(circle, rgba(124, 58, 237, 0.06) 1px, transparent 1px);
+    radial-gradient(circle, rgba(var(--lumina-primary-rgb), 0.06) 1px, transparent 1px);
   background-size: 32px 32px;
   z-index: 0;
   pointer-events: none;
@@ -189,7 +189,7 @@ async function handleLogin() {
 .login-page::before {
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(124, 58, 237, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--lumina-primary-rgb), 0.18) 0%, transparent 70%);
   top: -15%;
   left: -5%;
   animation: orbDriftPurple 18s ease-in-out infinite;
@@ -199,7 +199,7 @@ async function handleLogin() {
 .login-page::after {
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--lumina-warning-rgb), 0.12) 0%, transparent 70%);
   bottom: -10%;
   right: -5%;
   animation: orbDriftAmber 22s ease-in-out infinite;
@@ -275,12 +275,12 @@ async function handleLogin() {
   background: rgba(30, 41, 59, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(var(--lumina-primary-rgb), 0.2);
   border-radius: var(--lumina-radius-xl);
   box-shadow:
     var(--lumina-shadow-lg),
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 40px rgba(124, 58, 237, 0.08);
+    0 0 40px rgba(var(--lumina-primary-rgb), 0.08);
   animation: fadeInUp 0.7s var(--lumina-transition-base) both;
 }
 
@@ -324,14 +324,14 @@ async function handleLogin() {
   z-index: 1;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.4));
+  filter: drop-shadow(0 0 12px rgba(var(--lumina-primary-rgb), 0.4));
 }
 
 .login-logo-glow {
   position: absolute;
   inset: -12px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--lumina-primary-rgb), 0.25) 0%, transparent 70%);
   filter: blur(16px);
   animation: logoPulse 3s ease-in-out infinite;
 }
@@ -354,7 +354,7 @@ async function handleLogin() {
   font-weight: 700;
   letter-spacing: -0.5px;
   margin: 0 0 8px 0;
-  background: linear-gradient(135deg, #a78bfa 0%, #f59e0b 100%);
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -392,12 +392,12 @@ async function handleLogin() {
 }
 
 .login-input :deep(.el-input__wrapper:hover) {
-  border-color: rgba(124, 58, 237, 0.4);
+  border-color: rgba(var(--lumina-primary-rgb), 0.4);
 }
 
 .login-input :deep(.el-input__wrapper.is-focus) {
   border-color: var(--lumina-primary);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--lumina-primary-rgb), 0.15);
 }
 
 .login-input :deep(.el-input__inner) {
@@ -440,10 +440,10 @@ async function handleLogin() {
   letter-spacing: 0.3px;
   border: none;
   border-radius: var(--lumina-radius-md);
-  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
   box-shadow:
-    0 4px 16px rgba(124, 58, 237, 0.35),
-    0 0 0 0 rgba(124, 58, 237, 0);
+    0 4px 16px rgba(var(--lumina-primary-rgb), 0.35),
+    0 0 0 0 rgba(var(--lumina-primary-rgb), 0);
   transition:
     transform var(--lumina-transition-base),
     box-shadow var(--lumina-transition-base),
@@ -453,10 +453,10 @@ async function handleLogin() {
 
 .login-btn :deep(.el-button:hover) {
   transform: translateY(-1px) scale(1.02);
-  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #4338ca 100%);
   box-shadow:
-    0 6px 24px rgba(124, 58, 237, 0.45),
-    0 0 0 3px rgba(124, 58, 237, 0.15);
+    0 6px 24px rgba(var(--lumina-primary-rgb), 0.45),
+    0 0 0 3px rgba(var(--lumina-primary-rgb), 0.15);
 }
 
 .login-btn :deep(.el-button:active) {
@@ -464,7 +464,7 @@ async function handleLogin() {
 }
 
 .login-btn :deep(.el-button.is-loading) {
-  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
 }
 
 .login-btn :deep(.el-button.is-loading::before) {

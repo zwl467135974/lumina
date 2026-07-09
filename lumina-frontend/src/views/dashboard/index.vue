@@ -265,13 +265,13 @@ onMounted(() => {
 
 /* Gradient background per color */
 .stat-card--primary::before {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), transparent 70%);
+  background: linear-gradient(135deg, rgba(var(--lumina-primary-rgb), 0.08), transparent 70%);
 }
 .stat-card--success::before {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), transparent 70%);
 }
 .stat-card--accent::before {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), transparent 70%);
+  background: linear-gradient(135deg, rgba(var(--lumina-warning-rgb), 0.08), transparent 70%);
 }
 .stat-card--danger::before {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), transparent 70%);
@@ -326,9 +326,9 @@ onMounted(() => {
 }
 
 .stat-card--primary .stat-card__icon-circle {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(124, 58, 237, 0.06));
+  background: linear-gradient(135deg, rgba(var(--lumina-primary-rgb), 0.18), rgba(var(--lumina-primary-rgb), 0.06));
   color: var(--lumina-primary-light);
-  box-shadow: 0 0 18px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 0 18px rgba(var(--lumina-primary-rgb), 0.2);
 }
 .stat-card--success .stat-card__icon-circle {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.06));
@@ -336,9 +336,9 @@ onMounted(() => {
   box-shadow: 0 0 18px rgba(16, 185, 129, 0.2);
 }
 .stat-card--accent .stat-card__icon-circle {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(245, 158, 11, 0.06));
+  background: linear-gradient(135deg, rgba(var(--lumina-warning-rgb), 0.18), rgba(var(--lumina-warning-rgb), 0.06));
   color: var(--lumina-accent-light);
-  box-shadow: 0 0 18px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 18px rgba(var(--lumina-warning-rgb), 0.2);
 }
 .stat-card--danger .stat-card__icon-circle {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06));
@@ -414,15 +414,15 @@ onMounted(() => {
 .lumina-table {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
-  --el-table-header-bg-color: rgba(124, 58, 237, 0.06);
-  --el-table-row-hover-bg-color: rgba(124, 58, 237, 0.08);
+  --el-table-header-bg-color: rgba(var(--lumina-primary-rgb), 0.06);
+  --el-table-row-hover-bg-color: rgba(var(--lumina-primary-rgb), 0.08);
   --el-table-border-color: var(--lumina-border);
   --el-table-text-color: var(--lumina-text-secondary);
   --el-table-header-text-color: var(--lumina-text-muted);
 }
 
 .lumina-table :deep(.lumina-table__header) {
-  background: rgba(124, 58, 237, 0.06) !important;
+  background: rgba(var(--lumina-primary-rgb), 0.06) !important;
 }
 
 .lumina-table :deep(.el-table__header-wrapper th) {
@@ -444,7 +444,7 @@ onMounted(() => {
 }
 
 .lumina-table :deep(.el-table__body tr:hover > td) {
-  background: rgba(124, 58, 237, 0.06) !important;
+  background: rgba(var(--lumina-primary-rgb), 0.06) !important;
 }
 
 .table-uuid {
@@ -475,7 +475,7 @@ onMounted(() => {
 }
 
 .status-tag--warning {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(var(--lumina-warning-rgb), 0.15);
   color: var(--lumina-accent);
 }
 
@@ -509,7 +509,7 @@ onMounted(() => {
   gap: 14px;
   padding: 16px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.04), transparent);
+  background: linear-gradient(135deg, rgba(var(--lumina-primary-rgb), 0.04), transparent);
   border: 1px solid transparent;
   cursor: pointer;
   transition: background var(--lumina-transition-base),
@@ -518,7 +518,7 @@ onMounted(() => {
 }
 
 .action-tile:hover {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(124, 58, 237, 0.02));
+  background: linear-gradient(135deg, rgba(var(--lumina-primary-rgb), 0.1), rgba(var(--lumina-primary-rgb), 0.02));
   border-color: var(--lumina-primary);
   transform: translateY(-2px);
 }
@@ -534,7 +534,7 @@ onMounted(() => {
 }
 
 .action-tile__icon--primary {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(124, 58, 237, 0.08));
+  background: linear-gradient(135deg, rgba(var(--lumina-primary-rgb), 0.2), rgba(var(--lumina-primary-rgb), 0.08));
   color: var(--lumina-primary-light);
 }
 
@@ -544,7 +544,7 @@ onMounted(() => {
 }
 
 .action-tile__icon--accent {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.08));
+  background: linear-gradient(135deg, rgba(var(--lumina-warning-rgb), 0.2), rgba(var(--lumina-warning-rgb), 0.08));
   color: var(--lumina-accent-light);
 }
 

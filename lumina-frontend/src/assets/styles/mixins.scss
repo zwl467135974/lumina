@@ -114,7 +114,7 @@
   $saturate: 180%
 ) {
   background: rgba(
-    var(--lumina-primary-rgb, 124, 58, 237),
+    var(--lumina-primary-rgb, 79, 70, 229),
     0.03
   ); // fallback rgba — will be overridden
   background: rgba($bg-color, $bg-opacity);
