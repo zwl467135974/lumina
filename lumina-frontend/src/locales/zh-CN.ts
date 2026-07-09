@@ -469,5 +469,23 @@ export default {
     unauthorized: '未授权，请重新登录',
     serverError: '服务器内部错误',
     backHome: '返回首页'
+  },
+  profile: {
+    title: '个人中心',
+    info: '个人资料',
+    password: '修改密码',
+    preferences: '偏好设置',
+    theme: '默认主题',
+    language: '界面语言',
+    oldPassword: '当前密码',
+    newPassword: '新密码',
+    confirmPassword: '确认密码',
+    changePassword: '修改密码',
+    oldPasswordRequired: '请输入当前密码',
+    newPasswordRequired: '请输入新密码',
+    confirmPasswordRequired: '请再次输入新密码',
+    passwordLength: '密码长度 6-20 个字符',
+    passwordMismatch: '两次输入的密码不一致',
+    passwordFeatureHint: '密码修改功能需要后端接口支持，即将上线'
   }
 }

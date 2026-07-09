@@ -464,10 +464,28 @@ export default {
     executionTimeline: 'Execution Timeline'
   },
   error: {
-    notFound: 'Sorry, the page you are looking for does not exist',
-    forbidden: 'Access Forbidden',
+    notFound: 'Page not found',
+    forbidden: 'Access forbidden',
     unauthorized: 'Unauthorized, please login again',
-    serverError: 'Internal Server Error',
+    serverError: 'Internal server error',
     backHome: 'Back to Home'
+  },
+  profile: {
+    title: 'Profile',
+    info: 'Information',
+    password: 'Password',
+    preferences: 'Preferences',
+    theme: 'Theme',
+    language: 'Language',
+    oldPassword: 'Current Password',
+    newPassword: 'New Password',
+    confirmPassword: 'Confirm Password',
+    changePassword: 'Change Password',
+    oldPasswordRequired: 'Please enter current password',
+    newPasswordRequired: 'Please enter new password',
+    confirmPasswordRequired: 'Please confirm new password',
+    passwordLength: 'Password must be 6-20 characters',
+    passwordMismatch: 'Passwords do not match',
+    passwordFeatureHint: 'Password change requires backend API, coming soon'
   }
 }

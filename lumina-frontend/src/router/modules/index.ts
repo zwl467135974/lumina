@@ -114,6 +114,15 @@ export const agentRoutes: AppRouteRecordRaw[] = [
 // 系统路由
 export const systemRoutes: AppRouteRecordRaw[] = [
   {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/profile/index.vue'),
+    meta: {
+      title: '个人中心',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/system',
     name: 'System',
     redirect: '/system/user',

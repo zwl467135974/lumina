@@ -84,7 +84,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage } from 'element-plus'
 import { useAppStore, useUserStore } from '@/stores'
 import { useRouter } from 'vue-router'
 import { localizeTitle } from '@/utils'
@@ -133,7 +132,7 @@ function toggleTheme() {
 
 function handleUserCommand(command: string) {
   if (command === 'profile') {
-    ElMessage.info(t('header.profile'))
+    router.push('/profile')
   } else if (command === 'logout') {
     userStore.logout().then(() => router.push('/login'))
   }
