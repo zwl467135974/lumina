@@ -10,6 +10,5 @@
 #app {
   height: 100vh;
   overflow: hidden;
-  display: flex;
 }
 </style>
