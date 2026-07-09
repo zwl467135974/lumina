@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="app-sidebar" :class="{ collapsed: appStore.sidebarCollapsed }">
+  <aside class="app-sidebar" :class="{ collapsed: appStore.sidebarCollapsed }">
     <div class="sidebar-logo">
       <h2 v-if="!appStore.sidebarCollapsed">Lumina</h2>
       <h2 v-else>L</h2>
@@ -9,6 +9,7 @@
       :collapse="appStore.sidebarCollapsed"
       :unique-opened="true"
       router
+      class="sidebar-menu"
     >
       <template v-for="menu in menuList" :key="menu.path">
         <el-sub-menu v-if="menu.children?.length" :index="menu.path">
@@ -32,7 +33,7 @@
       </template>
     </el-menu>
     <div class="sidebar-glow" />
-  </div>
+  </aside>
 </template>
 
 <script setup lang="ts">
@@ -83,77 +84,192 @@ const menuList = computed<MenuVO[]>(() => {
 </script>
 
 <style scoped>
+/* ============================================================
+   AppSidebar — Luminous Dark Theme (Flex Layout)
+   方案 A: flex-shrink:0, 不再 fixed
+   ============================================================ */
+
 .app-sidebar {
-  position: fixed;
-  top: 0; left: 0; bottom: 0;
+  flex-shrink: 0;
   width: 220px;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #0f172a 0%, #1a1040 60%, #0f172a 100%);
+  background: linear-gradient(180deg, var(--lumina-bg-base) 0%, #1a1040 60%, var(--lumina-bg-base) 100%);
   overflow: hidden;
-  z-index: 1001;
-  transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 2px 0 24px rgba(0, 0, 0, 0.4);
+  transition: width var(--lumina-transition-base);
 }
-.app-sidebar.collapsed { width: 64px; }
 
+.app-sidebar.collapsed {
+  width: 64px;
+}
+
+/* ---------- Logo ---------- */
 .sidebar-logo {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60px;
-  background: rgba(124, 58, 237, 0.08);
-  border-bottom: 1px solid rgba(124, 58, 237, 0.15);
+  height: 56px;
+  background: rgba(var(--lumina-primary-rgb), 0.08);
+  border-bottom: 1px solid rgba(var(--lumina-primary-rgb), 0.15);
 }
+
 .sidebar-logo h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-family: var(--lumina-font-display);
+  font-size: var(--lumina-font-size-xl);
+  font-weight: var(--lumina-font-weight-bold);
   color: transparent;
-  background: linear-gradient(135deg, #a78bfa, #f59e0b);
+  background: linear-gradient(135deg, var(--lumina-primary-light), var(--lumina-accent));
   background-clip: text;
   -webkit-background-clip: text;
+  letter-spacing: -0.02em;
 }
 
-:deep(.el-menu) {
-  border-right: none;
-  background: transparent;
+/* ---------- Menu (可滚动) ---------- */
+.sidebar-menu {
   flex: 1;
-  padding: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: none !important;
+  background: transparent !important;
+  padding: var(--lumina-spacing-sm);
+  scrollbar-width: thin;
+  scrollbar-color: var(--lumina-border) transparent;
 }
-:deep(.el-menu-item),
-:deep(.el-sub-menu__title) {
-  color: #94a3b8;
-  border-radius: 8px;
-  margin: 2px 0;
+
+.sidebar-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: var(--lumina-border);
+  border-radius: 4px;
+}
+
+/* ---------- Menu Items ---------- */
+.sidebar-menu :deep(.el-menu-item),
+.sidebar-menu :deep(.el-sub-menu__title) {
   height: 44px;
   line-height: 44px;
+  margin: 2px 0;
+  border-radius: var(--lumina-radius-sm);
+  color: var(--lumina-text-secondary);
+  background: transparent !important;
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-base);
+  font-weight: var(--lumina-font-weight-medium);
+  transition:
+    color var(--lumina-transition-fast),
+    background var(--lumina-transition-fast);
 }
-:deep(.el-menu-item:hover),
-:deep(.el-sub-menu__title:hover) {
-  background: rgba(124, 58, 237, 0.1);
-  color: #f1f5f9;
+
+.sidebar-menu :deep(.el-menu-item:hover),
+.sidebar-menu :deep(.el-sub-menu__title:hover) {
+  color: var(--lumina-text-primary);
+  background: rgba(var(--lumina-primary-rgb), 0.1) !important;
 }
-:deep(.el-menu-item.is-active) {
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.2), rgba(124, 58, 237, 0.05));
-  color: #a78bfa;
+
+/* ---------- Active State ---------- */
+.sidebar-menu :deep(.el-menu-item.is-active) {
   position: relative;
+  color: var(--lumina-primary-light) !important;
+  background: linear-gradient(90deg, rgba(var(--lumina-primary-rgb), 0.18), rgba(var(--lumina-primary-rgb), 0.04)) !important;
+  font-weight: var(--lumina-font-weight-semibold);
 }
-:deep(.el-menu-item.is-active::before) {
+
+.sidebar-menu :deep(.el-menu-item.is-active::before) {
   content: '';
   position: absolute;
-  left: 0; top: 25%; bottom: 25%;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: linear-gradient(180deg, #7c3aed, #f59e0b);
+  background: linear-gradient(180deg, var(--lumina-primary), var(--lumina-accent));
 }
 
+.sidebar-menu :deep(.el-menu-item.is-active .el-icon) {
+  color: var(--lumina-accent);
+}
+
+/* ---------- Submenu ---------- */
+.sidebar-menu :deep(.el-sub-menu.is-opened > .el-sub-menu__title) {
+  color: var(--lumina-primary-light) !important;
+}
+
+.sidebar-menu :deep(.el-menu--inline) {
+  background: rgba(var(--lumina-bg-base-rgb, 15, 23, 42), 0.5) !important;
+  border-radius: var(--lumina-radius-sm);
+  margin: 2px 0;
+  padding: 4px 0;
+}
+
+.sidebar-menu :deep(.el-menu--inline .el-menu-item) {
+  height: 38px;
+  line-height: 38px;
+  font-size: var(--lumina-font-size-sm);
+  padding-left: 52px !important;
+}
+
+/* ---------- Icons ---------- */
+.sidebar-menu :deep(.el-icon) {
+  color: inherit;
+  font-size: 16px;
+  transition: color var(--lumina-transition-fast);
+}
+
+/* ---------- Collapsed State ---------- */
+.app-sidebar.collapsed .sidebar-menu :deep(.el-menu--collapse) {
+  width: 64px;
+}
+
+.app-sidebar.collapsed .sidebar-menu :deep(.el-menu-item),
+.app-sidebar.collapsed .sidebar-menu :deep(.el-sub-menu__title) {
+  justify-content: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin: 2px auto;
+  width: 44px;
+}
+
+/* ---------- Bottom Glow ---------- */
 .sidebar-glow {
+  flex-shrink: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.4), transparent);
+  margin: var(--lumina-spacing-sm) var(--lumina-spacing-md) var(--lumina-spacing-md);
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--lumina-primary-rgb), 0.4) 50%,
+    transparent 100%
+  );
+  opacity: 0.6;
 }
 
+.app-sidebar.collapsed .sidebar-glow {
+  margin: var(--lumina-spacing-sm) var(--lumina-spacing-xs) var(--lumina-spacing-sm);
+}
+
+/* ---------- Responsive: 移动端抽屉 ---------- */
 @media (max-width: 768px) {
-  :deep(.el-col) { max-width: 100%; flex: 0 0 100%; }
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: var(--lumina-z-fixed);
+    transform: translateX(0);
+    transition:
+      transform var(--lumina-transition-base),
+      width var(--lumina-transition-base);
+  }
+
+  .app-sidebar.collapsed {
+    width: 220px;
+    transform: translateX(-100%);
+  }
 }
 </style>

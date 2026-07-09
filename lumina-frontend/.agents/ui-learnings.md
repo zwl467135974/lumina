@@ -27,3 +27,18 @@
 - Observation: Dark theme redesign reintroduced `@/stores/app` import paths that don't resolve
 - Action: Always use `@/stores` barrel export, not individual store files
 - Confidence: high
+
+## 2026-07-09 — Fixed 布局的三大陷阱（方案 C → 方案 A 迁移）
+- Observation: Header/Sidebar 都用 `position: fixed` 导致：① z-index 战争（Sidebar 1001 > Header 1000 遮挡折叠按钮）② 需 margin-left + padding-top 手动补偿 ③ 三层 `overflow:hidden` 锁死横向滚动
+- Action: 中后台布局统一用 **flex**（方案 A）：`.lumina-layout { display: flex }` + Sidebar `flex-shrink:0` + Header `sticky` + `.main-container { flex:1; min-width:0 }`。`min-width:0` 是允许 flex 子项收缩的关键
+- Confidence: high
+
+## 2026-07-09 — transition: all 的标准化替代
+- Observation: index.scss 有 13 处 `transition: all var(--lumina-transition-xxx)`，违反 DESIGN.md 且影响性能（触发不必要的重绘）
+- Action: 在 mixins.scss 加 `@mixin transition-colors($duration)` 和 `@mixin transition-interact($duration)`（含 transform），批量替换。Button 用 interact（有 translateY），其余用 colors
+- Confidence: high
+
+## 2026-07-09 — 表格操作列 dropdown 折叠模式
+- Observation: prompt/workflow 主表 6 个按钮塞 280px 列，user 5 个塞 320px，英文 i18n 后更糟
+- Action: 按钮 ≥ 4 时，前 2 个高频按钮直接显示 + `el-dropdown` 折叠其余。`@command="(cmd, row) => handleRowCommand(cmd, row)"` 统一分发。列宽收到 180-200px。`v-permission` 在 `el-dropdown-item` 上同样生效
+- Confidence: high

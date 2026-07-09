@@ -58,7 +58,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
-        <el-table-column :label="t('common.actions')" width="320" fixed="right">
+        <el-table-column :label="t('common.actions')" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" v-permission="'user:update'" @click="handleEdit(row)">
               {{ t('common.edit') }}
@@ -66,15 +66,18 @@
             <el-button link type="primary" v-permission="'user:role'" @click="handleAssignRoles(row)">
               {{ t('system.user.assignRoles') }}
             </el-button>
-            <el-button link type="warning" v-permission="'user:reset'" @click="handleResetPassword(row)">
-              {{ t('system.user.resetPassword') }}
-            </el-button>
-            <el-button link type="primary" v-permission="'user:status'" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? t('common.disable') : t('common.enable') }}
-            </el-button>
-            <el-button link type="danger" v-permission="'user:delete'" @click="handleDelete(row)">
-              {{ t('common.delete') }}
-            </el-button>
+            <el-dropdown trigger="click" @command="(cmd: string) => handleRowCommand(cmd, row)">
+              <el-button link>{{ t('common.more') }}</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-permission="'user:reset'" command="reset">{{ t('system.user.resetPassword') }}</el-dropdown-item>
+                  <el-dropdown-item v-permission="'user:status'" command="status">
+                    {{ row.status === 1 ? t('common.disable') : t('common.enable') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item v-permission="'user:delete'" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -439,6 +442,12 @@ const handleDelete = async (row: UserVO) => {
   } catch (error) {
     // 用户取消
   }
+}
+
+function handleRowCommand(cmd: string, row: UserVO) {
+  if (cmd === 'reset') handleResetPassword(row)
+  else if (cmd === 'status') handleToggleStatus(row)
+  else if (cmd === 'delete') handleDelete(row)
 }
 
 onMounted(() => {

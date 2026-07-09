@@ -360,7 +360,7 @@ onMounted(() => {
 }
 .stat-card--success .stat-card__icon-circle {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.06));
-  color: #34d399;
+  color: var(--lumina-success-light);
   box-shadow: 0 0 18px rgba(16, 185, 129, 0.2);
 }
 .stat-card--accent .stat-card__icon-circle {
@@ -370,7 +370,7 @@ onMounted(() => {
 }
 .stat-card--danger .stat-card__icon-circle {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06));
-  color: #f87171;
+  color: var(--lumina-danger-light);
   box-shadow: 0 0 18px rgba(239, 68, 68, 0.2);
 }
 
@@ -568,7 +568,7 @@ onMounted(() => {
 
 .action-tile__icon--success {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.08));
-  color: #34d399;
+  color: var(--lumina-success-light);
 }
 
 .action-tile__icon--accent {

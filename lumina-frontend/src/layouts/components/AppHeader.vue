@@ -143,34 +143,29 @@ function handleUserCommand(command: string) {
 
 <style scoped>
 /* ============================================================
-   AppHeader �� Luminous Dark Theme
-   Design: glass backdrop, gradient edge, subtle animations
+   AppHeader — Luminous Dark Theme (Flex Layout)
+   方案 A: sticky + flex-shrink:0, 替代 fixed
    ============================================================ */
 
 .app-header {
-  position: fixed;
+  flex-shrink: 0;
+  position: sticky;
   top: 0;
-  right: 0;
-  left: 0;
   height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  z-index: 1000;
+  padding: 0 var(--lumina-spacing-lg);
+  z-index: var(--lumina-z-sticky);
 
   /* Glass backdrop */
   background: linear-gradient(
     180deg,
     rgba(15, 23, 42, 0.98) 0%,
-    rgba(15, 23, 42, 0.95) 100%
+    rgba(15, 23, 42, 0.92) 100%
   );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-
-  /* Gradient bottom edge */
-  border-bottom: 1px solid transparent;
-  background-clip: padding-box;
 }
 
 /* Gradient border line at bottom */
@@ -184,9 +179,9 @@ function handleUserCommand(command: string) {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(124, 58, 237, 0.15) 20%,
-    rgba(124, 58, 237, 0.25) 50%,
-    rgba(124, 58, 237, 0.15) 80%,
+    rgba(var(--lumina-primary-rgb), 0.15) 20%,
+    rgba(var(--lumina-primary-rgb), 0.25) 50%,
+    rgba(var(--lumina-primary-rgb), 0.15) 80%,
     transparent 100%
   );
   pointer-events: none;
@@ -196,8 +191,9 @@ function handleUserCommand(command: string) {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--lumina-spacing-sm);
   flex: 1;
+  min-width: 0;
 }
 
 /* Collapse button */
@@ -207,66 +203,70 @@ function handleUserCommand(command: string) {
   justify-content: center;
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
   border: none;
-  border-radius: var(--lumina-radius-sm, 6px);
+  border-radius: var(--lumina-radius-sm);
   background: transparent;
-  color: var(--lumina-text-secondary, #94a3b8);
+  color: var(--lumina-text-secondary);
   cursor: pointer;
   transition:
-    color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1)),
-    background var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+    color var(--lumina-transition-fast),
+    background var(--lumina-transition-fast);
 }
 
 .collapse-btn:hover {
-  color: var(--lumina-primary-light, #a78bfa);
-  background: rgba(124, 58, 237, 0.1);
+  color: var(--lumina-primary-light);
+  background: rgba(var(--lumina-primary-rgb), 0.1);
 }
 
 /* ---------- Breadcrumb ---------- */
 .header-breadcrumb {
-  margin-left: 4px;
+  margin-left: var(--lumina-spacing-xs);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .header-breadcrumb :deep(.el-breadcrumb__item) {
-  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
-  font-size: 13px;
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-sm);
 }
 
 .header-breadcrumb :deep(.el-breadcrumb__inner) {
-  color: var(--lumina-text-muted, #64748b);
-  font-weight: 400;
-  transition: color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+  color: var(--lumina-text-muted);
+  font-weight: var(--lumina-font-weight-normal);
+  transition: color var(--lumina-transition-fast);
 }
 
 .header-breadcrumb :deep(.el-breadcrumb__inner:hover) {
-  color: var(--lumina-primary-light, #a78bfa);
+  color: var(--lumina-primary-light);
 }
 
 .header-breadcrumb :deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
-  color: var(--lumina-primary-light, #a78bfa);
-  font-weight: 600;
+  color: var(--lumina-primary-light);
+  font-weight: var(--lumina-font-weight-semibold);
 }
 
 .header-breadcrumb :deep(.el-breadcrumb__separator) {
-  color: var(--lumina-border-light, #475569);
-  margin: 0 6px;
+  color: var(--lumina-border-light);
+  margin: 0 var(--lumina-spacing-xs);
 }
 
 /* ---------- Right Section ---------- */
 .header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--lumina-spacing-sm);
+  flex-shrink: 0;
 }
 
 /* ---------- Language Switch ---------- */
 .lang-switch {
   display: flex;
   align-items: center;
-  background: var(--lumina-bg-elevated, #1e293b);
-  border-radius: 20px;
+  background: var(--lumina-bg-elevated);
+  border-radius: var(--lumina-radius-full);
   padding: 2px;
-  border: 1px solid var(--lumina-border, #334155);
+  border: 1px solid var(--lumina-border);
 }
 
 .lang-btn {
@@ -274,23 +274,26 @@ function handleUserCommand(command: string) {
   border: none;
   border-radius: 18px;
   background: transparent;
-  color: var(--lumina-text-muted, #64748b);
-  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
-  font-size: 12px;
-  font-weight: 500;
+  color: var(--lumina-text-muted);
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-xs);
+  font-weight: var(--lumina-font-weight-medium);
   cursor: pointer;
-  transition: all var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
   white-space: nowrap;
+  transition:
+    color var(--lumina-transition-fast),
+    background var(--lumina-transition-fast),
+    box-shadow var(--lumina-transition-fast);
 }
 
 .lang-btn:hover {
-  color: var(--lumina-text-secondary, #94a3b8);
+  color: var(--lumina-text-secondary);
 }
 
 .lang-btn.active {
-  background: var(--lumina-primary, #7c3aed);
-  color: var(--lumina-text-primary, #f1f5f9);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+  background: var(--lumina-primary);
+  color: var(--lumina-text-primary);
+  box-shadow: 0 2px 8px var(--lumina-primary-glow);
 }
 
 /* ---------- Icon Buttons ---------- */
@@ -301,22 +304,22 @@ function handleUserCommand(command: string) {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: var(--lumina-radius-sm, 6px);
+  border-radius: var(--lumina-radius-sm);
   background: transparent;
-  color: var(--lumina-text-secondary, #94a3b8);
+  color: var(--lumina-text-secondary);
   cursor: pointer;
   position: relative;
   transition:
-    color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1)),
-    background var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+    color var(--lumina-transition-fast),
+    background var(--lumina-transition-fast);
 }
 
 .icon-btn:hover {
-  color: var(--lumina-primary-light, #a78bfa);
-  background: rgba(124, 58, 237, 0.1);
+  color: var(--lumina-primary-light);
+  background: rgba(var(--lumina-primary-rgb), 0.1);
 }
 
-/* Theme toggle with rotation animation */
+/* Theme toggle */
 .theme-toggle {
   display: flex;
   align-items: center;
@@ -324,21 +327,21 @@ function handleUserCommand(command: string) {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: var(--lumina-radius-sm, 6px);
+  border-radius: var(--lumina-radius-sm);
   background: transparent;
-  color: var(--lumina-accent, #f59e0b);
+  color: var(--lumina-accent);
   cursor: pointer;
   transition:
-    color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1)),
-    background var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
+    color var(--lumina-transition-fast),
+    background var(--lumina-transition-fast);
 }
 
 .theme-toggle:hover {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(var(--lumina-accent-rgb), 0.1);
 }
 
 .theme-toggle .theme-icon {
-  transition: transform var(--lumina-transition-slow, 400ms cubic-bezier(0.4, 0, 0.2, 1));
+  transition: transform var(--lumina-transition-slow);
   display: inline-flex;
 }
 
@@ -353,20 +356,20 @@ function handleUserCommand(command: string) {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  margin-left: 4px;
+  margin-left: var(--lumina-spacing-xs);
 }
 
 .user-avatar {
-  border: 2px solid var(--lumina-border, #334155);
-  transition: border-color var(--lumina-transition-fast, 150ms cubic-bezier(0.4, 0, 0.2, 1));
-  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--lumina-primary-dark, #5b21b6), var(--lumina-primary, #7c3aed));
-  color: var(--lumina-text-primary, #f1f5f9);
+  border: 2px solid var(--lumina-border);
+  transition: border-color var(--lumina-transition-fast);
+  font-family: var(--lumina-font-body);
+  font-weight: var(--lumina-font-weight-semibold);
+  background: linear-gradient(135deg, var(--lumina-primary-dark), var(--lumina-primary));
+  color: var(--lumina-text-primary);
 }
 
 .user-avatar-wrapper:hover .user-avatar {
-  border-color: var(--lumina-primary-light, #a78bfa);
+  border-color: var(--lumina-primary-light);
 }
 
 .avatar-glow {
@@ -375,12 +378,12 @@ function handleUserCommand(command: string) {
   border-radius: 50%;
   background: radial-gradient(
     circle at center,
-    rgba(124, 58, 237, 0.25) 0%,
-    rgba(124, 58, 237, 0.1) 50%,
+    var(--lumina-primary-glow) 0%,
+    rgba(var(--lumina-primary-rgb), 0.1) 50%,
     transparent 70%
   );
   opacity: 0;
-  transition: opacity var(--lumina-transition-base, 250ms cubic-bezier(0.4, 0, 0.2, 1));
+  transition: opacity var(--lumina-transition-base);
   pointer-events: none;
 }
 
@@ -390,40 +393,55 @@ function handleUserCommand(command: string) {
 
 /* ---------- Notification Panel ---------- */
 .notification-panel {
-  padding: 8px 0;
+  padding: var(--lumina-spacing-sm) 0;
 }
 
 .notif-empty {
   text-align: center;
-  color: var(--lumina-text-muted, #64748b);
-  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
-  font-size: 13px;
-  padding: 20px;
+  color: var(--lumina-text-muted);
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-sm);
+  padding: var(--lumina-spacing-lg);
   margin: 0;
 }
 
 /* ---------- Badge Override ---------- */
 :deep(.el-badge__content) {
-  background: var(--lumina-accent, #f59e0b);
-  border: 2px solid var(--lumina-bg-elevated, #1e293b);
+  background: var(--lumina-accent);
+  border: 2px solid var(--lumina-bg-elevated);
 }
 
 /* ---------- Dropdown Override ---------- */
 :deep(.el-dropdown-menu__item) {
-  font-family: var(--lumina-font-body, 'IBM Plex Sans', -apple-system, sans-serif);
-  font-size: 13px;
-  color: var(--lumina-text-secondary, #94a3b8);
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-sm);
+  color: var(--lumina-text-secondary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--lumina-spacing-sm);
 }
 
 :deep(.el-dropdown-menu__item:hover) {
-  background: rgba(124, 58, 237, 0.1);
-  color: var(--lumina-text-primary, #f1f5f9);
+  background: rgba(var(--lumina-primary-rgb), 0.1);
+  color: var(--lumina-text-primary);
 }
 
 :deep(.el-dropdown-menu__item .el-icon) {
   font-size: 15px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 var(--lumina-spacing-md);
+  }
+
+  .header-breadcrumb {
+    display: none;
+  }
+
+  .lang-switch {
+    display: none;
+  }
 }
 </style>

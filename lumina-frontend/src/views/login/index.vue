@@ -1,7 +1,7 @@
 <!--
-  Lumina AI Agent Platform ¡ª Login Page
+  Lumina AI Agent Platform ï¿½ï¿½ Login Page
   Design: "Luminous" Dark Theme
-  Engineer: µÇÈëÒ³¹¤³ÌÊ¦ (Subagent)
+  Engineer: ï¿½ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ï¿½ï¿½Ê¦ (Subagent)
 -->
 
 <template>
@@ -175,7 +175,7 @@ async function handleLogin() {
 }
 
 /* ============================================
-   Page Wrapper ¡ª Background
+   Page Wrapper ï¿½ï¿½ Background
    ============================================ */
 .login-page {
   position: relative;
@@ -188,7 +188,7 @@ async function handleLogin() {
   font-family: var(--lumina-font-body);
 }
 
-/* ©¤©¤ Grid texture layer ©¤©¤ */
+/* ï¿½ï¿½ï¿½ï¿½ Grid texture layer ï¿½ï¿½ï¿½ï¿½ */
 .login-bg-layer {
   position: absolute;
   inset: 0;
@@ -200,7 +200,7 @@ async function handleLogin() {
   pointer-events: none;
 }
 
-/* ©¤©¤ Deep space radial layers on the page itself ©¤©¤ */
+/* ï¿½ï¿½ï¿½ï¿½ Deep space radial layers on the page itself ï¿½ï¿½ï¿½ï¿½ */
 .login-page::before,
 .login-page::after {
   content: '';
@@ -211,7 +211,7 @@ async function handleLogin() {
   pointer-events: none;
 }
 
-/* Purple glow orb ¡ª top-left */
+/* Purple glow orb ï¿½ï¿½ top-left */
 .login-page::before {
   width: 600px;
   height: 600px;
@@ -221,7 +221,7 @@ async function handleLogin() {
   animation: orbDriftPurple 18s ease-in-out infinite;
 }
 
-/* Amber glow orb ¡ª bottom-right */
+/* Amber glow orb ï¿½ï¿½ bottom-right */
 .login-page::after {
   width: 500px;
   height: 500px;
@@ -261,7 +261,7 @@ async function handleLogin() {
   }
 }
 
-/* Extra micro orb ¡ª third layer */
+/* Extra micro orb ï¿½ï¿½ third layer */
 .login-page .login-bg-layer::before {
   content: '';
   position: absolute;
@@ -290,7 +290,7 @@ async function handleLogin() {
 }
 
 /* ============================================
-   Card ¡ª Glass Morphism
+   Card ï¿½ï¿½ Glass Morphism
    ============================================ */
 .login-card {
   position: relative;
@@ -373,7 +373,7 @@ async function handleLogin() {
   }
 }
 
-/* Title ¡ª gradient text */
+/* Title ï¿½ï¿½ gradient text */
 .login-title {
   font-family: var(--lumina-font-display);
   font-size: 28px;
@@ -444,7 +444,7 @@ async function handleLogin() {
   color: var(--lumina-primary-light);
 }
 
-/* ©¤©¤ Submit Button ©¤©¤ */
+/* ï¿½ï¿½ï¿½ï¿½ Submit Button ï¿½ï¿½ï¿½ï¿½ */
 .login-btn {
   width: 100%;
   margin-top: 12px;
@@ -512,7 +512,7 @@ async function handleLogin() {
    Form validation error styling
    ============================================ */
 .login-form :deep(.el-form-item__error) {
-  color: #f87171;
+  color: var(--lumina-danger-light);
   font-size: 12px;
   padding-top: 4px;
 }

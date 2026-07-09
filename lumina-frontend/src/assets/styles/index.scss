@@ -268,7 +268,7 @@ img {
   font-family: var(--lumina-font-body);
   font-weight: var(--lumina-font-weight-medium);
   border-radius: var(--lumina-radius-sm);
-  transition: all var(--lumina-transition-base);
+  @include transition-interact(base);
 
   // === Primary Button (渐变 + 微光) ===
   &.el-button--primary {
@@ -438,7 +438,7 @@ img {
     background-color: var(--lumina-bg-input);
     border-radius: var(--lumina-radius-sm);
     box-shadow: inset 0 1px 0 0 var(--lumina-border-light);
-    transition: all var(--lumina-transition-base);
+    @include transition-colors(base);
 
     &:hover {
       box-shadow: inset 0 1px 0 0 var(--lumina-border-light);
@@ -484,7 +484,7 @@ img {
     font-family: var(--lumina-font-body);
     resize: vertical;
     min-height: 80px;
-    transition: all var(--lumina-transition-base);
+    @include transition-colors(base);
 
     &:hover {
       border-color: var(--lumina-border-hover);
@@ -558,7 +558,7 @@ img {
   .el-menu-item {
     border-radius: var(--lumina-radius-sm);
     margin: 2px var(--lumina-spacing-sm);
-    transition: all var(--lumina-transition-base);
+    @include transition-colors(base);
 
     &:hover {
       background-color: var(--lumina-bg-hover);
@@ -606,7 +606,7 @@ img {
     .el-sub-menu__title {
       border-radius: var(--lumina-radius-sm);
       margin: 2px var(--lumina-spacing-sm);
-      transition: all var(--lumina-transition-base);
+      @include transition-colors(base);
 
       &:hover {
         background-color: var(--lumina-bg-hover);
@@ -644,7 +644,7 @@ img {
   .el-dropdown-menu__item {
     border-radius: var(--lumina-radius-sm);
     margin: 2px 0;
-    transition: all var(--lumina-transition-fast);
+    @include transition-colors(fast);
 
     &:hover {
       background-color: var(--lumina-bg-active);
@@ -755,7 +755,7 @@ img {
   font-family: var(--lumina-font-body);
   font-weight: var(--lumina-font-weight-medium);
   border-width: 1px;
-  transition: all var(--lumina-transition-fast);
+  @include transition-colors(fast);
 
   // Type variants
   &.el-tag--primary {
@@ -841,7 +841,7 @@ img {
     color: var(--lumina-text-regular);
     border-radius: var(--lumina-radius-sm);
     margin: 2px var(--lumina-spacing-sm);
-    transition: all var(--lumina-transition-fast);
+    @include transition-colors(fast);
 
     &:hover {
       background-color: var(--lumina-bg-hover);
@@ -904,7 +904,7 @@ img {
     border: 1px solid var(--lumina-border);
     border-radius: var(--lumina-radius-sm);
     color: var(--lumina-text-secondary);
-    transition: all var(--lumina-transition-fast);
+    @include transition-colors(fast);
 
     &:hover {
       color: var(--lumina-primary-light);
@@ -947,7 +947,7 @@ img {
     border-color: var(--lumina-fill-light);
     background-color: var(--lumina-fill-light);
     border-radius: var(--lumina-radius-full);
-    transition: all var(--lumina-transition-base);
+    @include transition-colors(base);
   }
 
   .el-switch__action {
@@ -1070,7 +1070,7 @@ img {
     border-color: var(--lumina-border);
     color: var(--lumina-text-secondary);
     font-family: var(--lumina-font-body);
-    transition: all var(--lumina-transition-fast);
+    @include transition-colors(fast);
 
     &:hover {
       color: var(--lumina-primary-light);
@@ -1097,7 +1097,7 @@ img {
     border-color: var(--lumina-border);
     color: var(--lumina-text-secondary);
     font-family: var(--lumina-font-body);
-    transition: all var(--lumina-transition-fast);
+    @include transition-colors(fast);
 
     &:hover {
       color: var(--lumina-primary-light);
@@ -1529,7 +1529,7 @@ img {
     font-family: var(--lumina-font-body);
     font-weight: var(--lumina-font-weight-medium);
     color: var(--lumina-text-secondary);
-    transition: all var(--lumina-transition-fast);
+    @include transition-colors(fast);
 
     &:hover {
       color: var(--lumina-primary-light);
@@ -1580,7 +1580,7 @@ img {
     font-weight: var(--lumina-font-weight-medium);
     border-bottom-color: var(--lumina-border);
     padding: var(--lumina-spacing-md);
-    transition: all var(--lumina-transition-fast);
+    @include transition-colors(fast);
 
     &:hover {
       background-color: var(--lumina-bg-hover);

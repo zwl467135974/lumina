@@ -250,6 +250,31 @@ $breakpoints: (
 }
 
 // ----------------------------------------------------------
+//  Transition Mixins (替代 transition: all)
+// ----------------------------------------------------------
+
+/// 颜色过渡 — color + bg + border + shadow
+@mixin transition-colors($duration: 'base') {
+  $d: var(--lumina-transition-#{$duration});
+  transition:
+    color #{$d},
+    background-color #{$d},
+    border-color #{$d},
+    box-shadow #{$d};
+}
+
+/// 交互过渡 — 颜色 + transform（用于 button 等有位移动效的元素）
+@mixin transition-interact($duration: 'base') {
+  $d: var(--lumina-transition-#{$duration});
+  transition:
+    color #{$d},
+    background-color #{$d},
+    border-color #{$d},
+    box-shadow #{$d},
+    transform #{$d};
+}
+
+// ----------------------------------------------------------
 //  Animation Mixins
 // ----------------------------------------------------------
 

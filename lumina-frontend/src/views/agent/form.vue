@@ -16,25 +16,25 @@
           <el-select v-model="formData.agentType" placeholder="请选择 Agent 类型" style="width: 100%">
             <el-option label="ReAct" value="ReAct">
               <span>ReAct</span>
-              <span style="color: #8492a6; font-size: 12px; margin-left: 10px">
+              <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
                 推理-行动模式，适合复杂任务
               </span>
             </el-option>
             <el-option label="Simple" value="simple">
               <span>Simple</span>
-              <span style="color: #8492a6; font-size: 12px; margin-left: 10px">
+              <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
                 简单对话模式，匹配 simple Prompt
               </span>
             </el-option>
             <el-option label="Tool" value="tool">
               <span>Tool</span>
-              <span style="color: #8492a6; font-size: 12px; margin-left: 10px">
+              <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
                 工具调用模式，匹配 tool Prompt
               </span>
             </el-option>
             <el-option label="PlanAndExecute" value="PlanAndExecute">
               <span>PlanAndExecute</span>
-              <span style="color: #8492a6; font-size: 12px; margin-left: 10px">
+              <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
                 规划-执行模式；未配置同名 Prompt 时使用内置回退
               </span>
             </el-option>
@@ -146,7 +146,7 @@
             >
               <div style="margin-left: 8px">
                 <div>{{ tool.label }}</div>
-                <div style="color: #8492a6; font-size: 12px">{{ tool.description }}</div>
+                <div style="color: var(--lumina-text-muted); font-size: 12px">{{ tool.description }}</div>
               </div>
             </el-checkbox>
           </el-checkbox-group>
@@ -371,9 +371,9 @@ watch(() => formData.agentType, () => {
   .prompt-preview {
     width: 100%;
     padding: 12px;
-    border: 1px solid #e4e7ed;
-    border-radius: 6px;
-    background: #fafafa;
+    border: 1px solid var(--lumina-border);
+    border-radius: var(--lumina-radius-sm);
+    background: var(--lumina-bg-input);
 
     &__header {
       display: flex;
@@ -385,7 +385,7 @@ watch(() => formData.agentType, () => {
 
     &__desc {
       margin-bottom: 10px;
-      color: #606266;
+      color: var(--lumina-text-secondary);
       font-size: 13px;
     }
   }

@@ -40,7 +40,9 @@ export default {
     yes: 'Yes',
     no: 'No',
     expand: 'Expand',
-    collapse: 'Collapse'
+    collapse: 'Collapse',
+    view: 'View',
+    more: 'More'
   },
   menu: {
     dashboard: 'Dashboard',
@@ -160,6 +162,8 @@ export default {
     draft: 'Draft',
     published: 'Published',
     execute: 'Execute',
+    instances: 'Instances',
+    visualEdit: 'Visual Edit',
     templates: 'Templates',
     designer: 'Visual Designer',
     detail: 'Execution Detail',

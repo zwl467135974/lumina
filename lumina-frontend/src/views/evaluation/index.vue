@@ -140,10 +140,10 @@
         <el-table-column label="平均分" width="100">
           <template #default="{ row }">{{ Number(row.avgScore).toFixed(3) }}</template>
         </el-table-column>
-        <el-table-column prop="createTime" label="时间" width="180" />
+        <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
         <el-table-column :label="t('common.actions')" width="170">
           <template #default="{ row }">
-            <el-button link type="primary" @click="loadReport(row.id)">查看</el-button>
+            <el-button link type="primary" @click="loadReport(row.id)">{{ t('common.view') }}</el-button>
             <el-button link type="info" @click="startCompare(row.id)">{{ t('evaluation.compare') }}</el-button>
           </template>
         </el-table-column>

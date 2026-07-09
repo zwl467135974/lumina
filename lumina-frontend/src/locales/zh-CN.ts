@@ -40,7 +40,9 @@ export default {
     yes: '是',
     no: '否',
     expand: '展开',
-    collapse: '收起'
+    collapse: '收起',
+    view: '查看',
+    more: '更多'
   },
   menu: {
     dashboard: '仪表盘',
@@ -160,6 +162,8 @@ export default {
     draft: '草稿',
     published: '已发布',
     execute: '执行',
+    instances: '实例',
+    visualEdit: '可视化编辑',
     templates: '模板',
     designer: '可视化设计器',
     detail: '执行详情',

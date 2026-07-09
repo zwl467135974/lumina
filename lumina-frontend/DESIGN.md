@@ -91,16 +91,24 @@ Easing: `cubic-bezier(0.4, 0, 0.2, 1)` for all transitions.
 - Glass morphism on hover (slight lift + shadow)
 
 ### Sidebar
-- Dark gradient background (`#0f172a` → `#1e1b4b`)
+- **Layout: flex-shrink:0**（方案 A，不用 fixed）
+- Dark gradient background (`--lumina-bg-base` → `#1a1040` → `--lumina-bg-base`)
 - 3px gradient active indicator bar (primary → accent)
 - Collapse to 64px with icon-only display
 - Menu items from DB permission table (dynamic)
+- Menu area `overflow-y: auto`（菜单多时可滚动）
+- Collapsed state: `.el-menu--collapse` 图标居中
+- Submenu: `.el-menu--inline` 有独立背景 + 缩进
+- Mobile (`@media 768px`): `position: fixed` + `translateX(-100%)` 抽屉式
 
 ### Header
+- **Layout: sticky + flex-shrink:0**（方案 A，不用 fixed）
 - Glass backdrop blur (backdrop-filter: blur(12px))
 - Gradient bottom border (1px, primary → transparent)
 - Avatar with glow ring on hover
 - Language switch as segmented button
+- `.header-left` 有 `min-width: 0`（防 flex 溢出）
+- Mobile: 隐藏面包屑 + 语言切换
 
 ### Login Page
 - Radial gradient orbs (purple top-left, amber bottom-right)
@@ -111,8 +119,17 @@ Easing: `cubic-bezier(0.4, 0, 0.2, 1)` for all transitions.
 ### Tables
 - Dark header row (`--lumina-bg-elevated`)
 - Alternating row tint via `--lumina-bg-hover` on even rows
-- Action column right-aligned, fixed
+- **Action column: 前 2 个高频按钮 + `el-dropdown` 折叠其余**（按钮 ≥ 4 时）
 - Status tags use semantic colors with `size="small"`
+- `overflow-x: auto` on `.page-content`（横向溢出可滚动，不裁切）
+
+### Layout Architecture (方案 A — Flex)
+- `#app { display: flex; height: 100vh; overflow: hidden }`
+- `.lumina-layout { display: flex }` — Sidebar + Main 横向 flex
+- `.main-container { flex: 1; min-width: 0 }` — **关键：min-width:0 允许收缩**
+- `.page-content { overflow-x: auto }` — 横向溢出改滚动
+- **不用 fixed + margin-left 补偿**（之前的方案 C 已废弃）
+- **不用 z-index 战争**（Sidebar 和 Header 同级 flex 子项）
 
 ### Forms
 - Labels above inputs (not inline)
@@ -153,9 +170,12 @@ The following EP components have custom styling in `index.scss`:
 ## What NOT to Do
 
 - ❌ Hardcode hex colors in `.vue` files — always use `var(--lumina-*)`
-- ❌ Use `transition: all` — specify exact properties
+- ❌ Use `transition: all` — use `@include transition-colors()` or `@include transition-interact()` mixin
 - ❌ Mix font families — stick to Outfit/IBM Plex/JetBrains Mono
 - ❌ Create card styles per page — use consistent `--lumina-bg-card` + `--lumina-radius-md`
 - ❌ Use `z-index: 9999` — use `--lumina-z-*` scale
 - ❌ Forget empty/loading/error states
 - ❌ Test only in light mode — dark is the primary theme
+- ❌ Use `position: fixed` for Header/Sidebar — use **flex layout** (方案 A)
+- ❌ Stack `overflow: hidden` on multiple ancestors — blocks horizontal scroll
+- ❌ Put 6+ buttons in a table action column — use `el-dropdown` to fold extras

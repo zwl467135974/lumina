@@ -54,14 +54,21 @@
         <el-table-column prop="updateTime" label="更新时间" width="170">
           <template #default="{ row }">{{ formatDate(row.updateTime) }}</template>
         </el-table-column>
-        <el-table-column :label="t('common.actions')" width="280" fixed="right">
+        <el-table-column :label="t('common.actions')" width="180" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="showVersions(row)">{{ t('prompt.versions') }}</el-button>
             <el-button v-if="row.status === 0" size="small" @click="showEditDialog(row)">{{ t('common.edit') }}</el-button>
-            <el-button v-if="row.status === 0" size="small" type="success" @click="handlePublish(row.id)">{{ t('prompt.publish') }}</el-button>
-            <el-button size="small" type="primary" plain @click="showNewVersionDialog(row)">{{ t('prompt.newVersion') }}</el-button>
-            <el-button size="small" @click="copyContent(row)">{{ t('prompt.copyContent') }}</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">{{ t('common.delete') }}</el-button>
+            <el-dropdown trigger="click" @command="(cmd: string) => handleRowCommand(cmd, row)">
+              <el-button size="small" link>{{ t('common.more') }}</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="row.status === 0" command="publish">{{ t('prompt.publish') }}</el-dropdown-item>
+                  <el-dropdown-item command="newVersion">{{ t('prompt.newVersion') }}</el-dropdown-item>
+                  <el-dropdown-item command="copy">{{ t('prompt.copyContent') }}</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -268,6 +275,13 @@ const copyContent = (row: PromptVO) => {
   }).catch(() => {
     ElMessage.warning('复制失败')
   })
+}
+
+function handleRowCommand(cmd: string, row: PromptVO) {
+  if (cmd === 'publish') handlePublish(row.id)
+  else if (cmd === 'newVersion') showNewVersionDialog(row)
+  else if (cmd === 'copy') copyContent(row)
+  else if (cmd === 'delete') handleDelete(row.id)
 }
 
 const formatDate = (dt?: string) => {

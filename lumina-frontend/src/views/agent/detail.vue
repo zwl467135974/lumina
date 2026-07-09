@@ -231,7 +231,7 @@ onUnmounted(() => {
 
   .prompt-desc {
     margin-bottom: 10px;
-    color: #606266;
+    color: var(--lumina-text-secondary);
     font-size: 13px;
   }
 }

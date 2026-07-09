@@ -57,10 +57,10 @@
             />
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column :label="t('common.actions')" width="200" fixed="right">
+        <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
+        <el-table-column :label="t('common.actions')" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleView(row)">查看</el-button>
+            <el-button link type="primary" @click="handleView(row)">{{ t('common.view') }}</el-button>
             <el-button link type="primary" @click="handleEdit(row)">{{ t('common.edit') }}</el-button>
             <el-button link type="danger" @click="handleDelete(row)">{{ t('common.delete') }}</el-button>
           </template>
@@ -195,7 +195,7 @@ onMounted(() => {
   }
 
   .prompt-name {
-    color: #606266;
+    color: var(--lumina-text-secondary);
     font-size: 13px;
   }
 

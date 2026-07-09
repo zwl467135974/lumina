@@ -40,7 +40,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
-        <el-table-column :label="t('common.actions')" width="280" fixed="right">
+        <el-table-column :label="t('common.actions')" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" v-permission="'role:update'" @click="handleEdit(row)">
               {{ t('common.edit') }}
@@ -48,12 +48,17 @@
             <el-button link type="primary" v-permission="'role:permission'" @click="handleAssignPermissions(row)">
               {{ t('system.role.assignPermissions') }}
             </el-button>
-            <el-button link type="primary" v-permission="'role:status'" @click="handleToggleStatus(row)">
-              {{ row.status === 1 ? t('common.disable') : t('common.enable') }}
-            </el-button>
-            <el-button link type="danger" v-permission="'role:delete'" @click="handleDelete(row)">
-              {{ t('common.delete') }}
-            </el-button>
+            <el-dropdown trigger="click" @command="(cmd: string) => handleRowCommand(cmd, row)">
+              <el-button link>{{ t('common.more') }}</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-permission="'role:status'" command="status">
+                    {{ row.status === 1 ? t('common.disable') : t('common.enable') }}
+                  </el-dropdown-item>
+                  <el-dropdown-item v-permission="'role:delete'" command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -334,6 +339,11 @@ const handleDelete = async (row: RoleVO) => {
   } catch (error) {
     // 用户取消
   }
+}
+
+function handleRowCommand(cmd: string, row: RoleVO) {
+  if (cmd === 'status') handleToggleStatus(row)
+  else if (cmd === 'delete') handleDelete(row)
 }
 
 onMounted(() => {

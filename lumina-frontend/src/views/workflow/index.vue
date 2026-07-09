@@ -42,14 +42,21 @@
         <el-table-column prop="createTime" :label="t('common.createTime')" width="170">
           <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
         </el-table-column>
-        <el-table-column :label="t('common.actions')" width="280" fixed="right">
+        <el-table-column :label="t('common.actions')" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="showInstances(row)">实例</el-button>
-            <el-button size="small" @click="$router.push(`/workflow/designer/${row.id}`)">可视化编辑</el-button>
-            <el-button v-if="row.status === 0" size="small" type="success" @click="handlePublish(row.id)">{{ t('prompt.publish') }}</el-button>
-            <el-button v-if="row.status === 1" size="small" type="primary" @click="showExecuteDialog(row)">{{ t('workflow.execute') }}</el-button>
-            <el-button size="small" @click="showEditDialog(row)">{{ t('common.edit') }}</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row.id)">{{ t('common.delete') }}</el-button>
+            <el-button size="small" @click="showInstances(row)">{{ t('workflow.instances') }}</el-button>
+            <el-button size="small" @click="$router.push(`/workflow/designer/${row.id}`)">{{ t('workflow.visualEdit') }}</el-button>
+            <el-dropdown trigger="click" @command="(cmd: string) => handleRowCommand(cmd, row)">
+              <el-button size="small" link>{{ t('common.more') }}</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="row.status === 0" command="publish">{{ t('prompt.publish') }}</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === 1" command="execute">{{ t('workflow.execute') }}</el-dropdown-item>
+                  <el-dropdown-item command="edit">{{ t('common.edit') }}</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>{{ t('common.delete') }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -311,6 +318,13 @@ const showExecuteDialog = (row: WorkflowDefinitionVO) => {
   streamEvents.value = []
   resultInstanceId.value = null
   executeDialogVisible.value = true
+}
+
+function handleRowCommand(cmd: string, row: WorkflowDefinitionVO) {
+  if (cmd === 'publish') handlePublish(row.id)
+  else if (cmd === 'execute') showExecuteDialog(row)
+  else if (cmd === 'edit') showEditDialog(row)
+  else if (cmd === 'delete') handleDelete(row.id)
 }
 
 const handleExecute = async () => {
