@@ -5,23 +5,17 @@
 
     <!-- Stat Cards Row -->
     <div class="stat-cards-grid">
-      <div
+      <LumStatCard
         v-for="(stat, idx) in statCards"
         :key="stat.key"
-        class="stat-card"
-        :class="[`stat-card--${stat.colorKey}`, { 'stat-card--clickable': stat.clickable }]"
+        :label="stat.label"
+        :value="stat.value"
+        :icon="stat.icon"
+        :color="stat.colorKey === 'accent' ? 'info' : stat.colorKey"
+        :clickable="stat.clickable"
         :style="{ animationDelay: `${0.1 + idx * 0.08}s` }"
         @click="stat.clickable && stat.route ? router.push(stat.route) : undefined"
-      >
-        <div class="stat-card__glow" />
-        <div class="stat-card__icon-circle">
-          <el-icon :size="26"><component :is="stat.icon" /></el-icon>
-        </div>
-        <div class="stat-card__body">
-          <span class="stat-card__label">{{ stat.label }}</span>
-          <span class="stat-card__value">{{ stat.value }}</span>
-        </div>
-      </div>
+      />
     </div>
 
     <!-- Content Row: Tasks + Quick Actions -->
@@ -108,9 +102,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Monitor, List, DataLine, Money, Plus, Upload, DataAnalysis, Document } from '@element-plus/icons-vue'
+import { Plus, Upload, DataAnalysis, Document } from '@element-plus/icons-vue'
 import { getStats, getRecentTasks } from '@/api/dashboard'
-import PageHeader from '@/components/common/PageHeader.vue'
+import { PageHeader, LumStatCard } from '@/components/common'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -130,7 +124,7 @@ const statCards = computed(() => [
   {
     key: 'agents',
     colorKey: 'primary',
-    icon: Monitor,
+    icon: 'Monitor',
     label: t('dashboard.agentCount'),
     value: stats.agentCount,
     clickable: true,
@@ -139,7 +133,7 @@ const statCards = computed(() => [
   {
     key: 'tasks',
     colorKey: 'success',
-    icon: List,
+    icon: 'List',
     label: t('dashboard.todayTasks'),
     value: stats.todayTasks,
     clickable: true,
@@ -148,7 +142,7 @@ const statCards = computed(() => [
   {
     key: 'tokens',
     colorKey: 'accent',
-    icon: DataLine,
+    icon: 'DataLine',
     label: t('dashboard.totalTokens'),
     value: stats.totalTokens?.toLocaleString?.() ?? stats.totalTokens,
     clickable: false,
@@ -156,7 +150,7 @@ const statCards = computed(() => [
   {
     key: 'cost',
     colorKey: 'danger',
-    icon: Money,
+    icon: 'Money',
     label: t('dashboard.totalCost'),
     value: `¥ ${(stats.totalCost ?? 0).toFixed(4)}`,
     clickable: false,
