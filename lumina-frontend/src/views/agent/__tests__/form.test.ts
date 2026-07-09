@@ -27,6 +27,10 @@ vi.mock('@/api/modules/tools', () => ({
   getTools: vi.fn().mockResolvedValue({ code: 200, data: [], msg: 'ok', timestamp: 0 }),
 }))
 
+vi.mock('@/api/modules/knowledge-base', () => ({
+  listKnowledgeBases: vi.fn().mockResolvedValue({ code: 200, data: [], msg: 'ok', timestamp: 0 }),
+}))
+
 vi.mock('element-plus', () => ({
   ElMessage: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
 }))
