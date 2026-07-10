@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.agent.api.vo.KnowledgeDocumentVO;
 import io.lumina.agent.infrastructure.entity.KnowledgeDocumentDO;
 import io.lumina.agent.service.KnowledgeService;
 import io.lumina.common.core.PageResult;
@@ -49,7 +50,7 @@ public class KnowledgeController {
     }
 
     @GetMapping("/documents")
-    public R<PageResult<KnowledgeDocumentDO>> list(
+    public R<PageResult<KnowledgeDocumentVO>> list(
             @RequestParam(value = "agentId", required = false) Long agentId,
             @RequestParam(value = "kbId", required = false) Long kbId,
             @RequestParam(value = "pageNum", defaultValue = "1") @Min(1) Integer pageNum,
@@ -57,12 +58,16 @@ public class KnowledgeController {
         if (pageSize > MAX_PAGE_SIZE) {
             pageSize = MAX_PAGE_SIZE;
         }
-        return R.success(knowledgeService.listDocuments(agentId, kbId, pageNum, pageSize));
+        PageResult<KnowledgeDocumentDO> result = knowledgeService.listDocuments(agentId, kbId, pageNum, pageSize);
+        List<KnowledgeDocumentVO> voList = result.getList().stream()
+                .map(KnowledgeDocumentVO::from)
+                .toList();
+        return R.success(new PageResult<>(voList, result.getTotal(), result.getPageNum(), result.getPageSize()));
     }
 
     @GetMapping("/documents/{uuid}/status")
-    public R<KnowledgeDocumentDO> status(@PathVariable("uuid") String uuid) {
-        return R.success(knowledgeService.getDocumentStatus(uuid));
+    public R<KnowledgeDocumentVO> status(@PathVariable("uuid") String uuid) {
+        return R.success(KnowledgeDocumentVO.from(knowledgeService.getDocumentStatus(uuid)));
     }
 
     @Audit(module = "knowledge", action = "DELETE", description = "删除知识文档")

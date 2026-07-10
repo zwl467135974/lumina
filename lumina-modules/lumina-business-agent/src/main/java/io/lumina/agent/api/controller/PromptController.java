@@ -1,7 +1,7 @@
 package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.PromptDTO;
-import io.lumina.agent.infrastructure.entity.PromptDO;
+import io.lumina.agent.api.vo.PromptVO;
 import io.lumina.agent.service.PromptService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
@@ -28,25 +28,25 @@ public class PromptController {
 
     @Audit(module = "prompt", action = "CREATE", description = "创建Prompt")
     @PostMapping
-    public R<PromptDO> create(@Valid @RequestBody PromptDTO dto) {
-        return R.success(promptService.create(dto));
+    public R<PromptVO> create(@Valid @RequestBody PromptDTO dto) {
+        return R.success(PromptVO.from(promptService.create(dto)));
     }
 
     @Audit(module = "prompt", action = "UPDATE", description = "更新Prompt")
     @PutMapping("/{id}")
-    public R<PromptDO> update(@PathVariable Long id, @RequestBody PromptDTO dto) {
-        return R.success(promptService.update(id, dto));
+    public R<PromptVO> update(@PathVariable Long id, @RequestBody PromptDTO dto) {
+        return R.success(PromptVO.from(promptService.update(id, dto)));
     }
 
     @Audit(module = "prompt", action = "UPDATE", description = "发布Prompt")
     @PostMapping("/{id}/publish")
-    public R<PromptDO> publish(@PathVariable Long id) {
-        return R.success(promptService.publish(id));
+    public R<PromptVO> publish(@PathVariable Long id) {
+        return R.success(PromptVO.from(promptService.publish(id)));
     }
 
     @PostMapping("/{id}/new-version")
-    public R<PromptDO> newVersion(@PathVariable Long id, @RequestBody PromptDTO dto) {
-        return R.success(promptService.newVersion(id, dto));
+    public R<PromptVO> newVersion(@PathVariable Long id, @RequestBody PromptDTO dto) {
+        return R.success(PromptVO.from(promptService.newVersion(id, dto)));
     }
 
     @Audit(module = "prompt", action = "DELETE", description = "删除Prompt")
@@ -57,20 +57,24 @@ public class PromptController {
     }
 
     @GetMapping
-    public R<List<PromptDO>> list(
+    public R<List<PromptVO>> list(
             @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "20") int pageSize) {
-        return R.success(promptService.list(name, pageNum, pageSize));
+        return R.success(promptService.list(name, pageNum, pageSize).stream()
+                .map(PromptVO::from)
+                .toList());
     }
 
     @GetMapping("/{name}/versions")
-    public R<List<PromptDO>> getVersions(@PathVariable String name) {
-        return R.success(promptService.getVersions(name));
+    public R<List<PromptVO>> getVersions(@PathVariable String name) {
+        return R.success(promptService.getVersions(name).stream()
+                .map(PromptVO::from)
+                .toList());
     }
 
     @GetMapping("/{name}/active")
-    public R<PromptDO> getActive(@PathVariable String name) {
-        return R.success(promptService.getActive(name));
+    public R<PromptVO> getActive(@PathVariable String name) {
+        return R.success(PromptVO.from(promptService.getActive(name)));
     }
 }

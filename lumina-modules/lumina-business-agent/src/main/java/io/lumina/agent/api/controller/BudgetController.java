@@ -1,7 +1,7 @@
 package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.BudgetRuleDTO;
-import io.lumina.agent.infrastructure.entity.BudgetRuleDO;
+import io.lumina.agent.api.vo.BudgetRuleVO;
 import io.lumina.agent.service.BudgetService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
@@ -31,8 +31,11 @@ public class BudgetController {
      * 查询预算规则列表
      */
     @GetMapping("/rules")
-    public R<List<BudgetRuleDO>> listRules() {
-        return R.success(budgetService.listRules());
+    public R<List<BudgetRuleVO>> listRules() {
+        List<BudgetRuleVO> list = budgetService.listRules().stream()
+                .map(BudgetRuleVO::from)
+                .toList();
+        return R.success(list);
     }
 
     /**
@@ -40,9 +43,9 @@ public class BudgetController {
      */
     @Audit(module = "budget", action = "CREATE", description = "创建预算规则")
     @PostMapping("/rules")
-    public R<BudgetRuleDO> createRule(@Valid @RequestBody BudgetRuleDTO dto) {
+    public R<BudgetRuleVO> createRule(@Valid @RequestBody BudgetRuleDTO dto) {
         log.info("创建预算规则: {}", dto.getRuleName());
-        return R.success(budgetService.createRule(dto));
+        return R.success(BudgetRuleVO.from(budgetService.createRule(dto)));
     }
 
     /**

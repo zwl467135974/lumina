@@ -1,7 +1,7 @@
 package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.KnowledgeBaseDTO;
-import io.lumina.agent.infrastructure.entity.KnowledgeBaseDO;
+import io.lumina.agent.api.vo.KnowledgeBaseVO;
 import io.lumina.agent.service.KnowledgeBaseService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
@@ -28,18 +28,21 @@ public class KnowledgeBaseController {
 
     @Audit(module = "knowledge_base", action = "CREATE", description = "创建知识库")
     @PostMapping
-    public R<KnowledgeBaseDO> create(@Valid @RequestBody KnowledgeBaseDTO dto) {
-        return R.success(knowledgeBaseService.createKnowledgeBase(dto));
+    public R<KnowledgeBaseVO> create(@Valid @RequestBody KnowledgeBaseDTO dto) {
+        return R.success(KnowledgeBaseVO.from(knowledgeBaseService.createKnowledgeBase(dto)));
     }
 
     @GetMapping
-    public R<List<KnowledgeBaseDO>> list(@RequestParam(required = false) String name) {
-        return R.success(knowledgeBaseService.listKnowledgeBases(name));
+    public R<List<KnowledgeBaseVO>> list(@RequestParam(required = false) String name) {
+        List<KnowledgeBaseVO> list = knowledgeBaseService.listKnowledgeBases(name).stream()
+                .map(KnowledgeBaseVO::from)
+                .toList();
+        return R.success(list);
     }
 
     @GetMapping("/{id}")
-    public R<KnowledgeBaseDO> get(@PathVariable Long id) {
-        return R.success(knowledgeBaseService.getKnowledgeBase(id));
+    public R<KnowledgeBaseVO> get(@PathVariable Long id) {
+        return R.success(KnowledgeBaseVO.from(knowledgeBaseService.getKnowledgeBase(id)));
     }
 
     @Audit(module = "knowledge_base", action = "DELETE", description = "删除知识库")
@@ -62,7 +65,10 @@ public class KnowledgeBaseController {
     }
 
     @GetMapping("/agents/{agentId}")
-    public R<List<KnowledgeBaseDO>> getAgentKnowledgeBases(@PathVariable Long agentId) {
-        return R.success(knowledgeBaseService.getAccessibleKnowledgeBases(agentId));
+    public R<List<KnowledgeBaseVO>> getAgentKnowledgeBases(@PathVariable Long agentId) {
+        List<KnowledgeBaseVO> list = knowledgeBaseService.getAccessibleKnowledgeBases(agentId).stream()
+                .map(KnowledgeBaseVO::from)
+                .toList();
+        return R.success(list);
     }
 }

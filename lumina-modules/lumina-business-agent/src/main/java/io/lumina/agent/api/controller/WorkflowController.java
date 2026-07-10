@@ -3,8 +3,10 @@ package io.lumina.agent.api.controller;
 import io.lumina.agent.api.dto.ExecuteWorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowTemplateVO;
+import io.lumina.agent.api.vo.WorkflowDefinitionVO;
+import io.lumina.agent.api.vo.WorkflowExecutionLogVO;
+import io.lumina.agent.api.vo.WorkflowInstanceVO;
 import io.lumina.agent.infrastructure.entity.WorkflowDefinitionDO;
-import io.lumina.agent.infrastructure.entity.WorkflowExecutionLogDO;
 import io.lumina.agent.infrastructure.entity.WorkflowInstanceDO;
 import io.lumina.agent.service.WorkflowService;
 import io.lumina.common.core.PageResult;
@@ -37,14 +39,14 @@ public class WorkflowController {
 
     @Audit(module = "workflow", action = "CREATE", description = "创建工作流")
     @PostMapping
-    public R<WorkflowDefinitionDO> create(@Valid @RequestBody WorkflowDTO dto) {
-        return R.success(workflowService.create(dto));
+    public R<WorkflowDefinitionVO> create(@Valid @RequestBody WorkflowDTO dto) {
+        return R.success(WorkflowDefinitionVO.from(workflowService.create(dto)));
     }
 
     @Audit(module = "workflow", action = "UPDATE", description = "更新工作流")
     @PutMapping("/{id}")
-    public R<WorkflowDefinitionDO> update(@PathVariable Long id, @Valid @RequestBody WorkflowDTO dto) {
-        return R.success(workflowService.update(id, dto));
+    public R<WorkflowDefinitionVO> update(@PathVariable Long id, @Valid @RequestBody WorkflowDTO dto) {
+        return R.success(WorkflowDefinitionVO.from(workflowService.update(id, dto)));
     }
 
     @Audit(module = "workflow", action = "UPDATE", description = "发布工作流")
@@ -62,33 +64,37 @@ public class WorkflowController {
     }
 
     @GetMapping
-    public R<PageResult<WorkflowDefinitionDO>> list(
+    public R<PageResult<WorkflowDefinitionVO>> list(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return R.success(workflowService.list(name, status, pageNum, pageSize));
+        PageResult<WorkflowDefinitionDO> page = workflowService.list(name, status, pageNum, pageSize);
+        List<WorkflowDefinitionVO> voList = page.getList().stream()
+                .map(WorkflowDefinitionVO::from)
+                .toList();
+        return R.success(PageResult.of(voList, page.getTotal(), page.getPageNum(), page.getPageSize()));
     }
 
     @GetMapping("/{id}")
-    public R<WorkflowDefinitionDO> getById(@PathVariable Long id) {
-        return R.success(workflowService.getById(id));
+    public R<WorkflowDefinitionVO> getById(@PathVariable Long id) {
+        return R.success(WorkflowDefinitionVO.from(workflowService.getById(id)));
     }
 
     @PostMapping("/{id}/execute")
-    public R<WorkflowInstanceDO> execute(@PathVariable Long id, @RequestBody ExecuteWorkflowDTO dto) {
-        return R.success(workflowService.execute(id, dto));
+    public R<WorkflowInstanceVO> execute(@PathVariable Long id, @RequestBody ExecuteWorkflowDTO dto) {
+        return R.success(WorkflowInstanceVO.from(workflowService.execute(id, dto)));
     }
 
     /**
      * 恢复暂停的工作流实例（人工审批后调用）
      */
     @PostMapping("/instances/{instanceId}/resume")
-    public R<WorkflowInstanceDO> resumeInstance(
+    public R<WorkflowInstanceVO> resumeInstance(
             @PathVariable Long instanceId,
             @RequestParam String decision) {
         log.info("恢复工作流实例: instanceId={}, decision={}", instanceId, decision);
-        return R.success(workflowService.resumeInstance(instanceId, decision));
+        return R.success(WorkflowInstanceVO.from(workflowService.resumeInstance(instanceId, decision)));
     }
 
     /**
@@ -110,17 +116,23 @@ public class WorkflowController {
     }
 
     @GetMapping("/instances")
-    public R<PageResult<WorkflowInstanceDO>> listInstances(
+    public R<PageResult<WorkflowInstanceVO>> listInstances(
             @RequestParam(required = false) Long definitionId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
-        return R.success(workflowService.listInstances(definitionId, status, pageNum, pageSize));
+        PageResult<WorkflowInstanceDO> page = workflowService.listInstances(definitionId, status, pageNum, pageSize);
+        List<WorkflowInstanceVO> voList = page.getList().stream()
+                .map(WorkflowInstanceVO::from)
+                .toList();
+        return R.success(PageResult.of(voList, page.getTotal(), page.getPageNum(), page.getPageSize()));
     }
 
     @GetMapping("/instances/{instanceId}/logs")
-    public R<List<WorkflowExecutionLogDO>> getInstanceLogs(@PathVariable Long instanceId) {
-        return R.success(workflowService.getInstanceLogs(instanceId));
+    public R<List<WorkflowExecutionLogVO>> getInstanceLogs(@PathVariable Long instanceId) {
+        return R.success(workflowService.getInstanceLogs(instanceId).stream()
+                .map(WorkflowExecutionLogVO::from)
+                .toList());
     }
 
     /**

@@ -2,9 +2,9 @@ package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.EvaluationDatasetDTO;
 import io.lumina.agent.api.dto.EvaluationRunDTO;
+import io.lumina.agent.api.vo.EvaluationRunVO;
 import io.lumina.agent.evaluation.model.EvaluationDataset;
 import io.lumina.agent.evaluation.model.RunReport;
-import io.lumina.agent.infrastructure.entity.EvaluationRunDO;
 import io.lumina.agent.service.EvaluationService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
@@ -92,8 +92,11 @@ public class EvaluationController {
     }
 
     @GetMapping("/runs")
-    public R<List<EvaluationRunDO>> listRuns(@RequestParam(required = false) Long datasetId) {
-        return R.success(evaluationService.listRuns(datasetId));
+    public R<List<EvaluationRunVO>> listRuns(@RequestParam(required = false) Long datasetId) {
+        List<EvaluationRunVO> list = evaluationService.listRuns(datasetId).stream()
+                .map(EvaluationRunVO::from)
+                .toList();
+        return R.success(list);
     }
 
     @GetMapping("/runs/{id}")
@@ -105,8 +108,11 @@ public class EvaluationController {
      * 查询同一数据集的历史评估趋势（按时间正序，用于折线图）
      */
     @GetMapping("/datasets/{id}/trend")
-    public R<List<EvaluationRunDO>> getRunTrend(@PathVariable Long id) {
-        return R.success(evaluationService.getRunTrend(id));
+    public R<List<EvaluationRunVO>> getRunTrend(@PathVariable Long id) {
+        List<EvaluationRunVO> list = evaluationService.getRunTrend(id).stream()
+                .map(EvaluationRunVO::from)
+                .toList();
+        return R.success(list);
     }
 
     /**
