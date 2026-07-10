@@ -226,7 +226,9 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
                             return Map.entry(branch, branchCtx);
                         } catch (Exception e) {
                             log.error("并行分支异常: {}", branch.name(), e);
-                            return Map.entry(branch, copyContext(ctx));
+                            WorkflowContext errorCtx = copyContext(ctx);
+                            errorCtx.setVariable(branch.name() + "_error", e.getMessage());
+                            return Map.entry(branch, errorCtx);
                         }
                     }, executor))
                     .toList();
@@ -259,6 +261,18 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             ctx.setNodeResult("__parallel_merged__", merged);
             for (var entry : merged.entrySet()) {
                 ctx.setVariable(entry.getKey(), entry.getValue());
+            }
+
+            for (var f : futures) {
+                if (signal.waitAll() || f.isDone()) {
+                    var entry = f.join();
+                    ParallelNodeExecutor.ParallelBranchInfo branch = entry.getKey();
+                    WorkflowContext branchCtx = entry.getValue();
+                    if (branchCtx.getVariable(branch.name() + "_error") != null) {
+                        log.warn("并行分支 {} 存在错误: {}", branch.name(),
+                                branchCtx.getVariable(branch.name() + "_error"));
+                    }
+                }
             }
 
             log.info("并行分支合并完成: branches={}", merged.size());
@@ -300,8 +314,10 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
         copy.setUserId(source.getUserId());
         copy.setVariables(JsonUtils.OBJECT_MAPPER.convertValue(
                 source.getVariables(), new TypeReference<Map<String, Object>>() {}));
-        copy.setNodeResults(new HashMap<>(source.getNodeResults()));
-        copy.setNodeStatuses(new HashMap<>(source.getNodeStatuses()));
+        copy.setNodeResults(JsonUtils.OBJECT_MAPPER.convertValue(
+                source.getNodeResults(), new TypeReference<Map<String, Object>>() {}));
+        copy.setNodeStatuses(JsonUtils.OBJECT_MAPPER.convertValue(
+                source.getNodeStatuses(), new TypeReference<Map<String, WorkflowNodeStatus>>() {}));
         copy.setCurrentNodeId(source.getCurrentNodeId());
         copy.setStatus(source.getStatus());
         copy.setErrorMessage(source.getErrorMessage());

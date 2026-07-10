@@ -110,9 +110,9 @@ public class FileService {
         if (fileDO == null) {
             return;
         }
-        storageClient.delete(fileDO.getStorageKey());
         fileDO.setStatus(0);
         fileMapper.updateById(fileDO);
+        storageClient.delete(fileDO.getStorageKey());
         log.info("文件已删除: uuid={}", fileUuid);
     }
 

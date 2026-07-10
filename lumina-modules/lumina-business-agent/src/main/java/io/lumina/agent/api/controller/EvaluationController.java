@@ -2,8 +2,9 @@ package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.EvaluationDatasetDTO;
 import io.lumina.agent.api.dto.EvaluationRunDTO;
+import io.lumina.agent.api.vo.EvaluationDatasetVO;
 import io.lumina.agent.api.vo.EvaluationRunVO;
-import io.lumina.agent.evaluation.model.EvaluationDataset;
+import io.lumina.agent.api.vo.RunReportVO;
 import io.lumina.agent.evaluation.model.RunReport;
 import io.lumina.agent.service.EvaluationService;
 import io.lumina.common.core.R;
@@ -43,9 +44,9 @@ public class EvaluationController {
 
     @Audit(module = "evaluation", action = "CREATE", description = "创建评估数据集")
     @PostMapping("/datasets")
-    public R<EvaluationDataset> createDataset(@Valid @RequestBody EvaluationDatasetDTO dto) {
+    public R<EvaluationDatasetVO> createDataset(@Valid @RequestBody EvaluationDatasetDTO dto) {
         log.info("创建评估数据集: name={}", dto.getName());
-        return R.success(evaluationService.createDataset(dto));
+        return R.success(EvaluationDatasetVO.from(evaluationService.createDataset(dto)));
     }
 
     /**
@@ -53,23 +54,26 @@ public class EvaluationController {
      */
     @Audit(module = "evaluation", action = "CREATE", description = "导入评估数据集")
     @PostMapping("/datasets/import")
-    public R<EvaluationDataset> importDataset(
+    public R<EvaluationDatasetVO> importDataset(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "agentType", required = false) String agentType,
             @RequestParam(value = "description", required = false) String description) {
         log.info("导入评估数据集: fileName={}, name={}", file.getOriginalFilename(), name);
-        return R.success(evaluationService.importDataset(file, name, agentType, description));
+        return R.success(EvaluationDatasetVO.from(evaluationService.importDataset(file, name, agentType, description)));
     }
 
     @GetMapping("/datasets")
-    public R<List<EvaluationDataset>> listDatasets(@RequestParam(required = false) String name) {
-        return R.success(evaluationService.listDatasets(name));
+    public R<List<EvaluationDatasetVO>> listDatasets(@RequestParam(required = false) String name) {
+        List<EvaluationDatasetVO> list = evaluationService.listDatasets(name).stream()
+                .map(EvaluationDatasetVO::from)
+                .toList();
+        return R.success(list);
     }
 
     @GetMapping("/datasets/{id}")
-    public R<EvaluationDataset> getDataset(@PathVariable Long id) {
-        return R.success(evaluationService.getDataset(id));
+    public R<EvaluationDatasetVO> getDataset(@PathVariable Long id) {
+        return R.success(EvaluationDatasetVO.from(evaluationService.getDataset(id)));
     }
 
     @Audit(module = "evaluation", action = "DELETE", description = "删除评估数据集")
@@ -81,9 +85,9 @@ public class EvaluationController {
 
     @Audit(module = "evaluation", action = "EXECUTE", description = "执行评估")
     @PostMapping("/datasets/{id}/runs")
-    public R<RunReport> runEvaluation(@PathVariable Long id, @Valid @RequestBody EvaluationRunDTO dto) {
+    public R<RunReportVO> runEvaluation(@PathVariable Long id, @Valid @RequestBody EvaluationRunDTO dto) {
         log.info("执行 Agent 评估: datasetId={}, agentId={}", id, dto.getAgentId());
-        return R.success(evaluationService.runEvaluation(id, dto));
+        return R.success(RunReportVO.from(evaluationService.runEvaluation(id, dto)));
     }
 
     /**
@@ -105,8 +109,8 @@ public class EvaluationController {
     }
 
     @GetMapping("/runs/{id}")
-    public R<RunReport> getRunReport(@PathVariable Long id) {
-        return R.success(evaluationService.getRunReport(id));
+    public R<RunReportVO> getRunReport(@PathVariable Long id) {
+        return R.success(RunReportVO.from(evaluationService.getRunReport(id)));
     }
 
     /**

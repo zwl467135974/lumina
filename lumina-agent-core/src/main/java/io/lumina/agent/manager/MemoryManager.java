@@ -95,7 +95,7 @@ public class MemoryManager {
     /**
      * 添加记忆到 Redis
      *
-     * <p>使用原子 RPUSH + LTRIM 操作，避免读-改-写竞态条件。
+     * <p>顺序调用 RPUSH + LTRIM + EXPIRE 三次 Redis 操作来维护记忆列表的长度和过期。
      */
     private void addMemoryToRedis(String sessionId, Memory newMemory) {
         try {
