@@ -76,6 +76,9 @@
         <!-- 对象存储 -->
         <minio.version>8.5.14</minio.version>
 
+        <!-- 工作流引擎 -->
+        <flowable.version>7.0.1</flowable.version>
+
         <!-- 测试 -->
         <testcontainers.version>1.20.6</testcontainers.version>
         <jacoco.version>0.8.13</jacoco.version>
@@ -315,6 +318,13 @@
                 <groupId>io.minio</groupId>
                 <artifactId>minio</artifactId>
                 <version>${minio.version}</version>
+            </dependency>
+
+            <!-- Flowable 工作流引擎 -->
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-spring-boot-starter</artifactId>
+                <version>${flowable.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
