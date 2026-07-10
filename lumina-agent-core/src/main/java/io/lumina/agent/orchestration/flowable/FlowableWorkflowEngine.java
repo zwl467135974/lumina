@@ -27,6 +27,7 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -73,6 +74,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Slf4j
 @Component
 @Primary
+@ConditionalOnBean(RepositoryService.class)
 public class FlowableWorkflowEngine implements WorkflowEngine {
 
     private static final String VAR_PROCESS_INSTANCE_ID = "__flowable_pid";
