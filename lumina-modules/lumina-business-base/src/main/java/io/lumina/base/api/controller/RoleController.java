@@ -10,8 +10,9 @@ import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.RoleService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,14 +25,15 @@ import java.util.List;
  * @author Lumina Team
  * @since 1.0.0
  */
+@Tag(name = "角色管理", description = "角色增删改查、权限分配等接口")
 @Slf4j
 @Validated
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/base/roles")
 public class RoleController {
 
-    @Autowired
-    private RoleService roleService;
+    private final RoleService roleService;
 
     /**
      * 创建角色
@@ -89,10 +91,11 @@ public class RoleController {
      */
     @GetMapping("/all")
     @RequirePermission("system:role:list")
-    public R<List<RoleVO>> listAllRoles() {
+    public R<List<RoleVO>> listAllRoles(
+            @RequestParam(defaultValue = "100") @jakarta.validation.constraints.Min(1) Integer size) {
         RoleQueryDTO dto = new RoleQueryDTO();
         dto.setCurrent(1);
-        dto.setSize(100);
+        dto.setSize(Math.min(size, 1000));
         Page<RoleVO> page = roleService.listRoles(dto);
         return R.success(page.getRecords());
     }

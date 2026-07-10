@@ -10,6 +10,7 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,9 @@ import java.util.TimeZone;
  */
 @Configuration
 public class JacksonConfig {
+
+    @Value("${lumina.jackson.pretty-print:false}")
+    private boolean prettyPrint;
 
     /**
      * 日期时间格式
@@ -95,8 +99,10 @@ public class JacksonConfig {
         // 忽略未知属性
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-        // 美化输出（开发环境）
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        // 美化输出（开发环境配置 lumina.jackson.pretty-print=true）
+        if (prettyPrint) {
+            mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        }
 
         return mapper;
     }

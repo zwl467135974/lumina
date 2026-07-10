@@ -7,9 +7,10 @@ import io.lumina.agent.infrastructure.entity.MessageDO;
 import io.lumina.agent.service.ConversationService;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.validation.annotation.Validated;
@@ -28,10 +29,10 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/conversations")
 @Validated
+@RequiredArgsConstructor
 public class ConversationController {
 
-    @Autowired
-    private ConversationService conversationService;
+    private final ConversationService conversationService;
 
     /**
      * 创建会话
@@ -39,6 +40,7 @@ public class ConversationController {
      * @param agentId 关联 Agent ID
      * @param title   会话标题（可选）
      */
+    @Audit(module = "conversation", action = "CREATE", description = "创建会话")
     @PostMapping
     public R<ConversationVO> create(
             @RequestParam Long agentId,
@@ -80,6 +82,7 @@ public class ConversationController {
     /**
      * 删除会话（逻辑删除 + 清空记忆）
      */
+    @Audit(module = "conversation", action = "DELETE", description = "删除会话")
     @DeleteMapping("/{uuid}")
     public R<Void> delete(@PathVariable("uuid") String uuid) {
         log.info("删除会话: uuid={}", uuid);

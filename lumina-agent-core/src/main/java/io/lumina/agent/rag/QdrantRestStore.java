@@ -10,6 +10,7 @@ import io.agentscope.core.rag.model.Document;
 import io.agentscope.core.rag.model.DocumentMetadata;
 import io.agentscope.core.rag.store.VDBStoreBase;
 import io.agentscope.core.rag.store.dto.SearchDocumentDto;
+import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -41,7 +42,7 @@ public class QdrantRestStore implements VDBStoreBase {
     private final int dimensions;
     private final String baseUrl;
     private final HttpClient httpClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
     /**
      * @param host           Qdrant 地址（如 localhost:6333）

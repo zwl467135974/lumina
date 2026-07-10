@@ -49,6 +49,7 @@ public enum ErrorCode {
     PASSWORD_RESET_FAILED(400, 10006, "密码重置失败"),
     USER_IS_ADMIN(403, 10007, "不能操作系统管理员账户"),
     PASSWORD_NOT_MATCH(400, 10008, "两次输入的密码不一致"),
+    USER_LOCKED(403, 10009, "账号已被锁定，请稍后重试"),
 
     // ==================== 角色 11000-11999 ====================
     ROLE_NOT_FOUND(404, 11001, "角色不存在"),
@@ -89,6 +90,8 @@ public enum ErrorCode {
     FILE_NOT_FOUND(404, 30002, "文件不存在或已删除"),
     FILE_UPLOAD_FAILED(500, 30003, "文件上传失败"),
     FILE_DELETE_FAILED(500, 30004, "文件删除失败"),
+    FILE_DOWNLOAD_FAILED(500, 30005, "文件下载失败"),
+    FILE_STORAGE_INIT_FAILED(500, 30006, "存储初始化失败"),
 
     ;
 

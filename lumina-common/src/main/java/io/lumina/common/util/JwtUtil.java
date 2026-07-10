@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -152,16 +153,31 @@ public class JwtUtil implements InitializingBean {
     }
 
     /**
-     * 刷新 Token
+     * 刷新 Token（使用当前授权数据，不复用旧 Token 的 Claims）
      *
-     * @param token 旧的 Token
+     * @param userId      用户 ID
+     * @param username    用户名（作为 subject）
+     * @param tenantId    租户 ID
+     * @param roles       当前角色列表
+     * @param permissions 当前权限列表
      * @return 新的 Token
      */
-    public String refreshToken(String token) {
-        Claims claims = parseToken(token);
-        String subject = claims.getSubject();
-        Map<String, Object> newClaims = claims;
-        return generateToken(subject, newClaims, expirationTime);
+    public String refreshToken(Long userId, String username, Long tenantId,
+                               String[] roles, String[] permissions) {
+        Map<String, Object> claims = new HashMap<>();
+        if (userId != null) {
+            claims.put("userId", userId);
+        }
+        if (tenantId != null) {
+            claims.put("tenantId", tenantId);
+        }
+        if (roles != null) {
+            claims.put("roles", roles);
+        }
+        if (permissions != null) {
+            claims.put("permissions", permissions);
+        }
+        return generateToken(username, claims, expirationTime);
     }
 
     /**

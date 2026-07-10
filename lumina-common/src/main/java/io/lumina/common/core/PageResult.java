@@ -51,8 +51,9 @@ public class PageResult<T> implements Serializable {
         this.list = list;
         this.total = total;
         this.pageNum = pageNum;
-        this.pageSize = pageSize;
-        this.pages = (int) Math.ceil((double) total / pageSize);
+        this.pageSize = (pageSize == null || pageSize <= 0) ? 10 : pageSize;
+        long safeTotal = total != null ? total : 0L;
+        this.pages = (int) Math.ceil((double) safeTotal / this.pageSize);
     }
 
     /**

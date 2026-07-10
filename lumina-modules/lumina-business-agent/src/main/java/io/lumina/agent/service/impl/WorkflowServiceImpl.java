@@ -22,6 +22,7 @@ import io.lumina.agent.orchestration.model.WorkflowStatus;
 import io.lumina.agent.service.WorkflowService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.BaseContext;
+import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.core.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -114,7 +115,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
-    public List<WorkflowDefinitionDO> list(String name, Integer status, int pageNum, int pageSize) {
+    public PageResult<WorkflowDefinitionDO> list(String name, Integer status, int pageNum, int pageSize) {
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         LambdaQueryWrapper<WorkflowDefinitionDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowDefinitionDO::getTenantId, tenantId);
@@ -129,7 +130,7 @@ public class WorkflowServiceImpl implements WorkflowService {
 
         Page<WorkflowDefinitionDO> page = definitionMapper.selectPage(
                 new Page<>(pageNum, pageSize), wrapper);
-        return page.getRecords();
+        return PageResult.of(page.getRecords(), page.getTotal(), pageNum, pageSize);
     }
 
     @Override
@@ -416,7 +417,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
-    public List<WorkflowInstanceDO> listInstances(Long definitionId, String status, int pageNum, int pageSize) {
+    public PageResult<WorkflowInstanceDO> listInstances(Long definitionId, String status, int pageNum, int pageSize) {
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         LambdaQueryWrapper<WorkflowInstanceDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowInstanceDO::getTenantId, tenantId);
@@ -430,7 +431,7 @@ public class WorkflowServiceImpl implements WorkflowService {
 
         Page<WorkflowInstanceDO> page = instanceMapper.selectPage(
                 new Page<>(pageNum, pageSize), wrapper);
-        return page.getRecords();
+        return PageResult.of(page.getRecords(), page.getTotal(), pageNum, pageSize);
     }
 
     @Override

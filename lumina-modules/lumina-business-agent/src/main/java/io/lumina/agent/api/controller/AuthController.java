@@ -5,8 +5,10 @@ import io.lumina.agent.api.vo.LoginVO;
 import io.lumina.agent.service.UserService;
 import io.lumina.common.core.R;
 import io.lumina.common.util.JwtUtil;
+import io.lumina.framework.audit.annotation.Audit;
+import io.lumina.framework.cache.RedisCacheManager;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,20 +24,19 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/v1/auth")
 @Validated
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
-    @Autowired
-    private io.lumina.framework.cache.RedisCacheManager redisCacheManager;
+    private final RedisCacheManager redisCacheManager;
 
     /**
      * 用户登录
      */
+    @Audit(module = "auth", action = "LOGIN", description = "用户登录")
     @PostMapping("/login")
     public R<LoginVO> login(@Valid @RequestBody LoginDTO loginDTO) {
         log.info("用户登录请求: {}", loginDTO.getUsername());
@@ -74,6 +75,7 @@ public class AuthController {
     /**
      * 用户登出
      */
+    @Audit(module = "auth", action = "LOGOUT", description = "用户登出")
     @PostMapping("/logout")
     public R<Void> logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
         log.info("用户登出");

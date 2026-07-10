@@ -12,7 +12,7 @@ import org.mybatis.spring.annotation.MapperScan;
  * @since 1.0.0
  */
 @SpringBootApplication(scanBasePackages = "io.lumina")
-@MapperScan({"io.lumina.base.infrastructure.mapper", "io.lumina.framework.storage.mapper"})
+@MapperScan({"io.lumina.base.infrastructure.mapper", "io.lumina.framework.infrastructure.mapper"})
 @EnableFeignClients
 public class LuminaBaseApplication {
 

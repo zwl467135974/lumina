@@ -33,6 +33,7 @@ import io.lumina.agent.monitor.ToolInvocationRecorder;
 import io.lumina.agent.resilience.LlmResilienceWrapper;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
+import io.lumina.agent.util.JsonUtils;
 import io.micrometer.observation.annotation.Observed;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -534,36 +535,28 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     if (docs == null || docs.isEmpty()) {
                         return Mono.empty();
                     }
-                    StringBuilder json = new StringBuilder("[");
-                    for (int i = 0; i < docs.size(); i++) {
-                        if (i > 0) json.append(",");
-                        var doc = docs.get(i);
+                    List<java.util.Map<String, Object>> sources = new ArrayList<>();
+                    for (var doc : docs) {
                         var meta = doc.getMetadata();
-                        json.append("{\"content\":\"")
-                            .append(escapeJson(meta != null ? meta.getContentText() : ""))
-                            .append("\",\"score\":")
-                            .append(doc.getScore() != null ? doc.getScore() : 0)
-                            .append(",\"docId\":\"")
-                            .append(escapeJson(meta != null && meta.getDocId() != null ? meta.getDocId() : ""))
-                            .append("\"}");
+                        java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+                        item.put("content", meta != null ? meta.getContentText() : "");
+                        item.put("score", doc.getScore() != null ? doc.getScore() : 0);
+                        item.put("docId", meta != null && meta.getDocId() != null ? meta.getDocId() : "");
+                        sources.add(item);
                     }
-                    json.append("]");
-                    return Mono.just(new StreamChunk(StreamEventType.RAG_SOURCES, json.toString(), false));
+                    try {
+                        String json = JsonUtils.OBJECT_MAPPER.writeValueAsString(sources);
+                        return Mono.just(new StreamChunk(StreamEventType.RAG_SOURCES, json, false));
+                    } catch (Exception e) {
+                        log.warn("RAG 来源序列化失败: {}", e.getMessage());
+                        return Mono.<StreamChunk>empty();
+                    }
                 })
                 .flux()
                 .onErrorResume(e -> {
                     log.warn("RAG 检索来源获取失败: {}", e.getMessage());
                     return Flux.empty();
                 });
-    }
-
-    private String escapeJson(String text) {
-        if (text == null) return "";
-        return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "\\r")
-                   .replace("\t", "\\t");
     }
 
     /**
@@ -607,6 +600,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         if (toolConfig != null && toolConfig.getTools() != null && !toolConfig.getTools().isEmpty()) {
             allowedTools = new java.util.HashSet<>(toolConfig.getTools());
             log.info("Agent 限定工具: {}", allowedTools);
+        } else {
+            log.warn("Agent 未配置工具白名单（toolConfig.tools 为空），将注册全部已发现工具。建议显式配置白名单以限制工具暴露面");
         }
 
         int registeredCount = 0;

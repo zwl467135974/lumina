@@ -6,6 +6,7 @@ import io.lumina.agent.api.dto.WorkflowTemplateVO;
 import io.lumina.agent.infrastructure.entity.WorkflowDefinitionDO;
 import io.lumina.agent.infrastructure.entity.WorkflowExecutionLogDO;
 import io.lumina.agent.infrastructure.entity.WorkflowInstanceDO;
+import io.lumina.common.core.PageResult;
 
 import java.util.List;
 
@@ -30,7 +31,7 @@ public interface WorkflowService {
     void delete(Long id);
 
     /** 查询工作流列表 */
-    List<WorkflowDefinitionDO> list(String name, Integer status, int pageNum, int pageSize);
+    PageResult<WorkflowDefinitionDO> list(String name, Integer status, int pageNum, int pageSize);
 
     /** 获取工作流详情 */
     WorkflowDefinitionDO getById(Long id);
@@ -49,7 +50,7 @@ public interface WorkflowService {
     reactor.core.publisher.Flux<java.util.Map<String, Object>> executeStream(Long definitionId, ExecuteWorkflowDTO dto);
 
     /** 查询实例列表 */
-    List<WorkflowInstanceDO> listInstances(Long definitionId, String status, int pageNum, int pageSize);
+    PageResult<WorkflowInstanceDO> listInstances(Long definitionId, String status, int pageNum, int pageSize);
 
     /** 查询实例执行日志 */
     List<WorkflowExecutionLogDO> getInstanceLogs(Long instanceId);

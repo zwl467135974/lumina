@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAccumulator;
 
 /**
  * 工具调用记录器
@@ -102,8 +103,10 @@ public class ToolInvocationRecorder {
         m.put("failureCount", s.getFailureCount().get());
         m.put("successRate", s.getSuccessRate());
         m.put("totalDurationMs", s.getTotalDurationMs().get());
-        m.put("maxDurationMs", s.getMaxDurationMs());
-        m.put("minDurationMs", s.getMinDurationMs() == Long.MAX_VALUE ? 0 : s.getMinDurationMs());
+        long maxDur = s.getMaxDurationMs().get();
+        m.put("maxDurationMs", maxDur == Long.MIN_VALUE ? 0 : maxDur);
+        long minDur = s.getMinDurationMs().get();
+        m.put("minDurationMs", minDur == Long.MAX_VALUE ? 0 : minDur);
         m.put("avgDurationMs", s.getAvgDurationMs());
         m.put("lastInvocationTime", s.getLastInvocationTime());
         return m;
@@ -128,8 +131,8 @@ public class ToolInvocationRecorder {
         private AtomicLong successCount = new AtomicLong();
         private AtomicLong failureCount = new AtomicLong();
         private AtomicLong totalDurationMs = new AtomicLong();
-        private volatile long maxDurationMs;
-        private volatile long minDurationMs = Long.MAX_VALUE;
+        private final LongAccumulator maxDurationMs = new LongAccumulator(Long::max, Long.MIN_VALUE);
+        private final LongAccumulator minDurationMs = new LongAccumulator(Long::min, Long.MAX_VALUE);
         private volatile long lastInvocationTime;
 
         void accumulate(ToolInvocationRecord r) {
@@ -140,12 +143,8 @@ public class ToolInvocationRecorder {
                 failureCount.incrementAndGet();
             }
             totalDurationMs.addAndGet(r.durationMs());
-            if (r.durationMs() > maxDurationMs) {
-                maxDurationMs = r.durationMs();
-            }
-            if (r.durationMs() < minDurationMs) {
-                minDurationMs = r.durationMs();
-            }
+            maxDurationMs.accumulate(r.durationMs());
+            minDurationMs.accumulate(r.durationMs());
             lastInvocationTime = r.timestamp();
         }
 

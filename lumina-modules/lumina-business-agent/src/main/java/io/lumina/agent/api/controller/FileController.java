@@ -1,11 +1,12 @@
 package io.lumina.agent.api.controller;
 
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import io.lumina.framework.storage.FileService;
 import io.lumina.framework.storage.FileVO;
 import io.lumina.framework.storage.entity.FileDO;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,14 +27,15 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/files")
+@RequiredArgsConstructor
 public class FileController {
 
-    @Autowired
-    private FileService fileService;
+    private final FileService fileService;
 
     /**
      * 上传文件
      */
+    @Audit(module = "file", action = "CREATE", description = "上传文件")
     @PostMapping("/upload")
     public R<FileVO> upload(
             @RequestParam("file") MultipartFile file,
@@ -98,6 +100,7 @@ public class FileController {
     /**
      * 删除文件
      */
+    @Audit(module = "file", action = "DELETE", description = "删除文件")
     @DeleteMapping("/{fileUuid}")
     public R<Void> delete(@PathVariable String fileUuid) {
         fileService.delete(fileUuid);

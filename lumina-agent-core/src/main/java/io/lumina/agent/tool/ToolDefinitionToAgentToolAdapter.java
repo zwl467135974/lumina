@@ -7,6 +7,7 @@ import io.agentscope.core.tool.ToolCallParam;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecord;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
+import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -44,7 +45,7 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
         this.recorder = recorder;
         this.circuitBreaker = circuitBreaker;
         this.meterRegistry = meterRegistry;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonUtils.OBJECT_MAPPER;
         this.parametersSchema = parseParametersSchema(toolDefinition);
     }
 

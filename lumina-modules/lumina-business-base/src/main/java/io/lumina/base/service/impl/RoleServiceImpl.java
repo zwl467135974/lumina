@@ -79,12 +79,14 @@ public class RoleServiceImpl implements RoleService {
 
         // 4. 分配权限（如果有）
         if (dto.getPermissionIds() != null && dto.getPermissionIds().length > 0) {
+            List<RolePermissionDO> rpDOs = new ArrayList<>();
             for (Long permissionId : dto.getPermissionIds()) {
                 RolePermissionDO rpDO = new RolePermissionDO();
                 rpDO.setRoleId(roleDO.getRoleId());
                 rpDO.setPermissionId(permissionId);
-                rolePermissionMapper.insert(rpDO);
+                rpDOs.add(rpDO);
             }
+            rolePermissionMapper.insertBatch(rpDOs);
         }
 
         log.info("角色创建成功: roleId={}, roleCode={}", roleDO.getRoleId(), roleDO.getRoleCode());
@@ -168,8 +170,7 @@ public class RoleServiceImpl implements RoleService {
         rolePermissionMapper.delete(rpWrapper);
 
         // 6. 逻辑删除角色
-        roleDO.setDeleted(1);
-        int result = roleMapper.updateById(roleDO);
+        int result = roleMapper.deleteById(roleId);
 
         log.info("角色删除成功: roleId={}", roleId);
         return result > 0;
@@ -274,13 +275,21 @@ public class RoleServiceImpl implements RoleService {
         wrapper.eq(RolePermissionDO::getRoleId, dto.getRoleId());
         rolePermissionMapper.delete(wrapper);
 
-        // 5. 分配新权限
+        // 5. 校验所有权限 ID 存在
+        List<PermissionDO> existingPermissions = permissionMapper.selectBatchIds(dto.getPermissionIds());
+        if (existingPermissions.size() != dto.getPermissionIds().size()) {
+            throw new BusinessException(ErrorCode.PERMISSION_NOT_FOUND, "部分权限不存在");
+        }
+
+        // 6. 批量分配新权限
+        List<RolePermissionDO> rpDOs = new ArrayList<>();
         for (Long permissionId : dto.getPermissionIds()) {
             RolePermissionDO rpDO = new RolePermissionDO();
             rpDO.setRoleId(dto.getRoleId());
             rpDO.setPermissionId(permissionId);
-            rolePermissionMapper.insert(rpDO);
+            rpDOs.add(rpDO);
         }
+        rolePermissionMapper.insertBatch(rpDOs);
 
         log.info("权限分配成功: roleId={}", dto.getRoleId());
         return true;

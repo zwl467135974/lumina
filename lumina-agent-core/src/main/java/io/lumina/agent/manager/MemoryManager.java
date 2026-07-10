@@ -1,7 +1,10 @@
 package io.lumina.agent.manager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.lumina.framework.cache.RedisCacheManager;
+import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +14,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 记忆管理器
@@ -31,8 +35,14 @@ public class MemoryManager {
 
     /**
      * 会话记忆存储（内存备用，当 Redis 不可用时使用）
+     *
+     * <p>使用 Caffeine 缓存限制全局会话数量（最大 10000 个会话），
+     * 并在 30 分钟无访问后自动过期，避免内存无限增长。
      */
-    private final Map<String, List<Memory>> memoryStore = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Cache<String, List<Memory>> memoryStore = Caffeine.newBuilder()
+            .maximumSize(10000)
+            .expireAfterAccess(30, TimeUnit.MINUTES)
+            .build();
 
     /**
      * Redis 缓存管理器（可选，如果未配置则使用内存存储）
@@ -43,7 +53,7 @@ public class MemoryManager {
     /**
      * ObjectMapper 用于序列化/反序列化
      */
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
     /**
      * 最大记忆条数
@@ -71,12 +81,12 @@ public class MemoryManager {
             addMemoryToRedis(sessionId, newMemory);
         } else {
             // 使用内存存储
-            memoryStore.computeIfAbsent(sessionId, k -> new ArrayList<>())
+            memoryStore.asMap().computeIfAbsent(sessionId, k -> new ArrayList<>())
                        .add(newMemory);
 
             // 限制记忆条数
-            List<Memory> memories = memoryStore.get(sessionId);
-            if (memories.size() > MAX_MEMORY_SIZE) {
+            List<Memory> memories = memoryStore.getIfPresent(sessionId);
+            if (memories != null && memories.size() > MAX_MEMORY_SIZE) {
                 memories.remove(0);
                 log.debug("会话 {} 记忆超出限制，移除最旧记录", sessionId);
             }
@@ -100,7 +110,7 @@ public class MemoryManager {
 
         } catch (Exception e) {
             log.error("保存记忆到 Redis 失败，降级到内存存储: sessionId={}", sessionId, e);
-            memoryStore.computeIfAbsent(sessionId, k -> new ArrayList<>())
+            memoryStore.asMap().computeIfAbsent(sessionId, k -> new ArrayList<>())
                        .add(newMemory);
         }
     }
@@ -117,7 +127,8 @@ public class MemoryManager {
             return getMemoriesFromRedis(sessionId);
         } else {
             // 从内存获取
-            return memoryStore.getOrDefault(sessionId, new ArrayList<>());
+            List<Memory> memories = memoryStore.getIfPresent(sessionId);
+            return memories != null ? memories : new ArrayList<>();
         }
     }
 
@@ -145,7 +156,8 @@ public class MemoryManager {
 
         } catch (Exception e) {
             log.error("从 Redis 获取记忆失败，尝试从内存获取: sessionId={}", sessionId, e);
-            return memoryStore.getOrDefault(sessionId, new ArrayList<>());
+            List<Memory> memories = memoryStore.getIfPresent(sessionId);
+            return memories != null ? memories : new ArrayList<>();
         }
     }
 
@@ -167,7 +179,7 @@ public class MemoryManager {
         }
         
         // 同时清除内存中的记录
-        memoryStore.remove(sessionId);
+        memoryStore.invalidate(sessionId);
         log.info("清空会话记忆: {}", sessionId);
     }
 

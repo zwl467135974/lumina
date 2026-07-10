@@ -1,5 +1,7 @@
 package io.lumina.agent.domain.model;
 
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -71,7 +73,7 @@ public class Agent implements Serializable {
      */
     public void activate() {
         if (this.status == 1) {
-            throw new IllegalStateException("Agent 已是启用状态");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Agent 已是启用状态");
         }
         this.status = 1;
     }
@@ -81,7 +83,7 @@ public class Agent implements Serializable {
      */
     public void deactivate() {
         if (this.status == 0) {
-            throw new IllegalStateException("Agent 已是禁用状态");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Agent 已是禁用状态");
         }
         this.status = 0;
     }
@@ -98,10 +100,10 @@ public class Agent implements Serializable {
      */
     public void validateName() {
         if (agentName == null || agentName.trim().isEmpty()) {
-            throw new IllegalArgumentException("Agent 名称不能为空");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Agent 名称不能为空");
         }
         if (agentName.length() > 100) {
-            throw new IllegalArgumentException("Agent 名称长度不能超过100个字符");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Agent 名称长度不能超过100个字符");
         }
     }
 
@@ -110,7 +112,7 @@ public class Agent implements Serializable {
      */
     public void validateType() {
         if (agentType == null || agentType.trim().isEmpty()) {
-            throw new IllegalArgumentException("Agent 类型不能为空");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Agent 类型不能为空");
         }
     }
 }

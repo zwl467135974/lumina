@@ -2,6 +2,7 @@ package io.lumina.base.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
 
 /**
  * 登录请求 DTO
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Size;
  * @author Lumina Team
  * @since 1.0.0
  */
+@Data
 public class LoginDTO {
 
     /**
@@ -29,28 +31,4 @@ public class LoginDTO {
     @NotBlank(message = "密码不能为空")
     @Size(max = 128, message = "密码长度不能超过 128 个字符")
     private String password;
-
-    public Long getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Long tenantId) {
-        this.tenantId = tenantId;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
 }

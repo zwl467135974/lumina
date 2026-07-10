@@ -1,6 +1,7 @@
 package io.lumina.agent.manager;
 
 import io.lumina.agent.tool.ToolDefinition;
+import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -36,6 +37,8 @@ public class EnhancedToolManager implements IToolManager {
      * 工具分类索引
      */
     private final Map<String, Set<String>> categoryIndex = new ConcurrentHashMap<>();
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -251,7 +254,6 @@ public class EnhancedToolManager implements IToolManager {
 
         try {
             // 使用 Jackson 解析 JSON
-            com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
             Map<String, Object> paramMap = objectMapper.readValue(params,
                 new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
 
@@ -290,8 +292,8 @@ public class EnhancedToolManager implements IToolManager {
 
             return args;
         } catch (Exception e) {
-            log.error("解析参数失败: {}", params, e);
-            return new Object[0];
+            log.warn("工具参数解析失败: params={}, error={}", params, e.getMessage());
+            throw new IllegalArgumentException("工具参数解析失败: " + e.getMessage(), e);
         }
     }
 

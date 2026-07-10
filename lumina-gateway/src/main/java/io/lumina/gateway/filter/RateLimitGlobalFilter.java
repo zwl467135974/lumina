@@ -1,6 +1,7 @@
 package io.lumina.gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.common.core.R;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -15,10 +16,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.LinkedHashMap;
+import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 /**
  * 网关限流过滤器（固定窗口算法）
@@ -49,7 +51,14 @@ public class RateLimitGlobalFilter implements GlobalFilter, Ordered {
     private final Map<String, AtomicLong> ipCounts = new ConcurrentHashMap<>();
     private volatile long windowStart = System.currentTimeMillis();
 
+    private static final int MAX_IP_ENTRIES = 10000;
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final Pattern IPV4_PATTERN = Pattern.compile(
+            "^((25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[01]?\\d\\d?)$");
+
+    private static final Pattern IPV6_CHARS_PATTERN = Pattern.compile("^[0-9a-fA-F:]+$");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -67,6 +76,10 @@ public class RateLimitGlobalFilter implements GlobalFilter, Ordered {
 
         // IP 限流
         String ip = getClientIp(exchange.getRequest());
+        if (ipCounts.size() >= MAX_IP_ENTRIES && !ipCounts.containsKey(ip)) {
+            log.warn("IP 计数 Map 已达上限，跳过单 IP 限流: ip={}", ip);
+            return chain.filter(exchange);
+        }
         long ipCount = ipCounts.computeIfAbsent(ip, k -> new AtomicLong()).incrementAndGet();
         if (ipCount > perIpLimit) {
             log.warn("IP 限流触发: ip={}, count={}, limit={}", ip, ipCount, perIpLimit);
@@ -91,17 +104,44 @@ public class RateLimitGlobalFilter implements GlobalFilter, Ordered {
      * 获取客户端 IP
      */
     private String getClientIp(ServerHttpRequest request) {
-        String ip = request.getHeaders().getFirst("X-Forwarded-For");
-        if (ip == null || ip.isEmpty()) {
-            ip = request.getHeaders().getFirst("X-Real-IP");
+        String ip = extractValidIpFromHeader(request, "X-Forwarded-For");
+        if (ip == null) {
+            ip = extractValidIpFromHeader(request, "X-Real-IP");
         }
-        if (ip == null || ip.isEmpty() && request.getRemoteAddress() != null) {
-            ip = request.getRemoteAddress().getAddress().getHostAddress();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
+        if (ip == null) {
+            InetSocketAddress remoteAddress = request.getRemoteAddress();
+            if (remoteAddress != null) {
+                String remoteIp = remoteAddress.getAddress().getHostAddress();
+                if (isValidIp(remoteIp)) {
+                    ip = remoteIp;
+                }
+            }
         }
         return ip != null ? ip : "unknown";
+    }
+
+    private String extractValidIpFromHeader(ServerHttpRequest request, String headerName) {
+        String value = request.getHeaders().getFirst(headerName);
+        if (value == null || value.isEmpty() || "unknown".equalsIgnoreCase(value)) {
+            return null;
+        }
+        for (String part : value.split(",")) {
+            String candidate = part.trim();
+            if (isValidIp(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isValidIp(String ip) {
+        if (ip == null || ip.isEmpty()) {
+            return false;
+        }
+        if (IPV4_PATTERN.matcher(ip).matches()) {
+            return true;
+        }
+        return ip.contains(":") && IPV6_CHARS_PATTERN.matcher(ip).matches();
     }
 
     /**
@@ -112,9 +152,7 @@ public class RateLimitGlobalFilter implements GlobalFilter, Ordered {
         response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         try {
-            Map<String, Object> body = new LinkedHashMap<>();
-            body.put("code", 429);
-            body.put("message", message);
+            R<Void> body = R.fail(429, message);
             DataBuffer buffer = response.bufferFactory().wrap(OBJECT_MAPPER.writeValueAsBytes(body));
             return response.writeWith(Mono.just(buffer));
         } catch (Exception e) {

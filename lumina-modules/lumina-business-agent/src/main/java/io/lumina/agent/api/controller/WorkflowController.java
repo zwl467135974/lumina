@@ -9,6 +9,7 @@ import io.lumina.agent.infrastructure.entity.WorkflowInstanceDO;
 import io.lumina.agent.service.WorkflowService;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,22 +35,26 @@ public class WorkflowController {
 
     private final WorkflowService workflowService;
 
+    @Audit(module = "workflow", action = "CREATE", description = "创建工作流")
     @PostMapping
     public R<WorkflowDefinitionDO> create(@Valid @RequestBody WorkflowDTO dto) {
         return R.success(workflowService.create(dto));
     }
 
+    @Audit(module = "workflow", action = "UPDATE", description = "更新工作流")
     @PutMapping("/{id}")
     public R<WorkflowDefinitionDO> update(@PathVariable Long id, @Valid @RequestBody WorkflowDTO dto) {
         return R.success(workflowService.update(id, dto));
     }
 
+    @Audit(module = "workflow", action = "UPDATE", description = "发布工作流")
     @PostMapping("/{id}/publish")
     public R<Void> publish(@PathVariable Long id) {
         workflowService.publish(id);
         return R.success();
     }
 
+    @Audit(module = "workflow", action = "DELETE", description = "删除工作流")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         workflowService.delete(id);
@@ -57,7 +62,7 @@ public class WorkflowController {
     }
 
     @GetMapping
-    public R<List<WorkflowDefinitionDO>> list(
+    public R<PageResult<WorkflowDefinitionDO>> list(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") int pageNum,
@@ -105,7 +110,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/instances")
-    public R<List<WorkflowInstanceDO>> listInstances(
+    public R<PageResult<WorkflowInstanceDO>> listInstances(
             @RequestParam(required = false) Long definitionId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int pageNum,

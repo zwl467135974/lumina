@@ -18,8 +18,8 @@ import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.CollectionUtil;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.validation.annotation.Validated;
@@ -49,6 +49,7 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/v1/agents")
 @Validated
+@RequiredArgsConstructor
 public class AgentController {
 
     private static final int MAX_IMAGE_COUNT = 5;
@@ -61,11 +62,9 @@ public class AgentController {
             "image/webp"
     );
 
-    @Autowired
-    private AgentService agentService;
+    private final AgentService agentService;
 
-    @Autowired
-    private AgentTaskService agentTaskService;
+    private final AgentTaskService agentTaskService;
 
     /**
      * 创建 Agent
@@ -266,6 +265,7 @@ public class AgentController {
     /**
      * 取消异步任务
      */
+    @Audit(module = "agent", action = "UPDATE", description = "取消异步任务")
     @PostMapping("/tasks/{taskUuid}/cancel")
     public R<AgentTaskVO> cancelAgentTask(@PathVariable("taskUuid") String taskUuid) {
         log.info("取消异步任务: taskUuid={}", taskUuid);

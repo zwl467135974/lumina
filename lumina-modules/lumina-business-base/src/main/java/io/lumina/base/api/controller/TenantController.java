@@ -9,8 +9,9 @@ import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.TenantService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,14 +23,15 @@ import jakarta.validation.Valid;
  * @author Lumina Team
  * @since 1.0.0
  */
+@Tag(name = "租户管理", description = "租户增删改查等接口")
 @Slf4j
 @Validated
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/base/tenants")
 public class TenantController {
 
-    @Autowired
-    private TenantService tenantService;
+    private final TenantService tenantService;
 
     /**
      * 创建租户

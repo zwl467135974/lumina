@@ -13,6 +13,10 @@ import java.util.Set;
  */
 public class CollectionUtil {
 
+    private CollectionUtil() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     /**
      * 判断集合是否为空
      */

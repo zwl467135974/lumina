@@ -392,7 +392,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         final String sid = sessionId;
-        StringBuilder fullResponse = new StringBuilder();
+        final StringBuffer fullResponse = new StringBuffer();
 
         return agentExecutionEngine.executeStream(
                 agent.getAgentType().toLowerCase(),
@@ -469,7 +469,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         final String sid = sessionId;
-        StringBuilder fullResponse = new StringBuilder();
+        final StringBuffer fullResponse = new StringBuffer();
 
         return agentExecutionEngine.executeMultimodalStream(
                 agent.getAgentType().toLowerCase(),

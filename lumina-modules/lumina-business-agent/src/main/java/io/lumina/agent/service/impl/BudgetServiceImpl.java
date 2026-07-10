@@ -183,7 +183,9 @@ public class BudgetServiceImpl implements BudgetService {
         for (AgentTaskDO task : tasks) {
             int promptTokens = task.getPromptTokens() != null ? task.getPromptTokens() : 0;
             int completionTokens = task.getCompletionTokens() != null ? task.getCompletionTokens() : 0;
-            BigDecimal cost = costService.calculateCost("default", "default", promptTokens, completionTokens);
+            String provider = task.getProvider() != null ? task.getProvider() : "default";
+            String modelName = task.getModelName() != null ? task.getModelName() : "default";
+            BigDecimal cost = costService.calculateCost(provider, modelName, promptTokens, completionTokens);
             totalCost = totalCost.add(cost);
         }
 

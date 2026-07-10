@@ -11,11 +11,13 @@ import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.JwtUtil;
 import io.lumina.common.util.PasswordUtil;
+import io.lumina.framework.cache.RedisCacheManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +31,10 @@ import java.util.Map;
 @Service
 public class UserServiceImpl implements UserService {
 
+    private static final String LOGIN_FAIL_KEY_PREFIX = "login:fail:";
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+    private static final Duration LOCK_DURATION = Duration.ofMinutes(30);
+
     @Autowired
     private UserMapper userMapper;
 
@@ -36,7 +42,7 @@ public class UserServiceImpl implements UserService {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private io.lumina.framework.cache.RedisCacheManager redisCacheManager;
+    private RedisCacheManager redisCacheManager;
 
     /**
      * Domain -> DO 转换
@@ -60,30 +66,36 @@ public class UserServiceImpl implements UserService {
     public LoginVO login(LoginDTO loginDTO) {
         log.info("用户登录: {}", loginDTO.getUsername());
 
-        // 查询用户
+        String failKey = LOGIN_FAIL_KEY_PREFIX + loginDTO.getUsername();
+        Long failCount = redisCacheManager.get(failKey);
+        if (failCount != null && failCount >= MAX_LOGIN_ATTEMPTS) {
+            log.warn("账号已被锁定: {}", loginDTO.getUsername());
+            throw new BusinessException(ErrorCode.USER_LOCKED);
+        }
+
         UserDO userDO = userMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserDO>()
                         .eq(UserDO::getUsername, loginDTO.getUsername())
         );
 
         if (userDO == null) {
+            recordLoginFailure(failKey);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
-        // 验证密码（使用 BCrypt 加密验证）
         if (!PasswordUtil.verify(loginDTO.getPassword(), userDO.getPassword())) {
+            recordLoginFailure(failKey);
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
 
-        // 检查用户状态
         if (userDO.getStatus() == 0) {
             throw new BusinessException(ErrorCode.USER_DISABLED);
         }
 
-        // 转换为领域模型
+        redisCacheManager.delete(failKey);
+
         User user = toDomain(userDO);
 
-        // 生成 JWT Token
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getUserId());
         claims.put("username", user.getUsername());
@@ -93,7 +105,6 @@ public class UserServiceImpl implements UserService {
 
         String token = jwtUtil.generateToken(user.getUsername(), claims);
 
-        // 构建响应
         LoginVO loginVO = new LoginVO();
         loginVO.setToken(token);
         loginVO.setTokenType("Bearer");
@@ -105,11 +116,18 @@ public class UserServiceImpl implements UserService {
 
         log.info("用户登录成功: userId={}, username={}", user.getUserId(), user.getUsername());
 
-        // 记录在线状态到 Redis
         redisCacheManager.zAdd("online:users", System.currentTimeMillis(),
                 user.getUserId() + ":" + user.getUsername());
 
         return loginVO;
+    }
+
+    private void recordLoginFailure(String failKey) {
+        long count = redisCacheManager.incrementAndGet(failKey);
+        if (count == 1) {
+            redisCacheManager.expire(failKey, LOCK_DURATION);
+        }
+        log.warn("登录失败次数: key={}, count={}", failKey, count);
     }
 
     @Override

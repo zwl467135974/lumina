@@ -4,7 +4,7 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.storage.entity.FileDO;
-import io.lumina.framework.storage.mapper.FileMapper;
+import io.lumina.framework.infrastructure.mapper.FileMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -149,6 +149,7 @@ public class FileService {
             }
             return sb.toString();
         } catch (Exception e) {
+            log.warn("计算MD5失败", e);
             return null;
         }
     }

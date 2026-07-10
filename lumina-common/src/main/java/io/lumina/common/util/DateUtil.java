@@ -11,6 +11,10 @@ import java.time.format.DateTimeFormatter;
  */
 public class DateUtil {
 
+    private DateUtil() {
+        throw new UnsupportedOperationException("Utility class");
+    }
+
     /**
      * 默认日期时间格式
      */

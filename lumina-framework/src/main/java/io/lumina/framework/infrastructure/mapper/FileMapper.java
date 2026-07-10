@@ -1,4 +1,4 @@
-package io.lumina.framework.storage.mapper;
+package io.lumina.framework.infrastructure.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import io.lumina.framework.storage.entity.FileDO;

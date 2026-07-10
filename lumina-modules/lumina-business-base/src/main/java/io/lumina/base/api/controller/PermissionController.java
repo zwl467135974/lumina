@@ -7,8 +7,9 @@ import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.PermissionService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,14 +22,15 @@ import java.util.List;
  * @author Lumina Team
  * @since 1.0.0
  */
+@Tag(name = "权限管理", description = "权限增删改查、权限树等接口")
 @Slf4j
 @Validated
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/v1/base/permissions")
 public class PermissionController {
 
-    @Autowired
-    private PermissionService permissionService;
+    private final PermissionService permissionService;
 
     /**
      * 获取权限树

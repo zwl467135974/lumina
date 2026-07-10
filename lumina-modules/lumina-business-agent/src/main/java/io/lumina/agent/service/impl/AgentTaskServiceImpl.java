@@ -336,12 +336,13 @@ public class AgentTaskServiceImpl implements AgentTaskService {
 
     @Override
     public Flux<Map<String, Object>> streamTaskProgress(String taskUuid) {
+        AgentTaskDO task = getTask(taskUuid);
+
         Sinks.Many<Map<String, Object>> sink = progressRegistry.getSink(taskUuid);
         if (sink != null) {
             return sink.asFlux().timeout(Duration.ofMinutes(10));
         }
 
-        AgentTaskDO task = getTask(taskUuid);
         return Flux.just(buildEvent(task));
     }
 }

@@ -4,6 +4,7 @@ import io.lumina.agent.api.dto.BudgetRuleDTO;
 import io.lumina.agent.infrastructure.entity.BudgetRuleDO;
 import io.lumina.agent.service.BudgetService;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class BudgetController {
     /**
      * 创建预算规则
      */
+    @Audit(module = "budget", action = "CREATE", description = "创建预算规则")
     @PostMapping("/rules")
     public R<BudgetRuleDO> createRule(@Valid @RequestBody BudgetRuleDTO dto) {
         log.info("创建预算规则: {}", dto.getRuleName());
@@ -46,6 +48,7 @@ public class BudgetController {
     /**
      * 删除预算规则
      */
+    @Audit(module = "budget", action = "DELETE", description = "删除预算规则")
     @DeleteMapping("/rules/{id}")
     public R<Void> deleteRule(@PathVariable Long id) {
         log.info("删除预算规则: id={}", id);

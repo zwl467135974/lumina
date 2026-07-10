@@ -8,7 +8,6 @@ import io.lumina.base.api.dto.user.ResetPasswordDTO;
 import io.lumina.base.api.dto.user.UpdateUserDTO;
 import io.lumina.base.api.dto.user.UserQueryDTO;
 import io.lumina.base.api.vo.user.UserVO;
-import io.lumina.base.domain.model.Role;
 import io.lumina.base.domain.model.User;
 import io.lumina.base.infrastructure.entity.RoleDO;
 import io.lumina.base.infrastructure.entity.UserDO;
@@ -18,7 +17,6 @@ import io.lumina.base.infrastructure.mapper.UserMapper;
 import io.lumina.base.infrastructure.mapper.UserRoleMapper;
 import io.lumina.base.service.UserService;
 import io.lumina.common.core.BaseContext;
-import io.lumina.common.core.R;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.PasswordUtil;
@@ -28,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -80,12 +77,14 @@ public class UserServiceImpl implements UserService {
 
         // 4. 分配角色（如果有）
         if (dto.getRoleIds() != null && dto.getRoleIds().length > 0) {
+            List<UserRoleDO> userRoleDOs = new ArrayList<>();
             for (Long roleId : dto.getRoleIds()) {
                 UserRoleDO userRoleDO = new UserRoleDO();
                 userRoleDO.setUserId(userDO.getUserId());
                 userRoleDO.setRoleId(roleId);
-                userRoleMapper.insert(userRoleDO);
+                userRoleDOs.add(userRoleDO);
             }
+            userRoleMapper.insertBatch(userRoleDOs);
         }
 
         log.info("用户创建成功: userId={}, username={}", userDO.getUserId(), userDO.getUsername());
@@ -292,9 +291,8 @@ public class UserServiceImpl implements UserService {
         wrapper.eq(UserRoleDO::getUserId, dto.getUserId());
         userRoleMapper.delete(wrapper);
 
-        // 5. 分配新角色
+        // 5. 校验所有角色存在且属于本租户
         for (Long roleId : dto.getRoleIds()) {
-            // 验证角色存在且属于本租户
             RoleDO roleDO = roleMapper.selectById(roleId);
             if (roleDO == null) {
                 throw new BusinessException(ErrorCode.ROLE_NOT_FOUND, "角色不存在: roleId=" + roleId);
@@ -302,12 +300,17 @@ public class UserServiceImpl implements UserService {
             if (!roleDO.getTenantId().equals(BaseContext.getTenantId())) {
                 throw new BusinessException(ErrorCode.ROLE_NOT_IN_TENANT, "角色不属于本租户: roleId=" + roleId);
             }
+        }
 
+        // 6. 批量分配新角色
+        List<UserRoleDO> userRoleDOs = new ArrayList<>();
+        for (Long roleId : dto.getRoleIds()) {
             UserRoleDO userRoleDO = new UserRoleDO();
             userRoleDO.setUserId(dto.getUserId());
             userRoleDO.setRoleId(roleId);
-            userRoleMapper.insert(userRoleDO);
+            userRoleDOs.add(userRoleDO);
         }
+        userRoleMapper.insertBatch(userRoleDOs);
 
         log.info("角色分配成功: userId={}", dto.getUserId());
         return true;

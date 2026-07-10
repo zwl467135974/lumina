@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,7 +32,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ConfigLoader {
 
     private final ObjectMapper yamlMapper;
-    private final Map<String, AgentConfig> configCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedConfig> configCache = new ConcurrentHashMap<>();
+
+    private static final long CACHE_TTL_MS = Duration.ofMinutes(5).toMillis();
+
+    private record CachedConfig(AgentConfig config, long cachedAt) {}
 
     @Autowired(required = false)
     private ConfigService nacosConfigService;
@@ -70,24 +75,24 @@ public class ConfigLoader {
      * @return Agent 配置
      */
     public AgentConfig loadConfig(String businessType) {
-        // 先从缓存获取
-        if (configCache.containsKey(businessType)) {
+        CachedConfig cached = configCache.get(businessType);
+        if (cached != null && System.currentTimeMillis() - cached.cachedAt() < CACHE_TTL_MS) {
             log.debug("从缓存加载 Agent 配置: {}", businessType);
-            return configCache.get(businessType);
+            return cached.config();
         }
 
         // 尝试从 Nacos 加载
         if (nacosEnabled && nacosConfigService != null) {
             AgentConfig nacosConfig = loadConfigFromNacos(businessType);
             if (nacosConfig != null) {
-                configCache.put(businessType, nacosConfig);
+                configCache.put(businessType, new CachedConfig(nacosConfig, System.currentTimeMillis()));
                 return nacosConfig;
             }
         }
 
         // 从 ClassPath 加载
         AgentConfig classpathConfig = loadConfigFromClasspath(businessType);
-        configCache.put(businessType, classpathConfig);
+        configCache.put(businessType, new CachedConfig(classpathConfig, System.currentTimeMillis()));
         return classpathConfig;
     }
 
@@ -175,7 +180,7 @@ public class ConfigLoader {
                 validateConfig(newConfig, businessType);
 
                 // 更新缓存
-                configCache.put(businessType, newConfig);
+                configCache.put(businessType, new CachedConfig(newConfig, System.currentTimeMillis()));
 
                 log.info("Agent 配置热更新成功: {}", businessType);
             }

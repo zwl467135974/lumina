@@ -4,7 +4,6 @@ import io.lumina.common.core.LoginUser;
 import io.lumina.common.util.JwtUtil;
 import io.lumina.gateway.config.WhitelistConfig;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -33,17 +32,19 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
             "X-User-Id", "X-Username", "X-Tenant-Id", "X-Roles", "X-Permissions"
     };
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
-    @Autowired
-    private WhitelistConfig whitelistConfig;
+    private final WhitelistConfig whitelistConfig;
 
-    @Autowired
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
-    public JwtAuthenticationGatewayFilterFactory() {
+    public JwtAuthenticationGatewayFilterFactory(JwtUtil jwtUtil,
+                                                 WhitelistConfig whitelistConfig,
+                                                 StringRedisTemplate stringRedisTemplate) {
         super(Config.class);
+        this.jwtUtil = jwtUtil;
+        this.whitelistConfig = whitelistConfig;
+        this.stringRedisTemplate = stringRedisTemplate;
     }
 
     @Override

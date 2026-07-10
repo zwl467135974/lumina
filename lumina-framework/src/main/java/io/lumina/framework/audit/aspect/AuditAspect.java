@@ -68,7 +68,7 @@ public class AuditAspect {
 
         // 提取目标信息（方法名作为 targetType，参数或返回值的 ID 作为 targetId）
         String targetType = method.getDeclaringClass().getSimpleName();
-        String targetId = extractTargetId(method, pjp.getArgs(), result);
+        String targetId = extractTargetId(method, pjp.getArgs(), result, audit);
 
         HttpServletRequest request = getCurrentRequest();
 
@@ -95,8 +95,16 @@ public class AuditAspect {
     /**
      * 从方法参数或返回值中提取目标 ID（启发式：id/agentId/uuid 参数或返回值字段）
      */
-    private String extractTargetId(Method method, Object[] args, Object result) {
+    private String extractTargetId(Method method, Object[] args, Object result, Audit audit) {
         Parameter[] params = method.getParameters();
+        String param = audit.targetIdParam();
+        if (param != null && !param.isEmpty()) {
+            for (int i = 0; i < params.length && i < args.length; i++) {
+                if (param.equals(params[i].getName()) && args[i] != null) {
+                    return String.valueOf(args[i]);
+                }
+            }
+        }
         for (int i = 0; i < params.length && i < args.length; i++) {
             String name = params[i].getName().toLowerCase();
             if (name.contains("id") && args[i] != null) {

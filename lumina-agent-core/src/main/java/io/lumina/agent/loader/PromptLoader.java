@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 /**
  * 提示词加载器
@@ -19,6 +20,16 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 @Component
 public class PromptLoader {
+
+    private static final int MAX_INPUT_LENGTH = 10000;
+
+    private static final Pattern[] INJECTION_PATTERNS = {
+            Pattern.compile("忽略(以上|上面|之前的?|前面)(所有)?(指令|设定|规则|提示)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("ignore (all )?(previous|above|prior) instructions", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("disregard (all )?(previous|above|prior) (instructions|prompts)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("forget (all )?(previous|prior) (instructions|prompts|rules)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("你(现在)?(是|扮演)(一个)?(新的|不同的)", Pattern.CASE_INSENSITIVE),
+    };
 
     /**
      * 加载提示词模板
@@ -58,9 +69,27 @@ public class PromptLoader {
         }
         String result = template;
         for (int i = 0; i < params.length; i++) {
-            result = result.replace("{" + i + "}", params[i] != null ? params[i].toString() : "");
+            String paramValue = sanitizeInput(params[i] != null ? params[i].toString() : "");
+            result = result.replace("{" + i + "}", paramValue);
         }
         return result;
+    }
+
+    private String sanitizeInput(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+        if (input.length() > MAX_INPUT_LENGTH) {
+            log.warn("用户输入过长（{} 字符），已截断至 {}", input.length(), MAX_INPUT_LENGTH);
+            input = input.substring(0, MAX_INPUT_LENGTH);
+        }
+        for (Pattern pattern : INJECTION_PATTERNS) {
+            if (pattern.matcher(input).find()) {
+                log.warn("检测到可能的 prompt 注入模式，已过滤");
+                input = pattern.matcher(input).replaceAll("[FILTERED]");
+            }
+        }
+        return input;
     }
 
     /**

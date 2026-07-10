@@ -1,5 +1,7 @@
 package io.lumina.common.core;
 
+import java.util.Arrays;
+
 /**
  * 登录上下文快照
  *
@@ -16,6 +18,11 @@ public record LoginContext(
         String[] roles,
         String[] permissions
 ) {
+
+    public LoginContext {
+        roles = roles == null ? null : Arrays.copyOf(roles, roles.length);
+        permissions = permissions == null ? null : Arrays.copyOf(permissions, permissions.length);
+    }
 
     /**
      * 空上下文（所有字段为 null）

@@ -7,6 +7,7 @@ import io.lumina.agent.evaluation.model.RunReport;
 import io.lumina.agent.infrastructure.entity.EvaluationRunDO;
 import io.lumina.agent.service.EvaluationService;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class EvaluationController {
 
     private final EvaluationService evaluationService;
 
+    @Audit(module = "evaluation", action = "CREATE", description = "创建评估数据集")
     @PostMapping("/datasets")
     public R<EvaluationDataset> createDataset(@Valid @RequestBody EvaluationDatasetDTO dto) {
         log.info("创建评估数据集: name={}", dto.getName());
@@ -67,6 +69,7 @@ public class EvaluationController {
         return R.success(evaluationService.getDataset(id));
     }
 
+    @Audit(module = "evaluation", action = "DELETE", description = "删除评估数据集")
     @DeleteMapping("/datasets/{id}")
     public R<Void> deleteDataset(@PathVariable Long id) {
         evaluationService.deleteDataset(id);

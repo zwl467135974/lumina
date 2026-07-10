@@ -38,6 +38,10 @@ public class BusinessException extends BaseException {
         super(errorCode, cause);
     }
 
+    public BusinessException(ErrorCode errorCode, String message, Throwable cause) {
+        super(errorCode, message, cause);
+    }
+
     /**
      * 参数错误
      */

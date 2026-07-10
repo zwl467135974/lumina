@@ -4,7 +4,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 工作流定义
@@ -65,6 +70,32 @@ public class WorkflowDefinition {
     /** 输出映射（变量名 → 表达式） */
     private MapEntry[] outputs;
 
+    @JsonIgnore
+    private transient volatile Map<String, List<WorkflowEdge>> outgoingEdgeIndex;
+
+    @JsonIgnore
+    private transient volatile Set<String> nodesWithIncomingEdges;
+
+    private void ensureIndex() {
+        if (outgoingEdgeIndex == null) {
+            synchronized (this) {
+                if (outgoingEdgeIndex == null) {
+                    Map<String, List<WorkflowEdge>> index = new HashMap<>();
+                    Set<String> incoming = new HashSet<>();
+                    for (WorkflowEdge edge : edges) {
+                        index.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
+                        incoming.add(edge.getTo());
+                    }
+                    for (Map.Entry<String, List<WorkflowEdge>> e : index.entrySet()) {
+                        e.setValue(Collections.unmodifiableList(e.getValue()));
+                    }
+                    outgoingEdgeIndex = Collections.unmodifiableMap(index);
+                    nodesWithIncomingEdges = Collections.unmodifiableSet(incoming);
+                }
+            }
+        }
+    }
+
     /**
      * 根据 ID 查找节点
      */
@@ -81,8 +112,9 @@ public class WorkflowDefinition {
      */
     @JsonIgnore
     public List<WorkflowNode> getStartNodes() {
+        ensureIndex();
         return nodes.stream()
-                .filter(n -> edges.stream().noneMatch(e -> e.getTo().equals(n.getId())))
+                .filter(n -> !nodesWithIncomingEdges.contains(n.getId()))
                 .toList();
     }
 
@@ -91,9 +123,8 @@ public class WorkflowDefinition {
      */
     @JsonIgnore
     public List<WorkflowEdge> getOutgoingEdges(String nodeId) {
-        return edges.stream()
-                .filter(e -> e.getFrom().equals(nodeId))
-                .toList();
+        ensureIndex();
+        return outgoingEdgeIndex.getOrDefault(nodeId, Collections.emptyList());
     }
 
     /**

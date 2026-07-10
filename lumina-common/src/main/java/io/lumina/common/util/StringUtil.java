@@ -10,7 +10,11 @@ import org.apache.commons.lang3.StringUtils;
  * @author Lumina Team
  * @since 1.0.0
  */
-public class StringUtil extends StringUtils {
+public class StringUtil {
+
+    private StringUtil() {
+        throw new UnsupportedOperationException("Utility class");
+    }
 
     /**
      * 判断字符串是否为空（包括 null、空字符串、空白字符）

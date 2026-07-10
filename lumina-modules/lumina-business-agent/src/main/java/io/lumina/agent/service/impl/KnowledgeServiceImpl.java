@@ -18,7 +18,9 @@ import io.lumina.agent.infrastructure.mapper.KnowledgeDocumentMapper;
 import io.lumina.agent.mq.DocumentIngestMessage;
 import io.lumina.agent.service.KnowledgeService;
 import io.lumina.common.core.BaseContext;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
+import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.config.RocketMQConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,7 +120,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         } catch (Exception e) {
             log.error("文档上传失败: {}", filename, e);
-            throw new RuntimeException("文档上传失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文档上传失败: " + e.getMessage(), e);
         }
     }
 
@@ -182,7 +184,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         } catch (Exception e) {
             log.error("文档入库失败: {}", filename, e);
-            throw new RuntimeException("文档处理失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文档处理失败: " + e.getMessage(), e);
         }
     }
 
@@ -264,6 +266,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         if (knowledge == null) {
             return Collections.emptyList();
         }
+        Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         double threshold = scoreThreshold;
         List<Document> results = knowledge.retrieve(query,
                 RetrieveConfig.builder().limit(limit).scoreThreshold(threshold).build()).block();
@@ -272,6 +275,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         List<Map<String, Object>> list = new ArrayList<>();
         for (Document doc : results) {
+            Object docTenantId = doc.getPayloadValue("tenantId");
+            if (docTenantId != null && !String.valueOf(tenantId).equals(String.valueOf(docTenantId))) {
+                continue;
+            }
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("content", doc.getPayloadValue("content"));
             item.put("score", doc.getScore());

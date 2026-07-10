@@ -19,6 +19,8 @@ import java.util.Map;
 public interface AgentTaskMapper extends BaseMapper<AgentTaskDO> {
 
     @Select("SELECT DATE(create_time) AS date, " +
+            "provider, " +
+            "model_name AS modelName, " +
             "COUNT(*) AS taskCount, " +
             "COALESCE(SUM(prompt_tokens), 0) AS promptTokens, " +
             "COALESCE(SUM(completion_tokens), 0) AS completionTokens, " +
@@ -28,7 +30,7 @@ public interface AgentTaskMapper extends BaseMapper<AgentTaskDO> {
             "AND is_deleted = 0 " +
             "AND status = 'COMPLETED' " +
             "AND create_time >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY) " +
-            "GROUP BY DATE(create_time) " +
+            "GROUP BY DATE(create_time), provider, model_name " +
             "ORDER BY date ASC")
     List<Map<String, Object>> selectDailyTrend(@Param("tenantId") Long tenantId, @Param("days") int days);
 }

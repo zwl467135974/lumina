@@ -34,4 +34,9 @@ public @interface Audit {
      * 描述（可选，补充说明）
      */
     String description() default "";
+
+    /**
+     * 目标 ID 参数名（可选，指定方法参数名作为 targetId，避免启发式猜测）
+     */
+    String targetIdParam() default "";
 }

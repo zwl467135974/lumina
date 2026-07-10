@@ -5,8 +5,10 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
 import java.time.Duration;
 import java.util.function.Supplier;
 
@@ -27,13 +29,30 @@ import java.util.function.Supplier;
 @Component
 public class LlmResilienceWrapper {
 
-    private final Retry retry;
-    private final CircuitBreaker circuitBreaker;
+    @Value("${lumina.agent.llm.retry.max-attempts:3}")
+    private int retryMaxAttempts;
+
+    @Value("${lumina.agent.llm.retry.wait-ms:500}")
+    private long retryWaitMs;
+
+    private Retry retry;
+    private CircuitBreaker circuitBreaker;
 
     public LlmResilienceWrapper() {
+        this.retryMaxAttempts = 3;
+        this.retryWaitMs = 500;
+        build();
+    }
+
+    @PostConstruct
+    private void rebuildFromConfig() {
+        build();
+    }
+
+    private void build() {
         this.retry = Retry.of("llm-retry", RetryConfig.custom()
-                .maxAttempts(3)
-                .waitDuration(Duration.ofMillis(500))
+                .maxAttempts(retryMaxAttempts)
+                .waitDuration(Duration.ofMillis(retryWaitMs))
                 .retryOnException(this::isRetryable)
                 .retryOnResult(result -> false)
                 .build());
@@ -50,7 +69,7 @@ public class LlmResilienceWrapper {
 
         this.retry.getEventPublisher().onRetry(e ->
                 log.warn("LLM 调用重试: attempt={}/{}, wait={}ms",
-                        e.getNumberOfRetryAttempts(), 3, e.getWaitInterval().toMillis()));
+                        e.getNumberOfRetryAttempts(), retryMaxAttempts, e.getWaitInterval().toMillis()));
 
         this.circuitBreaker.getEventPublisher()
                 .onCallNotPermitted(e ->
@@ -61,7 +80,8 @@ public class LlmResilienceWrapper {
                         log.warn("LLM 熔断器状态转换: {} → {}", e.getStateTransition().getFromState(),
                                 e.getStateTransition().getToState()));
 
-        log.info("LLM 容错包装器初始化: retry(maxAttempts=3, wait=500ms), circuitBreaker(failureRate=50%, waitOpen=10s)");
+        log.info("LLM 容错包装器初始化: retry(maxAttempts={}, wait={}ms), circuitBreaker(failureRate=50%, waitOpen=10s)",
+                retryMaxAttempts, retryWaitMs);
     }
 
     /**

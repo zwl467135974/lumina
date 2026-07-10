@@ -112,21 +112,41 @@ public class CostServiceImpl implements CostService {
 
         List<Map<String, Object>> rawTrend = agentTaskMapper.selectDailyTrend(tenantId, effectiveDays);
 
-        List<Map<String, Object>> result = new ArrayList<>();
+        Map<String, BigDecimal> dailyCost = new java.util.TreeMap<>();
+        Map<String, int[]> dailyTokens = new java.util.TreeMap<>();
+        Map<String, Integer> dailyTaskCount = new java.util.TreeMap<>();
+
         for (Map<String, Object> row : rawTrend) {
+            String date = String.valueOf(row.get("date"));
+            String provider = row.get("provider") != null ? String.valueOf(row.get("provider")) : "default";
+            String modelName = row.get("modelName") != null ? String.valueOf(row.get("modelName")) : "default";
             int promptTokens = toInt(row.get("promptTokens"));
             int completionTokens = toInt(row.get("completionTokens"));
             int totalTokens = toInt(row.get("totalTokens"));
+            int taskCount = toInt(row.get("taskCount"));
 
-            BigDecimal cost = calculateCost("default", "default", promptTokens, completionTokens);
+            BigDecimal cost = calculateCost(provider, modelName, promptTokens, completionTokens);
+            dailyCost.merge(date, cost, BigDecimal::add);
+
+            int[] tokens = dailyTokens.computeIfAbsent(date, k -> new int[3]);
+            tokens[0] += promptTokens;
+            tokens[1] += completionTokens;
+            tokens[2] += totalTokens;
+            dailyTaskCount.merge(date, taskCount, Integer::sum);
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal> entry : dailyCost.entrySet()) {
+            String date = entry.getKey();
+            int[] tokens = dailyTokens.get(date);
 
             Map<String, Object> dataPoint = new HashMap<>();
-            dataPoint.put("date", String.valueOf(row.get("date")));
-            dataPoint.put("taskCount", toInt(row.get("taskCount")));
-            dataPoint.put("promptTokens", promptTokens);
-            dataPoint.put("completionTokens", completionTokens);
-            dataPoint.put("totalTokens", totalTokens);
-            dataPoint.put("cost", cost.setScale(4, RoundingMode.HALF_UP));
+            dataPoint.put("date", date);
+            dataPoint.put("taskCount", dailyTaskCount.getOrDefault(date, 0));
+            dataPoint.put("promptTokens", tokens[0]);
+            dataPoint.put("completionTokens", tokens[1]);
+            dataPoint.put("totalTokens", tokens[2]);
+            dataPoint.put("cost", entry.getValue().setScale(4, RoundingMode.HALF_UP));
             result.add(dataPoint);
         }
 

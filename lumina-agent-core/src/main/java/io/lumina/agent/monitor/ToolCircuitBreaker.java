@@ -46,16 +46,18 @@ public class ToolCircuitBreaker {
      */
     public boolean allowExecution(String toolName) {
         BreakerState s = breakers.computeIfAbsent(toolName, k -> new BreakerState());
-        if (!s.open) {
-            return true;
+        synchronized (s) {
+            if (!s.open) {
+                return true;
+            }
+            // 检查是否已过冷却期（进入 HALF_OPEN，允许一次试探）
+            if (System.currentTimeMillis() - s.openedAt > resetTimeoutMs) {
+                log.info("工具熔断器半开，允许试探执行: {}", toolName);
+                return true;
+            }
+            log.warn("工具熔断中，拒绝执行: {}", toolName);
+            return false;
         }
-        // 检查是否已过冷却期（进入 HALF_OPEN，允许一次试探）
-        if (System.currentTimeMillis() - s.openedAt > resetTimeoutMs) {
-            log.info("工具熔断器半开，允许试探执行: {}", toolName);
-            return true;
-        }
-        log.warn("工具熔断中，拒绝执行: {}", toolName);
-        return false;
     }
 
     /**
@@ -64,10 +66,12 @@ public class ToolCircuitBreaker {
     public void recordSuccess(String toolName) {
         BreakerState s = breakers.get(toolName);
         if (s != null) {
-            s.consecutiveFailures.set(0);
-            if (s.open) {
-                s.open = false;
-                log.info("工具熔断器关闭（恢复正常）: {}", toolName);
+            synchronized (s) {
+                s.consecutiveFailures.set(0);
+                if (s.open) {
+                    s.open = false;
+                    log.info("工具熔断器关闭（恢复正常）: {}", toolName);
+                }
             }
         }
     }
@@ -77,11 +81,13 @@ public class ToolCircuitBreaker {
      */
     public void recordFailure(String toolName) {
         BreakerState s = breakers.computeIfAbsent(toolName, k -> new BreakerState());
-        long failures = s.consecutiveFailures.incrementAndGet();
-        if (failures >= failureThreshold && !s.open) {
-            s.open = true;
-            s.openedAt = System.currentTimeMillis();
-            log.error("工具熔断器打开: tool={}, 连续失败={} 次, 冷却={}ms", toolName, failures, resetTimeoutMs);
+        synchronized (s) {
+            long failures = s.consecutiveFailures.incrementAndGet();
+            if (failures >= failureThreshold && !s.open) {
+                s.open = true;
+                s.openedAt = System.currentTimeMillis();
+                log.error("工具熔断器打开: tool={}, 连续失败={} 次, 冷却={}ms", toolName, failures, resetTimeoutMs);
+            }
         }
     }
 

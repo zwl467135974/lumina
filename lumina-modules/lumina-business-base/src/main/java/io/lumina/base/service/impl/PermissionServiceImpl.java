@@ -97,8 +97,7 @@ public class PermissionServiceImpl implements PermissionService {
             throw new BusinessException(ErrorCode.PERMISSION_NOT_FOUND);
         }
 
-        permissionDO.setDeleted(1);
-        int result = permissionMapper.updateById(permissionDO);
+        int result = permissionMapper.deleteById(permissionId);
 
         log.info("权限删除成功: permissionId={}", permissionId);
         return result > 0;
@@ -127,7 +126,6 @@ public class PermissionServiceImpl implements PermissionService {
         List<PermissionDO> list = permissionMapper.selectList(
                 new LambdaQueryWrapper<PermissionDO>()
                         .eq(PermissionDO::getPermissionType, permissionType)
-                        .eq(PermissionDO::getDeleted, 0)
         );
         return list.stream().map(this::toVO).collect(Collectors.toList());
     }

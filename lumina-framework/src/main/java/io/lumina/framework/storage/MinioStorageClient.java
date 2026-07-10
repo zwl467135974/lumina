@@ -1,5 +1,7 @@
 package io.lumina.framework.storage;
 
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
@@ -50,7 +52,7 @@ public class MinioStorageClient implements StorageClient {
             }
             log.info("MinIO 存储初始化: endpoint={}, bucket={}", cfg.getEndpoint(), cfg.getBucket());
         } catch (Exception e) {
-            throw new RuntimeException("MinIO 初始化失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.FILE_STORAGE_INIT_FAILED, "MinIO 初始化失败", e);
         }
     }
 
@@ -66,7 +68,7 @@ public class MinioStorageClient implements StorageClient {
             log.debug("文件已上传到 MinIO: key={}", key);
             return key;
         } catch (Exception e) {
-            throw new RuntimeException("MinIO 上传失败: " + key, e);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "MinIO 上传失败: " + key, e);
         }
     }
 
@@ -78,7 +80,7 @@ public class MinioStorageClient implements StorageClient {
                     .object(key)
                     .build());
         } catch (Exception e) {
-            throw new RuntimeException("MinIO 下载失败: " + key, e);
+            throw new BusinessException(ErrorCode.FILE_DOWNLOAD_FAILED, "MinIO 下载失败: " + key, e);
         }
     }
 

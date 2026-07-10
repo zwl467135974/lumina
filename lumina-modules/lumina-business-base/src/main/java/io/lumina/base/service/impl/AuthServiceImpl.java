@@ -15,9 +15,10 @@ import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.JwtUtil;
 import io.lumina.common.util.PasswordUtil;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -31,19 +32,19 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-    @Autowired
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
 
-    @Autowired
-    private RoleMapper roleMapper;
+    private final RoleMapper roleMapper;
 
-    @Autowired
-    private PermissionMapper permissionMapper;
+    private final PermissionMapper permissionMapper;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
+
+    @Value("${jwt.expire-days:7}")
+    private int jwtExpireDays;
 
     @Override
     public LoginVO login(LoginDTO loginDTO) {
@@ -121,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
         loginVO.setNickname(user.getNickname());
         loginVO.setRoles(user.getRoleCodes().toArray(new String[0]));
         loginVO.setPermissions(user.getPermissionCodes().toArray(new String[0]));
-        loginVO.setExpiration(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000); // 7天
+        loginVO.setExpiration(System.currentTimeMillis() + jwtExpireDays * 24L * 60 * 60 * 1000);
 
         log.info("用户登录成功: userId={}, username={}, tenantId={}, roles={}",
                 user.getUserId(), user.getUsername(), user.getTenantId(), user.getRoleCodes());

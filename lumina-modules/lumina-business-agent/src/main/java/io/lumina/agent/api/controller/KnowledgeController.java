@@ -4,10 +4,11 @@ import io.lumina.agent.infrastructure.entity.KnowledgeDocumentDO;
 import io.lumina.agent.service.KnowledgeService;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,14 +20,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/knowledge")
 @Validated
+@RequiredArgsConstructor
 public class KnowledgeController {
 
     private static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_SEARCH_LIMIT = 20;
 
-    @Autowired
-    private KnowledgeService knowledgeService;
+    private final KnowledgeService knowledgeService;
 
+    @Audit(module = "knowledge", action = "CREATE", description = "上传知识文档")
     @PostMapping("/documents")
     public R<String> upload(@RequestParam("file") MultipartFile file,
                             @RequestParam(value = "agentId", required = false) Long agentId,
@@ -63,6 +65,7 @@ public class KnowledgeController {
         return R.success(knowledgeService.getDocumentStatus(uuid));
     }
 
+    @Audit(module = "knowledge", action = "DELETE", description = "删除知识文档")
     @DeleteMapping("/documents/{uuid}")
     public R<Void> delete(@PathVariable("uuid") String uuid) {
         knowledgeService.deleteDocument(uuid);

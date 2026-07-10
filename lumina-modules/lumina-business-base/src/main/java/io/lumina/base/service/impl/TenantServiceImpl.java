@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -108,19 +109,16 @@ public class TenantServiceImpl implements TenantService {
         // 获取所有权限（为管理员角色分配所有权限）
         List<PermissionDO> allPermissions = permissionMapper.selectAllPermissions();
         if (!allPermissions.isEmpty()) {
-            List<Long> permissionIds = allPermissions.stream()
-                    .map(PermissionDO::getPermissionId)
-                    .collect(Collectors.toList());
-
-            // 为管理员角色分配所有权限
-            for (Long permissionId : permissionIds) {
+            List<RolePermissionDO> rpList = new ArrayList<>();
+            for (PermissionDO perm : allPermissions) {
                 RolePermissionDO rp = new RolePermissionDO();
                 rp.setRoleId(adminRole.getRoleId());
-                rp.setPermissionId(permissionId);
-                rolePermissionMapper.insert(rp);
+                rp.setPermissionId(perm.getPermissionId());
+                rpList.add(rp);
             }
+            rolePermissionMapper.insertBatch(rpList);
             log.info("为租户管理员角色分配权限: roleId={}, permissionCount={}",
-                    adminRole.getRoleId(), permissionIds.size());
+                    adminRole.getRoleId(), rpList.size());
         }
 
         log.info("租户默认角色创建成功: tenantId={}, adminRoleId={}, userRoleId={}",
@@ -128,6 +126,7 @@ public class TenantServiceImpl implements TenantService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Boolean updateTenant(UpdateTenantDTO dto) {
         TenantDO tenantDO = tenantMapper.selectById(dto.getTenantId());
         if (tenantDO == null) {
@@ -149,8 +148,10 @@ public class TenantServiceImpl implements TenantService {
         }
 
         TenantDO tenantDO = tenantMapper.selectById(tenantId);
-        tenantDO.setDeleted(1);
-        return tenantMapper.updateById(tenantDO) > 0;
+        if (tenantDO == null) {
+            throw new BusinessException(ErrorCode.TENANT_NOT_FOUND);
+        }
+        return tenantMapper.deleteById(tenantId) > 0;
     }
 
     @Override

@@ -2,7 +2,7 @@ package io.lumina.framework.storage;
 
 import io.lumina.common.core.BaseContext;
 import io.lumina.framework.storage.entity.FileDO;
-import io.lumina.framework.storage.mapper.FileMapper;
+import io.lumina.framework.infrastructure.mapper.FileMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

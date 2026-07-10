@@ -4,6 +4,7 @@ import io.lumina.agent.api.dto.PromptDTO;
 import io.lumina.agent.infrastructure.entity.PromptDO;
 import io.lumina.agent.service.PromptService;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,16 +26,19 @@ public class PromptController {
 
     private final PromptService promptService;
 
+    @Audit(module = "prompt", action = "CREATE", description = "创建Prompt")
     @PostMapping
     public R<PromptDO> create(@Valid @RequestBody PromptDTO dto) {
         return R.success(promptService.create(dto));
     }
 
+    @Audit(module = "prompt", action = "UPDATE", description = "更新Prompt")
     @PutMapping("/{id}")
     public R<PromptDO> update(@PathVariable Long id, @RequestBody PromptDTO dto) {
         return R.success(promptService.update(id, dto));
     }
 
+    @Audit(module = "prompt", action = "UPDATE", description = "发布Prompt")
     @PostMapping("/{id}/publish")
     public R<PromptDO> publish(@PathVariable Long id) {
         return R.success(promptService.publish(id));
@@ -45,6 +49,7 @@ public class PromptController {
         return R.success(promptService.newVersion(id, dto));
     }
 
+    @Audit(module = "prompt", action = "DELETE", description = "删除Prompt")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         promptService.delete(id);

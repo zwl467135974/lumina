@@ -4,6 +4,7 @@ import io.lumina.agent.api.dto.KnowledgeBaseDTO;
 import io.lumina.agent.infrastructure.entity.KnowledgeBaseDO;
 import io.lumina.agent.service.KnowledgeBaseService;
 import io.lumina.common.core.R;
+import io.lumina.framework.audit.annotation.Audit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class KnowledgeBaseController {
 
     private final KnowledgeBaseService knowledgeBaseService;
 
+    @Audit(module = "knowledge_base", action = "CREATE", description = "创建知识库")
     @PostMapping
     public R<KnowledgeBaseDO> create(@Valid @RequestBody KnowledgeBaseDTO dto) {
         return R.success(knowledgeBaseService.createKnowledgeBase(dto));
@@ -40,6 +42,7 @@ public class KnowledgeBaseController {
         return R.success(knowledgeBaseService.getKnowledgeBase(id));
     }
 
+    @Audit(module = "knowledge_base", action = "DELETE", description = "删除知识库")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         knowledgeBaseService.deleteKnowledgeBase(id);
