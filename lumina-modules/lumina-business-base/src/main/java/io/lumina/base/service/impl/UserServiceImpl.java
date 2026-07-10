@@ -20,6 +20,7 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.PasswordUtil;
+import io.lumina.framework.cache.RedisCacheManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRoleMapper userRoleMapper;
+
+    @Autowired
+    private RedisCacheManager redisCacheManager;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -311,6 +315,8 @@ public class UserServiceImpl implements UserService {
             userRoleDOs.add(userRoleDO);
         }
         userRoleMapper.insertBatch(userRoleDOs);
+
+        redisCacheManager.evictPermissionSnapshot(dto.getUserId());
 
         log.info("角色分配成功: userId={}", dto.getUserId());
         return true;

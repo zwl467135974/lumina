@@ -119,6 +119,8 @@ public class UserServiceImpl implements UserService {
         redisCacheManager.zAdd("online:users", System.currentTimeMillis(),
                 user.getUserId() + ":" + user.getUsername());
 
+        redisCacheManager.cachePermissionSnapshot(user.getUserId(), "");
+
         return loginVO;
     }
 

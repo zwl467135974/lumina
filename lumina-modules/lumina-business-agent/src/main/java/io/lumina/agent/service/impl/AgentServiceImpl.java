@@ -77,6 +77,9 @@ public class AgentServiceImpl implements AgentService {
     @org.springframework.beans.factory.annotation.Value("${lumina.agent.content-moderation.strict:false}")
     private boolean contentModerationStrict;
 
+    private record MultimodalContext(Agent agent, AgentConfig config, String sessionId,
+                                     List<MultimodalImage> images, String fileIdsJson) {}
+
     /**
      * Domain -> DO 转换
      */
@@ -114,7 +117,7 @@ public class AgentServiceImpl implements AgentService {
         agent.validateName();
         agent.validateType();
 
-        // 转换�?DO 并持久化
+        // 转换为 DO 并持久化
         AgentDO agentDO = toDO(agent);
         agentMapper.insert(agentDO);
 
@@ -156,7 +159,7 @@ public class AgentServiceImpl implements AgentService {
         existingAgent.validateName();
         existingAgent.validateType();
 
-        // 持久化到数据�?
+        // 持久化到数据库
         AgentDO agentDO = toDO(existingAgent);
         agentMapper.updateById(agentDO);
 
@@ -209,7 +212,7 @@ public class AgentServiceImpl implements AgentService {
         Page<AgentDO> page = new Page<>(pageNum, pageSize);
         Page<AgentDO> doPage = agentMapper.selectPage(page, queryWrapper);
 
-        // 转换�?Domain
+        // 转换为 Domain
         List<Agent> agentList = doPage.getRecords().stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
@@ -235,7 +238,7 @@ public class AgentServiceImpl implements AgentService {
         // 查询 Agent
         Agent agent = getAgentById(agentId);
 
-        // 检查状�?
+        // 检查状态
         if (!agent.isActive()) {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
@@ -248,13 +251,13 @@ public class AgentServiceImpl implements AgentService {
         // 构建配置
         AgentConfig config = buildExecutionConfig(agent);
 
-        // 会话上下文校�?+ 保存用户消息到数据库
+        // 会话上下文校验 + 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
         if (sessionId != null) {
             conversationService.saveMessage(sessionId, "user", task, 0, null);
         }
 
-        // 执行 Agent（引擎加载历史记�?+ 保存�?Redis�?
+        // 执行 Agent（引擎加载历史记忆 + 保存到 Redis）
         ExecuteResult result = agentExecutionEngine.executeSync(
                 agent.getAgentType().toLowerCase(),
                 task,
@@ -282,81 +285,30 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
-        log.info("多模态执�?Agent: id={}, task={}, fileCount={}, conversation={}",
-                agentId, task, fileUuids != null ? fileUuids.size() : 0, conversationUuid);
-
-        agentRateLimiter.checkRateLimit(agentId);
-        budgetService.checkBudget(agentId);
-
-        Agent agent = getAgentById(agentId);
-        if (!agent.isActive()) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
-        }
-
-        promptInjectionFilter.check(task);
-
-        moderateContent(task);
-
-        AgentConfig config = buildExecutionConfig(agent);
-
-        String sessionId = resolveConversation(conversationUuid, agentId);
-
-        // 从文件存储加载图片，转换�?MultimodalImage
-        List<MultimodalImage> images = new ArrayList<>();
-        if (fileUuids != null) {
-            for (String uuid : fileUuids) {
-                FileDO fileDO = fileService.getByUuid(uuid);
-                if (fileDO == null || fileDO.getStatus() != 1) {
-                    log.warn("文件不存在或已删�? {}", uuid);
-                    continue;
-                }
-                byte[] bytes;
-                try (java.io.InputStream is = fileService.download(uuid)) {
-                    bytes = is.readAllBytes();
-                } catch (Exception e) {
-                    throw new BusinessException("读取图片失败: " + uuid, e);
-                }
-                images.add(new MultimodalImage(fileDO.getContentType(),
-                        java.util.Base64.getEncoder().encodeToString(bytes)));
-            }
-        }
-
-        // 序列�?file_ids JSON
-        String fileIdsJson = null;
-        if (fileUuids != null && !fileUuids.isEmpty()) {
-            try {
-                fileIdsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileUuids);
-            } catch (Exception e) {
-                fileIdsJson = null;
-            }
-        }
-
-        if (sessionId != null) {
-            conversationService.saveMessage(sessionId, "user", task, 0, null, fileIdsJson);
-        }
+        MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
 
         ExecuteResult result = agentExecutionEngine.executeMultimodalSync(
-                agent.getAgentType().toLowerCase(),
+                ctx.agent().getAgentType().toLowerCase(),
                 task,
-                images,
-                config,
-                sessionId
+                ctx.images(),
+                ctx.config(),
+                ctx.sessionId()
         );
 
         if (!result.getSuccess()) {
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
         }
 
-        String sanitizedMultimodalResult = outputSanitizer.sanitize(result.getResult());
+        String sanitizedResult = outputSanitizer.sanitize(result.getResult());
 
-        if (sessionId != null) {
+        if (ctx.sessionId() != null) {
             Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
-            conversationService.saveMessage(sessionId, "assistant", sanitizedMultimodalResult, tokenCount, result.getDuration());
-            conversationService.incrementMessageCount(sessionId, 2);
+            conversationService.saveMessage(ctx.sessionId(), "assistant", sanitizedResult, tokenCount, result.getDuration());
+            conversationService.incrementMessageCount(ctx.sessionId(), 2);
         }
 
-        log.info("多模�?Agent 执行成功: id={}", agentId);
-        return sanitizedMultimodalResult;
+        log.info("多模态 Agent 执行成功: id={}", agentId);
+        return sanitizedResult;
     }
 
     @Override
@@ -377,7 +329,7 @@ public class AgentServiceImpl implements AgentService {
         // 查询 Agent
         Agent agent = getAgentById(agentId);
 
-        // 检查状�?
+        // 检查状态
         if (!agent.isActive()) {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
@@ -385,7 +337,7 @@ public class AgentServiceImpl implements AgentService {
         // 构建配置
         AgentConfig config = buildExecutionConfig(agent);
 
-        // 会话上下文校�?+ 保存用户消息到数据库
+        // 会话上下文校验 + 保存用户消息到数据库
         String sessionId = resolveConversation(conversationUuid, agentId);
         if (sessionId != null) {
             conversationService.saveMessage(sessionId, "user", task, 0, null);
@@ -417,65 +369,16 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
-        agentRateLimiter.checkRateLimit(agentId);
-        budgetService.checkBudget(agentId);
+        MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
 
-        promptInjectionFilter.check(task);
-
-        moderateContent(task);
-
-        AgentDO agent = agentMapper.selectById(agentId);
-        if (agent == null || !currentTenantId().equals(agent.getTenantId())) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存在 id=" + agentId);
-        }
-        if (agent.getStatus() != 1) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
-        }
-
-        AgentConfig config = buildExecutionConfig(toDomain(agent));
-
-        String sessionId = resolveConversation(conversationUuid, agentId);
-
-        List<MultimodalImage> images = new ArrayList<>();
-        if (fileUuids != null) {
-            for (String uuid : fileUuids) {
-                FileDO fileDO = fileService.getByUuid(uuid);
-                if (fileDO == null || fileDO.getStatus() != 1) {
-                    log.warn("文件不存在或已删�? {}", uuid);
-                    continue;
-                }
-                byte[] bytes;
-                try (java.io.InputStream is = fileService.download(uuid)) {
-                    bytes = is.readAllBytes();
-                } catch (Exception e) {
-                    throw new BusinessException("读取图片失败: " + uuid, e);
-                }
-                images.add(new MultimodalImage(fileDO.getContentType(),
-                        java.util.Base64.getEncoder().encodeToString(bytes)));
-            }
-        }
-
-        String fileIdsJson = null;
-        if (fileUuids != null && !fileUuids.isEmpty()) {
-            try {
-                fileIdsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileUuids);
-            } catch (Exception e) {
-                fileIdsJson = null;
-            }
-        }
-
-        if (sessionId != null) {
-            conversationService.saveMessage(sessionId, "user", task, 0, null, fileIdsJson);
-        }
-
-        final String sid = sessionId;
+        final String sid = ctx.sessionId();
         final StringBuffer fullResponse = new StringBuffer();
 
         return agentExecutionEngine.executeMultimodalStream(
-                agent.getAgentType().toLowerCase(),
+                ctx.agent().getAgentType().toLowerCase(),
                 task,
-                images,
-                config,
+                ctx.images(),
+                ctx.config(),
                 sid
         )
         .doOnNext(chunk -> {
@@ -493,13 +396,67 @@ public class AgentServiceImpl implements AgentService {
         });
     }
 
-    /**
-     * 解析会话：校�?UUID 归属 Agent，返回会话标识（用作记忆 Key�?
-     *
-     * @param conversationUuid 会话 UUID（null 则返�?null�?
-     * @param agentId          当前 Agent ID
-     * @return 会话 UUID，或 null（无会话上下文）
-     */
+    private MultimodalContext prepareMultimodalExecution(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        log.info("多模态执行 Agent: id={}, task={}, fileCount={}, conversation={}",
+                agentId, task, fileUuids != null ? fileUuids.size() : 0, conversationUuid);
+
+        agentRateLimiter.checkRateLimit(agentId);
+        budgetService.checkBudget(agentId);
+
+        promptInjectionFilter.check(task);
+        moderateContent(task);
+
+        Agent agent = getAgentById(agentId);
+        if (!agent.isActive()) {
+            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
+        }
+
+        AgentConfig config = buildExecutionConfig(agent);
+        String sessionId = resolveConversation(conversationUuid, agentId);
+
+        List<MultimodalImage> images = loadImages(fileUuids);
+        String fileIdsJson = serializeFileIds(fileUuids);
+
+        if (sessionId != null) {
+            conversationService.saveMessage(sessionId, "user", task, 0, null, fileIdsJson);
+        }
+
+        return new MultimodalContext(agent, config, sessionId, images, fileIdsJson);
+    }
+
+    private List<MultimodalImage> loadImages(List<String> fileUuids) {
+        List<MultimodalImage> images = new ArrayList<>();
+        if (fileUuids != null) {
+            for (String uuid : fileUuids) {
+                FileDO fileDO = fileService.getByUuid(uuid);
+                if (fileDO == null || fileDO.getStatus() != 1) {
+                    log.warn("文件不存在或已删除: {}", uuid);
+                    continue;
+                }
+                byte[] bytes;
+                try (java.io.InputStream is = fileService.download(uuid)) {
+                    bytes = is.readAllBytes();
+                } catch (Exception e) {
+                    throw new BusinessException("读取图片失败: " + uuid, e);
+                }
+                images.add(new MultimodalImage(fileDO.getContentType(),
+                        java.util.Base64.getEncoder().encodeToString(bytes)));
+            }
+        }
+        return images;
+    }
+
+    private String serializeFileIds(List<String> fileUuids) {
+        if (fileUuids == null || fileUuids.isEmpty()) {
+            return null;
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileUuids);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void moderateContent(String task) {
         if (contentModerationService != null) {
             io.lumina.agent.security.ModerationResult result = contentModerationService.moderate(task, contentModerationStrict);

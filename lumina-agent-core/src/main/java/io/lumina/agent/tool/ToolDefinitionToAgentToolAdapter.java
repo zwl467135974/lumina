@@ -8,6 +8,7 @@ import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecord;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.common.core.BaseContext;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -144,21 +145,20 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
      */
     private void doRecord(String toolName, String input, String output,
                           String error, long duration, boolean success) {
-        // Micrometer 指标（Prometheus 抓取，直方图/百分位）
+        String conversationId = BaseContext.getConversationId();
         if (meterRegistry != null) {
             meterRegistry.timer("tool.invocation.duration",
                     "name", toolName,
                     "result", success ? "success" : "failure")
                     .record(java.time.Duration.ofMillis(duration));
         }
-        // 内存记录（工具监控页查询）
         if (recorder != null) {
             if (success) {
                 recorder.record(ToolInvocationRecord.success(
-                        toolName, toolDefinition.getCategory(), input, output, duration, null));
+                        toolName, toolDefinition.getCategory(), input, output, duration, conversationId));
             } else {
                 recorder.record(ToolInvocationRecord.failure(
-                        toolName, toolDefinition.getCategory(), input, error, duration, null));
+                        toolName, toolDefinition.getCategory(), input, error, duration, conversationId));
             }
         }
     }

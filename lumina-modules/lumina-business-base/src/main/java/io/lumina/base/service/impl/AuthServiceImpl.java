@@ -111,7 +111,11 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtil.generateToken(user.getUsername(), claims);
 
-        // 9. 构建响应
+        // 9. 缓存权限快照（供 Gateway 实时读取）
+        redisCacheManager.cachePermissionSnapshot(user.getUserId(),
+                String.join(",", user.getPermissionCodes()));
+
+        // 10. 构建响应
         LoginVO loginVO = new LoginVO();
         loginVO.setToken(token);
         loginVO.setTokenType("Bearer");

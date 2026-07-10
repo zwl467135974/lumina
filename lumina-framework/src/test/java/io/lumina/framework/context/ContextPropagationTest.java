@@ -29,7 +29,9 @@ class ContextPropagationTest {
      */
     @BeforeAll
     static void enablePropagation() {
-        ContextRegistry.getInstance().registerThreadLocalAccessor(new LoginContextThreadLocalAccessor());
+        ContextRegistry.getInstance()
+                .registerThreadLocalAccessor(new LoginContextThreadLocalAccessor())
+                .registerThreadLocalAccessor(new ConversationIdThreadLocalAccessor());
         Hooks.enableAutomaticContextPropagation();
     }
 
@@ -107,5 +109,28 @@ class ContextPropagationTest {
                 .block();
 
         assertThat(hasPermission).isTrue();
+    }
+
+    /**
+     * conversationId 在嵌套 boundedElastic 线程中可读
+     *
+     * <p>模拟 {@code ToolDefinitionToAgentToolAdapter.callAsync} 真实场景：
+     * Agent 执行入口设置 conversationId 后，工具适配器在 boundedElastic 线程中
+     * 调用 {@link BaseContext#getConversationId()} 应能读到正确值。
+     */
+    @Test
+    void conversationIdSurvivesNestedSubscribeOn() {
+        BaseContext.setConversationId("conv-test-123");
+
+        String conversationId = Mono.fromCallable(() ->
+                        Mono.fromCallable(BaseContext::getConversationId)
+                                .subscribeOn(Schedulers.boundedElastic())
+                                .block())
+                .subscribeOn(Schedulers.boundedElastic())
+                .block();
+
+        assertThat(conversationId)
+                .as("嵌套 boundedElastic 线程应能读到主线程设置的 conversationId")
+                .isEqualTo("conv-test-123");
     }
 }

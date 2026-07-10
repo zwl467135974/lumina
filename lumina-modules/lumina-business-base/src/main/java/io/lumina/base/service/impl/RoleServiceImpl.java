@@ -19,6 +19,7 @@ import io.lumina.base.service.RoleService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.framework.cache.RedisCacheManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +51,9 @@ public class RoleServiceImpl implements RoleService {
 
     @Autowired
     private PermissionMapper permissionMapper;
+
+    @Autowired
+    private RedisCacheManager redisCacheManager;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -131,6 +135,8 @@ public class RoleServiceImpl implements RoleService {
         // 5. 更新
         int result = roleMapper.updateById(roleDO);
 
+        redisCacheManager.evictAllPermissionSnapshots();
+
         log.info("角色更新成功: roleId={}", dto.getRoleId());
         return result > 0;
     }
@@ -171,6 +177,8 @@ public class RoleServiceImpl implements RoleService {
 
         // 6. 逻辑删除角色
         int result = roleMapper.deleteById(roleId);
+
+        redisCacheManager.evictAllPermissionSnapshots();
 
         log.info("角色删除成功: roleId={}", roleId);
         return result > 0;
@@ -290,6 +298,8 @@ public class RoleServiceImpl implements RoleService {
             rpDOs.add(rpDO);
         }
         rolePermissionMapper.insertBatch(rpDOs);
+
+        redisCacheManager.evictAllPermissionSnapshots();
 
         log.info("权限分配成功: roleId={}", dto.getRoleId());
         return true;

@@ -66,6 +66,17 @@ public interface AgentExecutionEngine {
     String getEngineName();
 
     /**
+     * 清除指定 Agent 的内部缓存（Model / Toolkit）
+     *
+     * <p>当 Agent 配置变更（LLM 配置、工具白名单等）后调用，
+     * 确保下次执行使用最新配置。
+     *
+     * @param agentId Agent ID（null 则不做任何操作）
+     */
+    default void evictCache(Long agentId) {
+    }
+
+    /**
      * 兼容重载：执行 Agent（无会话上下文）
      */
     default Mono<ExecuteResult> execute(String businessType, String task, AgentConfig config) {

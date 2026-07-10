@@ -11,6 +11,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+
 /**
  * JWT 认证过滤器
  *
@@ -27,6 +30,8 @@ import org.springframework.stereotype.Component;
 public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<JwtAuthenticationGatewayFilterFactory.Config> {
 
     private static final String TOKEN_BLACKLIST_KEY_PREFIX = "token:blacklist:";
+    private static final String PERM_SNAPSHOT_KEY_PREFIX = "user:perms:";
+    private static final Duration PERM_SNAPSHOT_TTL = Duration.ofMinutes(5);
 
     private static final String[] TRUSTED_IDENTITY_HEADERS = {
             "X-User-Id", "X-Username", "X-Tenant-Id", "X-Roles", "X-Permissions"
@@ -88,6 +93,9 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
                 // 解析 token 获取用户信息
                 LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
 
+                // 权限实时缓存：优先 Redis 快照，未命中回退 JWT claims 并异步刷新
+                String permissionsStr = resolvePermissions(loginUser);
+
                 // 将用户信息添加到请求 header，传递给下游服务
                 exchange.getRequest().mutate()
                         .headers(h -> {
@@ -99,7 +107,7 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
                         .header("X-Username", loginUser.getUsername())
                         .header("X-Tenant-Id", loginUser.getTenantId() != null ? String.valueOf(loginUser.getTenantId()) : "0")
                         .header("X-Roles", loginUser.getRoles() != null ? String.join(",", loginUser.getRoles()) : "")
-                        .header("X-Permissions", loginUser.getPermissions() != null ? String.join(",", loginUser.getPermissions()) : "")
+                        .header("X-Permissions", permissionsStr)
                         .build();
 
                 log.debug("JWT 认证成功: username={}, path={}", loginUser.getUsername(), path);
@@ -126,5 +134,39 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
             log.warn("Token 黑名单检查失败，降级放行: {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * 解析用户权限：优先读 Redis 快照（实时），未命中回退 JWT claims 并异步刷新缓存
+     */
+    private String resolvePermissions(LoginUser loginUser) {
+        String jwtPerms = loginUser.getPermissions() != null
+                ? String.join(",", loginUser.getPermissions()) : "";
+
+        if (loginUser.getUserId() == null) {
+            return jwtPerms;
+        }
+
+        String key = PERM_SNAPSHOT_KEY_PREFIX + loginUser.getUserId();
+        try {
+            String cached = stringRedisTemplate.opsForValue().get(key);
+            if (cached != null) {
+                return cached;
+            }
+        } catch (Exception e) {
+            log.warn("权限快照读取失败，降级 JWT claims: userId={}, error={}",
+                    loginUser.getUserId(), e.getMessage());
+            return jwtPerms;
+        }
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                stringRedisTemplate.opsForValue().set(key, jwtPerms, PERM_SNAPSHOT_TTL);
+            } catch (Exception ex) {
+                log.warn("异步刷新权限快照失败: userId={}", loginUser.getUserId());
+            }
+        });
+
+        return jwtPerms;
     }
 }

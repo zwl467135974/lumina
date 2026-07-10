@@ -19,6 +19,11 @@ public class AgentConfig implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * Agent ID（用于引擎层缓存失效，由 Service 层填充）
+     */
+    private Long agentId;
+
+    /**
      * Agent 名称
      */
     private String agentName;

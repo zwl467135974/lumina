@@ -4,9 +4,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RAtomicLong;
 import org.redisson.api.RBucket;
 import org.redisson.api.RDeque;
+import org.redisson.api.RKeys;
 import org.redisson.api.RList;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -34,10 +36,12 @@ public class RedisCacheManager {
     private static final String USER_PERMISSIONS_KEY_PREFIX = "user:permissions:";
     private static final String ROLE_PERMISSIONS_KEY_PREFIX = "role:permissions:";
     private static final String TOKEN_BLACKLIST_KEY_PREFIX = "token:blacklist:";
+    private static final String PERM_SNAPSHOT_KEY_PREFIX = "user:perms:";
 
     // ==================== 缓存过期时间 ====================
     private static final Duration USER_PERMISSIONS_TTL = Duration.ofMinutes(30);
     private static final Duration ROLE_PERMISSIONS_TTL = Duration.ofHours(1);
+    private static final Duration PERM_SNAPSHOT_TTL = Duration.ofMinutes(5);
 
     // ==================== 用户权限缓存 ====================
 
@@ -178,6 +182,41 @@ public class RedisCacheManager {
         String key = TOKEN_BLACKLIST_KEY_PREFIX + token;
         redissonClient.getBucket(key).delete();
         log.debug("从黑名单移除 Token");
+    }
+
+    // ==================== 权限快照缓存（Gateway 实时读取） ====================
+
+    /**
+     * 缓存用户权限快照（逗号分隔字符串，与 Gateway StringRedisTemplate 兼容）
+     *
+     * @param userId      用户ID
+     * @param permissions 权限代码逗号分隔字符串
+     */
+    public void cachePermissionSnapshot(Long userId, String permissions) {
+        String key = PERM_SNAPSHOT_KEY_PREFIX + userId;
+        RBucket<String> bucket = redissonClient.getBucket(key, StringCodec.INSTANCE);
+        bucket.set(permissions, PERM_SNAPSHOT_TTL);
+        log.debug("缓存权限快照: userId={}", userId);
+    }
+
+    /**
+     * 删除用户权限快照
+     *
+     * @param userId 用户ID
+     */
+    public void evictPermissionSnapshot(Long userId) {
+        String key = PERM_SNAPSHOT_KEY_PREFIX + userId;
+        redissonClient.getBucket(key).delete();
+        log.debug("删除权限快照: userId={}", userId);
+    }
+
+    /**
+     * 删除所有用户权限快照（角色/权限变更时使用）
+     */
+    public void evictAllPermissionSnapshots() {
+        RKeys keys = redissonClient.getKeys();
+        long deleted = keys.deleteByPattern(PERM_SNAPSHOT_KEY_PREFIX + "*");
+        log.debug("批量删除权限快照: count={}", deleted);
     }
 
     // ==================== 通用缓存方法 ====================

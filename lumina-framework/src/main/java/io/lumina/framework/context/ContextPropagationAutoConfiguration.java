@@ -29,7 +29,8 @@ public class ContextPropagationAutoConfiguration {
     public void init() {
         ContextRegistry registry = ContextRegistry.getInstance();
         registry.registerThreadLocalAccessor(new LoginContextThreadLocalAccessor());
+        registry.registerThreadLocalAccessor(new ConversationIdThreadLocalAccessor());
         Hooks.enableAutomaticContextPropagation();
-        log.info("已启用 Reactor 自动上下文传播并注册 LoginContextThreadLocalAccessor");
+        log.info("已启用 Reactor 自动上下文传播并注册 LoginContextThreadLocalAccessor, ConversationIdThreadLocalAccessor");
     }
 }

@@ -15,6 +15,8 @@ import io.agentscope.core.rag.Knowledge;
 import io.agentscope.core.rag.RAGMode;
 import io.agentscope.core.rag.model.RetrieveConfig;
 import io.agentscope.core.tool.Toolkit;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
@@ -34,10 +36,11 @@ import io.lumina.agent.resilience.LlmResilienceWrapper;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.common.core.BaseContext;
 import io.micrometer.observation.annotation.Observed;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -45,6 +48,7 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Agent 执行引擎默认实现
@@ -59,52 +63,79 @@ import java.util.List;
 @Component
 public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
+    private static final int CONTEXT_WINDOW = 20;
+
+    private static final int MODEL_CACHE_MAX_SIZE = 50;
+
+    private static final int TOOLKIT_CACHE_MAX_SIZE = 100;
+
+    private static final long CACHE_EXPIRE_MINUTES = 30;
+
+    private final Cache<String, Model> modelCache = Caffeine.newBuilder()
+            .maximumSize(MODEL_CACHE_MAX_SIZE)
+            .expireAfterAccess(CACHE_EXPIRE_MINUTES, TimeUnit.MINUTES)
+            .recordStats()
+            .build();
+
+    private final Cache<Long, Toolkit> toolkitCache = Caffeine.newBuilder()
+            .maximumSize(TOOLKIT_CACHE_MAX_SIZE)
+            .expireAfterAccess(CACHE_EXPIRE_MINUTES, TimeUnit.MINUTES)
+            .recordStats()
+            .build();
+
     private final ConfigLoader configLoader;
     private final PromptLoader promptLoader;
     private final MemoryManager memoryManager;
     private final LuminaAgentProperties agentProperties;
+    private final ChatModelFactory chatModelFactory;
+    private final LlmResilienceWrapper llmResilience;
+    private final ApplicationContext applicationContext;
 
-    /**
-     * 上下文窗口大小（加载最近 N 条历史记忆构建多轮上下文）
-     */
-    private static final int CONTEXT_WINDOW = 20;
+    @Nullable
+    private final EnhancedToolManager enhancedToolManager;
 
-    @Autowired(required = false)
-    private EnhancedToolManager enhancedToolManager;
+    @Nullable
+    private final ToolInvocationRecorder toolInvocationRecorder;
 
-    @Autowired(required = false)
-    private ToolInvocationRecorder toolInvocationRecorder;
+    @Nullable
+    private final ToolCircuitBreaker toolCircuitBreaker;
 
-    @Autowired(required = false)
-    private ToolCircuitBreaker toolCircuitBreaker;
+    @Nullable
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
-    @Autowired(required = false)
-    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+    @Nullable
+    private final Knowledge knowledge;
 
-    @Autowired(required = false)
-    private Knowledge knowledge;
-
-    @Autowired(required = false)
-    private RagProperties ragProperties;
-
-    @Autowired
-    private ChatModelFactory chatModelFactory;
-
-    @Autowired
-    private LlmResilienceWrapper llmResilience;
-
-    @Autowired
-    private ApplicationContext applicationContext;
+    @Nullable
+    private final RagProperties ragProperties;
 
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
             MemoryManager memoryManager,
-            LuminaAgentProperties agentProperties) {
+            LuminaAgentProperties agentProperties,
+            ChatModelFactory chatModelFactory,
+            LlmResilienceWrapper llmResilience,
+            ApplicationContext applicationContext,
+            @Nullable EnhancedToolManager enhancedToolManager,
+            @Nullable ToolInvocationRecorder toolInvocationRecorder,
+            @Nullable ToolCircuitBreaker toolCircuitBreaker,
+            @Nullable io.micrometer.core.instrument.MeterRegistry meterRegistry,
+            @Nullable Knowledge knowledge,
+            @Nullable RagProperties ragProperties) {
         this.configLoader = configLoader;
         this.promptLoader = promptLoader;
         this.memoryManager = memoryManager;
         this.agentProperties = agentProperties;
+        this.chatModelFactory = chatModelFactory;
+        this.llmResilience = llmResilience;
+        this.applicationContext = applicationContext;
+        this.enhancedToolManager = enhancedToolManager;
+        this.toolInvocationRecorder = toolInvocationRecorder;
+        this.toolCircuitBreaker = toolCircuitBreaker;
+        this.meterRegistry = meterRegistry;
+        this.knowledge = knowledge;
+        this.ragProperties = ragProperties;
     }
 
     @Override
@@ -129,6 +160,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private ExecuteResult executeSyncInternal(String businessType, String task, List<MultimodalImage> images,
                                              AgentConfig config, String conversationId) {
         long startTime = System.currentTimeMillis();
+        BaseContext.setConversationId(conversationId);
 
         try {
             int imageCount = images != null ? images.size() : 0;
@@ -213,6 +245,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Observed(name = "agent.execute.stream", contextualName = "agent-stream-execution")
     public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId) {
         log.info("开始流式执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
+        BaseContext.setConversationId(conversationId);
         try {
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
 
@@ -270,6 +303,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         int imageCount = images != null ? images.size() : 0;
         log.info("开始流式多模态执行 Agent: businessType={}, task={}, imageCount={}, conversationId={}",
                 businessType, task, imageCount, conversationId);
+        BaseContext.setConversationId(conversationId);
         try {
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
 
@@ -438,33 +472,22 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
     /**
      * 创建 AgentScope ReActAgent
+     *
+     * <p>ChatModel 和 Toolkit 走 Caffeine 缓存（重量级、无状态），
+     * ReActAgent 每次新建（含 InMemoryMemory，有状态）。
      */
     private ReActAgent createReActAgent(AgentConfig config) {
-        // 获取 LLM 配置（优先使用传入配置，否则使用默认配置）
-        AgentConfig.LLMConfig llmConfig = config.getLlmConfig();
-        if (llmConfig == null) {
-            llmConfig = new AgentConfig.LLMConfig();
-            llmConfig.setModelType(agentProperties.getLlm().getType());
-            llmConfig.setModelName(agentProperties.getLlm().getModel());
-            llmConfig.setApiKey(getApiKey());
-            llmConfig.setBaseUrl(agentProperties.getLlm().getBaseUrl());
-            llmConfig.setTemperature(agentProperties.getLlm().getTemperature());
-            llmConfig.setMaxTokens(agentProperties.getLlm().getMaxTokens());
-            llmConfig.setTopP(agentProperties.getLlm().getTopP());
-            llmConfig.setFrequencyPenalty(agentProperties.getLlm().getFrequencyPenalty());
-            llmConfig.setPresencePenalty(agentProperties.getLlm().getPresencePenalty());
-            llmConfig.setSeed(agentProperties.getLlm().getSeed());
-            llmConfig.setTopK(agentProperties.getLlm().getTopK());
-        }
+        AgentConfig.LLMConfig llmConfig = resolveLlmConfig(config);
 
-        // 构建模型（按 modelType 路由到 DashScope/OpenAI/Anthropic/Ollama）
-        Model model = chatModelFactory.create(llmConfig, agentProperties.getLlm(), getApiKey());
+        String modelKey = buildModelCacheKey(llmConfig);
+        Model model = modelCache.get(modelKey, k -> {
+            log.info("ChatModel 缓存未命中，创建模型: type={}, model={}",
+                    llmConfig.getModelType(), llmConfig.getModelName());
+            return chatModelFactory.create(llmConfig, agentProperties.getLlm(), getApiKey());
+        });
 
-        // 构建工具集（按 Agent 配置过滤）
-        Toolkit toolkit = new Toolkit();
-        registerToolsToToolkit(toolkit, config.getToolConfig());
+        Toolkit toolkit = resolveToolkit(config);
 
-        // 构建 ReActAgent
         ReActAgent.Builder agentBuilder = ReActAgent.builder()
                 .name(config.getAgentName() != null ? config.getAgentName() : "LuminaAgent")
                 .sysPrompt(config.getPromptTemplate() != null ? config.getPromptTemplate() : "You are a helpful AI assistant.")
@@ -472,10 +495,103 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .toolkit(toolkit)
                 .memory(new InMemoryMemory());
 
-        // RAG 知识库集成（当 Knowledge bean 存在时注入，按配置选择检索模式）
         configureRag(agentBuilder);
 
         return agentBuilder.build();
+    }
+
+    @Override
+    public void evictCache(Long agentId) {
+        if (agentId != null) {
+            toolkitCache.invalidate(agentId);
+            log.info("已清除 Agent Toolkit 缓存: agentId={}", agentId);
+        }
+    }
+
+    /**
+     * 解析 LLM 配置（优先使用传入配置，否则用全局默认填充）
+     */
+    private AgentConfig.LLMConfig resolveLlmConfig(AgentConfig config) {
+        AgentConfig.LLMConfig llmConfig = config.getLlmConfig();
+        if (llmConfig != null) {
+            return llmConfig;
+        }
+        LuminaAgentProperties.LLMConfig defaults = agentProperties.getLlm();
+        AgentConfig.LLMConfig resolved = new AgentConfig.LLMConfig();
+        resolved.setModelType(defaults.getType());
+        resolved.setModelName(defaults.getModel());
+        resolved.setApiKey(getApiKey());
+        resolved.setBaseUrl(defaults.getBaseUrl());
+        resolved.setTemperature(defaults.getTemperature());
+        resolved.setMaxTokens(defaults.getMaxTokens());
+        resolved.setTopP(defaults.getTopP());
+        resolved.setFrequencyPenalty(defaults.getFrequencyPenalty());
+        resolved.setPresencePenalty(defaults.getPresencePenalty());
+        resolved.setSeed(defaults.getSeed());
+        resolved.setTopK(defaults.getTopK());
+        return resolved;
+    }
+
+    /**
+     * 构建 ChatModel 缓存 Key（由所有影响模型创建的配置字段组成，apiKey 走 SHA-256 摘要避免明文）
+     */
+    private String buildModelCacheKey(AgentConfig.LLMConfig config) {
+        return String.join("|",
+                str(config.getModelType()),
+                str(config.getModelName()),
+                hashSensitive(config.getApiKey()),
+                str(config.getBaseUrl()),
+                str(config.getTemperature()),
+                str(config.getMaxTokens()),
+                str(config.getTopP()),
+                str(config.getFrequencyPenalty()),
+                str(config.getPresencePenalty()),
+                str(config.getSeed()),
+                str(config.getTopK()));
+    }
+
+    /**
+     * 解析 Toolkit（按 agentId 缓存；agentId 为 null 时不缓存，每次新建）
+     */
+    private Toolkit resolveToolkit(AgentConfig config) {
+        Long agentId = config.getAgentId();
+        if (agentId == null) {
+            return buildToolkit(config.getToolConfig());
+        }
+        return toolkitCache.get(agentId, k -> {
+            log.info("Toolkit 缓存未命中，构建工具集: agentId={}", agentId);
+            return buildToolkit(config.getToolConfig());
+        });
+    }
+
+    private Toolkit buildToolkit(AgentConfig.ToolConfig toolConfig) {
+        Toolkit toolkit = new Toolkit();
+        registerToolsToToolkit(toolkit, toolConfig);
+        return toolkit;
+    }
+
+    private static String str(Object value) {
+        return value != null ? value.toString() : "null";
+    }
+
+    /**
+     * 对敏感字段（如 API Key）做 SHA-256 摘要，截取前 16 位十六进制，避免明文出现在缓存 Key / 日志中
+     */
+    private static String hashSensitive(String value) {
+        if (value == null || value.isEmpty()) {
+            return "null";
+        }
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 8; i++) {
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return Integer.toHexString(value.hashCode());
+        }
     }
 
     /**

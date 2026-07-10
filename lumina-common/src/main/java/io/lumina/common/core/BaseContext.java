@@ -23,6 +23,11 @@ public class BaseContext {
      */
     private static final ThreadLocal<LoginContext> CONTEXT = new ThreadLocal<>();
 
+    /**
+     * 当前会话 ID（独立于 LoginContext，用于 Agent 工具调用记录关联会话上下文）
+     */
+    private static final ThreadLocal<String> CONVERSATION_ID = new ThreadLocal<>();
+
     // ==================== 快照级操作（供 ThreadLocalAccessor / 跨线程传播使用）====================
 
     /**
@@ -160,6 +165,33 @@ public class BaseContext {
         return ctx != null ? ctx.permissions() : null;
     }
 
+    // ==================== 会话 ID ====================
+
+    /**
+     * 设置会话 ID（Agent 执行入口调用，工具适配器通过 {@link #getConversationId()} 读取）
+     *
+     * @param conversationId 会话 ID
+     */
+    public static void setConversationId(String conversationId) {
+        CONVERSATION_ID.set(conversationId);
+    }
+
+    /**
+     * 获取会话 ID
+     *
+     * @return 当前线程绑定的会话 ID，未设置时返回 null
+     */
+    public static String getConversationId() {
+        return CONVERSATION_ID.get();
+    }
+
+    /**
+     * 清除会话 ID
+     */
+    public static void clearConversationId() {
+        CONVERSATION_ID.remove();
+    }
+
     // ==================== 角色与权限判定 ====================
 
     /**
@@ -244,6 +276,7 @@ public class BaseContext {
      */
     public static void clear() {
         CONTEXT.remove();
+        CONVERSATION_ID.remove();
         log.debug("清除 Base 上下文");
     }
 
