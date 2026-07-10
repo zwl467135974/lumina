@@ -29,25 +29,24 @@ public class AuditLogEventListener {
     @EventListener(AuditEvent.class)
     public void onAuditEvent(AuditEvent event) {
         try {
-            AuditLogDO log = new AuditLogDO();
-            log.setTenantId(event.getTenantId());
-            log.setUserId(event.getUserId());
-            log.setUsername(event.getUsername());
-            log.setModule(event.getModule());
-            log.setAction(event.getAction());
-            log.setTargetType(event.getTargetType());
-            log.setTargetId(event.getTargetId());
-            log.setDescription(event.getDescription());
-            log.setRequestMethod(event.getRequestMethod());
-            log.setRequestUrl(event.getRequestUrl());
-            log.setRequestIp(event.getRequestIp());
-            log.setStatus(event.isSuccess() ? 1 : 0);
-            log.setErrorMsg(event.getErrorMsg());
-            log.setDurationMs(event.getDurationMs());
+            AuditLogDO auditLog = new AuditLogDO();
+            auditLog.setTenantId(event.getTenantId());
+            auditLog.setUserId(event.getUserId());
+            auditLog.setUsername(event.getUsername());
+            auditLog.setModule(event.getModule());
+            auditLog.setAction(event.getAction());
+            auditLog.setTargetType(event.getTargetType());
+            auditLog.setTargetId(event.getTargetId());
+            auditLog.setDescription(event.getDescription());
+            auditLog.setRequestMethod(event.getRequestMethod());
+            auditLog.setRequestUrl(event.getRequestUrl());
+            auditLog.setRequestIp(event.getRequestIp());
+            auditLog.setStatus(event.isSuccess() ? 1 : 0);
+            auditLog.setErrorMsg(event.getErrorMsg());
+            auditLog.setDurationMs(event.getDurationMs());
 
-            auditLogMapper.insert(log);
+            auditLogMapper.insert(auditLog);
         } catch (Exception e) {
-            // 审计失败不影响主流程，仅记录日志
             AuditLogEventListener.log.warn("审计日志写入失败: module={}, action={}",
                     event.getModule(), event.getAction(), e);
         }

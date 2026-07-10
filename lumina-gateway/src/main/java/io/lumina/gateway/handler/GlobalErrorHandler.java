@@ -57,11 +57,11 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
                 errorCode = ErrorCode.FORBIDDEN;
                 message = ErrorCode.FORBIDDEN.getMessage();
             } else if (status == HttpStatus.REQUEST_TIMEOUT) {
-                errorCode = ErrorCode.BAD_REQUEST;
-                message = "请求超时";
+                errorCode = ErrorCode.REQUEST_TIMEOUT;
+                message = ErrorCode.REQUEST_TIMEOUT.getMessage();
             } else if (status == HttpStatus.TOO_MANY_REQUESTS) {
-                errorCode = ErrorCode.BAD_REQUEST;
-                message = "请求过于频繁，请稍后重试";
+                errorCode = ErrorCode.TOO_MANY_REQUESTS;
+                message = ErrorCode.TOO_MANY_REQUESTS.getMessage();
             } else if (status != null && status.is4xxClientError()) {
                 errorCode = ErrorCode.BAD_REQUEST;
                 message = rse.getReason() != null ? rse.getReason() : "请求参数错误";

@@ -10,6 +10,7 @@ import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.infrastructure.mapper.KnowledgeBaseMapper;
 import io.lumina.agent.service.KnowledgeBaseService;
 import io.lumina.common.core.BaseContext;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -151,21 +152,21 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     private KnowledgeBaseDO getKbOrThrow(Long id) {
         KnowledgeBaseDO kb = kbMapper.selectById(id);
         if (kb == null || Integer.valueOf(1).equals(kb.getIsDeleted())) {
-            throw BusinessException.notFound("知识库不存在");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "知识库不存在");
         }
         return kb;
     }
 
     private void checkTenantAccess(KnowledgeBaseDO kb) {
         if (!currentTenantId().equals(kb.getTenantId())) {
-            throw new BusinessException(403, "无权访问该知识库");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权访问该知识库");
         }
     }
 
     private void checkAgentOwnership(Long agentId) {
         AgentDO agent = agentMapper.selectById(agentId);
         if (agent == null || !currentTenantId().equals(agent.getTenantId())) {
-            throw new BusinessException(403, "无权操作该 Agent");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作该 Agent");
         }
     }
 

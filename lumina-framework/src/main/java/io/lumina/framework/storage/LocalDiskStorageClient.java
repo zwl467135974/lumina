@@ -1,5 +1,7 @@
 package io.lumina.framework.storage;
 
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -33,7 +35,7 @@ public class LocalDiskStorageClient implements StorageClient {
             Files.createDirectories(basePath);
             log.info("本地文件存储初始化: basePath={}", basePath);
         } catch (IOException e) {
-            throw new RuntimeException("初始化本地存储目录失败", e);
+            throw new BusinessException(ErrorCode.FILE_STORAGE_INIT_FAILED, "初始化本地存储目录失败", e);
         }
     }
 
@@ -46,20 +48,20 @@ public class LocalDiskStorageClient implements StorageClient {
             log.debug("文件已存储: key={}, size={}bytes", key, Files.size(target));
             return key;
         } catch (IOException e) {
-            throw new RuntimeException("文件上传失败: " + key, e);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "本地文件上传失败: " + key, e);
         }
     }
 
     @Override
     public InputStream download(String key) {
+        Path target = resolveKey(key);
+        if (!Files.exists(target)) {
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND, "文件不存在: " + key);
+        }
         try {
-            Path target = resolveKey(key);
-            if (!Files.exists(target)) {
-                throw new RuntimeException("文件不存在: " + key);
-            }
             return Files.newInputStream(target);
         } catch (IOException e) {
-            throw new RuntimeException("文件下载失败: " + key, e);
+            throw new BusinessException(ErrorCode.FILE_DOWNLOAD_FAILED, "本地文件下载失败: " + key, e);
         }
     }
 
@@ -70,7 +72,7 @@ public class LocalDiskStorageClient implements StorageClient {
             Files.deleteIfExists(target);
             log.debug("文件已删除: key={}", key);
         } catch (IOException e) {
-            log.warn("文件删除失败: key={}, error={}", key, e.getMessage());
+            throw new BusinessException(ErrorCode.FILE_DELETE_FAILED, "本地文件删除失败: " + key, e);
         }
     }
 

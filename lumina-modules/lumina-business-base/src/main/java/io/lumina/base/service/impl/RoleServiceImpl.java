@@ -20,9 +20,9 @@ import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.cache.RedisCacheManager;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,22 +38,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
 
-    @Autowired
-    private RoleMapper roleMapper;
-
-    @Autowired
-    private RolePermissionMapper rolePermissionMapper;
-
-    @Autowired
-    private UserRoleMapper userRoleMapper;
-
-    @Autowired
-    private PermissionMapper permissionMapper;
-
-    @Autowired
-    private RedisCacheManager redisCacheManager;
+    private final RoleMapper roleMapper;
+    private final RolePermissionMapper rolePermissionMapper;
+    private final UserRoleMapper userRoleMapper;
+    private final PermissionMapper permissionMapper;
+    private final RedisCacheManager redisCacheManager;
 
     @Override
     @Transactional(rollbackFor = Exception.class)

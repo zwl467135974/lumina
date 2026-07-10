@@ -49,6 +49,7 @@ public class EvaluationController {
     /**
      * 从 YAML 文件导入数据集
      */
+    @Audit(module = "evaluation", action = "CREATE", description = "导入评估数据集")
     @PostMapping("/datasets/import")
     public R<EvaluationDataset> importDataset(
             @RequestParam("file") MultipartFile file,
@@ -76,6 +77,7 @@ public class EvaluationController {
         return R.success();
     }
 
+    @Audit(module = "evaluation", action = "EXECUTE", description = "执行评估")
     @PostMapping("/datasets/{id}/runs")
     public R<RunReport> runEvaluation(@PathVariable Long id, @Valid @RequestBody EvaluationRunDTO dto) {
         log.info("执行 Agent 评估: datasetId={}, agentId={}", id, dto.getAgentId());
@@ -85,6 +87,7 @@ public class EvaluationController {
     /**
      * 异步执行评估（适用于大数据集），返回运行 ID 供前端轮询
      */
+    @Audit(module = "evaluation", action = "EXECUTE", description = "异步执行评估")
     @PostMapping("/datasets/{id}/runs/async")
     public R<Long> runEvaluationAsync(@PathVariable Long id, @Valid @RequestBody EvaluationRunDTO dto) {
         log.info("异步执行 Agent 评估: datasetId={}, agentId={}", id, dto.getAgentId());

@@ -2,11 +2,15 @@ package io.lumina.agent.orchestration.engine;
 
 import io.lumina.agent.orchestration.expression.ExpressionEvaluator;
 import io.lumina.agent.orchestration.model.*;
+import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 默认工作流引擎实现
@@ -37,7 +41,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
 
     private final List<NodeExecutor> executors;
     private final ExpressionEvaluator expressionEvaluator;
-    private final List<WorkflowEventListener> listeners = new ArrayList<>();
+    private final List<WorkflowEventListener> listeners = new CopyOnWriteArrayList<>();
 
     @Autowired(required = false)
     private io.micrometer.core.instrument.MeterRegistry meterRegistry;
@@ -237,15 +241,19 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
 
             java.util.Map<String, Object> merged = new java.util.LinkedHashMap<>();
             for (var f : futures) {
-                var entry = f.join();
-                ParallelNodeExecutor.ParallelBranchInfo branch = entry.getKey();
-                WorkflowContext branchCtx = entry.getValue();
-                Object branchResult = branchCtx.getNodeResult(branch.startNode());
-                merged.put(branch.name(), branchResult);
+                if (signal.waitAll() || f.isDone()) {
+                    var entry = f.join();
+                    ParallelNodeExecutor.ParallelBranchInfo branch = entry.getKey();
+                    WorkflowContext branchCtx = entry.getValue();
+                    Object branchResult = branchCtx.getNodeResult(branch.startNode());
+                    merged.put(branch.name(), branchResult);
 
-                branchCtx.getVariables().entrySet().stream()
-                        .filter(e -> !originalVarKeys.contains(e.getKey()))
-                        .forEach(e -> ctx.setVariable(branch.name() + "_" + e.getKey(), e.getValue()));
+                    branchCtx.getVariables().entrySet().stream()
+                            .filter(e -> !originalVarKeys.contains(e.getKey()))
+                            .forEach(e -> ctx.setVariable(branch.name() + "_" + e.getKey(), e.getValue()));
+                } else {
+                    f.cancel(true);
+                }
             }
 
             ctx.setNodeResult("__parallel_merged__", merged);
@@ -290,7 +298,8 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
         copy.setWorkflowName(source.getWorkflowName());
         copy.setTenantId(source.getTenantId());
         copy.setUserId(source.getUserId());
-        copy.setVariables(new HashMap<>(source.getVariables()));
+        copy.setVariables(JsonUtils.OBJECT_MAPPER.convertValue(
+                source.getVariables(), new TypeReference<Map<String, Object>>() {}));
         copy.setNodeResults(new HashMap<>(source.getNodeResults()));
         copy.setNodeStatuses(new HashMap<>(source.getNodeStatuses()));
         copy.setCurrentNodeId(source.getCurrentNodeId());
@@ -312,6 +321,12 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
         String itemVar = ctx.getVariable("__loopItemVar__");
 
         for (int i = 0; i < signal.iterations(); i++) {
+            if (signal.conditionExpr() != null && !signal.conditionExpr().isBlank()) {
+                if (!expressionEvaluator.evaluateBoolean(signal.conditionExpr(), ctx.toEvaluationRoot())) {
+                    log.info("条件循环退出: iteration={}", i);
+                    break;
+                }
+            }
             if (items != null && i < items.size() && itemVar != null) {
                 ctx.setVariable(itemVar, items.get(i));
             }

@@ -44,6 +44,7 @@ public class PromptController {
         return R.success(PromptVO.from(promptService.publish(id)));
     }
 
+    @Audit(module = "prompt", action = "CREATE", description = "创建Prompt新版本")
     @PostMapping("/{id}/new-version")
     public R<PromptVO> newVersion(@PathVariable Long id, @RequestBody PromptDTO dto) {
         return R.success(PromptVO.from(promptService.newVersion(id, dto)));

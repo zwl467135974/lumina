@@ -72,7 +72,7 @@ public class LoopNodeExecutor implements NodeExecutor {
         ctx.setVariable("__loopItems__", items);
         ctx.setVariable("__loopItemVar__", loopNode.getItemVar());
 
-        return new LoopSignal(iterations, loopNode.getLoopTarget(), loopNode.getExitTarget());
+        return new LoopSignal(iterations, loopNode.getLoopTarget(), loopNode.getExitTarget(), null);
     }
 
     private Object handleConditionLoop(LoopNode loopNode, WorkflowContext ctx) {
@@ -81,16 +81,17 @@ public class LoopNodeExecutor implements NodeExecutor {
 
         if (!shouldLoop) {
             log.info("条件循环初始即为 false: id={}", loopNode.getId());
-            return new LoopSignal(0, loopNode.getLoopTarget(), loopNode.getExitTarget());
+            return new LoopSignal(0, loopNode.getLoopTarget(), loopNode.getExitTarget(), null);
         }
 
         log.info("条件循环启动: id={}", loopNode.getId());
-        return new LoopSignal(loopNode.getMaxIterations(), loopNode.getLoopTarget(), loopNode.getExitTarget());
+        return new LoopSignal(loopNode.getMaxIterations(), loopNode.getLoopTarget(),
+                loopNode.getExitTarget(), loopNode.getConditionExpr());
     }
 
     /**
      * 循环控制信号（引擎接收后执行循环体）
      */
-    public record LoopSignal(int iterations, String loopTarget, String exitTarget) {
+    public record LoopSignal(int iterations, String loopTarget, String exitTarget, String conditionExpr) {
     }
 }

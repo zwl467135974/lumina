@@ -41,7 +41,7 @@ public class RedisCacheManager {
     // ==================== 缓存过期时间 ====================
     private static final Duration USER_PERMISSIONS_TTL = Duration.ofMinutes(30);
     private static final Duration ROLE_PERMISSIONS_TTL = Duration.ofHours(1);
-    private static final Duration PERM_SNAPSHOT_TTL = Duration.ofMinutes(5);
+    private static final Duration PERM_SNAPSHOT_TTL = Duration.ofHours(2);
 
     // ==================== 用户权限缓存 ====================
 

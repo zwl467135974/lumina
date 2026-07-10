@@ -9,9 +9,10 @@ import io.lumina.base.infrastructure.mapper.PermissionMapper;
 import io.lumina.base.service.PermissionService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.framework.cache.RedisCacheManager;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,10 +22,11 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
 
-    @Autowired
-    private PermissionMapper permissionMapper;
+    private final PermissionMapper permissionMapper;
+    private final RedisCacheManager redisCacheManager;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -86,6 +88,7 @@ public class PermissionServiceImpl implements PermissionService {
 
         int result = permissionMapper.updateById(permissionDO);
         log.info("权限更新成功: permissionId={}", dto.getPermissionId());
+        redisCacheManager.evictAllPermissionSnapshots();
         return result > 0;
     }
 
@@ -100,6 +103,7 @@ public class PermissionServiceImpl implements PermissionService {
         int result = permissionMapper.deleteById(permissionId);
 
         log.info("权限删除成功: permissionId={}", permissionId);
+        redisCacheManager.evictAllPermissionSnapshots();
         return result > 0;
     }
 

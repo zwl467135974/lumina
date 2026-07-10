@@ -3,6 +3,7 @@ package io.lumina.gateway.config;
 import com.alibaba.nacos.api.config.ConfigService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,19 +27,15 @@ import java.util.concurrent.CountDownLatch;
  */
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class DynamicRouteConfig {
 
-    @Autowired
-    private RouteDefinitionWriter routeDefinitionWriter;
-
-    @Autowired
-    private RouteDefinitionLocator routeDefinitionLocator;
+    private final RouteDefinitionWriter routeDefinitionWriter;
+    private final RouteDefinitionLocator routeDefinitionLocator;
+    private final ObjectMapper objectMapper;
 
     @Autowired(required = false)
     private ConfigService nacosConfigService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     /**
      * Nacos 配置的 Data ID

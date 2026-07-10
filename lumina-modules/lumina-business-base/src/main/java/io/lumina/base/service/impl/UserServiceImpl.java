@@ -21,9 +21,9 @@ import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.PasswordUtil;
 import io.lumina.framework.cache.RedisCacheManager;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,19 +39,13 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    @Autowired
-    private UserMapper userMapper;
-
-    @Autowired
-    private RoleMapper roleMapper;
-
-    @Autowired
-    private UserRoleMapper userRoleMapper;
-
-    @Autowired
-    private RedisCacheManager redisCacheManager;
+    private final UserMapper userMapper;
+    private final RoleMapper roleMapper;
+    private final UserRoleMapper userRoleMapper;
+    private final RedisCacheManager redisCacheManager;
 
     @Override
     @Transactional(rollbackFor = Exception.class)

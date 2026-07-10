@@ -81,6 +81,7 @@ public class WorkflowController {
         return R.success(WorkflowDefinitionVO.from(workflowService.getById(id)));
     }
 
+    @Audit(module = "workflow", action = "EXECUTE", description = "执行工作流")
     @PostMapping("/{id}/execute")
     public R<WorkflowInstanceVO> execute(@PathVariable Long id, @RequestBody ExecuteWorkflowDTO dto) {
         return R.success(WorkflowInstanceVO.from(workflowService.execute(id, dto)));
@@ -89,6 +90,7 @@ public class WorkflowController {
     /**
      * 恢复暂停的工作流实例（人工审批后调用）
      */
+    @Audit(module = "workflow", action = "EXECUTE", description = "恢复工作流实例")
     @PostMapping("/instances/{instanceId}/resume")
     public R<WorkflowInstanceVO> resumeInstance(
             @PathVariable Long instanceId,
@@ -103,6 +105,7 @@ public class WorkflowController {
      * <p>每个 SSE 事件的 event 字段为事件类型（NODE_STARTED / NODE_COMPLETED / NODE_FAILED / WORKFLOW_COMPLETED / WORKFLOW_FAILED），
      * data 字段为事件 JSON。
      */
+    @Audit(module = "workflow", action = "EXECUTE", description = "流式执行工作流")
     @PostMapping(value = "/{id}/execute/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Map<String, Object>>> executeStream(
             @PathVariable Long id,

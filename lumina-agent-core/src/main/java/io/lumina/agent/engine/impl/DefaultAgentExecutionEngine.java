@@ -218,6 +218,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             ExecuteResult executeResult = ExecuteResult.failure(e.getMessage());
             executeResult.setDuration(duration);
             return executeResult;
+        } finally {
+            BaseContext.clearConversationId();
         }
     }
 
@@ -289,9 +291,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     .onErrorResume(e -> {
                         log.error("流式执行失败: businessType={}", businessType, e);
                         return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
-                    }));
+                    }))
+                    .doFinally(signal -> BaseContext.clearConversationId());
         } catch (Exception e) {
             log.error("构建流式 Agent 失败: businessType={}", businessType, e);
+            BaseContext.clearConversationId();
             return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
         }
     }
@@ -344,9 +348,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                         log.error("流式多模态执行失败: businessType={}", businessType, e);
                         return Flux.just(new StreamChunk(StreamEventType.ERROR,
                                 e.getMessage() != null ? e.getMessage() : "流式多模态执行失败", true));
-                    }));
+                    }))
+                    .doFinally(signal -> BaseContext.clearConversationId());
         } catch (Exception e) {
             log.error("构建流式多模态 Agent 失败: businessType={}", businessType, e);
+            BaseContext.clearConversationId();
             return Flux.just(new StreamChunk(StreamEventType.ERROR,
                     e.getMessage() != null ? e.getMessage() : "构建多模态 Agent 失败", true));
         }

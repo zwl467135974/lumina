@@ -114,11 +114,9 @@ public class ConversationServiceImpl implements ConversationService {
 
     @Override
     public void incrementMessageCount(String uuid, int delta) {
-        ConversationDO conv = getByUuid(uuid);
         LambdaUpdateWrapper<ConversationDO> update = new LambdaUpdateWrapper<>();
         update.eq(ConversationDO::getConversationUuid, uuid)
-                .set(ConversationDO::getMessageCount,
-                        (conv.getMessageCount() != null ? conv.getMessageCount() : 0) + delta);
+                .setSql("message_count = message_count + " + delta);
         conversationMapper.update(null, update);
     }
 

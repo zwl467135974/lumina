@@ -33,7 +33,7 @@ public class GatewayConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-        allowedOrigins.forEach(origin -> config.addAllowedOrigin(origin.trim()));
+        allowedOrigins.forEach(origin -> config.addAllowedOriginPattern(origin.trim()));
         config.addAllowedHeader("*");
         config.setMaxAge(18000L);
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));

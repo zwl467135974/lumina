@@ -42,6 +42,7 @@ public class FileService {
      * @param bizType 业务类型（如 chat_image / knowledge_doc / avatar）
      * @return 文件元数据
      */
+    @Transactional(rollbackFor = Exception.class)
     public FileDO upload(MultipartFile file, String bizType) {
         try {
             return upload(file.getBytes(), file.getOriginalFilename(), file.getContentType(), bizType);

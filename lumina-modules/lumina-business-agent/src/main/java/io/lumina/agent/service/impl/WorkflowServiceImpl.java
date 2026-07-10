@@ -297,6 +297,10 @@ public class WorkflowServiceImpl implements WorkflowService {
         if (instance == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "工作流实例不存在");
         }
+        Long currentTenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+        if (!currentTenantId.equals(instance.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         if (!"PAUSED".equals(instance.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "工作流实例不在暂停状态，无法恢复");
         }
@@ -436,6 +440,14 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     @Override
     public List<WorkflowExecutionLogDO> getInstanceLogs(Long instanceId) {
+        WorkflowInstanceDO instance = instanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "工作流实例不存在");
+        }
+        Long currentTenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+        if (!currentTenantId.equals(instance.getTenantId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         LambdaQueryWrapper<WorkflowExecutionLogDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowExecutionLogDO::getInstanceId, instanceId);
         wrapper.orderByAsc(WorkflowExecutionLogDO::getCreateTime);

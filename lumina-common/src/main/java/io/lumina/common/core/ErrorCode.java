@@ -32,7 +32,9 @@ public enum ErrorCode {
     UNAUTHORIZED(401, 401, "未授权"),
     FORBIDDEN(403, 403, "无访问权限"),
     NOT_FOUND(404, 404, "资源不存在"),
+    REQUEST_TIMEOUT(408, 408, "请求超时"),
     CONFLICT(409, 409, "资源冲突"),
+    TOO_MANY_REQUESTS(429, 429, "请求过于频繁"),
     INTERNAL_ERROR(500, 500, "系统内部错误"),
 
     // ==================== 认证 1000-1999 ====================

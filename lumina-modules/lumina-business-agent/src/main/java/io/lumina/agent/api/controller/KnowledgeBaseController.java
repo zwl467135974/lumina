@@ -52,12 +52,14 @@ public class KnowledgeBaseController {
         return R.success();
     }
 
+    @Audit(module = "knowledge_base", action = "UPDATE", description = "挂载知识库")
     @PostMapping("/{kbId}/agents/{agentId}/mount")
     public R<Void> mount(@PathVariable Long agentId, @PathVariable Long kbId) {
         knowledgeBaseService.mountKnowledgeBase(agentId, kbId);
         return R.success();
     }
 
+    @Audit(module = "knowledge_base", action = "UPDATE", description = "卸载知识库")
     @DeleteMapping("/{kbId}/agents/{agentId}/mount")
     public R<Void> unmount(@PathVariable Long agentId, @PathVariable Long kbId) {
         knowledgeBaseService.unmountKnowledgeBase(agentId, kbId);

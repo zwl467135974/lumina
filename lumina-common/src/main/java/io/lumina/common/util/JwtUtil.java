@@ -1,6 +1,7 @@
 package io.lumina.common.util;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.lumina.common.core.LoginUser;
@@ -107,9 +108,9 @@ public class JwtUtil implements InitializingBean {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-        } catch (Exception e) {
+        } catch (JwtException e) {
             log.error("解析 Token 失败: {}", e.getMessage());
-            throw new RuntimeException("无效的 Token", e);
+            throw e;
         }
     }
 

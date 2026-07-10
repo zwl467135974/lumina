@@ -10,9 +10,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * JWT 认证过滤器
@@ -31,7 +30,6 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
 
     private static final String TOKEN_BLACKLIST_KEY_PREFIX = "token:blacklist:";
     private static final String PERM_SNAPSHOT_KEY_PREFIX = "user:perms:";
-    private static final Duration PERM_SNAPSHOT_TTL = Duration.ofMinutes(5);
 
     private static final String[] TRUSTED_IDENTITY_HEADERS = {
             "X-User-Id", "X-Username", "X-Tenant-Id", "X-Roles", "X-Permissions"
@@ -128,7 +126,9 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
 
     private boolean isTokenBlacklisted(String token) {
         try {
-            Boolean exists = stringRedisTemplate.hasKey(TOKEN_BLACKLIST_KEY_PREFIX + token);
+            Boolean exists = Mono.fromCallable(() -> stringRedisTemplate.hasKey(TOKEN_BLACKLIST_KEY_PREFIX + token))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .block();
             return Boolean.TRUE.equals(exists);
         } catch (Exception e) {
             log.warn("Token 黑名单检查失败，降级放行: {}", e.getMessage());
@@ -137,7 +137,7 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
     }
 
     /**
-     * 解析用户权限：优先读 Redis 快照（实时），未命中回退 JWT claims 并异步刷新缓存
+     * 解析用户权限：优先读 Redis 快照（实时），未命中回退 JWT claims（不写 Redis）
      */
     private String resolvePermissions(LoginUser loginUser) {
         String jwtPerms = loginUser.getPermissions() != null
@@ -149,7 +149,9 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
 
         String key = PERM_SNAPSHOT_KEY_PREFIX + loginUser.getUserId();
         try {
-            String cached = stringRedisTemplate.opsForValue().get(key);
+            String cached = Mono.fromCallable(() -> stringRedisTemplate.opsForValue().get(key))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .block();
             if (cached != null) {
                 return cached;
             }
@@ -158,14 +160,6 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
                     loginUser.getUserId(), e.getMessage());
             return jwtPerms;
         }
-
-        CompletableFuture.runAsync(() -> {
-            try {
-                stringRedisTemplate.opsForValue().set(key, jwtPerms, PERM_SNAPSHOT_TTL);
-            } catch (Exception ex) {
-                log.warn("异步刷新权限快照失败: userId={}", loginUser.getUserId());
-            }
-        });
 
         return jwtPerms;
     }

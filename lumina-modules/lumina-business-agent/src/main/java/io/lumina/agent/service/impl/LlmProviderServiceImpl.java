@@ -44,6 +44,7 @@ public class LlmProviderServiceImpl implements LlmProviderService {
     @Override
     public List<LlmProviderVO> list(QueryLlmProviderDTO query) {
         LambdaQueryWrapper<LlmProviderDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LlmProviderDO::getTenantId, currentTenantId());
         if (StringUtils.hasText(query.getName())) {
             wrapper.like(LlmProviderDO::getName, query.getName());
         }
@@ -106,10 +107,7 @@ public class LlmProviderServiceImpl implements LlmProviderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        LlmProviderDO entity = llmProviderMapper.selectById(id);
-        if (entity == null) {
-            throw new BusinessException(ErrorCode.LLM_PROVIDER_NOT_FOUND);
-        }
+        getDomainById(id);
         llmProviderMapper.deleteById(id);
     }
 
@@ -138,16 +136,16 @@ public class LlmProviderServiceImpl implements LlmProviderService {
 
     @Override
     public String getDecryptedApiKey(Long id) {
-        LlmProviderDO entity = llmProviderMapper.selectById(id);
-        if (entity == null || !StringUtils.hasText(entity.getApiKeyEnc())) {
-            return null;
-        }
-        return CryptoUtil.decrypt(entity.getApiKeyEnc());
+        LlmProvider provider = getDomainById(id);
+        return provider.getDecryptedApiKey();
     }
 
     private LlmProvider getDomainById(Long id) {
         LlmProviderDO entity = llmProviderMapper.selectById(id);
         if (entity == null) {
+            throw new BusinessException(ErrorCode.LLM_PROVIDER_NOT_FOUND);
+        }
+        if (!currentTenantId().equals(entity.getTenantId())) {
             throw new BusinessException(ErrorCode.LLM_PROVIDER_NOT_FOUND);
         }
         return toDomain(entity);

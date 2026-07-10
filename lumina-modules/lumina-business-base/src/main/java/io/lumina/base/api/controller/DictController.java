@@ -6,9 +6,11 @@ import io.lumina.base.api.dto.dict.UpdateDictItemDTO;
 import io.lumina.base.api.dto.dict.UpdateDictTypeDTO;
 import io.lumina.base.api.vo.dict.DictItemVO;
 import io.lumina.base.api.vo.dict.DictTypeVO;
+import io.lumina.base.annotation.RequirePermission;
 import io.lumina.base.service.DictService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/base/dict")
 @RequiredArgsConstructor
+@Tag(name = "数据字典", description = "字典类型和字典项的 CRUD 接口")
 public class DictController {
 
     private final DictService dictService;
@@ -37,23 +40,27 @@ public class DictController {
     // ========== 字典类型 ==========
 
     @GetMapping("/types")
+    @RequirePermission("system:dict:list")
     public R<List<DictTypeVO>> listTypes(@RequestParam(required = false) String dictName) {
         return R.success(dictService.listTypes(dictName));
     }
 
     @PostMapping("/types")
+    @RequirePermission("system:dict:create")
     @Audit(module = "dict", action = "CREATE")
     public R<DictTypeVO> createType(@Valid @RequestBody CreateDictTypeDTO dto) {
         return R.success(dictService.createType(dto));
     }
 
     @PutMapping("/types/{id}")
+    @RequirePermission("system:dict:update")
     @Audit(module = "dict", action = "UPDATE")
     public R<DictTypeVO> updateType(@PathVariable Long id, @Valid @RequestBody UpdateDictTypeDTO dto) {
         return R.success(dictService.updateType(id, dto));
     }
 
     @DeleteMapping("/types/{id}")
+    @RequirePermission("system:dict:delete")
     @Audit(module = "dict", action = "DELETE")
     public R<Void> deleteType(@PathVariable Long id) {
         dictService.deleteType(id);
@@ -63,23 +70,27 @@ public class DictController {
     // ========== 字典项 ==========
 
     @GetMapping("/items")
+    @RequirePermission("system:dict-item:list")
     public R<List<DictItemVO>> listItems(@RequestParam String dictType) {
         return R.success(dictService.listItems(dictType));
     }
 
     @PostMapping("/items")
+    @RequirePermission("system:dict-item:create")
     @Audit(module = "dict", action = "CREATE")
     public R<DictItemVO> createItem(@Valid @RequestBody CreateDictItemDTO dto) {
         return R.success(dictService.createItem(dto));
     }
 
     @PutMapping("/items/{id}")
+    @RequirePermission("system:dict-item:update")
     @Audit(module = "dict", action = "UPDATE")
     public R<DictItemVO> updateItem(@PathVariable Long id, @Valid @RequestBody UpdateDictItemDTO dto) {
         return R.success(dictService.updateItem(id, dto));
     }
 
     @DeleteMapping("/items/{id}")
+    @RequirePermission("system:dict-item:delete")
     @Audit(module = "dict", action = "DELETE")
     public R<Void> deleteItem(@PathVariable Long id) {
         dictService.deleteItem(id);

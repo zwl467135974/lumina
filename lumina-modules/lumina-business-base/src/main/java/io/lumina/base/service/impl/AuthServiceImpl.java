@@ -10,6 +10,7 @@ import io.lumina.base.infrastructure.mapper.UserMapper;
 import io.lumina.base.infrastructure.mapper.RoleMapper;
 import io.lumina.base.infrastructure.mapper.PermissionMapper;
 import io.lumina.base.service.AuthService;
+import io.lumina.base.service.OnlineUserService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
@@ -44,6 +45,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
 
     private final RedisCacheManager redisCacheManager;
+
+    private final OnlineUserService onlineUserService;
 
     @Override
     public LoginVO login(LoginDTO loginDTO) {
@@ -115,7 +118,10 @@ public class AuthServiceImpl implements AuthService {
         redisCacheManager.cachePermissionSnapshot(user.getUserId(),
                 String.join(",", user.getPermissionCodes()));
 
-        // 10. 构建响应
+        // 10. 记录在线用户
+        onlineUserService.recordLogin(user.getUserId(), user.getUsername());
+
+        // 11. 构建响应
         LoginVO loginVO = new LoginVO();
         loginVO.setToken(token);
         loginVO.setTokenType("Bearer");
