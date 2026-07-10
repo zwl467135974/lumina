@@ -21,7 +21,6 @@ public class LlmProviderVO {
     private String defaultModel;
     private String defaultParams;
     private Integer status;
-    private Long tenantId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

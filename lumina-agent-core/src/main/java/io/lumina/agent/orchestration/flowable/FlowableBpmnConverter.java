@@ -23,11 +23,15 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.UserTask;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 /**
@@ -47,7 +51,7 @@ import java.util.Set;
  * <tr><td>condition (多分支)</td><td>ExclusiveGateway + 多条件流 + 默认流</td></tr>
  * <tr><td>loop (集合遍历)</td><td>ServiceTask + multiInstanceLoopCharacteristics</td></tr>
  * <tr><td>loop (条件循环)</td><td>ServiceTask (loopDelegate 内部 while 循环)</td></tr>
- * <tr><td>parallel</td><td>ParallelGateway (fork)</td></tr>
+ * <tr><td>parallel</td><td>ParallelGateway (fork) + ParallelGateway (join)</td></tr>
  * <tr><td>human</td><td>UserTask</td></tr>
  * </table>
  *
@@ -118,17 +122,19 @@ public class FlowableBpmnConverter {
             addFlow(process, edge.getFrom(), edge.getTo(), condition, connections);
         }
 
+        Map<String, String> parallelJoinMap = new HashMap<>();
+
         for (WorkflowNode node : definition.getNodes()) {
             if (node instanceof ConditionNode condNode) {
                 addConditionFlows(process, condNode, connections);
             } else if (node instanceof ParallelNode parallelNode) {
-                addParallelFork(process, parallelNode, connections);
+                addParallelFork(process, parallelNode, definition, connections, parallelJoinMap);
             } else if (node instanceof LoopNode loopNode) {
                 addLoopFlows(process, loopNode, connections);
             }
         }
 
-        connectTerminalNodes(process, nodeMap, connections);
+        connectTerminalNodes(process, nodeMap, connections, parallelJoinMap);
 
         model.addProcess(process);
         return model;
@@ -206,11 +212,20 @@ public class FlowableBpmnConverter {
 
         if (condNode.getBranches() != null && !condNode.getBranches().isEmpty()) {
             List<ConditionNode.Branch> branches = condNode.getBranches();
+            boolean hasDefaultFlow = false;
             for (int i = 0; i < branches.size(); i++) {
                 ConditionNode.Branch branch = branches.get(i);
                 boolean isLast = (i == branches.size() - 1);
-                String condition = isLast ? null : spelToFlowableCondition(branch.getCondition());
-                addFlow(process, gatewayId, branch.getTo(), condition, connections);
+                if (isLast && !isNotBlank(branch.getCondition())) {
+                    addFlow(process, gatewayId, branch.getTo(), null, connections);
+                    hasDefaultFlow = true;
+                } else {
+                    addFlow(process, gatewayId, branch.getTo(),
+                            spelToFlowableCondition(branch.getCondition()), connections);
+                }
+            }
+            if (!hasDefaultFlow) {
+                addFlow(process, gatewayId, END_EVENT_ID, null, connections);
             }
         } else {
             if (isNotBlank(condNode.getTrueBranch())) {
@@ -223,15 +238,114 @@ public class FlowableBpmnConverter {
         }
     }
 
-    private void addParallelFork(Process process, ParallelNode parallelNode, Set<String> connections) {
+    private void addParallelFork(Process process, ParallelNode parallelNode,
+                                  WorkflowDefinition definition, Set<String> connections,
+                                  Map<String, String> parallelJoinMap) {
         String forkId = parallelNode.getId();
+
+        Set<String> branchStarts = new LinkedHashSet<>();
         for (ParallelNode.ParallelBranch branch : parallelNode.getBranches()) {
             String target = isNotBlank(branch.getStartNode())
                     ? branch.getStartNode() : branch.getName();
             if (target != null) {
                 addFlow(process, forkId, target, null, connections);
+                branchStarts.add(target);
             }
         }
+
+        if (branchStarts.size() < 2) return;
+
+        Map<String, Set<String>> branchReachability = new HashMap<>();
+        for (String start : branchStarts) {
+            branchReachability.put(start, traceReachable(definition, start));
+        }
+
+        Set<String> allReachable = new HashSet<>();
+        for (Set<String> r : branchReachability.values()) allReachable.addAll(r);
+
+        Set<String> branchExclusive = new HashSet<>();
+        Set<String> convergenceNodes = new LinkedHashSet<>();
+        for (String node : allReachable) {
+            int count = 0;
+            for (Set<String> r : branchReachability.values()) {
+                if (r.contains(node)) count++;
+            }
+            if (count >= 2) convergenceNodes.add(node);
+            else branchExclusive.add(node);
+        }
+        convergenceNodes.removeAll(branchStarts);
+
+        String joinId = forkId + "_join";
+        boolean joinCreated = false;
+
+        for (String convergenceTarget : convergenceNodes) {
+            List<String> sources = new ArrayList<>();
+            for (FlowElement element : new ArrayList<>(process.getFlowElements())) {
+                if (!(element instanceof SequenceFlow sf)) continue;
+                if (sf.getTargetRef().equals(convergenceTarget)
+                        && branchExclusive.contains(sf.getSourceRef())) {
+                    sources.add(sf.getSourceRef());
+                }
+            }
+            if (sources.size() < 2) continue;
+
+            if (!joinCreated) {
+                ParallelGateway joinGateway = new ParallelGateway();
+                joinGateway.setId(joinId);
+                joinGateway.setName(parallelNode.getName() + " Join");
+                process.addFlowElement(joinGateway);
+                joinCreated = true;
+            }
+
+            for (String source : sources) {
+                removeSequenceFlow(process, source, convergenceTarget);
+                connections.remove(source + "->" + convergenceTarget);
+                addFlow(process, source, joinId, null, connections);
+            }
+            addFlow(process, joinId, convergenceTarget, null, connections);
+            break;
+        }
+
+        if (!joinCreated) {
+            List<WorkflowEdge> outgoing = definition.getOutgoingEdges(forkId);
+            if (!outgoing.isEmpty()) {
+                ParallelGateway joinGateway = new ParallelGateway();
+                joinGateway.setId(joinId);
+                joinGateway.setName(parallelNode.getName() + " Join");
+                process.addFlowElement(joinGateway);
+                joinCreated = true;
+
+                for (WorkflowEdge edge : outgoing) {
+                    addFlow(process, joinId, edge.getTo(), null, connections);
+                }
+
+                for (String nodeId : branchExclusive) {
+                    parallelJoinMap.put(nodeId, joinId);
+                }
+            }
+        }
+    }
+
+    private Set<String> traceReachable(WorkflowDefinition definition, String startNode) {
+        Set<String> reachable = new HashSet<>();
+        Queue<String> queue = new ArrayDeque<>();
+        queue.add(startNode);
+        while (!queue.isEmpty()) {
+            String nodeId = queue.poll();
+            if (reachable.contains(nodeId)) continue;
+            reachable.add(nodeId);
+            for (WorkflowEdge edge : definition.getOutgoingEdges(nodeId)) {
+                queue.add(edge.getTo());
+            }
+        }
+        return reachable;
+    }
+
+    private void removeSequenceFlow(Process process, String source, String target) {
+        process.getFlowElements().removeIf(e ->
+                e instanceof SequenceFlow sf
+                        && sf.getSourceRef().equals(source)
+                        && sf.getTargetRef().equals(target));
     }
 
     private void addLoopFlows(Process process, LoopNode loopNode, Set<String> connections) {
@@ -241,7 +355,7 @@ public class FlowableBpmnConverter {
     }
 
     private void connectTerminalNodes(Process process, Map<String, WorkflowNode> nodeMap,
-                                       Set<String> connections) {
+                                       Set<String> connections, Map<String, String> parallelJoinMap) {
         Set<String> nodesWithOutgoing = new HashSet<>();
         for (FlowElement element : process.getFlowElements()) {
             if (element instanceof SequenceFlow sf) {
@@ -250,7 +364,8 @@ public class FlowableBpmnConverter {
         }
         for (WorkflowNode node : nodeMap.values()) {
             if (!nodesWithOutgoing.contains(node.getId())) {
-                addFlow(process, node.getId(), END_EVENT_ID, null, connections);
+                String target = parallelJoinMap.getOrDefault(node.getId(), END_EVENT_ID);
+                addFlow(process, node.getId(), target, null, connections);
             }
         }
     }

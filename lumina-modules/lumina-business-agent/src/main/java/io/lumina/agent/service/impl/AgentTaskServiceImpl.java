@@ -21,6 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -114,7 +116,18 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         progressRegistry.register(task.getTaskUuid());
         progressRegistry.emit(task.getTaskUuid(), buildEvent(task));
 
-        dispatchTask(task.getTaskUuid(), BaseContext.current());
+        LoginContext loginContext = BaseContext.current();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            dispatchTask(task.getTaskUuid(), loginContext);
+                        }
+                    });
+        } else {
+            dispatchTask(task.getTaskUuid(), loginContext);
+        }
         log.info("Agent 异步任务已提交: taskUuid={}, agentId={}, via={}",
                 task.getTaskUuid(), agentId, mqTaskEnabled && rocketMQTemplate != null ? "MQ" : "LOCAL");
         return task;

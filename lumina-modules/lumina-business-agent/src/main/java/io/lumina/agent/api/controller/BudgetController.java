@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * 预算管理 Controller
@@ -23,6 +24,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/budget")
 @RequiredArgsConstructor
+@Validated
 public class BudgetController {
 
     private final BudgetService budgetService;

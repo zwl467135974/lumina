@@ -16,9 +16,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -35,11 +33,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class TenantLineHandlerImpl implements TenantLineHandler {
 
-    private static final List<String> FALLBACK_IGNORE_TABLES = Arrays.asList(
+    private static final Set<String> ALWAYS_IGNORE = Set.of(
+        "lumina_tenant",
         "lumina_permission",
         "lumina_role_permission",
         "lumina_user_role",
-        "lumina_tenant"
+        "lumina_dict_type",
+        "lumina_dict_item",
+        "lumina_audit_log"
     );
 
     private static final String DETECT_SQL =
@@ -84,10 +85,10 @@ public class TenantLineHandlerImpl implements TenantLineHandler {
 
     @Override
     public boolean ignoreTable(String tableName) {
-        Set<String> detected = tablesWithTenantId;
-        if (detected != null) {
-            return !detected.contains(tableName.toLowerCase());
+        if (ALWAYS_IGNORE.stream().anyMatch(tableName::equalsIgnoreCase)) {
+            return true;
         }
-        return FALLBACK_IGNORE_TABLES.stream().anyMatch(tableName::equalsIgnoreCase);
+        Set<String> detected = tablesWithTenantId;
+        return detected == null || !detected.contains(tableName.toLowerCase());
     }
 }

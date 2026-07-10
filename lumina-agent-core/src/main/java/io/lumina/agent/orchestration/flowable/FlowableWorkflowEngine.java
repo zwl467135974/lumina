@@ -9,6 +9,7 @@ import io.lumina.agent.orchestration.model.WorkflowDefinition;
 import io.lumina.agent.orchestration.model.WorkflowNode;
 import io.lumina.agent.orchestration.model.WorkflowNodeStatus;
 import io.lumina.agent.orchestration.model.WorkflowStatus;
+import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.ExtensionElement;
@@ -21,6 +22,7 @@ import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.delegate.ExecutionListener;
+import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.flowable.variable.api.history.HistoricVariableInstance;
@@ -75,6 +77,7 @@ public class FlowableWorkflowEngine implements WorkflowEngine {
 
     private static final String VAR_PROCESS_INSTANCE_ID = "__flowable_pid";
     private static final String VAR_TASK_ID = "__flowable_taskId";
+    private static final String VAR_WORKFLOW_DEFINITION = "__workflowDefinition__";
     private static final String NODE_RESULT_PREFIX = "__nodeResult_";
     private static final String INTERNAL_PREFIX = "__";
 
@@ -118,19 +121,32 @@ public class FlowableWorkflowEngine implements WorkflowEngine {
             BpmnModel model = converter.convert(definition);
             attachEventListeners(model);
 
-            repositoryService.createDeployment()
-                    .name(definition.getName())
-                    .addBpmnModel(definition.getName() + ".bpmn", model)
-                    .deploy();
+            String processKey = sanitizeId(definition.getName());
+            ProcessDefinition existingDef = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionKey(processKey)
+                    .latestVersion()
+                    .singleResult();
+            if (existingDef == null) {
+                repositoryService.createDeployment()
+                        .name(definition.getName())
+                        .addBpmnModel(definition.getName() + ".bpmn", model)
+                        .deploy();
+            }
 
             Map<String, Object> processVars = new HashMap<>();
             if (inputs != null) {
                 processVars.putAll(inputs);
             }
 
+            try {
+                processVars.put(VAR_WORKFLOW_DEFINITION,
+                        JsonUtils.OBJECT_MAPPER.writeValueAsString(definition));
+            } catch (Exception e) {
+                log.warn("序列化工作流定义失败，loopTarget 子链可能无法执行", e);
+            }
+
             setupBridge(ctx);
 
-            String processKey = sanitizeId(definition.getName());
             ProcessInstance instance = runtimeService.startProcessInstanceByKey(
                     processKey, processVars);
 

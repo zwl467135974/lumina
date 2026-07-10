@@ -257,7 +257,12 @@ public class EvaluationServiceImpl implements EvaluationService {
                 EvaluationRunDO update = new EvaluationRunDO();
                 update.setId(runId);
                 update.setStatus("FAILED");
-                update.setResultsJson("{\"error\":\"" + e.getMessage() + "\"}");
+                try {
+                    update.setResultsJson(jsonMapper.writeValueAsString(
+                            Map.of("error", e.getMessage() != null ? e.getMessage() : "unknown")));
+                } catch (Exception jsonEx) {
+                    update.setResultsJson("{\"error\":\"unknown\"}");
+                }
                 runMapper.updateById(update);
             } finally {
                 io.lumina.common.core.BaseContext.clear();

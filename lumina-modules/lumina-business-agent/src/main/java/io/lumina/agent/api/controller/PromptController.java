@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
@@ -22,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/prompts")
 @RequiredArgsConstructor
+@Validated
 public class PromptController {
 
     private final PromptService promptService;
@@ -34,7 +36,7 @@ public class PromptController {
 
     @Audit(module = "prompt", action = "UPDATE", description = "更新Prompt")
     @PutMapping("/{id}")
-    public R<PromptVO> update(@PathVariable Long id, @RequestBody PromptDTO dto) {
+    public R<PromptVO> update(@PathVariable Long id, @Valid @RequestBody PromptDTO dto) {
         return R.success(PromptVO.from(promptService.update(id, dto)));
     }
 
@@ -46,7 +48,7 @@ public class PromptController {
 
     @Audit(module = "prompt", action = "CREATE", description = "创建Prompt新版本")
     @PostMapping("/{id}/new-version")
-    public R<PromptVO> newVersion(@PathVariable Long id, @RequestBody PromptDTO dto) {
+    public R<PromptVO> newVersion(@PathVariable Long id, @Valid @RequestBody PromptDTO dto) {
         return R.success(PromptVO.from(promptService.newVersion(id, dto)));
     }
 

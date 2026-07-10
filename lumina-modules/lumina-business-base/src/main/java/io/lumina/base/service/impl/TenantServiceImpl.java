@@ -143,6 +143,18 @@ public class TenantServiceImpl implements TenantService {
         if (tenantDO == null) {
             throw new BusinessException(ErrorCode.TENANT_NOT_FOUND);
         }
+
+        LambdaQueryWrapper<RoleDO> roleWrapper = new LambdaQueryWrapper<>();
+        roleWrapper.eq(RoleDO::getTenantId, tenantId);
+        List<RoleDO> roles = roleMapper.selectList(roleWrapper);
+        for (RoleDO role : roles) {
+            rolePermissionMapper.delete(new LambdaQueryWrapper<RolePermissionDO>()
+                    .eq(RolePermissionDO::getRoleId, role.getRoleId()));
+        }
+        if (!roles.isEmpty()) {
+            roleMapper.delete(roleWrapper);
+        }
+
         return tenantMapper.deleteById(tenantId) > 0;
     }
 

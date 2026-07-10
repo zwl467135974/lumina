@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
@@ -33,6 +34,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/workflows")
 @RequiredArgsConstructor
+@Validated
 public class WorkflowController {
 
     private final WorkflowService workflowService;

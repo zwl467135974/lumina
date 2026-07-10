@@ -155,8 +155,7 @@ public class AuthServiceImpl implements AuthService {
 
             io.lumina.common.core.LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
             if (loginUser != null && loginUser.getUserId() != null) {
-                redisCacheManager.zRemove("online:users",
-                        loginUser.getUserId() + ":" + loginUser.getUsername());
+                onlineUserService.recordLogout(loginUser.getUserId());
                 log.info("清除在线记录: userId={}", loginUser.getUserId());
             }
         } catch (Exception e) {

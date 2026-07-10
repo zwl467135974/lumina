@@ -5,7 +5,9 @@ import io.lumina.base.api.dto.permission.CreatePermissionDTO;
 import io.lumina.base.api.dto.permission.UpdatePermissionDTO;
 import io.lumina.base.api.vo.permission.PermissionVO;
 import io.lumina.base.infrastructure.entity.PermissionDO;
+import io.lumina.base.infrastructure.entity.RolePermissionDO;
 import io.lumina.base.infrastructure.mapper.PermissionMapper;
+import io.lumina.base.infrastructure.mapper.RolePermissionMapper;
 import io.lumina.base.service.PermissionService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class PermissionServiceImpl implements PermissionService {
 
     private final PermissionMapper permissionMapper;
+    private final RolePermissionMapper rolePermissionMapper;
     private final RedisCacheManager redisCacheManager;
 
     @Override
@@ -99,6 +102,9 @@ public class PermissionServiceImpl implements PermissionService {
         if (permissionDO == null) {
             throw new BusinessException(ErrorCode.PERMISSION_NOT_FOUND);
         }
+
+        rolePermissionMapper.delete(new LambdaQueryWrapper<RolePermissionDO>()
+                .eq(RolePermissionDO::getPermissionId, permissionId));
 
         int result = permissionMapper.deleteById(permissionId);
 

@@ -25,6 +25,8 @@ public class AgentTaskVO {
     private Integer completionTokens;
     private Integer totalTokens;
     private Long durationMs;
+    private String modelName;
+    private String provider;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

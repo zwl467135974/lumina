@@ -1,5 +1,6 @@
 package io.lumina.agent.orchestration.flowable;
 
+import io.lumina.agent.orchestration.model.WorkflowDefinition;
 import io.lumina.agent.orchestration.model.WorkflowNode;
 import io.lumina.agent.util.JsonUtils;
 import org.flowable.bpmn.model.ExtensionElement;
@@ -22,6 +23,7 @@ import java.util.Map;
 public abstract class AbstractWorkflowDelegate implements JavaDelegate {
 
     protected static final String NODE_DEFINITION_EXT = "nodeDefinition";
+    protected static final String VAR_WORKFLOW_DEFINITION = "__workflowDefinition__";
 
     /**
      * 从当前 BPMN 元素的扩展元素中取出节点定义并反序列化
@@ -61,6 +63,18 @@ public abstract class AbstractWorkflowDelegate implements JavaDelegate {
         } catch (Exception e) {
             throw new IllegalStateException(
                     "反序列化节点定义失败: " + current.getId(), e);
+        }
+    }
+
+    protected WorkflowDefinition getWorkflowDefinition(DelegateExecution execution) {
+        Object raw = execution.getVariable(VAR_WORKFLOW_DEFINITION);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return JsonUtils.OBJECT_MAPPER.readValue(raw.toString(), WorkflowDefinition.class);
+        } catch (Exception e) {
+            throw new IllegalStateException("反序列化工作流定义失败", e);
         }
     }
 }

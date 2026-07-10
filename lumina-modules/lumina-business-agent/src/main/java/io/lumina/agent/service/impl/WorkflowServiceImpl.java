@@ -21,7 +21,6 @@ import io.lumina.agent.orchestration.model.WorkflowNode;
 import io.lumina.agent.orchestration.model.WorkflowStatus;
 import io.lumina.agent.service.WorkflowService;
 import io.lumina.common.core.BaseContext;
-import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.core.ErrorCode;
@@ -203,6 +202,7 @@ public class WorkflowServiceImpl implements WorkflowService {
 
         final Long instanceId = instance.getId();
         final java.util.Map<String, Object> inputs = dto.getInputs();
+        final io.lumina.common.core.LoginContext loginCtx = BaseContext.current();
 
         return reactor.core.publisher.Flux.<java.util.Map<String, Object>>create(sink -> {
             WorkflowEventListener sseListener = new WorkflowEventListener() {
@@ -269,9 +269,8 @@ public class WorkflowServiceImpl implements WorkflowService {
             workflowEngine.addListener(sseListener);
 
             java.util.concurrent.CompletableFuture.runAsync(() -> {
-                io.lumina.common.core.LoginContext loginCtx = io.lumina.common.core.BaseContext.current();
+                io.lumina.common.core.BaseContext.setCurrent(loginCtx);
                 try {
-                    io.lumina.common.core.BaseContext.setCurrent(loginCtx);
                     executeWorkflow(definition, instance, inputs);
                 } catch (Exception e) {
                     sink.next(java.util.Map.of(

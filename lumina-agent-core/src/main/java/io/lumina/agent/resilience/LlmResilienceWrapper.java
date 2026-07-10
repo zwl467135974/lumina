@@ -102,19 +102,23 @@ public class LlmResilienceWrapper {
      * 判断异常是否可重试（网络超时/5xx 重试，业务异常不重试）
      */
     private boolean isRetryable(Throwable throwable) {
-        if (throwable instanceof java.io.IOException
-                || throwable instanceof java.util.concurrent.TimeoutException) {
-            return true;
-        }
-        String msg = throwable.getMessage();
-        if (msg != null && (msg.contains("timeout")
-                || msg.contains("connection refused")
-                || msg.contains("502")
-                || msg.contains("503")
-                || msg.contains("504")
-                || msg.contains("Too Many Requests")
-                || msg.contains("429"))) {
-            return true;
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof java.io.IOException
+                    || current instanceof java.util.concurrent.TimeoutException) {
+                return true;
+            }
+            String msg = current.getMessage();
+            if (msg != null && (msg.contains("timeout")
+                    || msg.contains("connection refused")
+                    || msg.contains("502")
+                    || msg.contains("503")
+                    || msg.contains("504")
+                    || msg.contains("Too Many Requests")
+                    || msg.contains("429"))) {
+                return true;
+            }
+            current = current.getCause();
         }
         return false;
     }
