@@ -84,6 +84,10 @@ public class AuthController {
         if (authorization != null && authorization.startsWith("Bearer ")) {
             try {
                 String token = authorization.substring(7);
+                long remainingTtl = (jwtUtil.getExpiration(token).getTime() - System.currentTimeMillis()) / 1000;
+                if (remainingTtl > 0) {
+                    redisCacheManager.addTokenToBlacklist(token, remainingTtl);
+                }
                 io.lumina.common.core.LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
                 if (loginUser != null && loginUser.getUserId() != null) {
                     redisCacheManager.zRemove("online:users",

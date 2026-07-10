@@ -11,6 +11,8 @@ import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +25,8 @@ import java.util.List;
  * @author Lumina Team
  * @since 1.0.0
  */
+@Slf4j
+@Validated
 @RestController
 @RequestMapping("/api/v1/base/dict")
 @RequiredArgsConstructor
@@ -38,19 +42,19 @@ public class DictController {
     }
 
     @PostMapping("/types")
-    @Audit(module = "DICT", action = "CREATE_TYPE")
+    @Audit(module = "dict", action = "CREATE")
     public R<DictTypeVO> createType(@Valid @RequestBody CreateDictTypeDTO dto) {
         return R.success(dictService.createType(dto));
     }
 
     @PutMapping("/types/{id}")
-    @Audit(module = "DICT", action = "UPDATE_TYPE")
+    @Audit(module = "dict", action = "UPDATE")
     public R<DictTypeVO> updateType(@PathVariable Long id, @Valid @RequestBody UpdateDictTypeDTO dto) {
         return R.success(dictService.updateType(id, dto));
     }
 
     @DeleteMapping("/types/{id}")
-    @Audit(module = "DICT", action = "DELETE_TYPE")
+    @Audit(module = "dict", action = "DELETE")
     public R<Void> deleteType(@PathVariable Long id) {
         dictService.deleteType(id);
         return R.success();
@@ -64,19 +68,19 @@ public class DictController {
     }
 
     @PostMapping("/items")
-    @Audit(module = "DICT", action = "CREATE_ITEM")
+    @Audit(module = "dict", action = "CREATE")
     public R<DictItemVO> createItem(@Valid @RequestBody CreateDictItemDTO dto) {
         return R.success(dictService.createItem(dto));
     }
 
     @PutMapping("/items/{id}")
-    @Audit(module = "DICT", action = "UPDATE_ITEM")
+    @Audit(module = "dict", action = "UPDATE")
     public R<DictItemVO> updateItem(@PathVariable Long id, @Valid @RequestBody UpdateDictItemDTO dto) {
         return R.success(dictService.updateItem(id, dto));
     }
 
     @DeleteMapping("/items/{id}")
-    @Audit(module = "DICT", action = "DELETE_ITEM")
+    @Audit(module = "dict", action = "DELETE")
     public R<Void> deleteItem(@PathVariable Long id) {
         dictService.deleteItem(id);
         return R.success();

@@ -3,16 +3,24 @@ package io.lumina.agent.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.lumina.agent.api.dto.llm.CreateLlmProviderDTO;
 import io.lumina.agent.api.dto.llm.QueryLlmProviderDTO;
+import io.lumina.agent.api.dto.llm.UpdateLlmProviderDTO;
 import io.lumina.agent.api.vo.LlmProviderVO;
+import io.lumina.agent.config.LuminaAgentProperties;
+import io.lumina.agent.domain.model.LlmProvider;
 import io.lumina.agent.infrastructure.entity.LlmProviderDO;
 import io.lumina.agent.infrastructure.mapper.LlmProviderMapper;
+import io.lumina.agent.model.AgentConfig;
+import io.lumina.agent.model.ChatModelFactory;
 import io.lumina.agent.service.LlmProviderService;
-import io.lumina.common.util.CryptoUtil;
+import io.lumina.common.core.BaseContext;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.common.util.CryptoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -25,13 +33,12 @@ public class LlmProviderServiceImpl implements LlmProviderService {
 
     private final LlmProviderMapper llmProviderMapper;
 
+    private final ChatModelFactory chatModelFactory;
+
     @Override
     public LlmProviderVO getById(Long id) {
-        LlmProviderDO entity = llmProviderMapper.selectById(id);
-        if (entity == null) {
-            throw new BusinessException("LLM Provider 不存在");
-        }
-        return toVO(entity);
+        LlmProvider provider = getDomainById(id);
+        return toVO(provider);
     }
 
     @Override
@@ -47,77 +54,85 @@ public class LlmProviderServiceImpl implements LlmProviderService {
             wrapper.eq(LlmProviderDO::getStatus, query.getStatus());
         }
         wrapper.orderByDesc(LlmProviderDO::getCreateTime);
-        return llmProviderMapper.selectList(wrapper).stream().map(this::toVO).collect(Collectors.toList());
+        return llmProviderMapper.selectList(wrapper).stream()
+                .map(this::toDomain)
+                .map(this::toVO)
+                .collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public LlmProviderVO create(CreateLlmProviderDTO dto) {
-        LlmProviderDO entity = new LlmProviderDO();
-        BeanUtils.copyProperties(dto, entity);
-        if (StringUtils.hasText(dto.getApiKey())) {
-            entity.setApiKeyEnc(CryptoUtil.encrypt(dto.getApiKey()));
-        }
+        LlmProvider provider = new LlmProvider();
+        BeanUtils.copyProperties(dto, provider);
+        provider.setApiKeyFromPlain(dto.getApiKey());
         if (dto.getStatus() == null) {
-            entity.setStatus(1);
+            provider.setStatus(1);
         }
-        entity.setTenantId(0L);
+        provider.setTenantId(currentTenantId());
+
+        provider.validateName();
+        provider.validateProvider();
+
+        LlmProviderDO entity = toDO(provider);
         llmProviderMapper.insert(entity);
-        return toVO(entity);
+        provider = toDomain(entity);
+        return toVO(provider);
     }
 
     @Override
-    public LlmProviderVO update(Long id, CreateLlmProviderDTO dto) {
-        LlmProviderDO entity = llmProviderMapper.selectById(id);
-        if (entity == null) {
-            throw new BusinessException("LLM Provider 不存在");
-        }
-        entity.setName(dto.getName());
-        entity.setProvider(dto.getProvider());
-        entity.setBaseUrl(dto.getBaseUrl());
-        entity.setDefaultModel(dto.getDefaultModel());
-        entity.setDefaultParams(dto.getDefaultParams());
+    @Transactional(rollbackFor = Exception.class)
+    public LlmProviderVO update(Long id, UpdateLlmProviderDTO dto) {
+        LlmProvider provider = getDomainById(id);
+
+        provider.setName(dto.getName());
+        provider.setBaseUrl(dto.getBaseUrl());
+        provider.setDefaultModel(dto.getDefaultModel());
+        provider.setDefaultParams(dto.getDefaultParams());
         if (dto.getStatus() != null) {
-            entity.setStatus(dto.getStatus());
+            provider.setStatus(dto.getStatus());
         }
         if (StringUtils.hasText(dto.getApiKey())) {
-            entity.setApiKeyEnc(CryptoUtil.encrypt(dto.getApiKey()));
+            provider.setApiKeyFromPlain(dto.getApiKey());
         }
+
+        provider.validateName();
+
+        LlmProviderDO entity = toDO(provider);
         llmProviderMapper.updateById(entity);
-        return toVO(entity);
+        return toVO(provider);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         LlmProviderDO entity = llmProviderMapper.selectById(id);
         if (entity == null) {
-            throw new BusinessException("LLM Provider 不存在");
+            throw new BusinessException(ErrorCode.LLM_PROVIDER_NOT_FOUND);
         }
         llmProviderMapper.deleteById(id);
     }
 
     @Override
     public boolean testConnection(Long id) {
-        LlmProviderDO entity = llmProviderMapper.selectById(id);
-        if (entity == null) {
-            throw new BusinessException("LLM Provider 不存在");
-        }
-        String apiKey = getDecryptedApiKey(id);
+        LlmProvider provider = getDomainById(id);
+        String apiKey = provider.getDecryptedApiKey();
         if (!StringUtils.hasText(apiKey)) {
-            throw new BusinessException("该 Provider 未配置 API Key");
+            throw new BusinessException(ErrorCode.LLM_PROVIDER_API_KEY_MISSING);
         }
         try {
-            io.lumina.agent.model.AgentConfig.LLMConfig config = new io.lumina.agent.model.AgentConfig.LLMConfig();
-            config.setModelType(entity.getProvider());
+            AgentConfig.LLMConfig config = new AgentConfig.LLMConfig();
+            config.setModelType(provider.getProvider());
             config.setApiKey(apiKey);
-            config.setBaseUrl(entity.getBaseUrl());
-            config.setModelName(entity.getDefaultModel());
-            io.lumina.agent.config.LuminaAgentProperties.LLMConfig defaults = new io.lumina.agent.config.LuminaAgentProperties.LLMConfig();
-            defaults.setType(entity.getProvider());
-            new io.lumina.agent.model.ChatModelFactory().create(config, defaults, apiKey);
+            config.setBaseUrl(provider.getBaseUrl());
+            config.setModelName(provider.getDefaultModel());
+            LuminaAgentProperties.LLMConfig defaults = new LuminaAgentProperties.LLMConfig();
+            defaults.setType(provider.getProvider());
+            chatModelFactory.create(config, defaults, apiKey);
             return true;
         } catch (Exception e) {
-            log.error("LLM Provider 连通性测试失败: provider={}, error={}", entity.getProvider(), e.getMessage());
-            throw new BusinessException("连通性测试失败: " + e.getMessage());
+            log.error("LLM Provider 连通性测试失败: provider={}, error={}", provider.getProvider(), e.getMessage());
+            throw new BusinessException(ErrorCode.LLM_PROVIDER_TEST_FAILED, "连通性测试失败: " + e.getMessage());
         }
     }
 
@@ -130,18 +145,35 @@ public class LlmProviderServiceImpl implements LlmProviderService {
         return CryptoUtil.decrypt(entity.getApiKeyEnc());
     }
 
-    private LlmProviderVO toVO(LlmProviderDO entity) {
-        LlmProviderVO vo = new LlmProviderVO();
-        BeanUtils.copyProperties(entity, vo);
-        boolean hasKey = StringUtils.hasText(entity.getApiKeyEnc());
-        vo.setHasApiKey(hasKey);
-        if (hasKey) {
-            try {
-                vo.setApiKeyMasked(CryptoUtil.mask(CryptoUtil.decrypt(entity.getApiKeyEnc())));
-            } catch (Exception e) {
-                vo.setApiKeyMasked("****");
-            }
+    private LlmProvider getDomainById(Long id) {
+        LlmProviderDO entity = llmProviderMapper.selectById(id);
+        if (entity == null) {
+            throw new BusinessException(ErrorCode.LLM_PROVIDER_NOT_FOUND);
         }
+        return toDomain(entity);
+    }
+
+    private Long currentTenantId() {
+        return BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+    }
+
+    private LlmProviderDO toDO(LlmProvider provider) {
+        LlmProviderDO entity = new LlmProviderDO();
+        BeanUtils.copyProperties(provider, entity);
+        return entity;
+    }
+
+    private LlmProvider toDomain(LlmProviderDO entity) {
+        LlmProvider provider = new LlmProvider();
+        BeanUtils.copyProperties(entity, provider);
+        return provider;
+    }
+
+    private LlmProviderVO toVO(LlmProvider provider) {
+        LlmProviderVO vo = new LlmProviderVO();
+        BeanUtils.copyProperties(provider, vo);
+        vo.setHasApiKey(provider.hasApiKey());
+        vo.setApiKeyMasked(provider.getMaskedApiKey());
         return vo;
     }
 }

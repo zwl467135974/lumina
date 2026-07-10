@@ -112,7 +112,7 @@ public class UserServiceImpl implements UserService {
         loginVO.setUsername(user.getUsername());
         loginVO.setRealName(user.getRealName());
         loginVO.setRole(user.getRole());
-        loginVO.setExpiration(System.currentTimeMillis() + JwtUtil.DEFAULT_EXPIRATION_TIME);
+        loginVO.setExpiration(jwtUtil.getExpiration(token).getTime());
 
         log.info("用户登录成功: userId={}, username={}", user.getUserId(), user.getUsername());
 

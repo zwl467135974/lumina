@@ -101,10 +101,15 @@ public class AuthController {
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "登出成功")
     })
-    public R<Void> logout() {
+    public R<Void> logout(@RequestHeader(value = "Authorization", required = false) String authorization) {
         log.info("用户登出");
 
-        authService.logout();
+        String token = null;
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            token = authorization.substring(7);
+        }
+
+        authService.logout(token);
 
         return R.success();
     }

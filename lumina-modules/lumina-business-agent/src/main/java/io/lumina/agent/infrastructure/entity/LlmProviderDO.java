@@ -6,6 +6,12 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+/**
+ * LLM 供应商配置 DO
+ *
+ * @author Lumina Team
+ * @since 1.0.0
+ */
 @Data
 @TableName("lumina_llm_provider")
 public class LlmProviderDO implements Serializable {

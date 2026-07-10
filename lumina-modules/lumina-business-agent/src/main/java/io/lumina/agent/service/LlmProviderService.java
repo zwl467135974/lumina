@@ -2,10 +2,17 @@ package io.lumina.agent.service;
 
 import io.lumina.agent.api.dto.llm.CreateLlmProviderDTO;
 import io.lumina.agent.api.dto.llm.QueryLlmProviderDTO;
+import io.lumina.agent.api.dto.llm.UpdateLlmProviderDTO;
 import io.lumina.agent.api.vo.LlmProviderVO;
 
 import java.util.List;
 
+/**
+ * LLM 供应商配置管理 Service
+ *
+ * @author Lumina Team
+ * @since 1.0.0
+ */
 public interface LlmProviderService {
 
     LlmProviderVO getById(Long id);
@@ -14,7 +21,7 @@ public interface LlmProviderService {
 
     LlmProviderVO create(CreateLlmProviderDTO dto);
 
-    LlmProviderVO update(Long id, CreateLlmProviderDTO dto);
+    LlmProviderVO update(Long id, UpdateLlmProviderDTO dto);
 
     void delete(Long id);
 

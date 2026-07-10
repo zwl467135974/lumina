@@ -2,6 +2,8 @@ package io.lumina.base.service.impl;
 
 import io.lumina.base.api.vo.user.OnlineUserVO;
 import io.lumina.base.service.OnlineUserService;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.cache.RedisCacheManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +46,13 @@ public class OnlineUserServiceImpl implements OnlineUserService {
             String[] parts = entry.split(":", 2);
             if (parts.length < 2) continue;
 
-            Long userId = Long.parseLong(parts[0]);
+            Long userId;
+            try {
+                userId = Long.parseLong(parts[0]);
+            } catch (NumberFormatException e) {
+                log.warn("在线用户记录格式异常，跳过: entry={}", entry);
+                continue;
+            }
             String uname = parts[1];
 
             if (StringUtils.hasText(username) && !uname.toLowerCase().contains(username.toLowerCase())) {
@@ -70,13 +78,19 @@ public class OnlineUserServiceImpl implements OnlineUserService {
     @Override
     public void forceLogout(Long userId) {
         Collection<String> members = redisCacheManager.zRange(ONLINE_KEY);
+        boolean found = false;
         if (members != null) {
             for (String entry : members) {
                 if (entry.startsWith(userId + ":")) {
                     redisCacheManager.zRemove(ONLINE_KEY, entry);
+                    found = true;
                     break;
                 }
             }
+        }
+        if (!found) {
+            log.warn("强制下线失败，用户不在线: userId={}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         log.info("强制下线用户: userId={}", userId);
     }

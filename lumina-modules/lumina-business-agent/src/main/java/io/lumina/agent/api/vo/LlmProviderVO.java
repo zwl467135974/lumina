@@ -4,6 +4,12 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * LLM 供应商配置 VO
+ *
+ * @author Lumina Team
+ * @since 1.0.0
+ */
 @Data
 public class LlmProviderVO {
     private Long id;

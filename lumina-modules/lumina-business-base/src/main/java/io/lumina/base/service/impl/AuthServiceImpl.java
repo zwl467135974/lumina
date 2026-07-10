@@ -15,10 +15,10 @@ import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.JwtUtil;
 import io.lumina.common.util.PasswordUtil;
+import io.lumina.framework.cache.RedisCacheManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -43,8 +43,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final JwtUtil jwtUtil;
 
-    @Value("${jwt.expire-days:7}")
-    private int jwtExpireDays;
+    private final RedisCacheManager redisCacheManager;
 
     @Override
     public LoginVO login(LoginDTO loginDTO) {
@@ -122,7 +121,7 @@ public class AuthServiceImpl implements AuthService {
         loginVO.setNickname(user.getNickname());
         loginVO.setRoles(user.getRoleCodes().toArray(new String[0]));
         loginVO.setPermissions(user.getPermissionCodes().toArray(new String[0]));
-        loginVO.setExpiration(System.currentTimeMillis() + jwtExpireDays * 24L * 60 * 60 * 1000);
+        loginVO.setExpiration(jwtUtil.getExpiration(token).getTime());
 
         log.info("用户登录成功: userId={}, username={}, tenantId={}, roles={}",
                 user.getUserId(), user.getUsername(), user.getTenantId(), user.getRoleCodes());
@@ -131,11 +130,28 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout() {
-        // 在 JWT 模式下，服务端不需要做太多处理
-        // 客户端删除本地存储的 Token 即可
-        // 如果需要实现 Token 黑名单，可以使用 Redis
+    public void logout(String token) {
         log.info("用户登出");
+
+        if (token == null || token.isEmpty()) {
+            return;
+        }
+
+        try {
+            long remainingTtl = (jwtUtil.getExpiration(token).getTime() - System.currentTimeMillis()) / 1000;
+            if (remainingTtl > 0) {
+                redisCacheManager.addTokenToBlacklist(token, remainingTtl);
+            }
+
+            io.lumina.common.core.LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
+            if (loginUser != null && loginUser.getUserId() != null) {
+                redisCacheManager.zRemove("online:users",
+                        loginUser.getUserId() + ":" + loginUser.getUsername());
+                log.info("清除在线记录: userId={}", loginUser.getUserId());
+            }
+        } catch (Exception e) {
+            log.warn("登出时解析 token 失败（可能已过期）: {}", e.getMessage());
+        }
     }
 
     /**

@@ -13,6 +13,7 @@ import lombok.Getter;
  *   <li>角色：11000-11999</li>
  *   <li>权限：12000-12999</li>
  *   <li>租户：13000-13999</li>
+ *   <li>字典：14000-14999</li>
  *   <li>Agent：20000-20999</li>
  * </ul>
  *
@@ -71,6 +72,11 @@ public enum ErrorCode {
     TENANT_DISABLED(403, 13003, "租户已禁用"),
     TENANT_IN_USE(409, 13004, "租户下存在用户，无法删除"),
 
+    // ==================== 字典 14000-14999 ====================
+    DICT_TYPE_NOT_FOUND(404, 14001, "字典类型不存在"),
+    DICT_TYPE_ALREADY_EXISTS(409, 14002, "字典类型已存在"),
+    DICT_ITEM_NOT_FOUND(404, 14003, "字典项不存在"),
+
     // ==================== Agent 20000-20999 ====================
     AGENT_NOT_FOUND(404, 20001, "Agent 不存在"),
     AGENT_NOT_ACTIVE(400, 20002, "Agent 未启用"),
@@ -84,6 +90,12 @@ public enum ErrorCode {
     // ==================== 会话 21000-21999 ====================
     CONVERSATION_NOT_FOUND(404, 21001, "会话不存在"),
     CONVERSATION_AGENT_MISMATCH(400, 21002, "会话与 Agent 不匹配"),
+
+    // ==================== LLM Provider 22000-22999 ====================
+    LLM_PROVIDER_NOT_FOUND(404, 22001, "LLM Provider 不存在"),
+    LLM_PROVIDER_ALREADY_EXISTS(409, 22002, "LLM Provider 已存在"),
+    LLM_PROVIDER_TEST_FAILED(500, 22003, "LLM Provider 连通性测试失败"),
+    LLM_PROVIDER_API_KEY_MISSING(400, 22004, "该 Provider 未配置 API Key"),
 
     // ==================== 文件 30000-30999 ====================
     FILE_READ_FAILED(400, 30001, "读取文件失败"),

@@ -12,6 +12,7 @@ import io.lumina.base.infrastructure.entity.DictTypeDO;
 import io.lumina.base.infrastructure.mapper.DictItemMapper;
 import io.lumina.base.infrastructure.mapper.DictTypeMapper;
 import io.lumina.base.service.DictService;
+import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +59,7 @@ public class DictServiceImpl implements DictService {
         Long count = dictTypeMapper.selectCount(
                 new LambdaQueryWrapper<DictTypeDO>().eq(DictTypeDO::getDictType, dto.getDictType()));
         if (count > 0) {
-            throw new BusinessException("字典类型已存在: " + dto.getDictType());
+            throw new BusinessException(ErrorCode.DICT_TYPE_ALREADY_EXISTS);
         }
 
         DictTypeDO entity = new DictTypeDO();
@@ -75,7 +76,7 @@ public class DictServiceImpl implements DictService {
     public DictTypeVO updateType(Long id, UpdateDictTypeDTO dto) {
         DictTypeDO entity = dictTypeMapper.selectById(id);
         if (entity == null) {
-            throw new BusinessException("字典类型不存在");
+            throw new BusinessException(ErrorCode.DICT_TYPE_NOT_FOUND);
         }
         entity.setDictName(dto.getDictName());
         entity.setStatus(dto.getStatus());
@@ -89,7 +90,7 @@ public class DictServiceImpl implements DictService {
     public void deleteType(Long id) {
         DictTypeDO entity = dictTypeMapper.selectById(id);
         if (entity == null) {
-            throw new BusinessException("字典类型不存在");
+            throw new BusinessException(ErrorCode.DICT_TYPE_NOT_FOUND);
         }
         // 级联删除该类型下的所有字典项
         dictItemMapper.delete(new LambdaQueryWrapper<DictItemDO>()
@@ -117,7 +118,7 @@ public class DictServiceImpl implements DictService {
         Long typeCount = dictTypeMapper.selectCount(
                 new LambdaQueryWrapper<DictTypeDO>().eq(DictTypeDO::getDictType, dto.getDictType()));
         if (typeCount == 0) {
-            throw new BusinessException("字典类型不存在: " + dto.getDictType());
+            throw new BusinessException(ErrorCode.DICT_TYPE_NOT_FOUND, dto.getDictType());
         }
 
         DictItemDO entity = new DictItemDO();
@@ -136,7 +137,7 @@ public class DictServiceImpl implements DictService {
     public DictItemVO updateItem(Long id, UpdateDictItemDTO dto) {
         DictItemDO entity = dictItemMapper.selectById(id);
         if (entity == null) {
-            throw new BusinessException("字典项不存在");
+            throw new BusinessException(ErrorCode.DICT_ITEM_NOT_FOUND);
         }
         entity.setDictLabel(dto.getDictLabel());
         entity.setDictValue(dto.getDictValue());
@@ -152,7 +153,7 @@ public class DictServiceImpl implements DictService {
     public void deleteItem(Long id) {
         DictItemDO entity = dictItemMapper.selectById(id);
         if (entity == null) {
-            throw new BusinessException("字典项不存在");
+            throw new BusinessException(ErrorCode.DICT_ITEM_NOT_FOUND);
         }
         dictItemMapper.deleteById(id);
     }

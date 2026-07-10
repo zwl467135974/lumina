@@ -5,6 +5,12 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+/**
+ * 字典项 DO
+ *
+ * @author Lumina Team
+ * @since 1.0.0
+ */
 @Data
 @TableName("lumina_dict_item")
 public class DictItemDO implements Serializable {

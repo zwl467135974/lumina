@@ -37,12 +37,12 @@ public class JwtUtil implements InitializingBean {
     private String secretKey;
 
     /**
-     * Token 过期时间（从配置文件读取，默认 7 天）
+     * Token 过期时间（从配置文件读取，默认 2 小时）
      */
-    @Value("${lumina.jwt.expiration:604800000}")
+    @Value("${lumina.jwt.expiration:7200000}")
     private long expirationTime;
 
-    public static final long DEFAULT_EXPIRATION_TIME = 604800000L;
+    public static final long DEFAULT_EXPIRATION_TIME = 7200000L;
 
     @Override
     public void afterPropertiesSet() {

@@ -5,6 +5,8 @@ import io.lumina.base.service.OnlineUserService;
 import io.lumina.common.core.R;
 import io.lumina.framework.audit.annotation.Audit;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +17,8 @@ import java.util.List;
  * @author Lumina Team
  * @since 1.0.0
  */
+@Slf4j
+@Validated
 @RestController
 @RequestMapping("/api/v1/base/users/online")
 @RequiredArgsConstructor
@@ -34,7 +38,7 @@ public class OnlineUserController {
      * 强制下线
      */
     @DeleteMapping("/{userId}")
-    @Audit(module = "ONLINE_USER", action = "FORCE_LOGOUT")
+    @Audit(module = "online_user", action = "FORCE_LOGOUT")
     public R<Void> forceLogout(@PathVariable Long userId) {
         onlineUserService.forceLogout(userId);
         return R.success();
