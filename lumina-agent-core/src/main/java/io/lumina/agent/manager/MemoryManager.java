@@ -1,19 +1,16 @@
 package io.lumina.agent.manager;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.framework.cache.RedisCacheManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 记忆管理器
@@ -38,10 +35,10 @@ public class MemoryManager {
     private final Map<String, List<Memory>> memoryStore = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
-     * Redis 模板（可选，如果未配置则使用内存存储）
+     * Redis 缓存管理器（可选，如果未配置则使用内存存储）
      */
     @Autowired(required = false)
-    private RedisTemplate<String, Object> redisTemplate;
+    private RedisCacheManager redisCacheManager;
 
     /**
      * ObjectMapper 用于序列化/反序列化
@@ -69,7 +66,7 @@ public class MemoryManager {
     public void addMemory(String sessionId, String role, String content) {
         Memory newMemory = new Memory(role, content, System.currentTimeMillis());
 
-        if (redisTemplate != null) {
+        if (redisCacheManager != null) {
             // 使用 Redis 持久化
             addMemoryToRedis(sessionId, newMemory);
         } else {
@@ -88,33 +85,21 @@ public class MemoryManager {
 
     /**
      * 添加记忆到 Redis
+     *
+     * <p>使用原子 RPUSH + LTRIM 操作，避免读-改-写竞态条件。
      */
     private void addMemoryToRedis(String sessionId, Memory newMemory) {
         try {
             String key = getRedisKey(sessionId);
-            List<Memory> memories = getMemoriesFromRedis(sessionId);
-            
-            // 添加新记忆
-            memories.add(newMemory);
 
-            // 限制记忆条数
-            if (memories.size() > MAX_MEMORY_SIZE) {
-                memories.remove(0);
-                log.debug("会话 {} 记忆超出限制，移除最旧记录", sessionId);
-            }
+            redisCacheManager.pushToList(key, newMemory);
+            redisCacheManager.trimList(key, -MAX_MEMORY_SIZE, -1);
+            redisCacheManager.expire(key, Duration.ofSeconds(memoryTtl));
 
-            // 保存到 Redis，设置过期时间
-            redisTemplate.opsForValue().set(
-                    key,
-                    memories,
-                    Duration.ofSeconds(memoryTtl)
-            );
-
-            log.debug("记忆已保存到 Redis: sessionId={}, memoryCount={}", sessionId, memories.size());
+            log.debug("记忆已保存到 Redis: sessionId={}", sessionId);
 
         } catch (Exception e) {
             log.error("保存记忆到 Redis 失败，降级到内存存储: sessionId={}", sessionId, e);
-            // 降级到内存存储
             memoryStore.computeIfAbsent(sessionId, k -> new ArrayList<>())
                        .add(newMemory);
         }
@@ -127,7 +112,7 @@ public class MemoryManager {
      * @return 记忆列表
      */
     public List<Memory> getMemories(String sessionId) {
-        if (redisTemplate != null) {
+        if (redisCacheManager != null) {
             // 从 Redis 获取
             return getMemoriesFromRedis(sessionId);
         } else {
@@ -139,38 +124,27 @@ public class MemoryManager {
     /**
      * 从 Redis 获取记忆
      */
-    @SuppressWarnings("unchecked")
     private List<Memory> getMemoriesFromRedis(String sessionId) {
         try {
             String key = getRedisKey(sessionId);
-            Object value = redisTemplate.opsForValue().get(key);
-            
-            if (value == null) {
+            List<?> rawList = redisCacheManager.getList(key);
+
+            if (rawList == null || rawList.isEmpty()) {
                 return new ArrayList<>();
             }
 
-            // 如果是 List，尝试转换为 Memory 列表
-            if (value instanceof List) {
-                List<?> list = (List<?>) value;
-                List<Memory> memories = new ArrayList<>();
-                for (Object item : list) {
-                    if (item instanceof Memory) {
-                        memories.add((Memory) item);
-                    } else if (item instanceof Map) {
-                        // 如果是 Map，转换为 Memory
-                        Memory memory = objectMapper.convertValue(item, Memory.class);
-                        memories.add(memory);
-                    }
+            List<Memory> memories = new ArrayList<>(rawList.size());
+            for (Object item : rawList) {
+                if (item instanceof Memory memory) {
+                    memories.add(memory);
+                } else if (item instanceof Map) {
+                    memories.add(objectMapper.convertValue(item, Memory.class));
                 }
-                return memories;
             }
-
-            // 尝试直接反序列化
-            return objectMapper.convertValue(value, new TypeReference<List<Memory>>() {});
+            return memories;
 
         } catch (Exception e) {
             log.error("从 Redis 获取记忆失败，尝试从内存获取: sessionId={}", sessionId, e);
-            // 降级到内存存储
             return memoryStore.getOrDefault(sessionId, new ArrayList<>());
         }
     }
@@ -181,11 +155,11 @@ public class MemoryManager {
      * @param sessionId 会话 ID
      */
     public void clearMemories(String sessionId) {
-        if (redisTemplate != null) {
+        if (redisCacheManager != null) {
             // 从 Redis 删除
             try {
                 String key = getRedisKey(sessionId);
-                redisTemplate.delete(key);
+                redisCacheManager.delete(key);
                 log.info("从 Redis 清空会话记忆: {}", sessionId);
             } catch (Exception e) {
                 log.error("从 Redis 清空记忆失败: sessionId={}", sessionId, e);

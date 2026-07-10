@@ -23,6 +23,12 @@
             <artifactId>lumina-common</artifactId>
         </dependency>
 
+        <!-- Lumina Framework（RedisCacheManager） -->
+        <dependency>
+            <groupId>io.lumina</groupId>
+            <artifactId>lumina-framework</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starter -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -87,7 +87,9 @@ public class UserServiceImpl implements UserService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getUserId());
         claims.put("username", user.getUsername());
-        claims.put("role", user.getRole());
+        claims.put("tenantId", 0L);
+        claims.put("roles", user.getRole() != null ? user.getRole() : "");
+        claims.put("permissions", "");
 
         String token = jwtUtil.generateToken(user.getUsername(), claims);
 

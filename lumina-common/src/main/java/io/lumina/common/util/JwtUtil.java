@@ -223,6 +223,8 @@ public class JwtUtil implements InitializingBean {
             loginUser.setRoles((String[]) roles);
         } else if (roles instanceof java.util.Collection) {
             loginUser.setRoles(((java.util.Collection<?>) roles).toArray(new String[0]));
+        } else if (roles instanceof String && !((String) roles).isEmpty()) {
+            loginUser.setRoles(((String) roles).split(","));
         }
 
         // 提取权限信息
@@ -231,6 +233,8 @@ public class JwtUtil implements InitializingBean {
             loginUser.setPermissions((String[]) permissions);
         } else if (permissions instanceof java.util.Collection) {
             loginUser.setPermissions(((java.util.Collection<?>) permissions).toArray(new String[0]));
+        } else if (permissions instanceof String && !((String) permissions).isEmpty()) {
+            loginUser.setPermissions(((String) permissions).split(","));
         }
 
         // 提取其他信息

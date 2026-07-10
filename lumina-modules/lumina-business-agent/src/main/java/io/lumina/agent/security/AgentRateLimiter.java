@@ -3,19 +3,18 @@ package io.lumina.agent.security;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.framework.cache.RedisCacheManager;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RRateLimiter;
-import org.redisson.api.RateIntervalUnit;
-import org.redisson.api.RateType;
-import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+
 /**
  * Agent 执行频率限制器
  *
- * <p>基于 Redisson {@link RRateLimiter} 实现分布式令牌桶限流，
+ * <p>基于 {@link RedisCacheManager} 原子计数器实现固定窗口限流，
  * 按 用户 + Agent 维度独立计量，防止单个用户对同一 Agent 过度调用。
  *
  * <p>可配置参数：
@@ -33,7 +32,7 @@ public class AgentRateLimiter {
 
     private static final String KEY_PREFIX = "agent:rate:";
 
-    private final RedissonClient redissonClient;
+    private final RedisCacheManager redisCacheManager;
 
     @Value("${lumina.agent.rate-limit.max-requests:30}")
     private int maxRequests;
@@ -42,8 +41,8 @@ public class AgentRateLimiter {
     private int windowSeconds;
 
     @Autowired
-    public AgentRateLimiter(RedissonClient redissonClient) {
-        this.redissonClient = redissonClient;
+    public AgentRateLimiter(RedisCacheManager redisCacheManager) {
+        this.redisCacheManager = redisCacheManager;
     }
 
     /**
@@ -59,10 +58,12 @@ public class AgentRateLimiter {
         String key = KEY_PREFIX + agentId + ":" + identity;
 
         try {
-            RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
-            rateLimiter.trySetRate(RateType.OVERALL, maxRequests, windowSeconds, RateIntervalUnit.SECONDS);
+            long count = redisCacheManager.incrementAndGet(key);
+            if (count == 1) {
+                redisCacheManager.expire(key, Duration.ofSeconds(windowSeconds));
+            }
 
-            if (!rateLimiter.tryAcquire()) {
+            if (count > maxRequests) {
                 log.warn("Agent 频率限制触发: agentId={}, userId={}, max={}, window={}s",
                         agentId, userId, maxRequests, windowSeconds);
                 throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED);

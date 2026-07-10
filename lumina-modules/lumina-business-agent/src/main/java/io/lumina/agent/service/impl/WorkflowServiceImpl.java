@@ -55,7 +55,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     private ObjectMapper objectMapper;
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WorkflowDefinitionDO create(WorkflowDTO dto) {
         workflowLoader.load(dto.getDefinitionYaml());
 
@@ -77,7 +77,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WorkflowDefinitionDO update(Long id, WorkflowDTO dto) {
         WorkflowDefinitionDO entity = getById(id);
         if (entity.getStatus() == 1) {
@@ -96,6 +96,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void publish(Long id) {
         WorkflowDefinitionDO entity = getById(id);
         entity.setStatus(1);
@@ -105,6 +106,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         WorkflowDefinitionDO entity = getById(id);
         entity.setIsDeleted(1);

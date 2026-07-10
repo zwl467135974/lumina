@@ -20,6 +20,7 @@ import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -81,6 +82,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public AgentTaskDO submitTask(Long agentId, AgentTaskRequestDTO dto) {
         if (dto == null || !StringUtils.hasText(dto.getTask())) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
@@ -317,6 +319,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public AgentTaskDO cancelTask(String taskUuid) {
         AgentTaskDO task = getTask(taskUuid);
         String currentStatus = task.getStatus();

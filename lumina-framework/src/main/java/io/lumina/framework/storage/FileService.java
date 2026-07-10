@@ -1,11 +1,14 @@
 package io.lumina.framework.storage;
 
 import io.lumina.common.core.BaseContext;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.storage.entity.FileDO;
 import io.lumina.framework.storage.mapper.FileMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -43,7 +46,7 @@ public class FileService {
         try {
             return upload(file.getBytes(), file.getOriginalFilename(), file.getContentType(), bizType);
         } catch (IOException e) {
-            throw new RuntimeException("读取文件失败", e);
+            throw new BusinessException(ErrorCode.FILE_READ_FAILED, e);
         }
     }
 
@@ -56,6 +59,7 @@ public class FileService {
      * @param bizType      业务类型
      * @return 文件元数据
      */
+    @Transactional(rollbackFor = Exception.class)
     public FileDO upload(byte[] bytes, String originalName, String contentType, String bizType) {
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         String fileUuid = UUID.randomUUID().toString().replace("-", "");
@@ -91,7 +95,7 @@ public class FileService {
     public InputStream download(String fileUuid) {
         FileDO fileDO = getByUuid(fileUuid);
         if (fileDO == null || fileDO.getStatus() != 1) {
-            throw new RuntimeException("文件不存在或已删除: " + fileUuid);
+            throw new BusinessException(ErrorCode.FILE_NOT_FOUND, "文件不存在或已删除: " + fileUuid);
         }
         return storageClient.download(fileDO.getStorageKey());
     }
@@ -99,6 +103,7 @@ public class FileService {
     /**
      * 删除文件（软删除）
      */
+    @Transactional(rollbackFor = Exception.class)
     public void delete(String fileUuid) {
         FileDO fileDO = getByUuid(fileUuid);
         if (fileDO == null) {

@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -86,6 +87,7 @@ public class BudgetServiceImpl implements BudgetService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public BudgetRuleDO createRule(BudgetRuleDTO dto) {
         BudgetRuleDO rule = new BudgetRuleDO();
         BeanUtils.copyProperties(dto, rule);
@@ -101,6 +103,7 @@ public class BudgetServiceImpl implements BudgetService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteRule(Long id) {
         BudgetRuleDO rule = budgetRuleMapper.selectById(id);
         if (rule == null || rule.getIsDeleted() == 1) {

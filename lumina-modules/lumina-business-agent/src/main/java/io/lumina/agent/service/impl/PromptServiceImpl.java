@@ -33,7 +33,7 @@ public class PromptServiceImpl implements PromptService {
     private final PromptMapper promptMapper;
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PromptDO create(PromptDTO dto) {
         Long tenantId = currentTenant();
 
@@ -66,6 +66,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public PromptDO update(Long id, PromptDTO dto) {
         PromptDO entity = getById(id);
         if (entity.getStatus() == 1) {
@@ -83,7 +84,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PromptDO publish(Long id) {
         PromptDO entity = getById(id);
 
@@ -110,7 +111,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public PromptDO newVersion(Long sourceId, PromptDTO dto) {
         PromptDO source = getById(sourceId);
 
@@ -143,6 +144,7 @@ public class PromptServiceImpl implements PromptService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         PromptDO entity = getById(id);
         entity.setIsDeleted(1);

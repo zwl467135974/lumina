@@ -106,8 +106,8 @@ public class AuthServiceImpl implements AuthService {
         claims.put("userId", user.getUserId());
         claims.put("username", user.getUsername());
         claims.put("tenantId", user.getTenantId());
-        claims.put("roles", user.getRoleCodes().toArray(new String[0]));
-        claims.put("permissions", user.getPermissionCodes().toArray(new String[0]));
+        claims.put("roles", String.join(",", user.getRoleCodes()));
+        claims.put("permissions", String.join(",", user.getPermissionCodes()));
 
         String token = jwtUtil.generateToken(user.getUsername(), claims);
 

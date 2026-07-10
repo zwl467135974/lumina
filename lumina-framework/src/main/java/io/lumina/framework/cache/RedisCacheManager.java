@@ -1,7 +1,10 @@
 package io.lumina.framework.cache;
 
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RAtomicLong;
 import org.redisson.api.RBucket;
+import org.redisson.api.RDeque;
+import org.redisson.api.RList;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -251,6 +254,21 @@ public class RedisCacheManager {
         return ttl / 1000; // 转换为秒
     }
 
+    // ==================== 原子计数器 ====================
+
+    /**
+     * 原子递增计数器并返回递增后的值
+     *
+     * @param key 计数器键
+     * @return 递增后的值
+     */
+    public long incrementAndGet(String key) {
+        RAtomicLong counter = redissonClient.getAtomicLong(key);
+        long value = counter.incrementAndGet();
+        log.debug("INCR: key={}, value={}", key, value);
+        return value;
+    }
+
     // ==================== 有序集合（ZSET）方法 ====================
 
     /**
@@ -303,5 +321,70 @@ public class RedisCacheManager {
     public Double zScore(String key, String member) {
         RScoredSortedSet<String> set = redissonClient.getScoredSortedSet(key);
         return set.getScore(member);
+    }
+
+    // ==================== 列表（LIST）方法 ====================
+
+    /**
+     * 获取列表的全部元素
+     *
+     * @param key 列表键
+     * @return 元素列表
+     */
+    public <T> List<T> getList(String key) {
+        RList<T> list = redissonClient.getList(key);
+        List<T> result = list.readAll();
+        log.debug("获取列表: key={}, size={}", key, result.size());
+        return result;
+    }
+
+    /**
+     * 向列表尾部添加元素（RPUSH）
+     *
+     * @param key   列表键
+     * @param value 元素
+     */
+    public <T> void pushToList(String key, T value) {
+        RList<T> list = redissonClient.getList(key);
+        list.add(value);
+        log.debug("RPUSH 列表: key={}", key);
+    }
+
+    /**
+     * 向列表尾部批量添加元素
+     *
+     * @param key    列表键
+     * @param values 元素集合
+     */
+    public <T> void pushAllToList(String key, Collection<T> values) {
+        RList<T> list = redissonClient.getList(key);
+        list.addAll(values);
+        log.debug("批量 RPUSH 列表: key={}, count={}", key, values.size());
+    }
+
+    /**
+     * 弹出列表尾部元素（RPOP）
+     *
+     * @param key 列表键
+     * @return 弹出的元素，列表为空时返回 null
+     */
+    public <T> T popFromList(String key) {
+        RDeque<T> deque = redissonClient.getDeque(key);
+        T value = deque.pollLast();
+        log.debug("RPOP 列表: key={}", key);
+        return value;
+    }
+
+    /**
+     * 修剪列表，只保留指定索引范围的元素
+     *
+     * @param key        列表键
+     * @param startIndex 起始索引（支持负数，-1 表示最后一个元素）
+     * @param endIndex   结束索引（支持负数）
+     */
+    public void trimList(String key, int startIndex, int endIndex) {
+        RList<Object> list = redissonClient.getList(key);
+        list.trim(startIndex, endIndex);
+        log.debug("LTRIM 列表: key={}, start={}, end={}", key, startIndex, endIndex);
     }
 }

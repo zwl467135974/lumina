@@ -84,6 +84,12 @@ public enum ErrorCode {
     CONVERSATION_NOT_FOUND(404, 21001, "会话不存在"),
     CONVERSATION_AGENT_MISMATCH(400, 21002, "会话与 Agent 不匹配"),
 
+    // ==================== 文件 30000-30999 ====================
+    FILE_READ_FAILED(400, 30001, "读取文件失败"),
+    FILE_NOT_FOUND(404, 30002, "文件不存在或已删除"),
+    FILE_UPLOAD_FAILED(500, 30003, "文件上传失败"),
+    FILE_DELETE_FAILED(500, 30004, "文件删除失败"),
+
     ;
 
     /**
