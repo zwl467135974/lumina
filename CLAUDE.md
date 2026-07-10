@@ -86,7 +86,7 @@
 - **模块划分**: 
   - `lumina-common`: 公共工具类
   - `lumina-framework`: 框架配置
-  - `lumina-agent-core`: Agent 核心
+  - `lumina-agent-core`: Agent 核心（执行引擎、Flowable 工作流引擎、配置加载、工具管理、Resilience4j 熔断器）
   - `lumina-gateway`: 网关模块
   - `lumina-business-base`: 业务基础模块
   - `lumina-business-agent`: Agent 业务模块
@@ -117,6 +117,8 @@
 - [ ] **Controller 注解**: `@Slf4j` + `@Validated` + `@RequiredArgsConstructor`
 - [ ] **@Audit 规范**: module 用小写（如 `"llm_provider"`），action 用标准枚举（CREATE/UPDATE/DELETE）
 - [ ] **Redis 操作**: 通过 `RedisCacheManager`，禁止直接用 `RedisTemplate`/`RedissonClient`
+- [ ] **新表检查**: 确认是否需要加入 ALWAYS_IGNORE（系统表/全局表），TenantLineHandler 会自动检测 tenant_id 列
+- [ ] **工作流**: 工作流引擎使用 Flowable (@Primary)，DefaultWorkflowEngine 保留为 fallback
 - [ ] **SQL 列名**: INSERT 语句的列名必须与已有迁移一致（先 grep 检查）
 - [ ] **API 路径**: RESTful 命名 + 检查 Gateway 路由是否覆盖
 - [ ] **编译验证**: `mvn compile` 通过

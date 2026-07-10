@@ -222,6 +222,20 @@
 
 ---
 
+### 2.15 工作流引擎与弹性容错
+
+| 技术 | 版本 | 选型理由 | 参考来源 |
+|------|------|---------|---------|
+| **Flowable** | **7.0** | 企业级 BPMN 引擎，支持并行网关、多实例、状态持久化，作为 `@Primary` 工作流引擎 | 建议新增 |
+| **Resilience4j** | **2.2.0** | 轻量级弹性容错库（熔断、限流、重试、舱壁隔离），替代 Hystrix | 建议新增 |
+
+**说明**:
+- ✅ Flowable 负责 Agent 工作流的编排执行，YAML 通过 `FlowableBpmnConverter` 转为 BPMN 模型
+- ✅ 自研 `DefaultWorkflowEngine` 保留为 fallback，确保向后兼容
+- ✅ Resilience4j 用于 Agent 执行的熔断与重试，保障系统稳定性
+
+---
+
 ## 三、技术选型对比分析
 
 ### 3.1 与 lumina-ref 的差异
@@ -288,6 +302,8 @@
 ✅ OpenTelemetry 1.58.0
 ✅ Jackson 2.20.1 (统一 JSON 处理)
 ✅ Spring Security 6.3+
+✅ Flowable 7.0 (工作流引擎)
+✅ Resilience4j 2.2.0 (弹性容错)
 ```
 
 ### 5.2 架构层次

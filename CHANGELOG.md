@@ -4,6 +4,41 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.1.0] - 2026-07-10
+
+### 后端代码审计与修复
+
+#### 架构级改造
+- **TenantLineHandler 自动检测**: 从硬编码 IGNORE_TABLES 白名单改为 `information_schema` 自动检测 + ALWAYS_IGNORE 双重保护，新建表不再需要手动维护忽略列表
+- **Resilience4j 熔断器**: 手写 ToolCircuitBreaker 替换为 Resilience4j CircuitBreakerRegistry，消除所有竞态条件
+- **Flowable 7.0 工作流引擎**: 引入 Flowable 作为 @Primary 工作流引擎，旧 DefaultWorkflowEngine 保留为 fallback。BPMN 转换器支持 YAML→BPMN 自动映射
+
+#### 安全修复
+- Gateway Header 注入越权（清除客户端伪造身份 Header）
+- 白名单 startsWith 前缀绕过
+- Token 黑名单接入
+- SpEL 表达式注入 RCE（StandardEvaluationContext + 自定义 TypeLocator）
+- 并行工作流 HashMap 竞态
+- 9 处租户隔离 IDOR（会话/工作流/Prompt/知识库/预算/LlmProvider）
+- DictController/OnlineUserController 全接口权限缺失
+- 登录防暴力破解（Redis 失败计数 + 锁定）
+
+#### 功能修复
+- 循环工作流完全失效（LoopSignal 处理接入）
+- 并行工作流后必停（executeParallelBranches 路由）
+- 条件循环每轮重新求值
+- 嵌套循环变量隔离（LoopSignal 携带 items/itemVar）
+- Flowable 并行 Join 网关 + Loop 子图执行
+- 在线用户功能链路修复（recordLogin 接入）
+
+#### 工程化
+- 217+ 测试基线（含 30 个集成测试）
+- 9 个 VO 类新建 + 15 个 Controller DO→VO 转换
+- 全项目构造器注入统一
+- @Transactional 补全 + rollbackFor
+- @Audit 注解全覆盖
+- 权限实时缓存（Gateway Redis 读取，5min→2h TTL）
+
 ## [3.0.0] - 2026-07
 
 ### 稳定化与生产就绪

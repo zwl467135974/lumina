@@ -26,7 +26,7 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 ### 核心特性
 
 - **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、流式输出
-- **工作流编排引擎** - DAG 引擎支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 5 种协作模板
+- **工作流编排引擎** - 基于 Flowable 7.0 的 DAG 引擎，支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 5 种协作模板
 - **Prompt 版本管理** - DB 持久化、版本发布/激活、Agent 执行链路运行时动态生效
 - **Agent 评估框架** - YAML 数据集 + 4 种评分器（精确/包含/语义相似度/LLM Judge）+ A/B 对比 + CSV 导出
 - **RAG 知识库** - 文档上传 → 切片 → 向量化 → 检索增强（Qdrant REST + 多 Embedding 提供商）+ 来源可视化
@@ -36,8 +36,9 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **异步任务执行** - 提交后立即返回 taskId，后台线程池执行，状态查询与独立列表页管理
 - **成本管理** - 模型价格表 + Token 用量计费 + 消费汇总仪表盘 + 趋势图表
 - **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）+ 频率限制 + 内容审核
+- **企业级安全** - 租户隔离自动检测、权限实时缓存、SpEL 表达式注入防护、登录防暴力破解
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V22)、网关限流、API 版本策略、工具调用熔断器
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V22)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
@@ -52,7 +53,7 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 lumina/
 ├── lumina-common/              # 公共模块（统一响应、异常体系、工具类）
 ├── lumina-framework/           # 框架模块（配置类、全局异常处理、Web 配置）
-├── lumina-agent-core/          # Agent 核心模块（执行引擎、配置加载、工具管理）
+├── lumina-agent-core/          # Agent 核心模块（执行引擎、Flowable 工作流、配置加载、工具管理、Resilience4j 熔断器）
 ├── lumina-gateway/             # API 网关模块（统一入口、路由、限流）
 └── lumina-modules/             # 业务模块聚合器
     ├── lumina-business-base/   # 基础业务模块（用户、角色、权限、租户管理）
@@ -398,6 +399,8 @@ public String executeAgent(String task) {
 | **数据持久** | MyBatis | 3.0.3 | ORM 框架 |
 | | MyBatis-Plus | 3.5.7 | MyBatis 增强工具 |
 | **缓存** | Redisson | 3.24.3 | Redis 客户端 |
+| **工作流引擎** | Flowable | 7.0 | DAG 工作流引擎（BPMN/流程编排） |
+| **容错** | Resilience4j | 2.2.0 | 熔断器/重试/限流 |
 | **服务治理** | Nacos | 3.1.1+ | 服务注册/配置中心 |
 | **文档** | SpringDoc | 2.6.0 | API 文档生成 |
 | **JSON 处理** | Jackson | 2.20.1 | 统一 JSON 处理库 |
