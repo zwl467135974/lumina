@@ -74,6 +74,9 @@ public class WorkflowDefinition {
     private transient volatile Map<String, List<WorkflowEdge>> outgoingEdgeIndex;
 
     @JsonIgnore
+    private transient volatile Map<String, WorkflowNode> nodeIndex;
+
+    @JsonIgnore
     private transient volatile Set<String> nodesWithIncomingEdges;
 
     private void ensureIndex() {
@@ -81,15 +84,20 @@ public class WorkflowDefinition {
             synchronized (this) {
                 if (outgoingEdgeIndex == null) {
                     Map<String, List<WorkflowEdge>> index = new HashMap<>();
+                    Map<String, WorkflowNode> nIdx = new HashMap<>();
                     Set<String> incoming = new HashSet<>();
                     for (WorkflowEdge edge : edges) {
                         index.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
                         incoming.add(edge.getTo());
                     }
+                    for (WorkflowNode node : nodes) {
+                        nIdx.put(node.getId(), node);
+                    }
                     for (Map.Entry<String, List<WorkflowEdge>> e : index.entrySet()) {
                         e.setValue(Collections.unmodifiableList(e.getValue()));
                     }
                     outgoingEdgeIndex = Collections.unmodifiableMap(index);
+                    nodeIndex = Collections.unmodifiableMap(nIdx);
                     nodesWithIncomingEdges = Collections.unmodifiableSet(incoming);
                 }
             }
@@ -101,10 +109,8 @@ public class WorkflowDefinition {
      */
     @JsonIgnore
     public WorkflowNode findNode(String nodeId) {
-        return nodes.stream()
-                .filter(n -> n.getId().equals(nodeId))
-                .findFirst()
-                .orElse(null);
+        ensureIndex();
+        return nodeIndex.get(nodeId);
     }
 
     /**

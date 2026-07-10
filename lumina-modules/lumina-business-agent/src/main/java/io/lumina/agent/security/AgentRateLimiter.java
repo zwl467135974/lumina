@@ -59,9 +59,7 @@ public class AgentRateLimiter {
 
         try {
             long count = redisCacheManager.incrementAndGet(key);
-            if (count == 1) {
-                redisCacheManager.expire(key, Duration.ofSeconds(windowSeconds));
-            }
+            redisCacheManager.expire(key, Duration.ofSeconds(windowSeconds));
 
             if (count > maxRequests) {
                 log.warn("Agent 频率限制触发: agentId={}, userId={}, max={}, window={}s",

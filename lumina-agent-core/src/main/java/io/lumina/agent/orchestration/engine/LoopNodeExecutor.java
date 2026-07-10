@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 /**
  * 循环节点执行器
  *
@@ -69,10 +68,8 @@ public class LoopNodeExecutor implements NodeExecutor {
         int iterations = Math.min(items.size(), loopNode.getMaxIterations());
         log.info("循环节点遍历: id={}, items={}, iterations={}", loopNode.getId(), items.size(), iterations);
 
-        ctx.setVariable("__loopItems__", items);
-        ctx.setVariable("__loopItemVar__", loopNode.getItemVar());
-
-        return new LoopSignal(iterations, loopNode.getLoopTarget(), loopNode.getExitTarget(), null);
+        return new LoopSignal(iterations, loopNode.getLoopTarget(), loopNode.getExitTarget(),
+                null, items, loopNode.getItemVar());
     }
 
     private Object handleConditionLoop(LoopNode loopNode, WorkflowContext ctx) {
@@ -81,17 +78,19 @@ public class LoopNodeExecutor implements NodeExecutor {
 
         if (!shouldLoop) {
             log.info("条件循环初始即为 false: id={}", loopNode.getId());
-            return new LoopSignal(0, loopNode.getLoopTarget(), loopNode.getExitTarget(), null);
+            return new LoopSignal(0, loopNode.getLoopTarget(), loopNode.getExitTarget(),
+                    null, null, null);
         }
 
         log.info("条件循环启动: id={}", loopNode.getId());
         return new LoopSignal(loopNode.getMaxIterations(), loopNode.getLoopTarget(),
-                loopNode.getExitTarget(), loopNode.getConditionExpr());
+                loopNode.getExitTarget(), loopNode.getConditionExpr(), null, null);
     }
 
     /**
      * 循环控制信号（引擎接收后执行循环体）
      */
-    public record LoopSignal(int iterations, String loopTarget, String exitTarget, String conditionExpr) {
+    public record LoopSignal(int iterations, String loopTarget, String exitTarget,
+                             String conditionExpr, List<Object> items, String itemVar) {
     }
 }

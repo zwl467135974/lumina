@@ -14,7 +14,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -80,7 +81,7 @@ public class MemoryManager {
         if (redisCacheManager != null) {
             addMemoryToRedis(sessionId, newMemory);
         } else {
-            memoryStore.asMap().computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>())
+            memoryStore.asMap().computeIfAbsent(sessionId, k -> Collections.synchronizedList(new LinkedList<>()))
                        .add(newMemory);
 
             // 限制记忆条数
@@ -109,7 +110,7 @@ public class MemoryManager {
 
         } catch (Exception e) {
             log.error("保存记忆到 Redis 失败，降级到内存存储: sessionId={}", sessionId, e);
-            memoryStore.asMap().computeIfAbsent(sessionId, k -> new CopyOnWriteArrayList<>())
+            memoryStore.asMap().computeIfAbsent(sessionId, k -> Collections.synchronizedList(new LinkedList<>()))
                        .add(newMemory);
         }
     }

@@ -333,8 +333,9 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
     @SuppressWarnings("unchecked")
     private String executeLoop(WorkflowDefinition definition, WorkflowNode loopNode,
                                LoopNodeExecutor.LoopSignal signal, WorkflowContext ctx) {
-        List<Object> items = ctx.getVariable("__loopItems__");
-        String itemVar = ctx.getVariable("__loopItemVar__");
+        List<Object> items = signal.items();
+        String itemVar = signal.itemVar();
+        String loopIndexVar = loopNode.getId() + "_loopIndex";
 
         for (int i = 0; i < signal.iterations(); i++) {
             if (signal.conditionExpr() != null && !signal.conditionExpr().isBlank()) {
@@ -346,7 +347,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             if (items != null && i < items.size() && itemVar != null) {
                 ctx.setVariable(itemVar, items.get(i));
             }
-            ctx.setVariable("_loopIndex", i);
+            ctx.setVariable(loopIndexVar, i);
             log.debug("循环迭代 {}/{}: loopTarget={}", i + 1, signal.iterations(), signal.loopTarget());
             executeChain(definition, signal.loopTarget(), ctx);
         }
