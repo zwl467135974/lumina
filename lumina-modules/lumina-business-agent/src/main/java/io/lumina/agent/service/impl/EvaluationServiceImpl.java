@@ -90,7 +90,7 @@ public class EvaluationServiceImpl implements EvaluationService {
     public EvaluationDataset createDataset(EvaluationDatasetDTO dto) {
         List<TestCase> cases = parseCases(dto.getCasesYaml());
         if (cases.isEmpty()) {
-            throw BusinessException.of("测试用例不能为空");
+            throw new BusinessException(ErrorCode.BAD_REQUEST);
         }
         EvaluationDatasetDO dataset = new EvaluationDatasetDO();
         dataset.setName(dto.getName());
@@ -137,13 +137,13 @@ public class EvaluationServiceImpl implements EvaluationService {
     @Transactional(rollbackFor = Exception.class)
     public EvaluationDataset importDataset(MultipartFile file, String name, String agentType, String description) {
         if (file == null || file.isEmpty()) {
-            throw BusinessException.of("上传文件不能为空");
+            throw new BusinessException(ErrorCode.BAD_REQUEST);
         }
         String yamlContent;
         try {
             yamlContent = new String(file.getBytes());
         } catch (Exception e) {
-            throw new BusinessException("读取文件失败", e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST, e);
         }
         EvaluationDatasetDTO dto = new EvaluationDatasetDTO();
         dto.setName(name != null && !name.isBlank() ? name : file.getOriginalFilename());
@@ -165,7 +165,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         List<TestCase> cases = parseCases(dataset.getCasesYaml());
         ScoringMethod method = dto.getScoringMethod() == null ? ScoringMethod.EXACT_MATCH : dto.getScoringMethod();
         EvaluationScorer scorer = Optional.ofNullable(scorerMap.get(method))
-                .orElseThrow(() -> BusinessException.of("不支持的评分方法: " + method));
+                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST));
         double threshold = dto.getThreshold() == null ? 0.7 : dto.getThreshold();
 
         List<CaseResult> results = new ArrayList<>();
@@ -184,7 +184,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         try {
             run.setResultsJson(jsonMapper.writeValueAsString(results));
         } catch (JsonProcessingException e) {
-            throw new BusinessException("序列化评估结果失败", e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST, e);
         }
         runMapper.insert(run);
         report.setRunId(run.getId());
@@ -233,7 +233,7 @@ public class EvaluationServiceImpl implements EvaluationService {
                 List<TestCase> cases2 = parseCases(asyncDataset.getCasesYaml());
                 ScoringMethod method2 = dto.getScoringMethod() == null ? ScoringMethod.EXACT_MATCH : dto.getScoringMethod();
                 EvaluationScorer scorer2 = Optional.ofNullable(scorerMap.get(method2))
-                        .orElseThrow(() -> BusinessException.of("不支持的评分方法: " + method2));
+                        .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST));
                 double threshold2 = dto.getThreshold() == null ? 0.7 : dto.getThreshold();
                 List<CaseResult> results2 = new ArrayList<>();
                 for (TestCase tc : cases2) {
@@ -270,7 +270,7 @@ public class EvaluationServiceImpl implements EvaluationService {
     @Override
     public RunReport getRunReport(Long runId) {
         EvaluationRunDO run = Optional.ofNullable(runMapper.selectById(runId))
-                .orElseThrow(() -> BusinessException.notFound("评估记录不存在"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (!currentTenantId().equals(run.getTenantId())) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
@@ -483,9 +483,9 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     private EvaluationDatasetDO getDatasetDO(Long id) {
         EvaluationDatasetDO dataset = Optional.ofNullable(datasetMapper.selectById(id))
-                .orElseThrow(() -> BusinessException.notFound("评估数据集不存在"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (!currentTenantId().equals(dataset.getTenantId()) || Integer.valueOf(1).equals(dataset.getIsDeleted())) {
-            throw BusinessException.notFound("评估数据集不存在");
+            throw new BusinessException(ErrorCode.NOT_FOUND);
         }
         return dataset;
     }
@@ -510,7 +510,7 @@ public class EvaluationServiceImpl implements EvaluationService {
             JsonNode caseNode = root.has("cases") ? root.get("cases") : root;
             return yamlMapper.convertValue(caseNode, new TypeReference<List<TestCase>>() {});
         } catch (Exception e) {
-            throw BusinessException.of("测试用例 YAML 格式错误: " + e.getMessage());
+            throw new BusinessException(ErrorCode.BAD_REQUEST);
         }
     }
 
@@ -521,7 +521,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         try {
             return jsonMapper.readValue(resultsJson, new TypeReference<List<CaseResult>>() {});
         } catch (JsonProcessingException e) {
-            throw new BusinessException("解析评估结果失败", e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST, e);
         }
     }
 

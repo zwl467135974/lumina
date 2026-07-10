@@ -81,7 +81,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Transactional(rollbackFor = Exception.class)
     public WorkflowDefinitionDO update(Long id, WorkflowDTO dto) {
         WorkflowDefinitionDO entity = getById(id);
-        if (entity.getStatus() == 1) {
+        if (Integer.valueOf(1).equals(entity.getStatus())) {
             throw new BusinessException(ErrorCode.CONFLICT, "已发布的工作流不能修改，请新建版本");
         }
 

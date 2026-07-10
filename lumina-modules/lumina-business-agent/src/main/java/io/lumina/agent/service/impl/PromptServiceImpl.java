@@ -69,7 +69,7 @@ public class PromptServiceImpl implements PromptService {
     @Transactional(rollbackFor = Exception.class)
     public PromptDO update(Long id, PromptDTO dto) {
         PromptDO entity = getById(id);
-        if (entity.getStatus() == 1) {
+        if (Integer.valueOf(1).equals(entity.getStatus())) {
             throw new BusinessException(ErrorCode.CONFLICT, "已发布的版本不能修改，请新建版本");
         }
 
@@ -88,7 +88,7 @@ public class PromptServiceImpl implements PromptService {
     public PromptDO publish(Long id) {
         PromptDO entity = getById(id);
 
-        if (entity.getStatus() == 1 && entity.getIsActive() == 1) {
+        if (Integer.valueOf(1).equals(entity.getStatus()) && Integer.valueOf(1).equals(entity.getIsActive())) {
             return entity;
         }
 

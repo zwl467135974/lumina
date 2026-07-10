@@ -22,13 +22,13 @@ public class MybatisPlusTenantConfig {
      */
     @Bean(name = "mybatisPlusInterceptor")
     @Primary
-    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+    public MybatisPlusInterceptor mybatisPlusInterceptor(TenantLineHandlerImpl tenantLineHandler) {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
 
         // 注意：MyBatis-Plus 要求拦截器顺序为「多租户 → 分页」，租户拦截器必须在分页之前，
         // 否则分页 count 重写时会与租户条件冲突，触发 Parameter index out of range。
         TenantLineInnerInterceptor tenantLineInnerInterceptor = new TenantLineInnerInterceptor();
-        tenantLineInnerInterceptor.setTenantLineHandler(new TenantLineHandlerImpl());
+        tenantLineInnerInterceptor.setTenantLineHandler(tenantLineHandler);
         interceptor.addInnerInterceptor(tenantLineInnerInterceptor);
 
         PaginationInnerInterceptor paginationInnerInterceptor = new PaginationInnerInterceptor(DbType.MYSQL);

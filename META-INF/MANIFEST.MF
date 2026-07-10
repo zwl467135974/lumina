@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Built-By: Robert Winkler
+Created-By: 17.0.5 (Eclipse Adoptium 17.0.5+8)
+Build-Date: 2023-06-29
+Build-Time: 11:44:16.950+0200
+Specification-Title: resilience4j
+Specification-Version: 2.1.0
+Implementation-Title: resilience4j
+Implementation-Version: 2.1.0
+Automatic-Module-Name: io.github.resilience4j.circuitbreaker
+

@@ -164,6 +164,7 @@ public class AgentServiceImpl implements AgentService {
         agentMapper.updateById(agentDO);
 
         log.info("Agent 更新成功: id={}", agentId);
+        agentExecutionEngine.evictCache(agentId);
         return existingAgent;
     }
 
@@ -178,6 +179,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         agentMapper.deleteById(agentId);
+        agentExecutionEngine.evictCache(agentId);
 
         log.info("Agent 删除成功: id={}", agentId);
     }
