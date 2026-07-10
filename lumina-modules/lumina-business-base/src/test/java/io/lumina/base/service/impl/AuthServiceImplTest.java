@@ -7,9 +7,11 @@ import io.lumina.base.infrastructure.entity.UserDO;
 import io.lumina.base.infrastructure.mapper.PermissionMapper;
 import io.lumina.base.infrastructure.mapper.RoleMapper;
 import io.lumina.base.infrastructure.mapper.UserMapper;
+import io.lumina.base.service.OnlineUserService;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.JwtUtil;
 import io.lumina.common.util.PasswordUtil;
+import io.lumina.framework.cache.RedisCacheManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +53,12 @@ class AuthServiceImplTest {
     @Mock
     private JwtUtil jwtUtil;
 
+    @Mock
+    private RedisCacheManager redisCacheManager;
+
+    @Mock
+    private OnlineUserService onlineUserService;
+
     @Test
     void loginSuccess() {
         LoginDTO dto = new LoginDTO();
@@ -73,6 +82,7 @@ class AuthServiceImplTest {
         when(roleMapper.selectRolesByUserId(10L)).thenReturn(List.of(role));
         when(roleMapper.selectPermissionIdsByRoleIds(anyList())).thenReturn(Collections.emptyList());
         when(jwtUtil.generateToken(eq("testuser"), anyMap())).thenReturn("mock-token");
+        when(jwtUtil.getExpiration("mock-token")).thenReturn(new Date(System.currentTimeMillis() + 7200000));
 
         LoginVO vo = authService.login(dto);
 
@@ -156,6 +166,7 @@ class AuthServiceImplTest {
         when(roleMapper.selectRolesByUserId(1L)).thenReturn(List.of(role));
         when(roleMapper.selectPermissionIdsByRoleIds(anyList())).thenReturn(Collections.emptyList());
         when(jwtUtil.generateToken(anyString(), anyMap())).thenReturn("token");
+        when(jwtUtil.getExpiration("token")).thenReturn(new Date(System.currentTimeMillis() + 7200000));
 
         LoginVO vo = authService.login(dto);
         assertThat(vo.getTenantId()).isEqualTo(0L);

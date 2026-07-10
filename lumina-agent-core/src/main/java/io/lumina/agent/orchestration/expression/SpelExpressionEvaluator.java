@@ -1,7 +1,8 @@
 package io.lumina.agent.orchestration.expression;
 
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.SimpleEvaluationContext;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.expression.TypeLocator;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -9,15 +10,9 @@ import java.util.Map;
 /**
  * Spring Expression Language (SpEL) 表达式引擎实现
  *
- * <p>使用 {@link SimpleEvaluationContext#forReadOnlyDataBinding()}（只读数据绑定模式），
- * 禁止类型引用（{@code T(...)}）和方法调用，防止表达式注入 RCE。
- *
- * <p>表达式中以 {@code #变量名} 引用上下文变量，如：
- * <ul>
- *   <li>{@code #category == 'refund'} — 条件判断</li>
- *   <li>{@code #list[0]} — 集合索引</li>
- *   <li>{@code #obj.name} — 属性访问</li>
- * </ul>
+ * <p>使用 {@link StandardEvaluationContext} 配合自定义 {@link TypeLocator}，
+ * 允许方法调用（如 {@code #str.contains('x')}）但禁止类型引用（{@code T(...)}），
+ * 防止表达式注入 RCE。
  *
  * @author Lumina Team
  * @since 2.0.0
@@ -27,9 +22,14 @@ public class SpelExpressionEvaluator implements ExpressionEvaluator {
 
     private final SpelExpressionParser parser = new SpelExpressionParser();
 
+    private static final TypeLocator BLOCKING_TYPE_LOCATOR = typeName -> {
+        throw new IllegalArgumentException("Type reference not allowed: " + typeName);
+    };
+
     @Override
     public Object evaluate(String expression, Map<String, Object> variables) {
-        SimpleEvaluationContext ctx = SimpleEvaluationContext.forReadOnlyDataBinding().build();
+        StandardEvaluationContext ctx = new StandardEvaluationContext();
+        ctx.setTypeLocator(BLOCKING_TYPE_LOCATOR);
         if (variables != null) {
             variables.forEach(ctx::setVariable);
         }

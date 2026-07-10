@@ -10,11 +10,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
-import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -28,8 +28,6 @@ import static org.mockito.Mockito.when;
 /**
  * JwtAuthenticationGatewayFilterFactory 单元测试
  *
- * <p>覆盖白名单跳过、无 Token、无效 Token、有效 Token 等场景。
- *
  * @author Lumina Team
  * @since 2.0.0
  */
@@ -41,15 +39,16 @@ class JwtAuthenticationGatewayFilterFactoryTest {
     @Mock
     private JwtUtil jwtUtil;
 
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
+
     private WhitelistConfig whitelistConfig;
 
     @BeforeEach
     void setUp() {
-        filterFactory = new JwtAuthenticationGatewayFilterFactory();
         whitelistConfig = new WhitelistConfig();
         whitelistConfig.setPaths(Arrays.asList("/api/v1/auth/login", "/actuator/**"));
-        ReflectionTestUtils.setField(filterFactory, "jwtUtil", jwtUtil);
-        ReflectionTestUtils.setField(filterFactory, "whitelistConfig", whitelistConfig);
+        filterFactory = new JwtAuthenticationGatewayFilterFactory(jwtUtil, whitelistConfig, stringRedisTemplate);
     }
 
     @Test
