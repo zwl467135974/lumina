@@ -1,12 +1,21 @@
 package io.lumina.agent.engine.impl;
 
+import io.agentscope.core.rag.Knowledge;
 import io.agentscope.core.rag.RAGMode;
 import io.lumina.agent.config.LuminaAgentProperties;
+import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.loader.ConfigLoader;
 import io.lumina.agent.loader.PromptLoader;
+import io.lumina.agent.manager.EnhancedToolManager;
 import io.lumina.agent.manager.MemoryManager;
+import io.lumina.agent.model.ChatModelFactory;
+import io.lumina.agent.monitor.ToolCircuitBreaker;
+import io.lumina.agent.monitor.ToolInvocationRecorder;
+import io.lumina.agent.resilience.LlmResilienceWrapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.context.ApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,7 +34,16 @@ class DefaultAgentExecutionEngineRagTest {
                 Mockito.mock(ConfigLoader.class),
                 Mockito.mock(PromptLoader.class),
                 Mockito.mock(MemoryManager.class),
-                new LuminaAgentProperties());
+                new LuminaAgentProperties(),
+                Mockito.mock(ChatModelFactory.class),
+                Mockito.mock(LlmResilienceWrapper.class),
+                Mockito.mock(ApplicationContext.class),
+                Mockito.mock(EnhancedToolManager.class),
+                Mockito.mock(ToolInvocationRecorder.class),
+                Mockito.mock(ToolCircuitBreaker.class),
+                Mockito.mock(MeterRegistry.class),
+                Mockito.mock(Knowledge.class),
+                Mockito.mock(RagProperties.class));
     }
 
     @Test

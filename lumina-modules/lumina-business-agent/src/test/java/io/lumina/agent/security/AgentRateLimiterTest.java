@@ -4,22 +4,23 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.LoginContext;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.framework.cache.RedisCacheManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.redisson.api.RRateLimiter;
-import org.redisson.api.RateIntervalUnit;
-import org.redisson.api.RateType;
-import org.redisson.api.RedissonClient;
+import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * AgentRateLimiter 单元测试
@@ -29,20 +30,13 @@ import static org.mockito.Mockito.*;
  */
 class AgentRateLimiterTest {
 
-    private RedissonClient redissonClient;
-    private RRateLimiter rateLimiter;
+    private RedisCacheManager redisCacheManager;
     private AgentRateLimiter agentRateLimiter;
 
     @BeforeEach
     void setUp() throws Exception {
-        redissonClient = mock(RedissonClient.class);
-        rateLimiter = mock(RRateLimiter.class);
-
-        when(redissonClient.getRateLimiter(anyString())).thenReturn(rateLimiter);
-        when(rateLimiter.trySetRate(any(RateType.class), anyLong(), anyLong(), any(RateIntervalUnit.class)))
-                .thenReturn(true);
-
-        agentRateLimiter = new AgentRateLimiter(redissonClient);
+        redisCacheManager = mock(RedisCacheManager.class);
+        agentRateLimiter = new AgentRateLimiter(redisCacheManager);
 
         Field maxRequestsField = AgentRateLimiter.class.getDeclaredField("maxRequests");
         maxRequestsField.setAccessible(true);
@@ -62,17 +56,18 @@ class AgentRateLimiterTest {
 
     @Test
     void withinLimitPasses() {
-        when(rateLimiter.tryAcquire()).thenReturn(true);
+        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(1L);
 
         assertThatCode(() -> agentRateLimiter.checkRateLimit(1L))
                 .doesNotThrowAnyException();
 
-        verify(rateLimiter).tryAcquire();
+        verify(redisCacheManager).incrementAndGet(eq("agent:rate:1:100"));
+        verify(redisCacheManager).expire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
     }
 
     @Test
     void exceedingLimitThrowsBusinessException() {
-        when(rateLimiter.tryAcquire()).thenReturn(false);
+        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(6L);
 
         assertThatThrownBy(() -> agentRateLimiter.checkRateLimit(1L))
                 .isInstanceOf(BusinessException.class)
@@ -81,35 +76,41 @@ class AgentRateLimiterTest {
                     assert be.getErrorCode() == ErrorCode.AGENT_RATE_LIMITED;
                 });
 
-        verify(rateLimiter).tryAcquire();
+        verify(redisCacheManager, never()).expire(anyString(), Mockito.any(Duration.class));
     }
 
     @Test
     void rateLimiterKeyIncludesAgentIdAndUserId() {
-        when(rateLimiter.tryAcquire()).thenReturn(true);
+        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(1L);
 
         agentRateLimiter.checkRateLimit(42L);
 
-        verify(redissonClient).getRateLimiter(eq("agent:rate:42:100"));
+        verify(redisCacheManager).incrementAndGet(eq("agent:rate:42:100"));
     }
 
     @Test
-    void anonymousUserUsesFallbackKey() {
-        BaseContext.clear();
-
-        when(rateLimiter.tryAcquire()).thenReturn(true);
+    void firstRequestSetsExpiry() {
+        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(1L);
 
         agentRateLimiter.checkRateLimit(1L);
 
-        verify(redissonClient).getRateLimiter(eq("agent:rate:1:anonymous"));
+        verify(redisCacheManager).expire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
     }
 
     @Test
-    void trySetRateCalledWithConfiguredValues() {
-        when(rateLimiter.tryAcquire()).thenReturn(true);
+    void subsequentRequestDoesNotResetExpiry() {
+        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(2L);
 
         agentRateLimiter.checkRateLimit(1L);
 
-        verify(rateLimiter).trySetRate(eq(RateType.OVERALL), eq(5L), eq(60L), eq(RateIntervalUnit.SECONDS));
+        verify(redisCacheManager, never()).expire(anyString(), Mockito.any(Duration.class));
+    }
+
+    @Test
+    void redisFailureDoesNotBlock() {
+        when(redisCacheManager.incrementAndGet(anyString())).thenThrow(new RuntimeException("Redis down"));
+
+        assertThatCode(() -> agentRateLimiter.checkRateLimit(1L))
+                .doesNotThrowAnyException();
     }
 }
