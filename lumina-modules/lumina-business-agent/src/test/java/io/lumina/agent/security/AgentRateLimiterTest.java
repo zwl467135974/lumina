@@ -76,7 +76,7 @@ class AgentRateLimiterTest {
                     assert be.getErrorCode() == ErrorCode.AGENT_RATE_LIMITED;
                 });
 
-        verify(redisCacheManager).expire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
+        verify(redisCacheManager, never()).expire(anyString(), Mockito.any(Duration.class));
     }
 
     @Test
@@ -98,12 +98,12 @@ class AgentRateLimiterTest {
     }
 
     @Test
-    void subsequentRequestAlsoRefreshesExpiry() {
+    void subsequentRequestDoesNotResetExpiry() {
         when(redisCacheManager.incrementAndGet(anyString())).thenReturn(2L);
 
         agentRateLimiter.checkRateLimit(1L);
 
-        verify(redisCacheManager).expire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
+        verify(redisCacheManager, never()).expire(anyString(), Mockito.any(Duration.class));
     }
 
     @Test

@@ -105,7 +105,9 @@ public class ConversationServiceImpl implements ConversationService {
         ConversationDO conv = getByUuid(uuid);
         conversationMapper.deleteById(conv.getConversationId());
 
-        // 同时清空 Redis 热记忆
+        messageMapper.delete(new LambdaQueryWrapper<MessageDO>()
+                .eq(MessageDO::getConversationId, conv.getConversationId()));
+
         if (memoryManager != null) {
             memoryManager.clearMemories(uuid);
         }

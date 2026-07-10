@@ -353,6 +353,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             instance.setUpdateTime(LocalDateTime.now());
             instanceMapper.updateById(instance);
             logCollector.flush();
+            workflowEngine.removeListener(logCollector);
         }
 
         return instance;
@@ -416,6 +417,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             instance.setUpdateTime(LocalDateTime.now());
             instanceMapper.updateById(instance);
             logCollector.flush();
+            workflowEngine.removeListener(logCollector);
         }
     }
 

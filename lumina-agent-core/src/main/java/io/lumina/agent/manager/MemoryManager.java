@@ -194,9 +194,9 @@ public class MemoryManager {
         List<Memory> memories = getMemories(sessionId);
         int size = memories.size();
         if (size <= n) {
-            return memories;
+            return new ArrayList<>(memories);
         }
-        return memories.subList(size - n, size);
+        return new ArrayList<>(memories.subList(size - n, size));
     }
 
     /**
