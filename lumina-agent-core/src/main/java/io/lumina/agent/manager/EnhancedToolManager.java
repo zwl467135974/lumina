@@ -55,17 +55,29 @@ public class EnhancedToolManager implements IToolManager {
     public void scanAndRegisterTools() {
         log.info("开始扫描 Agent 工具...");
 
-        // 扫描所有带有 @RestController 和 @Controller 的类
-        Map<String, Object> controllers = applicationContext.getBeansWithAnnotation(RestController.class);
-        controllers.putAll(applicationContext.getBeansWithAnnotation(Controller.class));
+        // 扫描所有可能包含 @AgentTool 的 Spring Bean
+        // ApplicationReadyEvent 阶段所有 Bean 已就绪，无循环依赖风险
+        Map<String, Object> candidates = applicationContext.getBeansWithAnnotation(RestController.class);
+        candidates.putAll(applicationContext.getBeansWithAnnotation(Controller.class));
+        candidates.putAll(applicationContext.getBeansWithAnnotation(Component.class));
+        candidates.putAll(applicationContext.getBeansWithAnnotation(org.springframework.stereotype.Service.class));
 
         int toolCount = 0;
-        for (Object controller : controllers.values()) {
-            Method[] methods = controller.getClass().getDeclaredMethods();
+        for (Object bean : candidates.values()) {
+            // 跳过自身，避免扫描 EnhancedToolManager 的方法
+            if (bean == this) {
+                continue;
+            }
+            Method[] methods = bean.getClass().getDeclaredMethods();
             for (Method method : methods) {
                 // 检查是否有 @AgentTool 注解
                 if (method.isAnnotationPresent(io.lumina.agent.tool.AgentTool.class)) {
                     io.lumina.agent.tool.AgentTool annotation = method.getAnnotation(io.lumina.agent.tool.AgentTool.class);
+
+                    // 跳过禁用的工具
+                    if (!annotation.enabled()) {
+                        continue;
+                    }
 
                     // 创建工具定义
                     String toolName = annotation.name().isEmpty() ?
@@ -79,7 +91,7 @@ public class EnhancedToolManager implements IToolManager {
                             params -> {
                                 // 调用原始方法
                                 method.setAccessible(true);
-                                return method.invoke(controller, parseParameters(params, method));
+                                return method.invoke(bean, parseParameters(params, method));
                             }
                     );
 
