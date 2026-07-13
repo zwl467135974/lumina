@@ -6,7 +6,7 @@
 
 排查参考：
 
-- `skills/lumina_frontend_design/SKILL.md`
+- `.agents/skills/lumina_frontend_design/SKILL.md`
 - `lumina-frontend/DESIGN.md`
 - `lumina-frontend/.agents/ui-learnings.md`
 - `lumina-frontend/src/assets/styles/variables.scss`

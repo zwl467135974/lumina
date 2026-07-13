@@ -5,79 +5,79 @@
 
 ## 项目技能包 (Skills)
 
-本项目包含多个开发技能包，位于 `skills/` 目录下。AI 助手应根据上下文自动识别并使用相关技能包：
+本项目包含多个开发技能包，位于 `.agents/skills/` 目录下。AI 助手应根据上下文自动识别并使用相关技能包：
 
 ### 1. lumina_code_style
 - **用途**: 代码风格和命名规范
-- **路径**: `skills/lumina_code_style/SKILL.md`
+- **路径**: `.agents/skills/lumina_code_style/SKILL.md`
 - **触发条件**: 编写 Java 代码、创建新类、代码审查时
 
 ### 2. lumina_architecture
 - **用途**: 简化分层架构规范
-- **路径**: `skills/lumina_architecture/SKILL.md`
+- **路径**: `.agents/skills/lumina_architecture/SKILL.md`
 - **触发条件**: 设计模块结构、创建新模块、组织代码层次时
 
 ### 3. lumina_mybatis_plus
 - **用途**: MyBatis-Plus 使用规范
-- **路径**: `skills/lumina_mybatis_plus/SKILL.md`
+- **路径**: `.agents/skills/lumina_mybatis_plus/SKILL.md`
 - **触发条件**: 编写数据库访问代码、创建 Mapper、编写 SQL 时
 
 ### 4. lumina_api_design
 - **用途**: API 接口设计规范
-- **路径**: `skills/lumina_api_design/SKILL.md`
+- **路径**: `.agents/skills/lumina_api_design/SKILL.md`
 - **触发条件**: 设计 REST API、创建 Controller、定义 DTO 时
 
 ### 5. lumina_domain_model
 - **用途**: 领域模型实践规范
-- **路径**: `skills/lumina_domain_model/SKILL.md`
+- **路径**: `.agents/skills/lumina_domain_model/SKILL.md`
 - **触发条件**: 设计领域实体、创建业务逻辑、实现领域方法时
 
 ### 6. lumina_json_serialization
 - **用途**: JSON 序列化规范
-- **路径**: `skills/lumina_json_serialization/SKILL.md`
+- **路径**: `.agents/skills/lumina_json_serialization/SKILL.md`
 - **触发条件**: 处理 JSON 序列化、创建 DTO、配置 Jackson 时
 
 ### 7. lumina_git_commit
 - **用途**: Git Commit 信息生成规范
-- **路径**: `skills/lumina_git_commit/SKILL.md`
+- **路径**: `.agents/skills/lumina_git_commit/SKILL.md`
 - **触发条件**: 生成 Git 暂存区变更的提交信息时
 
 ### 8. lumina_testing
 - **用途**: 测试规范（单元/集成）
-- **路径**: `skills/lumina_testing/SKILL.md`
+- **路径**: `.agents/skills/lumina_testing/SKILL.md`
 - **触发条件**: 编写测试、创建测试类、验证业务逻辑时
 
 ### 9. lumina_observability
 - **用途**: 可观测性规范（日志/审计/指标）
-- **路径**: `skills/lumina_observability/SKILL.md`
+- **路径**: `.agents/skills/lumina_observability/SKILL.md`
 - **触发条件**: 添加日志、审计标注、指标埋点时
 
 ### 10. lumina_conversation
 - **用途**: 会话与记忆管理规范
-- **路径**: `skills/lumina_conversation/SKILL.md`
+- **路径**: `.agents/skills/lumina_conversation/SKILL.md`
 - **触发条件**: 处理多轮对话、记忆管理、流式输出时
 
 ### 11. lumina_frontend_design
 - **用途**: 前端 UI 设计规范与设计系统（自进化）
-- **路径**: `skills/lumina_frontend_design/SKILL.md`
+- **路径**: `.agents/skills/lumina_frontend_design/SKILL.md`
 - **触发条件**: 创建/修改 Vue 组件、CSS/SCSS、布局、主题、动画时
 - **自进化**: 每次使用后更新 `lumina-frontend/DESIGN.md` 和 `.agents/ui-learnings.md`
 
 ### 12. lumina_redis
 - **用途**: Redis 操作规范
-- **路径**: `skills/lumina_redis/SKILL.md`
+- **路径**: `.agents/skills/lumina_redis/SKILL.md`
 - **触发条件**: 任何涉及 Redis 读写的后端代码（禁止直接用 RedisTemplate/RedissonClient，必须走 RedisCacheManager）
 
 ### 13. lumina_flyway
 - **用途**: Flyway 迁移规范
-- **路径**: `skills/lumina_flyway/SKILL.md`
+- **路径**: `.agents/skills/lumina_flyway/SKILL.md`
 - **触发条件**: 创建数据库迁移文件、INSERT 种子数据、ALTER TABLE 时
 
 ## 技能包使用说明
 
 1. **自动识别**: AI 助手应根据用户请求和代码上下文自动识别需要使用的技能包
 2. **按需加载**: 优先加载技能包的元数据，需要时再加载完整内容
-3. **引用规范**: 使用 `@skills/lumina_xxx/SKILL.md` 或 `skills/lumina_xxx/SKILL.md` 来引用特定技能包
+3. **引用规范**: 使用 `@.agents/skills/lumina_xxx/SKILL.md` 或 `.agents/skills/lumina_xxx/SKILL.md` 来引用特定技能包
 
 ## 项目结构规范
 
