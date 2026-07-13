@@ -71,6 +71,9 @@ public class AgentServiceImpl implements AgentService {
     @Autowired
     private io.lumina.agent.service.BudgetService budgetService;
 
+    @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     @Autowired(required = false)
     private io.lumina.agent.security.ContentModerationService contentModerationService;
 
@@ -453,7 +456,7 @@ public class AgentServiceImpl implements AgentService {
             return null;
         }
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileUuids);
+            return objectMapper.writeValueAsString(fileUuids);
         } catch (Exception e) {
             return null;
         }
@@ -481,6 +484,7 @@ public class AgentServiceImpl implements AgentService {
 
     private AgentConfig buildExecutionConfig(Agent agent) {
         AgentConfig config = new AgentConfig();
+        config.setAgentId(agent.getAgentId());
         config.setAgentName(agent.getAgentName());
         config.setAgentType(agent.getAgentType());
 
@@ -496,7 +500,7 @@ public class AgentServiceImpl implements AgentService {
         // 解析 Agent 的 LLM 配置（DB 持久化的 JSON）
         if (StringUtils.hasText(agent.getLlmConfig())) {
             try {
-                AgentConfig.LLMConfig llmConfig = new com.fasterxml.jackson.databind.ObjectMapper()
+                AgentConfig.LLMConfig llmConfig = objectMapper
                         .readValue(agent.getLlmConfig(), AgentConfig.LLMConfig.class);
                 config.setLlmConfig(llmConfig);
                 log.debug("使用 Agent 专属 LLM 配置: modelType={}, modelName={}",

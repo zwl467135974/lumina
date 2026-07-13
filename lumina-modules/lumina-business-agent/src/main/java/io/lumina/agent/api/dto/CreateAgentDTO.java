@@ -1,13 +1,18 @@
 package io.lumina.agent.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 创建 Agent DTO
+ *
+ * <p>llmConfig 和 tools 使用结构化类型接收前端请求，
+ * Controller 层负责转换为 Agent domain model 的 String 格式存库。
  *
  * @author Lumina Team
  * @since 1.0.0
@@ -38,12 +43,36 @@ public class CreateAgentDTO implements Serializable {
     private String description;
 
     /**
-     * LLM 配置 JSON（modelType/modelName/temperature 等）
+     * LLM 配置（结构化对象，前端直接传 JSON 对象）
      */
-    private String llmConfig;
+    private LlmConfigDTO llmConfig;
 
     /**
-     * 工具列表（逗号分隔）
+     * 工具列表（前端传数组，如 ["base.getUser", "base.createUser"]）
      */
-    private String tools;
+    private List<String> tools;
+
+    /**
+     * LLM 配置 DTO（字段与前端 LlmConfig 对齐，同时兼容 AgentConfig.LLMConfig）
+     */
+    @Data
+    public static class LlmConfigDTO implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 模型提供商（前端字段名 provider，后端 AgentConfig 用 modelType）
+         */
+        @JsonAlias({"provider", "modelType", "type"})
+        private String modelType;
+
+        private String modelName;
+        private String apiKey;
+        private String baseUrl;
+        private Double temperature;
+        private Integer maxTokens;
+        private Double topP;
+        private Double frequencyPenalty;
+        private Double presencePenalty;
+    }
 }

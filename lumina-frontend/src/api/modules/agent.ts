@@ -83,8 +83,8 @@ export function deleteAgent(id: number) {
 /**
  * 执行 Agent
  */
-export function executeAgent(id: number, task: string) {
-  return request.post<R<string>>(`/api/v1/agents/${id}/execute`, { task })
+export function executeAgent(id: number, task: string, conversationId?: string) {
+  return request.post<R<string>>(`/api/v1/agents/${id}/execute`, { task, conversationId })
 }
 
 export function submitAgentTask(id: number, data: { task: string; conversationId?: string; fileUuids?: string[] }) {

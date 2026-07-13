@@ -17,6 +17,7 @@ import io.lumina.common.core.PageResult;
 import io.lumina.common.core.R;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.util.CollectionUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -28,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
@@ -35,7 +37,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -66,6 +67,8 @@ public class AgentController {
 
     private final AgentTaskService agentTaskService;
 
+    private final ObjectMapper objectMapper;
+
     /**
      * 创建 Agent
      */
@@ -74,16 +77,13 @@ public class AgentController {
     public R<AgentVO> createAgent(@Valid @RequestBody CreateAgentDTO dto) {
         log.info("创建 Agent: {}", dto.getAgentName());
 
-        // DTO 转领域模型
-        Agent agent = new Agent();
-        BeanUtils.copyProperties(dto, agent);
+        Agent agent = toDomain(dto);
 
-        // 调用服务
         Agent createdAgent = agentService.createAgent(agent);
 
-        // 领域模型转 VO
         AgentVO vo = new AgentVO();
         BeanUtils.copyProperties(createdAgent, vo);
+        maskApiKeyInLlmConfig(vo);
 
         return R.success(vo);
     }
@@ -98,18 +98,66 @@ public class AgentController {
             @Valid @RequestBody CreateAgentDTO dto) {
         log.info("更新 Agent: id={}", id);
 
-        // DTO 转领域模型
-        Agent agent = new Agent();
-        BeanUtils.copyProperties(dto, agent);
+        Agent agent = toDomain(dto);
 
-        // 调用服务
         Agent updatedAgent = agentService.updateAgent(id, agent);
 
-        // 领域模型转 VO
         AgentVO vo = new AgentVO();
         BeanUtils.copyProperties(updatedAgent, vo);
+        maskApiKeyInLlmConfig(vo);
 
         return R.success(vo);
+    }
+
+    /**
+     * DTO → Agent 领域模型转换
+     *
+     * <p>处理类型差异：DTO 的 tools 是 List<String>、llmConfig 是对象，
+     * Agent 领域模型的 tools/llmConfig 是 String（逗号分隔 / JSON 字符串），用于 DB 存储。
+     */
+    private Agent toDomain(CreateAgentDTO dto) {
+        Agent agent = new Agent();
+        agent.setAgentName(dto.getAgentName());
+        agent.setAgentType(dto.getAgentType());
+        agent.setDescription(dto.getDescription());
+
+        // tools: List<String> → 逗号分隔 String
+        if (dto.getTools() != null && !dto.getTools().isEmpty()) {
+            agent.setTools(String.join(",", dto.getTools()));
+        }
+
+        // llmConfig: 对象 → JSON 字符串
+        if (dto.getLlmConfig() != null) {
+            try {
+                agent.setLlmConfig(objectMapper.writeValueAsString(dto.getLlmConfig()));
+            } catch (Exception e) {
+                log.warn("序列化 llmConfig 失败: {}", e.getMessage());
+            }
+        }
+
+        return agent;
+    }
+
+    /**
+     * 脱敏 VO 中的 llmConfig JSON(移除 apiKey 明文)
+     *
+     * <p>前端编辑时如需修改 apiKey 会重新输入;不输入则保留原值(由 updateAgent 的 null 跳过逻辑保证)。
+     */
+    private void maskApiKeyInLlmConfig(AgentVO vo) {
+        String llmConfig = vo.getLlmConfig();
+        if (llmConfig == null || llmConfig.isBlank()) {
+            return;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> config = objectMapper.readValue(llmConfig, Map.class);
+            if (config.containsKey("apiKey")) {
+                config.put("apiKey", null); // 返回 null，前端显示空(不回显明文)
+                vo.setLlmConfig(objectMapper.writeValueAsString(config));
+            }
+        } catch (Exception e) {
+            log.debug("llmConfig 非 JSON 格式，跳过脱敏: {}", e.getMessage());
+        }
     }
 
     /**
@@ -132,9 +180,9 @@ public class AgentController {
 
         Agent agent = agentService.getAgentById(id);
 
-        // 领域模型转 VO
         AgentVO vo = new AgentVO();
         BeanUtils.copyProperties(agent, vo);
+        maskApiKeyInLlmConfig(vo);
 
         return R.success(vo);
     }

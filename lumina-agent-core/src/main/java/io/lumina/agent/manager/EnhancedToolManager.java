@@ -95,6 +95,9 @@ public class EnhancedToolManager implements IToolManager {
                             }
                     );
 
+                    // 自动生成参数 JSON Schema（依赖 -parameters 编译选项获取真实参数名）
+                    definition.setParameters(generateParametersSchema(method));
+
                     registerToolDefinition(definition);
                     toolCount++;
                 }
@@ -250,6 +253,63 @@ public class EnhancedToolManager implements IToolManager {
             descriptions.add(getToolDescription(toolName));
         }
         return descriptions;
+    }
+
+    /**
+     * 根据方法签名自动生成参数 JSON Schema
+     *
+     * <p>依赖 Maven -parameters 编译选项获取真实参数名。
+     * 将方法参数转换为 OpenAI/AgentScope 兼容的 JSON Schema 格式。
+     *
+     * @param method 工具方法
+     * @return JSON Schema 字符串
+     */
+    private String generateParametersSchema(Method method) {
+        java.lang.reflect.Parameter[] parameters = method.getParameters();
+        if (parameters.length == 0) {
+            return "{\"type\":\"object\",\"properties\":{},\"required\":[]}";
+        }
+
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        List<String> required = new ArrayList<>();
+
+        for (java.lang.reflect.Parameter param : parameters) {
+            String paramName = param.getName();
+            Class<?> paramType = param.getType();
+
+            Map<String, Object> prop = new LinkedHashMap<>();
+            prop.put("type", jsonTypeOf(paramType));
+            prop.put("description", paramName);
+
+            properties.put(paramName, prop);
+            required.add(paramName);
+        }
+
+        schema.put("properties", properties);
+        schema.put("required", required);
+
+        try {
+            return objectMapper.writeValueAsString(schema);
+        } catch (Exception e) {
+            log.warn("生成参数 Schema 失败: {}", method.getName(), e);
+            return "{\"type\":\"object\",\"properties\":{},\"required\":[]}";
+        }
+    }
+
+    /**
+     * Java 类型 → JSON Schema type 映射
+     */
+    private String jsonTypeOf(Class<?> type) {
+        if (type == String.class) return "string";
+        if (type == Integer.class || type == int.class || type == Long.class || type == long.class) return "integer";
+        if (type == Double.class || type == double.class || type == Float.class || type == float.class) return "number";
+        if (type == Boolean.class || type == boolean.class) return "boolean";
+        if (java.util.Collection.class.isAssignableFrom(type)) return "array";
+        if (Map.class.isAssignableFrom(type)) return "object";
+        return "object";
     }
 
     /**
