@@ -8,7 +8,6 @@ import io.lumina.base.api.dto.user.ResetPasswordDTO;
 import io.lumina.base.api.dto.user.UpdateUserDTO;
 import io.lumina.base.api.dto.user.UserQueryDTO;
 import io.lumina.base.api.vo.user.UserVO;
-import io.lumina.base.domain.model.User;
 import io.lumina.base.infrastructure.entity.RoleDO;
 import io.lumina.base.infrastructure.entity.UserDO;
 import io.lumina.base.infrastructure.entity.UserRoleDO;

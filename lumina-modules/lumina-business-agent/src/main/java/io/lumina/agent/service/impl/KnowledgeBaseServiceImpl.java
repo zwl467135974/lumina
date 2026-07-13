@@ -65,7 +65,6 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public List<KnowledgeBaseDO> listKnowledgeBases(String name) {
         LambdaQueryWrapper<KnowledgeBaseDO> wrapper = new LambdaQueryWrapper<KnowledgeBaseDO>()
                 .eq(KnowledgeBaseDO::getTenantId, currentTenantId())
-                .eq(KnowledgeBaseDO::getIsDeleted, 0)
                 .orderByDesc(KnowledgeBaseDO::getCreateTime);
         if (StringUtils.hasText(name)) {
             wrapper.like(KnowledgeBaseDO::getName, name);
@@ -135,8 +134,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
 
         kbMapper.selectList(new LambdaQueryWrapper<KnowledgeBaseDO>()
                         .eq(KnowledgeBaseDO::getVisibility, "PUBLIC")
-                        .eq(KnowledgeBaseDO::getTenantId, tenantId)
-                        .eq(KnowledgeBaseDO::getIsDeleted, 0))
+                        .eq(KnowledgeBaseDO::getTenantId, tenantId))
                 .forEach(kb -> accessibleIds.add(kb.getId()));
 
         if (accessibleIds.isEmpty()) {

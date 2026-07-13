@@ -56,7 +56,6 @@ public class BudgetServiceImpl implements BudgetService {
         LambdaQueryWrapper<BudgetRuleDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BudgetRuleDO::getTenantId, tenantId);
         wrapper.eq(BudgetRuleDO::getStatus, 1);
-        wrapper.eq(BudgetRuleDO::getIsDeleted, 0);
 
         List<BudgetRuleDO> rules = budgetRuleMapper.selectList(wrapper);
         if (rules.isEmpty()) {
@@ -122,7 +121,6 @@ public class BudgetServiceImpl implements BudgetService {
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         LambdaQueryWrapper<BudgetRuleDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(BudgetRuleDO::getTenantId, tenantId);
-        wrapper.eq(BudgetRuleDO::getIsDeleted, 0);
         wrapper.orderByDesc(BudgetRuleDO::getCreateTime);
         return budgetRuleMapper.selectList(wrapper);
     }

@@ -115,7 +115,6 @@ public class WorkflowServiceImpl implements WorkflowService {
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         LambdaQueryWrapper<WorkflowDefinitionDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowDefinitionDO::getTenantId, tenantId);
-        wrapper.eq(WorkflowDefinitionDO::getIsDeleted, 0);
         if (StringUtils.hasText(name)) {
             wrapper.like(WorkflowDefinitionDO::getName, name);
         }

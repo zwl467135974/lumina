@@ -40,7 +40,6 @@ public class PromptServiceImpl implements PromptService {
         LambdaQueryWrapper<PromptDO> check = new LambdaQueryWrapper<>();
         check.eq(PromptDO::getName, dto.getName());
         check.eq(PromptDO::getTenantId, tenantId);
-        check.eq(PromptDO::getIsDeleted, 0);
         if (promptMapper.selectCount(check) > 0) {
             throw new BusinessException(ErrorCode.CONFLICT, "Prompt 名称已存在: " + dto.getName());
         }
@@ -155,7 +154,6 @@ public class PromptServiceImpl implements PromptService {
         Long tenantId = currentTenant();
         LambdaQueryWrapper<PromptDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PromptDO::getTenantId, tenantId);
-        wrapper.eq(PromptDO::getIsDeleted, 0);
         if (StringUtils.hasText(name)) {
             wrapper.like(PromptDO::getName, name);
         }
@@ -171,7 +169,6 @@ public class PromptServiceImpl implements PromptService {
         LambdaQueryWrapper<PromptDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PromptDO::getName, name);
         wrapper.eq(PromptDO::getTenantId, tenantId);
-        wrapper.eq(PromptDO::getIsDeleted, 0);
         wrapper.orderByDesc(PromptDO::getVersion);
         return promptMapper.selectList(wrapper);
     }
@@ -192,7 +189,6 @@ public class PromptServiceImpl implements PromptService {
         wrapper.eq(PromptDO::getTenantId, tenantId);
         wrapper.eq(PromptDO::getIsActive, 1);
         wrapper.eq(PromptDO::getStatus, 1);
-        wrapper.eq(PromptDO::getIsDeleted, 0);
         wrapper.last("LIMIT 1");
         return promptMapper.selectOne(wrapper);
     }
