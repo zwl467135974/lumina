@@ -11,9 +11,13 @@ import io.lumina.agent.service.CostService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.framework.config.RocketMQConfig;
+import io.lumina.notification.event.NotificationEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +44,9 @@ public class BudgetServiceImpl implements BudgetService {
     private final BudgetRuleMapper budgetRuleMapper;
     private final AgentTaskMapper agentTaskMapper;
     private final CostService costService;
+
+    @Autowired(required = false)
+    private RocketMQTemplate rocketMQTemplate;
 
     private static final String SCOPE_TENANT = "TENANT";
     private static final String SCOPE_AGENT = "AGENT";
@@ -81,6 +88,17 @@ public class BudgetServiceImpl implements BudgetService {
                 log.warn("预算告警: rule={}, scope={}/{}, usage={}, limit={}, threshold={}%",
                         rule.getRuleName(), rule.getScopeType(), rule.getScopeId(),
                         usage, limit, threshold);
+                try {
+                    if (rocketMQTemplate != null) {
+                        rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                                new NotificationEvent(userId, "BUDGET",
+                                        "预算告警: " + rule.getRuleName(),
+                                        "预算 " + rule.getRuleName() + " 已使用 " + threshold + "%,接近上限",
+                                        "WARN", "budget_rule", String.valueOf(rule.getId()), tenantId));
+                    }
+                } catch (Exception ex) {
+                    log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+                }
             }
         }
     }

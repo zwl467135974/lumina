@@ -36,6 +36,12 @@
             <artifactId>lumina-agent-core</artifactId>
         </dependency>
 
+        <!-- Lumina Business Notification（通知中心，随 base 服务部署） -->
+        <dependency>
+            <groupId>io.lumina</groupId>
+            <artifactId>lumina-business-notification</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

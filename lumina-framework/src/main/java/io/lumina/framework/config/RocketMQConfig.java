@@ -42,4 +42,14 @@ public final class RocketMQConfig {
      * Agent 异步任务消费者组
      */
     public static final String GROUP_AGENT_TASK = "lumina-agent-task-group";
+
+    /**
+     * 通知中心 Topic（站内通知跨服务事件传递）
+     */
+    public static final String TOPIC_NOTIFICATION = "lumina-notification";
+
+    /**
+     * 通知中心消费者组
+     */
+    public static final String GROUP_NOTIFICATION = "lumina-notification-group";
 }

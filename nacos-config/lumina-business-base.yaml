@@ -34,9 +34,19 @@ spring:
     baseline-version: 1
     locations: classpath:db/migration
 
+# RocketMQ（通知中心消费）
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+  producer:
+    group: lumina-base-producer
+    send-message-timeout: 5000
+  consumer:
+    notification:
+      enabled: true
+
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: io.lumina.base.infrastructure.entity
+  type-aliases-package: io.lumina.base.infrastructure.entity,io.lumina.notification.infrastructure.entity
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl

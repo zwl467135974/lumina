@@ -312,6 +312,11 @@
                 <artifactId>lumina-agent-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.lumina</groupId>
+                <artifactId>lumina-business-notification</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MinIO 对象存储 SDK -->
             <dependency>

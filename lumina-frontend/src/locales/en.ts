@@ -80,6 +80,21 @@ export default {
     notifications: 'Notifications',
     noNotifications: 'No new notifications'
   },
+  notification: {
+    title: 'Notifications',
+    markAllRead: 'Mark all read',
+    justNow: 'just now',
+    minutesAgo: 'min ago',
+    hoursAgo: 'h ago',
+    category: {
+      BUDGET: 'Budget',
+      TASK: 'Task',
+      WORKFLOW: 'Workflow',
+      DOCUMENT: 'Document',
+      EVALUATION: 'Evaluation',
+      SYSTEM: 'System'
+    }
+  },
   route: {
     login: 'Login',
     notFound: 'Page Not Found',

@@ -14,9 +14,11 @@ import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.infrastructure.entity.KnowledgeDocumentDO;
 import io.lumina.agent.infrastructure.mapper.KnowledgeDocumentMapper;
 import io.lumina.framework.config.RocketMQConfig;
+import io.lumina.notification.event.NotificationEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -60,6 +62,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired(required = false)
+    private RocketMQTemplate rocketMQTemplate;
+
     @Override
     public void onMessage(DocumentIngestMessage msg) {
         log.info("开始异步处理文档: {}", msg);
@@ -93,10 +98,32 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             updateStatus(msg.getUuid(), 1, docs != null ? docs.size() : 0, vectorDocIdsJson);
 
             log.info("文档异步处理完成: uuid={}, chunks={}", msg.getUuid(), docs != null ? docs.size() : 0);
+            try {
+                if (rocketMQTemplate != null) {
+                    rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                            new NotificationEvent(null, "DOCUMENT",
+                                    "文档处理完成",
+                                    "文档 " + msg.getUuid() + " 已处理完成,共 " + (docs != null ? docs.size() : 0) + " 个分块",
+                                    "INFO", "knowledge_document", msg.getUuid(), msg.getTenantId()));
+                }
+            } catch (Exception ex) {
+                log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+            }
 
         } catch (Exception e) {
             log.error("文档异步处理失败: {}", msg.getUuid(), e);
             updateStatus(msg.getUuid(), 2, 0, null);
+            try {
+                if (rocketMQTemplate != null) {
+                    rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                            new NotificationEvent(null, "DOCUMENT",
+                                    "文档处理失败",
+                                    "文档 " + msg.getUuid() + " 处理失败: " + e.getMessage(),
+                                    "ERROR", "knowledge_document", msg.getUuid(), msg.getTenantId()));
+                }
+            } catch (Exception ex) {
+                log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+            }
         }
     }
 

@@ -28,7 +28,11 @@ import io.lumina.agent.service.EvaluationService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.framework.config.RocketMQConfig;
+import io.lumina.notification.event.NotificationEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -68,6 +72,9 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final Executor evaluationExecutor;
 
     private final io.lumina.agent.security.OutputSanitizer outputSanitizer;
+
+    @Autowired(required = false)
+    private RocketMQTemplate rocketMQTemplate;
 
     public EvaluationServiceImpl(EvaluationDatasetMapper datasetMapper,
                                  EvaluationRunMapper runMapper,
@@ -253,6 +260,16 @@ public class EvaluationServiceImpl implements EvaluationService {
                 update.setTotalTokens(report.getTotalTokens());
                 update.setResultsJson(jsonMapper.writeValueAsString(report.getResults()));
                 runMapper.updateById(update);
+                try {
+                    if (rocketMQTemplate != null) {
+                        rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                                new NotificationEvent(userId, "EVALUATION",
+                                        "评估完成", "评估任务已完成", "INFO",
+                                        "evaluation_run", String.valueOf(runId), tenantId));
+                    }
+                } catch (Exception ex) {
+                    log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+                }
             } catch (Exception e) {
                 log.error("异步评估失败: runId={}", runId, e);
                 EvaluationRunDO update = new EvaluationRunDO();
@@ -265,6 +282,17 @@ public class EvaluationServiceImpl implements EvaluationService {
                     update.setResultsJson("{\"error\":\"unknown\"}");
                 }
                 runMapper.updateById(update);
+                try {
+                    if (rocketMQTemplate != null) {
+                        rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                                new NotificationEvent(userId, "EVALUATION",
+                                        "评估失败",
+                                        "评估任务失败: " + (e.getMessage() != null ? e.getMessage() : "unknown"),
+                                        "ERROR", "evaluation_run", String.valueOf(runId), tenantId));
+                    }
+                } catch (Exception ex) {
+                    log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+                }
             } finally {
                 io.lumina.common.core.BaseContext.clear();
             }

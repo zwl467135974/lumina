@@ -80,6 +80,21 @@ export default {
     notifications: '通知',
     noNotifications: '暂无新通知'
   },
+  notification: {
+    title: '通知',
+    markAllRead: '全部已读',
+    justNow: '刚刚',
+    minutesAgo: '分钟前',
+    hoursAgo: '小时前',
+    category: {
+      BUDGET: '预算',
+      TASK: '任务',
+      WORKFLOW: '工作流',
+      DOCUMENT: '文档',
+      EVALUATION: '评估',
+      SYSTEM: '系统'
+    }
+  },
   route: {
     login: '登录',
     notFound: '页面不存在',

@@ -44,17 +44,46 @@
       </button>
 
       <!-- Notifications -->
-      <el-popover placement="bottom-end" :width="320" trigger="click">
+      <el-popover placement="bottom-end" :width="360" trigger="click" @show="onNotificationPanelOpen">
         <template #reference>
           <button class="icon-btn" :title="t('header.notifications')">
-            <el-badge :value="unreadCount" :hidden="!unreadCount" :max="99">
+            <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99">
               <el-icon :size="18"><Bell /></el-icon>
             </el-badge>
           </button>
         </template>
         <div class="notification-panel">
-          <p class="notif-empty" v-if="!notifications?.length">{{ t('header.noNotifications') }}</p>
-          <!-- notification list would go here -->
+          <!-- Header -->
+          <div class="notif-panel-header">
+            <span class="notif-panel-title">{{ t('notification.title') }}</span>
+            <el-button
+              v-if="notificationStore.unreadCount > 0"
+              link
+              size="small"
+              @click="notificationStore.readAll()"
+            >
+              {{ t('notification.markAllRead') }}
+            </el-button>
+          </div>
+          <!-- List -->
+          <div v-if="notificationStore.recentList.length" class="notif-list">
+            <div
+              v-for="item in notificationStore.recentList"
+              :key="item.id"
+              :class="['notif-item', { 'is-unread': item.isRead === 0 }]"
+              @click="onNotificationClick(item)"
+            >
+              <div class="notif-item-header">
+                <el-tag :type="severityTagType(item.severity)" size="small" effect="plain">
+                  {{ t(`notification.category.${item.category}`) }}
+                </el-tag>
+                <span class="notif-item-time">{{ formatTime(item.createTime) }}</span>
+              </div>
+              <div class="notif-item-title">{{ item.title }}</div>
+              <div class="notif-item-content">{{ item.content }}</div>
+            </div>
+          </div>
+          <p class="notif-empty" v-else>{{ t('header.noNotifications') }}</p>
         </div>
       </el-popover>
 
@@ -82,11 +111,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppStore, useUserStore } from '@/stores'
+import { useAppStore, useUserStore, useNotificationStore } from '@/stores'
 import { useRouter } from 'vue-router'
 import { localizeTitle } from '@/utils'
+import type { NotificationVO } from '@/api/modules/notification'
 import {
   Fold,
   Expand,
@@ -100,6 +130,7 @@ import {
 const { locale, availableLocales, t } = useI18n()
 const appStore = useAppStore()
 const userStore = useUserStore()
+const notificationStore = useNotificationStore()
 const router = useRouter()
 
 const langOptions = computed(() => availableLocales.map(code => ({
@@ -114,8 +145,52 @@ defineProps<{
 const isDark = computed(() => appStore.theme === 'dark')
 const collapseTitle = computed(() => t(appStore.sidebarCollapsed ? 'common.expand' : 'common.collapse'))
 
-const unreadCount = computed(() => 0) // placeholder
-const notifications = computed(() => []) // placeholder
+/** 通知面板打开时刷新列表 */
+function onNotificationPanelOpen() {
+  notificationStore.fetchList()
+}
+
+/** 点击通知项：标记已读 + 跳转关联页面 */
+function onNotificationClick(item: NotificationVO) {
+  if (item.isRead === 0) {
+    notificationStore.readOne(item.id)
+  }
+  // 根据 refType 跳转（简单路由映射）
+  if (item.refType === 'agent_task') {
+    router.push('/agent/tasks')
+  } else if (item.refType === 'workflow_instance') {
+    router.push('/workflow')
+  }
+}
+
+/** severity → el-tag type */
+function severityTagType(severity: string): 'info' | 'warning' | 'danger' {
+  if (severity === 'ERROR') return 'danger'
+  if (severity === 'WARN') return 'warning'
+  return 'info'
+}
+
+/** 格式化时间 */
+function formatTime(time: string): string {
+  if (!time) return ''
+  const d = new Date(time)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  if (diff < 60000) return t('notification.justNow')
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} ${t('notification.minutesAgo')}`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} ${t('notification.hoursAgo')}`
+  return d.toLocaleDateString()
+}
+
+onMounted(() => {
+  if (userStore.isLoggedIn) {
+    notificationStore.init()
+  }
+})
+
+onUnmounted(() => {
+  notificationStore.disconnectSSE()
+})
 
 function switchLocale(code: string) {
   locale.value = code
@@ -379,7 +454,70 @@ function handleUserCommand(command: string) {
 
 /* ---------- Notification Panel ---------- */
 .notification-panel {
-  padding: var(--lumina-spacing-sm) 0;
+  padding: 0;
+}
+
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--lumina-spacing-sm) var(--lumina-spacing-md);
+  border-bottom: 1px solid var(--lumina-border);
+}
+
+.notif-panel-title {
+  font-family: var(--lumina-font-display);
+  font-size: var(--lumina-font-size-base);
+  font-weight: var(--lumina-font-weight-semibold);
+  color: var(--lumina-text-primary);
+}
+
+.notif-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notif-item {
+  padding: var(--lumina-spacing-sm) var(--lumina-spacing-md);
+  border-bottom: 1px solid var(--lumina-border);
+  cursor: pointer;
+  transition: background var(--lumina-transition-fast);
+}
+
+.notif-item:hover {
+  background: rgba(var(--lumina-primary-rgb), 0.05);
+}
+
+.notif-item.is-unread {
+  background: rgba(var(--lumina-primary-rgb), 0.03);
+}
+
+.notif-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.notif-item-time {
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-xs);
+  color: var(--lumina-text-muted);
+}
+
+.notif-item-title {
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-sm);
+  font-weight: var(--lumina-font-weight-medium);
+  color: var(--lumina-text-primary);
+  margin-bottom: 2px;
+}
+
+.notif-item-content {
+  font-family: var(--lumina-font-body);
+  font-size: var(--lumina-font-size-xs);
+  color: var(--lumina-text-secondary);
+  line-height: 1.4;
 }
 
 .notif-empty {

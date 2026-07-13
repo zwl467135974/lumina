@@ -20,6 +20,7 @@
     <modules>
         <module>lumina-business-agent</module>
         <module>lumina-business-base</module>
+        <module>lumina-business-notification</module>
     </modules>
 
 </project>

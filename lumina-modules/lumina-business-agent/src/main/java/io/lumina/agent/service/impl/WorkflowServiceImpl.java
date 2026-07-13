@@ -24,8 +24,12 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.core.ErrorCode;
+import io.lumina.framework.config.RocketMQConfig;
+import io.lumina.notification.event.NotificationEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -51,6 +55,9 @@ public class WorkflowServiceImpl implements WorkflowService {
     private final WorkflowEngine workflowEngine;
 
     private final ObjectMapper objectMapper;
+
+    @Autowired(required = false)
+    private RocketMQTemplate rocketMQTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -379,6 +386,27 @@ public class WorkflowServiceImpl implements WorkflowService {
         return className.toLowerCase();
     }
 
+    private void sendWorkflowNotification(WorkflowInstanceDO instance, String category,
+                                            String title, String severity) {
+        sendWorkflowNotification(instance, category, title, null, severity);
+    }
+
+    private void sendWorkflowNotification(WorkflowInstanceDO instance, String category,
+                                            String title, String content, String severity) {
+        try {
+            if (rocketMQTemplate == null) {
+                return;
+            }
+            rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                    new NotificationEvent(instance.getCreateBy(), category, title,
+                            content != null ? content : title, severity,
+                            "workflow_instance", String.valueOf(instance.getId()),
+                            instance.getTenantId()));
+        } catch (Exception ex) {
+            log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+        }
+    }
+
     private void executeWorkflow(WorkflowDefinition definition, WorkflowInstanceDO instance,
                                   java.util.Map<String, Object> inputs) {
         instance.setStatus(WorkflowStatus.RUNNING.name());
@@ -401,14 +429,19 @@ public class WorkflowServiceImpl implements WorkflowService {
                 } catch (Exception e) {
                     instance.setOutput("{}");
                 }
+                sendWorkflowNotification(instance, "WORKFLOW", "工作流执行完成", "INFO");
             } else if (ctx.getStatus() == WorkflowStatus.FAILED) {
                 instance.setErrorMessage(ctx.getErrorMessage());
+                sendWorkflowNotification(instance, "WORKFLOW", "工作流执行失败",
+                        ctx.getErrorMessage() != null ? ctx.getErrorMessage() : "unknown", "ERROR");
             }
 
         } catch (Exception e) {
             log.error("工作流执行异常: instanceId={}", instance.getId(), e);
             instance.setStatus(WorkflowStatus.FAILED.name());
             instance.setErrorMessage(e.getMessage());
+            sendWorkflowNotification(instance, "WORKFLOW", "工作流执行失败",
+                    e.getMessage() != null ? e.getMessage() : e.toString(), "ERROR");
         } finally {
             instance.setUpdateTime(LocalDateTime.now());
             instanceMapper.updateById(instance);
