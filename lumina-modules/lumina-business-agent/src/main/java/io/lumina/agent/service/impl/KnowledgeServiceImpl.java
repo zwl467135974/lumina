@@ -65,7 +65,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Value("${lumina.rag.storage-path:./data/knowledge}")
     private String storagePath;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public String uploadDocument(MultipartFile file, Long agentId, Long kbId) {

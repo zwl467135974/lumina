@@ -5,8 +5,8 @@ import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.storage.entity.FileDO;
 import io.lumina.framework.infrastructure.mapper.FileMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,13 +27,12 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class FileService {
 
-    @Autowired
-    private StorageClient storageClient;
+    private final StorageClient storageClient;
 
-    @Autowired
-    private FileMapper fileMapper;
+    private final FileMapper fileMapper;
 
     /**
      * 上传文件

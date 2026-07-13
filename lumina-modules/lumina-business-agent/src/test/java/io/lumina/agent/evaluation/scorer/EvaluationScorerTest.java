@@ -77,7 +77,7 @@ class EvaluationScorerTest {
 
     @Test
     void llmJudgeFallsBackToContainsWhenModelUnavailable() throws Exception {
-        LlmJudgeScorer scorer = new LlmJudgeScorer(new ContainsScorer());
+        LlmJudgeScorer scorer = new LlmJudgeScorer(new ContainsScorer(), null, null);
         // chatModelFactory and agentProperties are null → should fall back
 
         ScoreResult result = scorer.score(testCase("Lumina"), "Lumina Agent Platform");

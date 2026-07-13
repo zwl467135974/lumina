@@ -113,9 +113,7 @@ public class BudgetServiceImpl implements BudgetService {
         if (!currentTenantId.equals(rule.getTenantId())) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
-        rule.setIsDeleted(1);
-        rule.setUpdateTime(LocalDateTime.now());
-        budgetRuleMapper.updateById(rule);
+        budgetRuleMapper.deleteById(id);
         log.info("预算规则删除: id={}", id);
     }
 

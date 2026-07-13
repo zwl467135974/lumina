@@ -11,8 +11,8 @@ import io.lumina.agent.evaluation.model.ScoringMethod;
 import io.lumina.agent.evaluation.model.TestCase;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ChatModelFactory;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class LlmJudgeScorer implements EvaluationScorer {
 
     private static final String JUDGE_SYSTEM_PROMPT = """
@@ -60,15 +61,9 @@ public class LlmJudgeScorer implements EvaluationScorer {
 
     private final ContainsScorer containsScorer;
 
-    @Autowired
-    private ChatModelFactory chatModelFactory;
+    private final ChatModelFactory chatModelFactory;
 
-    @Autowired
-    private LuminaAgentProperties agentProperties;
-
-    public LlmJudgeScorer(ContainsScorer containsScorer) {
-        this.containsScorer = containsScorer;
-    }
+    private final LuminaAgentProperties agentProperties;
 
     @Override
     public ScoringMethod getMethod() {

@@ -4,12 +4,12 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.framework.audit.annotation.Audit;
 import io.lumina.framework.audit.event.AuditEvent;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -30,10 +30,10 @@ import java.lang.reflect.Parameter;
 @Slf4j
 @Aspect
 @Component
+@RequiredArgsConstructor
 public class AuditAspect {
 
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Around("@annotation(audit)")
     public Object around(ProceedingJoinPoint pjp, Audit audit) throws Throwable {

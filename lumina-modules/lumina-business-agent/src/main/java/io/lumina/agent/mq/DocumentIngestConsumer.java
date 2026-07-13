@@ -57,7 +57,8 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     @Autowired(required = false)
     private RagProperties ragProperties;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public void onMessage(DocumentIngestMessage msg) {

@@ -6,8 +6,8 @@ import io.lumina.base.api.vo.user.UserVO;
 import io.lumina.base.service.UserService;
 import io.lumina.common.core.R;
 import io.lumina.common.core.BaseContext;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -25,10 +25,10 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class BaseToolProvider {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     /**
      * 创建用户工具

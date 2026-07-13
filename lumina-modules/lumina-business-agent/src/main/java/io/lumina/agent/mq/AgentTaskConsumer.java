@@ -4,10 +4,10 @@ import io.lumina.agent.service.impl.AgentTaskServiceImpl;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.LoginContext;
 import io.lumina.framework.config.RocketMQConfig;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -29,10 +29,10 @@ import org.springframework.stereotype.Component;
         consumerGroup = RocketMQConfig.GROUP_AGENT_TASK,
         topic = RocketMQConfig.TOPIC_AGENT_TASK
 )
+@RequiredArgsConstructor
 public class AgentTaskConsumer implements RocketMQListener<AgentTaskMessage> {
 
-    @Autowired
-    private AgentTaskServiceImpl agentTaskService;
+    private final AgentTaskServiceImpl agentTaskService;
 
     @Override
     public void onMessage(AgentTaskMessage message) {

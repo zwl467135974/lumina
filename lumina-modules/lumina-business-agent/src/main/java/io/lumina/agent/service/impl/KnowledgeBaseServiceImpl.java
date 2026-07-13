@@ -78,8 +78,7 @@ public class KnowledgeBaseServiceImpl implements KnowledgeBaseService {
     public void deleteKnowledgeBase(Long id) {
         KnowledgeBaseDO kb = getKbOrThrow(id);
         checkTenantAccess(kb);
-        kb.setIsDeleted(1);
-        kbMapper.updateById(kb);
+        kbMapper.deleteById(id);
         agentKbMapper.delete(new LambdaQueryWrapper<AgentKnowledgeBaseDO>()
                 .eq(AgentKnowledgeBaseDO::getKbId, id));
         log.info("删除知识库: id={}", id);

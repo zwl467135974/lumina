@@ -4,8 +4,8 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.cache.RedisCacheManager;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +28,7 @@ import java.time.Duration;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AgentRateLimiter {
 
     private static final String KEY_PREFIX = "agent:rate:";
@@ -39,11 +40,6 @@ public class AgentRateLimiter {
 
     @Value("${lumina.agent.rate-limit.window-seconds:60}")
     private int windowSeconds;
-
-    @Autowired
-    public AgentRateLimiter(RedisCacheManager redisCacheManager) {
-        this.redisCacheManager = redisCacheManager;
-    }
 
     /**
      * 检查当前用户对指定 Agent 的调用频率

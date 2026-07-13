@@ -26,7 +26,6 @@ import io.lumina.common.exception.BusinessException;
 import io.lumina.common.core.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -51,8 +50,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     private final WorkflowLoader workflowLoader;
     private final WorkflowEngine workflowEngine;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -108,9 +106,8 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        WorkflowDefinitionDO entity = getById(id);
-        entity.setIsDeleted(1);
-        definitionMapper.updateById(entity);
+        getById(id);
+        definitionMapper.deleteById(id);
     }
 
     @Override

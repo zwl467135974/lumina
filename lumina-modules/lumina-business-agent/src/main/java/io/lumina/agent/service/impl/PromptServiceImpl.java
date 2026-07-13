@@ -146,9 +146,8 @@ public class PromptServiceImpl implements PromptService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
-        PromptDO entity = getById(id);
-        entity.setIsDeleted(1);
-        promptMapper.updateById(entity);
+        getById(id);
+        promptMapper.deleteById(id);
     }
 
     @Override

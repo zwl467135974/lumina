@@ -25,6 +25,7 @@ public class KnowledgeBaseDO {
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
+    @TableLogic
     @TableField("is_deleted")
     private Integer isDeleted;
 }

@@ -3,8 +3,8 @@ package io.lumina.base.audit;
 import io.lumina.base.infrastructure.entity.AuditLogDO;
 import io.lumina.base.infrastructure.mapper.AuditLogMapper;
 import io.lumina.framework.audit.event.AuditEvent;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -20,10 +20,10 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AuditLogEventListener {
 
-    @Autowired
-    private AuditLogMapper auditLogMapper;
+    private final AuditLogMapper auditLogMapper;
 
     @Async("auditExecutor")
     @EventListener(AuditEvent.class)

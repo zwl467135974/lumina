@@ -2,7 +2,7 @@ package io.lumina.base.config;
 
 import io.lumina.base.interceptor.PermissionCheckInterceptor;
 import io.lumina.base.interceptor.TenantIsolationInterceptor;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -14,13 +14,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * @since 1.0.0
  */
 @Configuration
+@RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    @Autowired
-    private TenantIsolationInterceptor tenantIsolationInterceptor;
+    private final TenantIsolationInterceptor tenantIsolationInterceptor;
 
-    @Autowired
-    private PermissionCheckInterceptor permissionCheckInterceptor;
+    private final PermissionCheckInterceptor permissionCheckInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

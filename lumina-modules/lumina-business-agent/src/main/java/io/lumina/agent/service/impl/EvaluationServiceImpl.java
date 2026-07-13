@@ -29,7 +29,6 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -64,25 +63,28 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final AgentMapper agentMapper;
     private final AgentExecutionEngine agentExecutionEngine;
     private final Map<ScoringMethod, EvaluationScorer> scorerMap;
-    private final ObjectMapper jsonMapper = new ObjectMapper();
+    private final ObjectMapper jsonMapper;
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
     private final Executor evaluationExecutor;
 
-    @Autowired
-    private io.lumina.agent.security.OutputSanitizer outputSanitizer;
+    private final io.lumina.agent.security.OutputSanitizer outputSanitizer;
 
     public EvaluationServiceImpl(EvaluationDatasetMapper datasetMapper,
                                  EvaluationRunMapper runMapper,
                                  AgentMapper agentMapper,
                                  AgentExecutionEngine agentExecutionEngine,
                                  List<EvaluationScorer> scorers,
-                                 @org.springframework.beans.factory.annotation.Qualifier("agentTaskExecutor") Executor evaluationExecutor) {
+                                 @org.springframework.beans.factory.annotation.Qualifier("agentTaskExecutor") Executor evaluationExecutor,
+                                 io.lumina.agent.security.OutputSanitizer outputSanitizer,
+                                 ObjectMapper jsonMapper) {
         this.datasetMapper = datasetMapper;
         this.runMapper = runMapper;
         this.agentMapper = agentMapper;
         this.agentExecutionEngine = agentExecutionEngine;
         this.scorerMap = scorers.stream().collect(Collectors.toMap(EvaluationScorer::getMethod, Function.identity()));
         this.evaluationExecutor = evaluationExecutor;
+        this.outputSanitizer = outputSanitizer;
+        this.jsonMapper = jsonMapper;
     }
 
     @Override
@@ -128,9 +130,8 @@ public class EvaluationServiceImpl implements EvaluationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteDataset(Long id) {
-        EvaluationDatasetDO dataset = getDatasetDO(id);
-        dataset.setIsDeleted(1);
-        datasetMapper.updateById(dataset);
+        getDatasetDO(id);
+        datasetMapper.deleteById(id);
     }
 
     @Override

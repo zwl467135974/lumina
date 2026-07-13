@@ -2,8 +2,8 @@ package io.lumina.agent.manager;
 
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.util.JsonUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class EnhancedToolManager implements IToolManager {
 
     /**
@@ -40,8 +41,7 @@ public class EnhancedToolManager implements IToolManager {
 
     private static final com.fasterxml.jackson.databind.ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
-    @Autowired
-    private ApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
 
     /**
      * 应用就绪后自动扫描工具
