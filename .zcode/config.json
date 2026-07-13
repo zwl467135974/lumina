@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "enabled": true,
+    "timeoutMs": 5000,
+    "events": {
+      "PreToolUse": [
+        {
+          "matcher": "Edit|Write|ApplyPatch",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "bash \"${ZCODE_PROJECT_DIR}/scripts/skill-reminder-hook.sh\"",
+              "timeout": 5
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
