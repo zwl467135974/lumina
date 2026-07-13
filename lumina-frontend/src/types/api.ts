@@ -27,11 +27,25 @@ export interface PageResult<T> {
 /**
  * Agent 相关类型
  */
+export interface LlmConfig {
+  provider: string
+  modelName: string
+  apiKey?: string
+  baseUrl?: string
+  temperature?: number
+  maxTokens?: number
+  topP?: number
+  frequencyPenalty?: number
+  presencePenalty?: number
+}
+
 export interface AgentVO {
   agentId: number
   agentName: string
   agentType: string
   description?: string
+  llmConfig?: LlmConfig
+  tools?: string[]
   status: number
   createTime: string
   updateTime: string
@@ -41,12 +55,16 @@ export interface CreateAgentDTO {
   agentName: string
   agentType: string
   description?: string
+  llmConfig?: LlmConfig
+  tools?: string[]
 }
 
 export interface UpdateAgentDTO {
   agentName?: string
   agentType?: string
   description?: string
+  llmConfig?: LlmConfig
+  tools?: string[]
   status?: number
 }
 

@@ -1,7 +1,7 @@
 <template>
   <div class="agent-detail-page">
     <page-header :title="`${t('agent.detail')} - ${agentName}`">
-      <el-button @click="goBack">返回</el-button>
+      <el-button @click="goBack">{{ t('agent.form.back') }}</el-button>
     </page-header>
 
     <el-card v-loading="loading">
@@ -16,7 +16,7 @@
         </el-descriptions-item>
         <el-descriptions-item :label="t('common.description')" :span="2">{{ description }}</el-descriptions-item>
         <el-descriptions-item :label="t('common.createTime')">{{ createTime }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ updateTime }}</el-descriptions-item>
+        <el-descriptions-item :label="t('agent.form.updateTime')">{{ updateTime }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -26,42 +26,42 @@
       </template>
       <template v-if="currentPrompt">
         <div class="prompt-header">
-          <el-tag type="success" size="small">DB 激活</el-tag>
+          <el-tag type="success" size="small">{{ t('agent.promptActive') }}</el-tag>
           <span>{{ currentPrompt.name }} v{{ currentPrompt.version }}</span>
         </div>
-        <div class="prompt-desc">{{ currentPrompt.description || '无描述' }}</div>
+        <div class="prompt-desc">{{ currentPrompt.description || t('agent.form.noDescription') }}</div>
         <el-input :model-value="currentPrompt.content" type="textarea" :rows="5" readonly />
       </template>
       <template v-else>
         <div class="prompt-header">
-          <el-tag type="info" size="small">内置回退</el-tag>
+          <el-tag type="info" size="small">{{ t('agent.promptFallback') }}</el-tag>
           <span>prompts/{{ promptName }}.txt</span>
         </div>
         <div class="prompt-desc">
-          Prompt 管理中没有名称为 {{ promptName }} 的激活版本，执行时使用 agent-core 内置 Prompt。
+          {{ t('agent.form.promptNotFound', { name: promptName }) }}
         </div>
       </template>
     </el-card>
 
     <el-card class="chat-card" shadow="never">
       <template #header>
-        <span>💬 对话执行</span>
+        <span>{{ t('agent.form.chatExecution') }}</span>
       </template>
       <agent-chat v-if="agentId && status === 1" :agent-id="agentId" />
-      <el-alert v-else-if="agentId && status !== 1" title="Agent 未启用，无法对话" type="warning" :closable="false" />
+      <el-alert v-else-if="agentId && status !== 1" :title="t('agent.form.agentDisabled')" type="warning" :closable="false" />
     </el-card>
 
     <el-card class="task-card" shadow="never">
       <template #header>
-        <span>后台任务执行</span>
+        <span>{{ t('agent.form.backgroundTask') }}</span>
       </template>
       <el-form label-width="90px">
-        <el-form-item label="任务描述">
+        <el-form-item :label="t('agent.form.taskDesc')">
           <el-input
             v-model="asyncTaskText"
             type="textarea"
             :rows="3"
-            placeholder="提交后立即返回 taskUuid，后台继续执行"
+            :placeholder="t('agent.form.taskDescPlaceholder')"
           />
         </el-form-item>
         <el-form-item>
@@ -72,7 +72,7 @@
       </el-form>
 
       <el-descriptions v-if="currentTask" class="task-result" :column="2" border>
-        <el-descriptions-item label="任务 UUID" :span="2">{{ currentTask.taskUuid }}</el-descriptions-item>
+        <el-descriptions-item :label="t('agent.form.taskUuid')" :span="2">{{ currentTask.taskUuid }}</el-descriptions-item>
         <el-descriptions-item :label="t('common.status')">
           <el-tag :type="taskStatusType(currentTask.status)">{{ currentTask.status }}</el-tag>
         </el-descriptions-item>
@@ -80,7 +80,7 @@
         <el-descriptions-item v-if="currentTask.result" :label="t('agent.taskResult')" :span="2">
           <el-input :model-value="currentTask.result" type="textarea" :rows="5" readonly />
         </el-descriptions-item>
-        <el-descriptions-item v-if="currentTask.errorMessage" label="错误" :span="2">
+        <el-descriptions-item v-if="currentTask.errorMessage" :label="t('agent.form.error')" :span="2">
           {{ currentTask.errorMessage }}
         </el-descriptions-item>
       </el-descriptions>
@@ -162,7 +162,7 @@ const goBack = () => {
 
 const submitAsyncTask = async () => {
   if (!asyncTaskText.value.trim()) {
-    ElMessage.warning('请输入任务描述')
+    ElMessage.warning(t('agent.form.taskDescRequired'))
     return
   }
   submittingTask.value = true

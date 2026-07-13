@@ -1,41 +1,41 @@
 <template>
   <div class="agent-form-page">
     <page-header :title="pageTitle">
-      <el-button @click="handleBack">返回</el-button>
+      <el-button @click="handleBack">{{ t('agent.form.back') }}</el-button>
     </page-header>
 
     <el-card v-loading="loading">
       <el-form :model="formData" :rules="formRules" ref="formRef" label-width="120px">
-        <el-divider content-position="left">基本信息</el-divider>
+        <el-divider content-position="left">{{ t('agent.form.basicInfo') }}</el-divider>
 
         <el-form-item :label="t('agent.name')" prop="agentName">
-          <el-input v-model="formData.agentName" placeholder="请输入 Agent 名称" />
+          <el-input v-model="formData.agentName" :placeholder="t('agent.form.namePlaceholder')" />
         </el-form-item>
 
         <el-form-item :label="t('agent.type')" prop="agentType">
-          <el-select v-model="formData.agentType" placeholder="请选择 Agent 类型" style="width: 100%">
+          <el-select v-model="formData.agentType" :placeholder="t('agent.form.typePlaceholder')" style="width: 100%">
             <el-option label="ReAct" value="ReAct">
               <span>ReAct</span>
               <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
-                推理-行动模式，适合复杂任务
+                {{ t('agent.form.typeReactDesc') }}
               </span>
             </el-option>
             <el-option label="Simple" value="simple">
               <span>Simple</span>
               <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
-                简单对话模式，匹配 simple Prompt
+                {{ t('agent.form.typeSimpleDesc') }}
               </span>
             </el-option>
             <el-option label="Tool" value="tool">
               <span>Tool</span>
               <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
-                工具调用模式，匹配 tool Prompt
+                {{ t('agent.form.typeToolDesc') }}
               </span>
             </el-option>
             <el-option label="PlanAndExecute" value="PlanAndExecute">
               <span>PlanAndExecute</span>
               <span style="color: var(--lumina-text-muted); font-size: 12px; margin-left: 10px">
-                规划-执行模式；未配置同名 Prompt 时使用内置回退
+                {{ t('agent.form.typePlanDesc') }}
               </span>
             </el-option>
           </el-select>
@@ -45,21 +45,21 @@
           <div class="prompt-preview" v-loading="promptLoading">
             <template v-if="currentPrompt">
               <div class="prompt-preview__header">
-                <el-tag type="success" size="small">DB 激活</el-tag>
+                <el-tag type="success" size="small">{{ t('agent.promptActive') }}</el-tag>
                 <span>{{ currentPrompt.name }} v{{ currentPrompt.version }}</span>
               </div>
               <div class="prompt-preview__desc">
-                {{ currentPrompt.description || '无描述' }}
+                {{ currentPrompt.description || t('agent.form.noDescription') }}
               </div>
               <el-input :model-value="currentPrompt.content" type="textarea" :rows="4" readonly />
             </template>
             <template v-else>
               <div class="prompt-preview__header">
-                <el-tag type="info" size="small">内置回退</el-tag>
+                <el-tag type="info" size="small">{{ t('agent.promptFallback') }}</el-tag>
                 <span>prompts/{{ promptName }}.txt</span>
               </div>
               <div class="prompt-preview__desc">
-                Prompt 管理中没有名称为 {{ promptName }} 的激活版本，执行时将使用 agent-core 内置 Prompt。
+                {{ t('agent.form.promptNotFound', { name: promptName }) }}
               </div>
             </template>
           </div>
@@ -70,61 +70,61 @@
             v-model="formData.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入 Agent 描述"
+            :placeholder="t('agent.form.descriptionPlaceholder')"
           />
         </el-form-item>
 
-        <el-divider content-position="left">LLM 配置</el-divider>
+        <el-divider content-position="left">{{ t('agent.form.llmConfig') }}</el-divider>
 
-        <el-form-item label="模型提供商" prop="llmConfig.provider">
+        <el-form-item :label="t('agent.form.provider')" prop="llmConfig.provider">
           <el-select
             v-model="formData.llmConfig.provider"
-            placeholder="请选择模型提供商"
+            :placeholder="t('agent.form.providerPlaceholder')"
             style="width: 100%"
           >
-            <el-option label="OpenAI" value="openai" />
-            <el-option label="Anthropic" value="anthropic" />
-            <el-option label="Azure OpenAI" value="azure" />
-            <el-option label="通义千问" value="qwen" />
-            <el-option label="智谱 AI" value="zhipu" />
+            <el-option :label="t('agent.form.providerOpenai')" value="openai" />
+            <el-option :label="t('agent.form.providerAnthropic')" value="anthropic" />
+            <el-option :label="t('agent.form.providerAzure')" value="azure" />
+            <el-option :label="t('agent.form.providerQwen')" value="qwen" />
+            <el-option :label="t('agent.form.providerZhipu')" value="zhipu" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="模型名称" prop="llmConfig.modelName">
+        <el-form-item :label="t('agent.form.modelName')" prop="llmConfig.modelName">
           <el-input
             v-model="formData.llmConfig.modelName"
-            placeholder="例如：gpt-4、claude-3-sonnet"
+            :placeholder="t('agent.form.modelNamePlaceholder')"
           />
         </el-form-item>
 
-        <el-form-item label="API Key" prop="llmConfig.apiKey">
+        <el-form-item :label="t('agent.form.apiKey')" prop="llmConfig.apiKey">
           <el-input
             v-model="formData.llmConfig.apiKey"
             type="password"
-            placeholder="请输入 API Key"
+            :placeholder="t('agent.form.apiKeyPlaceholder')"
             show-password
           />
         </el-form-item>
 
-        <el-form-item label="Base URL" prop="llmConfig.baseUrl">
+        <el-form-item :label="t('agent.form.baseUrl')" prop="llmConfig.baseUrl">
           <el-input
             v-model="formData.llmConfig.baseUrl"
-            placeholder="请输入 Base URL（可选）"
+            :placeholder="t('agent.form.baseUrlPlaceholder')"
           />
         </el-form-item>
 
-        <el-form-item label="温度" prop="llmConfig.temperature">
+        <el-form-item :label="t('agent.form.temperature')" prop="llmConfig.temperature">
           <el-slider
             v-model="formData.llmConfig.temperature"
             :min="0"
             :max="2"
             :step="0.1"
-            :marks="{ 0: '精确', 1: '平衡', 2: '创造性' }"
+            :marks="{ 0: t('agent.form.tempPrecise'), 1: t('agent.form.tempBalanced'), 2: t('agent.form.tempCreative') }"
             show-stops
           />
         </el-form-item>
 
-        <el-form-item label="最大 Token 数" prop="llmConfig.maxTokens">
+        <el-form-item :label="t('agent.form.maxTokens')" prop="llmConfig.maxTokens">
           <el-input-number
             v-model="formData.llmConfig.maxTokens"
             :min="1"
@@ -134,7 +134,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="Top P">
+        <el-form-item :label="t('agent.form.topP')">
           <el-slider
             v-model="formData.llmConfig.topP"
             :min="0"
@@ -145,7 +145,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="Frequency Penalty">
+        <el-form-item :label="t('agent.form.frequencyPenalty')">
           <el-slider
             v-model="formData.llmConfig.frequencyPenalty"
             :min="-2"
@@ -156,7 +156,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="Presence Penalty">
+        <el-form-item :label="t('agent.form.presencePenalty')">
           <el-slider
             v-model="formData.llmConfig.presencePenalty"
             :min="-2"
@@ -167,9 +167,9 @@
           />
         </el-form-item>
 
-        <el-divider content-position="left">工具配置</el-divider>
+        <el-divider content-position="left">{{ t('agent.form.toolConfig') }}</el-divider>
 
-        <el-form-item label="可用工具">
+        <el-form-item :label="t('agent.form.availableTools')">
           <el-checkbox-group v-model="selectedTools">
             <el-checkbox
               v-for="tool in availableTools"
@@ -185,9 +185,9 @@
           </el-checkbox-group>
         </el-form-item>
 
-        <el-divider content-position="left">知识库挂载</el-divider>
+        <el-divider content-position="left">{{ t('agent.form.knowledgeMount') }}</el-divider>
 
-        <el-form-item label="关联知识库">
+        <el-form-item :label="t('agent.form.linkedKnowledge')">
           <el-select
             v-model="selectedKbIds"
             multiple
@@ -203,13 +203,13 @@
             />
           </el-select>
           <div v-if="availableKbs.length === 0" class="form-tip">
-            暂无可用知识库，请先在知识库页面创建
+            {{ t('agent.form.noKnowledge') }}
           </div>
         </el-form-item>
 
-        <el-divider content-position="left">高级配置</el-divider>
+        <el-divider content-position="left">{{ t('agent.form.advancedConfig') }}</el-divider>
 
-        <el-form-item label="限流（请求/分钟）">
+        <el-form-item :label="t('agent.form.rateLimit')">
           <el-input-number
             v-model="formData.rateLimit"
             :min="0"
@@ -217,22 +217,22 @@
             :step="10"
             style="width: 100%"
           />
-          <div class="form-tip">0 表示不限制</div>
+          <div class="form-tip">{{ t('agent.form.rateLimitTip') }}</div>
         </el-form-item>
 
-        <el-form-item label="最大并发数">
+        <el-form-item :label="t('agent.form.maxConcurrent')">
           <el-input-number
             v-model="formData.maxConcurrent"
             :min="0"
             :max="100"
             style="width: 100%"
           />
-          <div class="form-tip">0 表示不限制</div>
+          <div class="form-tip">{{ t('agent.form.maxConcurrentTip') }}</div>
         </el-form-item>
 
         <el-form-item>
           <el-button type="primary" @click="handleSubmit" :loading="submitting">
-            {{ isEdit ? '更新' : '创建' }}
+            {{ isEdit ? t('agent.form.updateBtn') : t('agent.form.createBtn') }}
           </el-button>
           <el-button @click="handleBack">{{ t('common.cancel') }}</el-button>
         </el-form-item>
@@ -318,26 +318,26 @@ const loadTools = async () => {
     const res = await getTools()
     availableTools.value = res.data || []
   } catch (error) {
-    console.error('加载工具列表失败:', error)
+    console.error(t('agent.form.loadToolsFail'), error)
     availableTools.value = []
   }
 }
 
 const formRules: FormRules = {
   agentName: [
-    { required: true, message: '请输入 Agent 名称', trigger: 'blur' }
+    { required: true, message: () => t('agent.form.nameRequired'), trigger: 'blur' }
   ],
   agentType: [
-    { required: true, message: '请选择 Agent 类型', trigger: 'change' }
+    { required: true, message: () => t('agent.form.typeRequired'), trigger: 'change' }
   ],
   'llmConfig.provider': [
-    { required: true, message: '请选择模型提供商', trigger: 'change' }
+    { required: true, message: () => t('agent.form.providerRequired'), trigger: 'change' }
   ],
   'llmConfig.modelName': [
-    { required: true, message: '请输入模型名称', trigger: 'blur' }
+    { required: true, message: () => t('agent.form.modelNameRequired'), trigger: 'blur' }
   ],
   'llmConfig.apiKey': [
-    { required: true, message: '请输入 API Key', trigger: 'blur' }
+    { required: true, message: () => t('agent.form.apiKeyRequired'), trigger: 'blur' }
   ]
 }
 
@@ -354,20 +354,20 @@ const loadAgentDetail = async () => {
     formData.agentType = agent.agentType
     formData.description = agent.description || ''
 
-    // 加载 LLM 配置（假设后端返回包含这些字段）
-    if ((agent as any).llmConfig) {
-      Object.assign(formData.llmConfig, (agent as any).llmConfig)
+    // 加载 LLM 配置
+    if (agent.llmConfig) {
+      Object.assign(formData.llmConfig, agent.llmConfig)
     }
 
     // 加载工具列表
-    if ((agent as any).tools) {
-      selectedTools.value = (agent as any).tools
-      formData.tools = (agent as any).tools
+    if (agent.tools) {
+      selectedTools.value = agent.tools
+      formData.tools = agent.tools
     }
 
   } catch (error) {
-    console.error('加载 Agent 详情失败:', error)
-    ElMessage.error('加载 Agent 详情失败')
+    console.error(t('agent.form.loadDetailFail'), error)
+    ElMessage.error(t('agent.form.loadDetailFail'))
   } finally {
     loading.value = false
   }
@@ -401,8 +401,8 @@ const handleSubmit = async () => {
         // 跳转回列表页
         router.push('/agent')
       } catch (error) {
-        console.error('操作失败:', error)
-        ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
+        console.error(isEdit.value ? t('agent.form.updateFail') : t('agent.form.createFail'), error)
+        ElMessage.error(isEdit.value ? t('agent.form.updateFail') : t('agent.form.createFail'))
       } finally {
         submitting.value = false
       }
