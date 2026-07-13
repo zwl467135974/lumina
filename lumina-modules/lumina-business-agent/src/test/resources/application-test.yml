@@ -1,0 +1,76 @@
+# 测试环境配置（agent 模块集成测试，无 Nacos）
+spring:
+  main:
+    allow-bean-definition-overriding: true
+
+  # 禁用 RocketMQ autoconfiguration（测试环境无 MQ，避免启动时连接 NameServer）
+  autoconfigure:
+    exclude:
+      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
+
+  # 禁用 Nacos
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
+
+  # 数据源（CI 通过环境变量覆盖）
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+      username: ${SPRING_DATASOURCE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_PASSWORD:123456}
+      initial-size: 2
+      min-idle: 2
+      max-active: 10
+
+  # Redis（CI 无密码）
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # Flyway（base 模块的 db/migration 经 test scope 依赖进 classpath，建出全部业务表）
+  flyway:
+    encoding: UTF-8
+    out-of-order: true
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
+# 禁用 RocketMQ（测试环境无 MQ，消费者 @ConditionalOnProperty matchIfMissing=false 默认不注册，
+# 同时禁用 autoconfiguration 避免容器初始化时尝试连接 NameServer）
+rocketmq:
+  name-server: localhost:9876
+  consumer:
+    agent-task:
+      enabled: false
+    document-ingest:
+      enabled: false
+
+# MyBatis-Plus（agent + base 双包，兼容种子数据实体）
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.lumina.agent.infrastructure.entity,io.lumina.base.infrastructure.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT 测试密钥
+lumina:
+  jwt:
+    secret-key: test-secret-key-for-integration-test-at-least-32-chars-long
+    expiration: 604800000
