@@ -278,7 +278,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             return Flux.concat(ragSourcesFlux, agent.stream(contextMessages, options)
                     .map(this::toStreamChunk)
                     .doOnNext(chunk -> {
-                        if (StreamEventType.FINAL.equals(chunk.type())) {
+                        // SDK 实际产生 AGENT_RESULT 类型（非 FINAL），两者都需匹配
+                        if (StreamEventType.FINAL.equals(chunk.type())
+                                || StreamEventType.AGENT_RESULT.equals(chunk.type())) {
                             finalResponse.append(chunk.content());
                         }
                     })
@@ -334,7 +336,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             return Flux.concat(ragSourcesFlux, agent.stream(contextMessages, options)
                     .map(this::toStreamChunk)
                     .doOnNext(chunk -> {
-                        if (StreamEventType.FINAL.equals(chunk.type())) {
+                        // SDK 实际产生 AGENT_RESULT 类型（非 FINAL），两者都需匹配
+                        if (StreamEventType.FINAL.equals(chunk.type())
+                                || StreamEventType.AGENT_RESULT.equals(chunk.type())) {
                             finalResponse.append(chunk.content());
                         }
                     })
