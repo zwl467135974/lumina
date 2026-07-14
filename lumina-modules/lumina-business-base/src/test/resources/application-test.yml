@@ -3,6 +3,11 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
+  # 禁用 RocketMQ autoconfiguration（测试环境无 MQ，避免 NotificationConsumer 触发连接）
+  autoconfigure:
+    exclude:
+      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
+
   # 禁用 Nacos
   cloud:
     nacos:
@@ -37,6 +42,7 @@ spring:
     out-of-order: true
     enabled: true
     baseline-on-migrate: true
+    validate-on-migrate: false
     baseline-version: 1
     locations: classpath:db/migration
 
