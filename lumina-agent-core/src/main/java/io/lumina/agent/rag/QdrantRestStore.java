@@ -203,11 +203,28 @@ public class QdrantRestStore implements VDBStoreBase {
                 String docId = payload.path("docId").asText(null);
                 String chunkId = payload.path("chunkId").asText(null);
 
-                DocumentMetadata metadata = DocumentMetadata.builder()
+                // 提取额外 payload 字段（排除 content/docId/chunkId 等保留字段）
+                Map<String, Object> extraPayload = null;
+                java.util.Iterator<Map.Entry<String, JsonNode>> fields = payload.fields();
+                while (fields.hasNext()) {
+                    Map.Entry<String, JsonNode> field = fields.next();
+                    String key = field.getKey();
+                    if (!"content".equals(key) && !"docId".equals(key) && !"chunkId".equals(key)) {
+                        if (extraPayload == null) {
+                            extraPayload = new java.util.HashMap<>();
+                        }
+                        extraPayload.put(key, convertJsonValue(field.getValue()));
+                    }
+                }
+
+                DocumentMetadata.Builder metadataBuilder = DocumentMetadata.builder()
                         .content(TextBlock.builder().text(contentText).build())
                         .docId(docId)
-                        .chunkId(chunkId)
-                        .build();
+                        .chunkId(chunkId);
+                if (extraPayload != null) {
+                    metadataBuilder.payload(extraPayload);
+                }
+                DocumentMetadata metadata = metadataBuilder.build();
 
                 Document doc = new Document(metadata);
                 doc.setScore(score);
@@ -285,5 +302,30 @@ public class QdrantRestStore implements VDBStoreBase {
             return content.toString();
         }
         return "";
+    }
+
+    /**
+     * 将 JsonNode 转换为 Java 原生对象
+     *
+     * <p>用于从 Qdrant payload 恢复额外字段时，把 JsonNode 转成 Map 可接受的类型。
+     */
+    private Object convertJsonValue(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isTextual()) {
+            return node.asText();
+        }
+        if (node.isInt() || node.isLong()) {
+            return node.asLong();
+        }
+        if (node.isDouble() || node.isFloat()) {
+            return node.asDouble();
+        }
+        if (node.isBoolean()) {
+            return node.asBoolean();
+        }
+        // 复杂类型（object/array）直接用 toString 兜底
+        return node.toString();
     }
 }
