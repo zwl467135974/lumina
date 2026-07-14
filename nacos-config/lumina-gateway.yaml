@@ -109,6 +109,11 @@ spring:
           predicates: [Path=/api/v1/tools/**]
           filters: [StripPrefix=0]
 
+        - id: lumina-agent-mcp-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/mcp/**]
+          filters: [StripPrefix=0]
+
         - id: lumina-agent-knowledge-route
           uri: lb://lumina-agent-service
           predicates: [Path=/api/v1/knowledge/**]

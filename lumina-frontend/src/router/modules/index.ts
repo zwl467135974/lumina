@@ -256,6 +256,15 @@ export const monitorRoutes: AppRouteRecordRaw[] = [
           title: '工具监控',
           requiresAuth: true
         }
+      },
+      {
+        path: 'mcp',
+        name: 'MonitorMcp',
+        component: () => import('@/views/monitor/mcp.vue'),
+        meta: {
+          title: 'MCP 管理',
+          requiresAuth: true
+        }
       }
     ]
   }

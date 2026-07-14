@@ -178,14 +178,6 @@
 
         <!-- 输入区 -->
         <div class="input-area">
-          <!-- 图片预览行 -->
-          <div v-if="selectedImages.length > 0" class="image-previews">
-            <div v-for="(img, idx) in selectedImages" :key="idx" class="image-preview-item">
-              <img :src="img.url" :alt="img.name" />
-              <span class="image-remove" @click="removeImage(idx)">×</span>
-            </div>
-          </div>
-
           <el-input
             v-model="task"
             type="textarea"
@@ -194,20 +186,17 @@
             :disabled="isBusy"
             @keydown.enter.exact.prevent="send"
           />
-          <input
-            ref="fileInputRef"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            multiple
-            class="hidden-file-input"
-            @change="onImagesSelected"
-          />
           <div class="actions">
-            <el-button :disabled="isBusy" @click="pickImages">
-              <el-icon><Picture /></el-icon>
-              <span>{{ uploading ? '上传中…' : '图片' }}</span>
-            </el-button>
-            <span v-if="selectedImages.length > 0" class="image-hint">{{ selectedImages.length }}/5</span>
+            <LumUploader
+              ref="uploaderRef"
+              accept="image/png,image/jpeg,image/webp,application/pdf,.doc,.docx"
+              :max-count="5"
+              :max-size="10 * 1024 * 1024"
+              biz-type="chat_image"
+              button-text="附件"
+              :disabled="isBusy"
+              @change="onFilesChange"
+            />
             <el-button v-if="!isBusy" type="primary" :disabled="!task.trim()" @click="send">发送</el-button>
             <el-button v-if="streaming" type="danger" @click="abort">中断</el-button>
           </div>
@@ -220,9 +209,8 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Picture } from '@element-plus/icons-vue'
 import { streamExecuteAgent, streamExecuteMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
-import { uploadFile } from '@/api/modules/file'
+import LumUploader from '@/components/common/LumUploader.vue'
 import {
   listConversations,
   createConversation,
@@ -249,13 +237,11 @@ const finalText = ref('')
 const errorMsg = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 
-// 图片上传
-interface ImagePreview { fileUuid: string; url: string; name: string }
-const selectedImages = ref<ImagePreview[]>([])
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const uploading = ref(false)
+// 文件上传（使用 LumUploader 组件）
+const uploaderRef = ref<InstanceType<typeof LumUploader> | null>(null)
+const selectedFileUuids = ref<string[]>([])
 
-const isBusy = computed(() => streaming.value || uploading.value)
+const isBusy = computed(() => streaming.value)
 
 // 调试模式
 const debugMode = ref(false)
@@ -396,7 +382,7 @@ const newConversation = async () => {
 const selectConversation = async (uuid: string) => {
   if (isBusy.value) return
   currentConvId.value = uuid
-  clearImages()
+  clearFiles()
   resetStream()
   await loadHistory(uuid)
 }
@@ -476,59 +462,14 @@ const handleChunk = (chunk: StreamChunk) => {
   scrollToBottom()
 }
 
-// 图片上传
-const MAX_IMAGES = 5
-const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-
-const pickImages = () => fileInputRef.value?.click()
-
-const onImagesSelected = async (e: Event) => {
-  const target = e.target as HTMLInputElement
-  if (!target.files) return
-  const filesToAdd: File[] = []
-  for (const f of Array.from(target.files)) {
-    if (selectedImages.value.length + filesToAdd.length >= MAX_IMAGES) {
-      ElMessage.warning(`最多 ${MAX_IMAGES} 张图片`)
-      break
-    }
-    if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
-      ElMessage.warning(`${f.name} 格式不支持，仅支持 png、jpg、webp`)
-      continue
-    }
-    if (f.size > MAX_IMAGE_SIZE) {
-      ElMessage.warning(`${f.name} 超过 10MB`)
-      continue
-    }
-    filesToAdd.push(f)
-  }
-  target.value = ''
-
-  // 上传到文件存储服务
-  uploading.value = true
-  for (const f of filesToAdd) {
-    try {
-      const res = await uploadFile(f)
-      if (res.data) {
-        selectedImages.value.push({
-          fileUuid: res.data.fileUuid,
-          url: `/api/v1/files/${res.data.fileUuid}/download`,
-          name: res.data.originalName
-        })
-      }
-    } catch {
-      ElMessage.error(`${f.name} 上传失败`)
-    }
-  }
-  uploading.value = false
+// 文件上传事件处理（LumUploader 组件回调）
+const onFilesChange = (fileUuids: string[]) => {
+  selectedFileUuids.value = fileUuids
 }
 
-const removeImage = (idx: number) => {
-  selectedImages.value.splice(idx, 1)
-}
-
-const clearImages = () => {
-  selectedImages.value = []
+const clearFiles = () => {
+  selectedFileUuids.value = []
+  uploaderRef.value?.clear()
 }
 
 const send = async () => {
@@ -550,14 +491,15 @@ const send = async () => {
     creating.value = false
   }
 
-  const hasImages = selectedImages.value.length > 0
+  const hasFiles = selectedFileUuids.value.length > 0
+  const imageUrls = hasFiles ? selectedFileUuids.value.map(uuid => `/api/v1/files/${uuid}/download`) : undefined
 
-  // 即时显示用户消息（含图片缩略图）
+  // 即时显示用户消息（含附件缩略图）
   historyMessages.value.push({
     messageId: Date.now(),
     role: 'user',
     content: t,
-    images: hasImages ? selectedImages.value.map(i => i.url) : undefined,
+    images: imageUrls,
     tokenCount: 0,
     durationMs: null,
     createTime: new Date().toISOString()
@@ -566,7 +508,7 @@ const send = async () => {
   task.value = ''
   resetStream()
 
-  if (hasImages) {
+  if (hasFiles) {
     await sendMultimodal(t)
   } else {
     sendStream(t)
@@ -604,7 +546,7 @@ const sendMultimodal = (t: string) => {
   streaming.value = true
   streamStartTime = Date.now()
 
-  const fileUuids = selectedImages.value.map(i => i.fileUuid)
+  const fileUuids = [...selectedFileUuids.value]
 
   controller = streamExecuteMultimodalAgent(
     props.agentId,
@@ -619,7 +561,7 @@ const sendMultimodal = (t: string) => {
       },
       onClose: () => {
         streaming.value = false
-        clearImages()
+        clearFiles()
         if (currentConvId.value) {
           loadHistory(currentConvId.value).then(() => resetStream())
         } else {
@@ -906,57 +848,7 @@ defineExpose({ resetStream })
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
-    .image-hint {
-      font-size: 12px;
-      color: var(--el-text-color-secondary);
-      margin-right: auto;
-    }
   }
-}
-
-/* 图片预览 */
-.image-previews {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.image-preview-item {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid var(--el-border-color-lighter);
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .image-remove {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.55);
-    color: #fff;
-    font-size: 13px;
-    line-height: 18px;
-    text-align: center;
-    cursor: pointer;
-    transition: background 0.2s;
-    &:hover {
-      background: rgba(0, 0, 0, 0.8);
-    }
-  }
-}
-
-.hidden-file-input {
-  display: none;
 }
 
 /* 工具栏 */
