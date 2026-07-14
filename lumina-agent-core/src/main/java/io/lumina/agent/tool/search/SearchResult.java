@@ -1,4 +1,4 @@
-package io.lumina.base.tool.search;
+package io.lumina.agent.tool.search;
 
 import lombok.Data;
 

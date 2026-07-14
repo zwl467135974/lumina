@@ -1,36 +1,38 @@
-package io.lumina.base.tool.search;
+package io.lumina.agent.tool.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tavily Search API 适配器
+ * SerpAPI 适配器
  *
- * <p>认证：Bearer Token（Header）
- * <p>请求：POST JSON，字段 query / max_results
- * <p>响应：results[]，字段 title / url / content
+ * <p>认证：API Key 作为 URL Query Parameter（非 Header）
+ * <p>请求：GET，参数 engine / q / api_key / num
+ * <p>响应：organic_results[]，字段 title / link / snippet
  *
  * @author Lumina Team
  * @since 3.2.0
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "lumina.agent.search", name = "provider", havingValue = "tavily")
-public class TavilySearchProvider implements SearchProvider {
+@ConditionalOnProperty(prefix = "lumina.agent.search", name = "provider", havingValue = "serpapi")
+public class SerpApiSearchProvider implements SearchProvider {
 
-    private static final String DEFAULT_URL = "https://api.tavily.com/search";
+    private static final String DEFAULT_URL = "https://serpapi.com/search";
 
     @Value("${lumina.agent.search.api-key:}")
     private String apiKey;
@@ -46,27 +48,22 @@ public class TavilySearchProvider implements SearchProvider {
 
     @Override
     public List<SearchResult> search(String query, int count) throws Exception {
-        String url = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : DEFAULT_URL;
-
-        String requestBody = objectMapper.writeValueAsString(new java.util.LinkedHashMap<>() {{
-            put("query", query);
-            put("max_results", count);
-            put("include_answer", false);
-            put("search_depth", "basic");
-        }});
+        String base = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : DEFAULT_URL;
+        String url = base + "?engine=google"
+                + "&q=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
+                + "&num=" + count
+                + "&api_key=" + apiKey;
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .GET()
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new RuntimeException("Tavily 搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
+            throw new RuntimeException("SerpAPI 搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
         }
 
         return parseResponse(response.body());
@@ -74,16 +71,16 @@ public class TavilySearchProvider implements SearchProvider {
 
     private List<SearchResult> parseResponse(String json) throws Exception {
         JsonNode root = objectMapper.readTree(json);
-        JsonNode results = root.path("results");
+        JsonNode results = root.path("organic_results");
 
         List<SearchResult> list = new ArrayList<>();
         if (results.isArray()) {
             for (JsonNode item : results) {
                 list.add(new SearchResult(
                         item.path("title").asText(""),
-                        item.path("url").asText(""),
-                        item.path("content").asText(""),
-                        "Tavily"
+                        item.path("link").asText(""),
+                        item.path("snippet").asText(""),
+                        "Google (SerpAPI)"
                 ));
             }
         }
@@ -92,6 +89,6 @@ public class TavilySearchProvider implements SearchProvider {
 
     @Override
     public String getProviderName() {
-        return "tavily";
+        return "serpapi";
     }
 }

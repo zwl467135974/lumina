@@ -1,8 +1,10 @@
-package io.lumina.base.tool;
+package io.lumina.agent.tool;
 
-import io.lumina.agent.tool.AgentTool;
+import io.lumina.agent.tool.search.SearchProvider;
+import io.lumina.agent.tool.search.SearchResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -18,13 +20,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 通用工具提供者
  *
  * <p>为 Agent 提供网络请求、时间查询、数学计算等通用能力。
  * 使用 JDK 21 内置 HttpClient，无需额外依赖。
+ *
+ * <p>位于 agent-core 模块，确保所有业务服务（base/agent/gateway）
+ * 均可通过 Spring 组件扫描加载此工具。
  *
  * @author Lumina Team
  * @since 3.2.0
@@ -44,8 +48,8 @@ public class GeneralToolProvider {
     /**
      * 搜索 Provider（可选，配置 lumina.agent.search.provider 后自动注入）
      */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private io.lumina.base.tool.search.SearchProvider searchProvider;
+    @Autowired(required = false)
+    private SearchProvider searchProvider;
 
     // ==================== HTTP 请求工具 ====================
 
@@ -164,7 +168,7 @@ public class GeneralToolProvider {
         }
 
         try {
-            List<io.lumina.base.tool.search.SearchResult> results = searchProvider.search(query, 10);
+            List<SearchResult> results = searchProvider.search(query, 10);
 
             result.put("success", true);
             result.put("provider", searchProvider.getProviderName());

@@ -1,11 +1,10 @@
-package io.lumina.base.tool.search;
+package io.lumina.agent.tool.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -14,25 +13,25 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
- * 智谱 Web Search Pro 适配器
+ * Tavily Search API 适配器
  *
  * <p>认证：Bearer Token（Header）
- * <p>请求：POST JSON，字段 search_query / count
- * <p>响应：search_result[]，字段 title / link / content / media
+ * <p>请求：POST JSON，字段 query / max_results
+ * <p>响应：results[]，字段 title / url / content
  *
  * @author Lumina Team
  * @since 3.2.0
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "lumina.agent.search", name = "provider", havingValue = "zhipu")
-public class ZhipuSearchProvider implements SearchProvider {
+@ConditionalOnProperty(prefix = "lumina.agent.search", name = "provider", havingValue = "tavily")
+public class TavilySearchProvider implements SearchProvider {
 
-    private static final String DEFAULT_URL = "https://open.bigmodel.cn/api/paas/v4/tools/web-search-pro";
+    private static final String DEFAULT_URL = "https://api.tavily.com/search";
 
     @Value("${lumina.agent.search.api-key:}")
     private String apiKey;
@@ -50,10 +49,11 @@ public class ZhipuSearchProvider implements SearchProvider {
     public List<SearchResult> search(String query, int count) throws Exception {
         String url = (baseUrl != null && !baseUrl.isBlank()) ? baseUrl : DEFAULT_URL;
 
-        String requestBody = objectMapper.writeValueAsString(new java.util.LinkedHashMap<>() {{
-            put("search_engine", "search_std");
-            put("search_query", query);
-            put("count", count);
+        String requestBody = objectMapper.writeValueAsString(new LinkedHashMap<>() {{
+            put("query", query);
+            put("max_results", count);
+            put("include_answer", false);
+            put("search_depth", "basic");
         }});
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -67,7 +67,7 @@ public class ZhipuSearchProvider implements SearchProvider {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new RuntimeException("智谱搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
+            throw new RuntimeException("Tavily 搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
         }
 
         return parseResponse(response.body());
@@ -75,16 +75,16 @@ public class ZhipuSearchProvider implements SearchProvider {
 
     private List<SearchResult> parseResponse(String json) throws Exception {
         JsonNode root = objectMapper.readTree(json);
-        JsonNode results = root.path("search_result");
+        JsonNode results = root.path("results");
 
         List<SearchResult> list = new ArrayList<>();
         if (results.isArray()) {
             for (JsonNode item : results) {
                 list.add(new SearchResult(
                         item.path("title").asText(""),
-                        item.path("link").asText(""),
+                        item.path("url").asText(""),
                         item.path("content").asText(""),
-                        item.path("media").asText("智谱搜索")
+                        "Tavily"
                 ));
             }
         }
@@ -93,6 +93,6 @@ public class ZhipuSearchProvider implements SearchProvider {
 
     @Override
     public String getProviderName() {
-        return "zhipu";
+        return "tavily";
     }
 }
