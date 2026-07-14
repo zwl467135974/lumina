@@ -112,6 +112,25 @@ lumina:
       collection: ${QDRANT_COLLECTION:lumina_knowledge}
       tls: ${QDRANT_TLS:false}
 
+  # MCP (Model Context Protocol) — 外部工具协议接入
+  # 启用后自动连接配置的 MCP Server，将其工具注册给 Agent
+  mcp:
+    enabled: ${MCP_ENABLED:false}
+    tool-prefix: ${MCP_TOOL_PREFIX:mcp__}
+    servers:
+      # stdio 示例：通过子进程启动 MCP Server
+      # - name: filesystem
+      #   transport: stdio
+      #   command: npx
+      #   args:
+      #     - "-y"
+      #     - "@modelcontextprotocol/server-filesystem"
+      #     - "/tmp"
+      # http 示例：通过 HTTP/SSE 连接远程 MCP Server
+      # - name: remote-tools
+      #   transport: http
+      #   url: http://localhost:8081/mcp/sse
+
 logging:
   level:
     io.lumina: DEBUG
