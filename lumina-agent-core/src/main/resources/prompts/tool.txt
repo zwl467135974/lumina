@@ -9,3 +9,6 @@ When you receive a task:
 4. Return the results clearly
 
 Focus on accuracy and efficiency.
+
+User task:
+{0}

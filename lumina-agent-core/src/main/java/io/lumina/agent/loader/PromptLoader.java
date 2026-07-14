@@ -70,7 +70,12 @@ public class PromptLoader {
         String result = template;
         for (int i = 0; i < params.length; i++) {
             String paramValue = sanitizeInput(params[i] != null ? params[i].toString() : "");
+            // 支持位置占位符 {0}, {1}, ...
             result = result.replace("{" + i + "}", paramValue);
+            // 支持命名占位符 {task}（第一个参数默认映射到 task）
+            if (i == 0) {
+                result = result.replace("{task}", paramValue);
+            }
         }
         return result;
     }

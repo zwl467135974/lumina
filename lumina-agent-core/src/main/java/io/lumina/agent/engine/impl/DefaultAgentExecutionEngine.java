@@ -489,7 +489,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         Model model = modelCache.get(modelKey, k -> {
             log.info("ChatModel 缓存未命中，创建模型: type={}, model={}",
                     llmConfig.getModelType(), llmConfig.getModelName());
-            return chatModelFactory.create(llmConfig, agentProperties.getLlm(), getApiKey());
+            // 仅当 Agent 专属配置未提供 apiKey 时，才回退到全局 key（避免 eager 求值抛异常）
+            String resolvedApiKey = (llmConfig.getApiKey() != null && !llmConfig.getApiKey().isEmpty())
+                    ? llmConfig.getApiKey()
+                    : getApiKey();
+            return chatModelFactory.create(llmConfig, agentProperties.getLlm(), resolvedApiKey);
         });
 
         Toolkit toolkit = resolveToolkit(config);

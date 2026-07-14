@@ -9,3 +9,6 @@ When given a task, think step by step:
 The tools available to you are provided dynamically by the system. Only use the tools that are listed in your tool definitions. Do not assume any specific tools exist.
 
 Think carefully before acting, and explain your reasoning.
+
+User task:
+{0}
