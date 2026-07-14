@@ -14,6 +14,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 /**
  * ToolDefinition 到 AgentTool 的适配器
@@ -32,20 +33,23 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
     private final ToolInvocationRecorder recorder;
     private final ToolCircuitBreaker circuitBreaker;
     private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
+    private final long executionTimeoutMs;
     private Map<String, Object> parametersSchema;
 
     public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition) {
-        this(toolDefinition, null, null, null);
+        this(toolDefinition, null, null, null, 60000);
     }
 
     public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition,
                                             ToolInvocationRecorder recorder,
                                             ToolCircuitBreaker circuitBreaker,
-                                            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
+                                            io.micrometer.core.instrument.MeterRegistry meterRegistry,
+                                            long executionTimeoutMs) {
         this.toolDefinition = toolDefinition;
         this.recorder = recorder;
         this.circuitBreaker = circuitBreaker;
         this.meterRegistry = meterRegistry;
+        this.executionTimeoutMs = executionTimeoutMs;
         this.objectMapper = JsonUtils.OBJECT_MAPPER;
         this.parametersSchema = parseParametersSchema(toolDefinition);
     }
@@ -124,7 +128,20 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
 
                 return ToolResultBlock.error(errorMessage);
             }
-        }).subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic());
+        })
+        .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+        .timeout(java.time.Duration.ofMillis(executionTimeoutMs))
+        .onErrorResume(TimeoutException.class, ex -> {
+            String toolName = getName();
+            long duration = executionTimeoutMs;
+            String msg = "工具执行超时（" + (executionTimeoutMs / 1000) + "s）: " + toolName;
+            log.warn(msg);
+            doRecord(toolName, "{}", null, msg, duration, false);
+            if (circuitBreaker != null) {
+                circuitBreaker.recordFailure(toolName);
+            }
+            return Mono.just(ToolResultBlock.error(msg));
+        });
     }
 
     /**

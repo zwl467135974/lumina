@@ -93,5 +93,32 @@ public class LuminaAgentProperties {
          */
         private Integer topK;
     }
+
+    /**
+     * 工具配置
+     */
+    private ToolConfig tool = new ToolConfig();
+
+    /**
+     * 工具配置
+     */
+    @Data
+    public static class ToolConfig {
+
+        /**
+         * 单次工具执行超时（毫秒），默认 60 秒
+         */
+        private Integer executionTimeoutMs = 60000;
+
+        /**
+         * 熔断失败阈值（连续失败次数）
+         */
+        private Integer failureThreshold = 5;
+
+        /**
+         * 熔断恢复超时（毫秒）
+         */
+        private Long resetTimeoutMs = 60000L;
+    }
 }
 

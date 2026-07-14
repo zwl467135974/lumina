@@ -741,7 +741,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 }
 
                 ToolDefinitionToAgentToolAdapter adapter =
-                        new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker, meterRegistry);
+                        new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker, meterRegistry,
+                                agentProperties.getTool().getExecutionTimeoutMs());
                 toolkit.registerAgentTool(adapter);
                 registeredCount++;
                 log.info("工具已注册: {} (分类: {})", toolDef.getName(),
