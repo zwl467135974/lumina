@@ -11,6 +11,8 @@ import io.agentscope.core.rag.model.DocumentMetadata;
 import io.agentscope.core.rag.store.VDBStoreBase;
 import io.agentscope.core.rag.store.dto.SearchDocumentDto;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -102,7 +104,7 @@ public class QdrantRestStore implements VDBStoreBase {
             try {
                 createCollection();
             } catch (Exception ex) {
-                throw new RuntimeException("创建 Qdrant 集合失败: " + collectionName, ex);
+                throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "创建 Qdrant 集合失败: " + collectionName, ex);
             }
         }
     }
@@ -118,7 +120,7 @@ public class QdrantRestStore implements VDBStoreBase {
         if (resp.statusCode() == 200) {
             log.info("Qdrant 集合创建成功: {}, dims={}", collectionName, dimensions);
         } else {
-            throw new RuntimeException("创建集合失败: " + resp.statusCode() + " " + resp.body());
+            throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "创建集合失败: HTTP " + resp.statusCode());
         }
     }
 
@@ -157,11 +159,11 @@ public class QdrantRestStore implements VDBStoreBase {
 
             HttpResponse<String> resp = sendPut("/collections/" + collectionName + "/points?wait=true", body);
             if (resp.statusCode() != 200) {
-                throw new RuntimeException("写入向量失败: " + resp.statusCode() + " " + resp.body());
+                throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "写入向量失败: HTTP " + resp.statusCode());
             }
             log.info("向量写入成功: count={}", documents.size());
         } catch (Exception e) {
-            throw new RuntimeException("向量写入异常", e);
+            throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "向量写入异常", e);
         }
     }
 

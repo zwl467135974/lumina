@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lumina.agent.manager.EnhancedToolManager;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.annotation.PreDestroy;
@@ -169,7 +171,7 @@ public class McpToolRegistrar {
         try {
             result = client.callTool(new McpSchema.CallToolRequest(originalName, args));
         } catch (Throwable e) {
-            throw new RuntimeException("MCP 工具 [" + registeredName + "] 调用失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.MCP_TOOL_CALL_FAILED, "MCP 工具 [" + registeredName + "] 调用失败: " + e.getMessage(), e);
         }
 
         return extractText(result, registeredName);

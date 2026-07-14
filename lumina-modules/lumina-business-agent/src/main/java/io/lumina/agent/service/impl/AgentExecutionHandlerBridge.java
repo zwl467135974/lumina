@@ -5,6 +5,8 @@ import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.orchestration.engine.AgentExecutionHandler;
 import io.lumina.agent.service.AgentService;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -34,10 +36,10 @@ public class AgentExecutionHandlerBridge implements AgentExecutionHandler {
         Long currentTenantId = io.lumina.common.core.BaseContext.getTenantId() != null
                 ? io.lumina.common.core.BaseContext.getTenantId() : 0L;
         if (agent == null || !currentTenantId.equals(agent.getTenantId())) {
-            throw new RuntimeException("Agent 不存在: " + agentId);
+            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "Agent 不存在: " + agentId);
         }
         if (agent.getStatus() != 1) {
-            throw new RuntimeException("Agent 未启用: " + agentId);
+            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE, "Agent 未启用: " + agentId);
         }
 
         String result = agentService.executeAgent(agentId, task, conversationUuid);

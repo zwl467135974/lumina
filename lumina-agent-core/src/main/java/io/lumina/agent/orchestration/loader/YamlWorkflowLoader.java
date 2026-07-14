@@ -6,6 +6,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import io.lumina.agent.orchestration.model.WorkflowDefinition;
 import io.lumina.agent.orchestration.model.WorkflowEdge;
 import io.lumina.agent.orchestration.model.WorkflowNode;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -44,7 +46,7 @@ public class YamlWorkflowLoader implements WorkflowLoader {
             log.info("工作流定义加载成功: name={}, nodes={}", def.getName(), def.getNodes().size());
             return def;
         } catch (IOException e) {
-            throw new RuntimeException("解析工作流 YAML 失败", e);
+            throw new BusinessException(ErrorCode.WORKFLOW_PARSE_FAILED, "解析工作流 YAML 失败", e);
         }
     }
 
@@ -53,7 +55,7 @@ public class YamlWorkflowLoader implements WorkflowLoader {
         try {
             ClassPathResource resource = new ClassPathResource(path);
             if (!resource.exists()) {
-                throw new RuntimeException("工作流配置文件不存在: " + path);
+                throw new BusinessException(ErrorCode.WORKFLOW_PARSE_FAILED, "工作流配置文件不存在: " + path);
             }
             try (InputStream is = resource.getInputStream()) {
                 WorkflowDefinition def = yamlMapper.readValue(is, WorkflowDefinition.class);
@@ -62,7 +64,7 @@ public class YamlWorkflowLoader implements WorkflowLoader {
                 return def;
             }
         } catch (IOException e) {
-            throw new RuntimeException("加载工作流文件失败: " + path, e);
+            throw new BusinessException(ErrorCode.WORKFLOW_PARSE_FAILED, "加载工作流文件失败: " + path, e);
         }
     }
 
@@ -71,7 +73,7 @@ public class YamlWorkflowLoader implements WorkflowLoader {
         try {
             return yamlMapper.writeValueAsString(definition);
         } catch (IOException e) {
-            throw new RuntimeException("序列化工作流定义失败", e);
+            throw new BusinessException(ErrorCode.WORKFLOW_PARSE_FAILED, "序列化工作流定义失败", e);
         }
     }
 

@@ -11,6 +11,8 @@ import io.lumina.agent.evaluation.model.ScoringMethod;
 import io.lumina.agent.evaluation.model.TestCase;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ChatModelFactory;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -112,7 +114,7 @@ public class LlmJudgeScorer implements EvaluationScorer {
                 .blockLast();
 
         if (response == null || response.getContent() == null || response.getContent().isEmpty()) {
-            throw new RuntimeException("Judge 模型返回空响应");
+            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Judge 模型返回空响应");
         }
 
         String judgeText = response.getContent().stream()
@@ -121,7 +123,7 @@ public class LlmJudgeScorer implements EvaluationScorer {
                 .reduce("", String::concat);
 
         if (judgeText.isBlank()) {
-            throw new RuntimeException("Judge 模型返回内容为空");
+            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Judge 模型返回内容为空");
         }
 
         return parseJudgeResponse(judgeText);
@@ -144,7 +146,7 @@ public class LlmJudgeScorer implements EvaluationScorer {
     private ScoreResult parseJudgeResponse(String response) {
         Matcher matcher = SCORE_PATTERN.matcher(response);
         if (!matcher.find()) {
-            throw new RuntimeException("无法从 Judge 响应中解析分数: " +
+            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "无法从 Judge 响应中解析分数: " +
                     (response.length() > 100 ? response.substring(0, 100) : response));
         }
 

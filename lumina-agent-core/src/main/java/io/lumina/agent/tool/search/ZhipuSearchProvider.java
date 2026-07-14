@@ -2,6 +2,8 @@ package io.lumina.agent.tool.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,7 +70,7 @@ public class ZhipuSearchProvider implements SearchProvider {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new RuntimeException("智谱搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
+            throw new BusinessException(ErrorCode.SEARCH_FAILED, "智谱搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
         }
 
         return parseResponse(response.body());

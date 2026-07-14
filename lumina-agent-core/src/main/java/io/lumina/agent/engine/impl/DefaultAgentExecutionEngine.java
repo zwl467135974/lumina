@@ -20,6 +20,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.loader.ConfigLoader;
 import io.lumina.agent.loader.PromptLoader;
 import io.lumina.agent.manager.EnhancedToolManager;
@@ -447,16 +449,16 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 return response;
             } else {
                 log.error("Agent 返回空响应，LLM 可能未正确配置");
-                throw new RuntimeException("LLM 返回空响应，请检查 API Key 和模型配置");
+                throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "LLM 返回空响应，请检查 API Key 和模型配置");
             }
 
         } catch (Exception e) {
             if (llmResilience.isCircuitBreakerOpen()) {
                 log.error("LLM 熔断器已开启: {}", e.getMessage());
-                throw new RuntimeException("LLM 服务暂时不可用（熔断器开启），请稍后重试", e);
+                throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "LLM 服务暂时不可用（熔断器开启），请稍后重试", e);
             }
             log.error("AgentScope 执行失败: {}", e.getMessage(), e);
-            throw new RuntimeException("Agent 执行失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + e.getMessage(), e);
         }
     }
 

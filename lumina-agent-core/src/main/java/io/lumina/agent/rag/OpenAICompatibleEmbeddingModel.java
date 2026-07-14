@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.agentscope.core.embedding.EmbeddingModel;
 import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.TextBlock;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -95,13 +97,13 @@ public class OpenAICompatibleEmbeddingModel implements EmbeddingModel {
         if (response.statusCode() != 200) {
             log.error("Embedding API 调用失败: status={}, body={}", response.statusCode(),
                     response.body().length() > 500 ? response.body().substring(0, 500) : response.body());
-            throw new RuntimeException("Embedding API 错误: " + response.statusCode());
+            throw new BusinessException(ErrorCode.RAG_EMBEDDING_FAILED, "Embedding API 错误: HTTP " + response.statusCode());
         }
 
         JsonNode root = objectMapper.readTree(response.body());
         ArrayNode embeddings = (ArrayNode) root.path("data");
         if (embeddings.isEmpty()) {
-            throw new RuntimeException("Embedding 响应无数据");
+            throw new BusinessException(ErrorCode.RAG_EMBEDDING_FAILED, "Embedding 响应无数据");
         }
 
         ArrayNode vector = (ArrayNode) embeddings.get(0).path("embedding");

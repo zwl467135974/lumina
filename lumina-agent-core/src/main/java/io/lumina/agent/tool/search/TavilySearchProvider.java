@@ -2,6 +2,8 @@ package io.lumina.agent.tool.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -67,7 +69,7 @@ public class TavilySearchProvider implements SearchProvider {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new RuntimeException("Tavily 搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
+            throw new BusinessException(ErrorCode.SEARCH_FAILED, "Tavily 搜索失败: HTTP " + response.statusCode() + ", body=" + response.body());
         }
 
         return parseResponse(response.body());

@@ -1,5 +1,7 @@
 package io.lumina.common.util;
 
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.Cipher;
@@ -37,7 +39,7 @@ public final class CryptoUtil {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
             KEY = Arrays.copyOf(sha256.digest(envKey.getBytes(StandardCharsets.UTF_8)), 32);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize CryptoUtil", e);
+            throw new BusinessException(ErrorCode.CRYPTO_FAILED, "Failed to initialize CryptoUtil", e);
         }
     }
 
@@ -68,7 +70,7 @@ public final class CryptoUtil {
 
             return Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
-            throw new RuntimeException("Encryption failed", e);
+            throw new BusinessException(ErrorCode.CRYPTO_FAILED, "Encryption failed", e);
         }
     }
 
@@ -92,7 +94,7 @@ public final class CryptoUtil {
 
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new RuntimeException("Decryption failed", e);
+            throw new BusinessException(ErrorCode.CRYPTO_FAILED, "Decryption failed", e);
         }
     }
 
