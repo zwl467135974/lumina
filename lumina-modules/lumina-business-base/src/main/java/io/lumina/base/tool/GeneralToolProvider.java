@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -41,17 +42,10 @@ public class GeneralToolProvider {
             .build();
 
     /**
-     * 搜索 API 配置（可选，配置后 webSearch 工具可用）
-     * 支持智谱 web_search / SerpAPI / Bing Search API
+     * 搜索 Provider（可选，配置 lumina.agent.search.provider 后自动注入）
      */
-    @org.springframework.beans.factory.annotation.Value("${lumina.agent.search.api-key:}")
-    private String searchApiKey;
-
-    @org.springframework.beans.factory.annotation.Value("${lumina.agent.search.provider:}")
-    private String searchProvider;
-
-    @org.springframework.beans.factory.annotation.Value("${lumina.agent.search.base-url:}")
-    private String searchBaseUrl;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.base.tool.search.SearchProvider searchProvider;
 
     // ==================== HTTP 请求工具 ====================
 
@@ -150,12 +144,12 @@ public class GeneralToolProvider {
      * 网络搜索
      *
      * <p>Agent 可通过此工具搜索互联网信息。
-     * 需配置 lumina.agent.search.api-key 和 lumina.agent.search.provider，
-     * 未配置时返回提示信息。
+     * 支持智谱/Tavily/SerpAPI/Brave 四种搜索引擎，
+     * 通过 lumina.agent.search.provider 配置选择，配置 api-key 后即可使用。
      */
     @AgentTool(
         name = "util.webSearch",
-        description = "搜索互联网获取实时信息。输入搜索关键词，返回搜索结果。需要系统配置搜索API后可用。",
+        description = "搜索互联网获取实时信息。输入搜索关键词，返回标题、链接和摘要。支持智谱/Tavily/SerpAPI/Brave搜索引擎。",
         category = "util.search"
     )
     public Map<String, Object> webSearch(String query) {
@@ -163,64 +157,27 @@ public class GeneralToolProvider {
 
         Map<String, Object> result = new HashMap<>();
 
-        // 未配置搜索 API 时返回提示
-        if (searchApiKey == null || searchApiKey.isBlank()) {
+        if (searchProvider == null) {
             result.put("success", false);
-            result.put("error", "网络搜索功能未配置。请管理员在系统配置中设置 lumina.agent.search.api-key、lumina.agent.search.provider（支持 zhipu/serpapi/bing）和 lumina.agent.search.base-url。");
+            result.put("error", "网络搜索未配置。请在 Nacos 或环境变量中设置 lumina.agent.search.provider（zhipu/tavily/serpapi/brave）和 lumina.agent.search.api-key。");
             return result;
         }
 
         try {
-            String provider = searchProvider != null ? searchProvider.toLowerCase() : "zhipu";
-            String url;
-            String requestBody;
+            List<io.lumina.base.tool.search.SearchResult> results = searchProvider.search(query, 10);
 
-            if ("zhipu".equals(provider)) {
-                // 智谱 web_search（OpenAI 兼容格式）
-                url = (searchBaseUrl != null && !searchBaseUrl.isBlank())
-                        ? searchBaseUrl
-                        : "https://open.bigmodel.cn/api/paas/v4/tools";
-                requestBody = "{\"request_id\":\"lumina-search\",\"tool\":\"web-search-pro\",\"messages\":[{\"role\":\"user\",\"content\":\"" + query + "\"}]}";
-            } else if ("serpapi".equals(provider)) {
-                url = "https://serpapi.com/search?q=" + java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8) + "&api_key=" + searchApiKey;
-                requestBody = "";
-            } else {
-                result.put("success", false);
-                result.put("error", "不支持的搜索提供商: " + provider + "，支持: zhipu / serpapi / bing");
-                return result;
-            }
-
-            HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(java.time.Duration.ofSeconds(HTTP_TIMEOUT_SECONDS));
-
-            if ("serpapi".equals(provider)) {
-                builder.GET();
-            } else {
-                builder.header("Content-Type", "application/json")
-                        .header("Authorization", "Bearer " + searchApiKey)
-                        .POST(HttpRequest.BodyPublishers.ofString(requestBody));
-            }
-
-            HttpResponse<String> response = httpClient.send(builder.build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            String responseBody = response.body();
-            if (responseBody != null && responseBody.length() > MAX_RESPONSE_LENGTH) {
-                responseBody = responseBody.substring(0, MAX_RESPONSE_LENGTH)
-                        + "\n... (已截断，完整响应 " + responseBody.length() + " 字符)";
-            }
-
-            result.put("success", response.statusCode() == 200);
-            result.put("statusCode", response.statusCode());
-            result.put("body", responseBody);
-            result.put("provider", provider);
+            result.put("success", true);
+            result.put("provider", searchProvider.getProviderName());
+            result.put("count", results.size());
+            result.put("results", results);
             return result;
 
         } catch (Exception e) {
-            log.error("网络搜索失败: query={}, error={}", query, e.getMessage());
+            log.error("网络搜索失败: query={}, provider={}, error={}",
+                    query, searchProvider.getProviderName(), e.getMessage());
             result.put("success", false);
-            result.put("error", "搜索请求失败: " + e.getMessage());
+            result.put("provider", searchProvider.getProviderName());
+            result.put("error", "搜索失败: " + e.getMessage());
             return result;
         }
     }
