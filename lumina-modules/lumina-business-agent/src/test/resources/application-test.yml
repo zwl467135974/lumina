@@ -30,11 +30,12 @@ spring:
       min-idle: 2
       max-active: 10
 
-  # Redis（CI 无密码）
+  # Redis（通过环境变量注入密码，无密码环境留空）
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:123456}
 
   # Flyway（base 模块的 db/migration 经 test scope 依赖进 classpath，建出全部业务表）
   flyway:
