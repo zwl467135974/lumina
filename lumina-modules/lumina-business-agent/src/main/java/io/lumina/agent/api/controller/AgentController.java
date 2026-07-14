@@ -332,13 +332,9 @@ public class AgentController {
     @PostMapping("/{id}/execute/multimodal")
     public R<String> executeAgentMultimodal(
             @PathVariable("id") Long id,
-            @RequestBody MultimodalRequestDTO dto) {
+            @Valid @RequestBody MultimodalRequestDTO dto) {
         log.info("多模态执行 Agent: id={}, task={}, fileCount={}, conversationId={}",
                 id, dto.getTask(), dto.getFileUuids() != null ? dto.getFileUuids().size() : 0, dto.getConversationId());
-
-        if (dto.getTask() == null || dto.getTask().trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
-        }
 
         String result = agentService.executeAgentMultimodal(id, dto.getTask(), dto.getFileUuids(), dto.getConversationId());
         return R.success(result);
@@ -382,13 +378,9 @@ public class AgentController {
     @PostMapping(value = "/{id}/execute/multimodal/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<StreamChunk>> executeAgentMultimodalStream(
             @PathVariable("id") Long id,
-            @RequestBody MultimodalRequestDTO dto) {
+            @Valid @RequestBody MultimodalRequestDTO dto) {
         log.info("流式多模态执行 Agent: id={}, task={}, fileCount={}, conversationId={}",
                 id, dto.getTask(), dto.getFileUuids() != null ? dto.getFileUuids().size() : 0, dto.getConversationId());
-
-        if (dto.getTask() == null || dto.getTask().trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
-        }
 
         return agentService.executeAgentMultimodalStream(id, dto.getTask(), dto.getFileUuids(), dto.getConversationId())
                 .map(chunk -> ServerSentEvent.<StreamChunk>builder()

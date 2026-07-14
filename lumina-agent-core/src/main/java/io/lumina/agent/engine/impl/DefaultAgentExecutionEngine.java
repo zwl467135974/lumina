@@ -430,7 +430,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      *
      * <p>集成 AgentScope Java SDK 实现 ReAct Agent 执行。
      *
-     * @return AgentScope 响应 Msg（降级时构造模拟 Msg）
+     * @return AgentScope 响应 Msg
+     * @throws RuntimeException 当 LLM 返回空响应或熔断器开启时抛出
      */
     private Msg executeAgentWithAgentScope(AgentConfig config, List<Msg> messages) {
         log.info("Agent 配置: name={}, type={}", config.getAgentName(), config.getAgentType());

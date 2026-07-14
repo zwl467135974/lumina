@@ -85,7 +85,7 @@ public class WorkflowController {
 
     @Audit(module = "workflow", action = "EXECUTE", description = "执行工作流")
     @PostMapping("/{id}/execute")
-    public R<WorkflowInstanceVO> execute(@PathVariable Long id, @RequestBody ExecuteWorkflowDTO dto) {
+    public R<WorkflowInstanceVO> execute(@PathVariable Long id, @Valid @RequestBody ExecuteWorkflowDTO dto) {
         return R.success(WorkflowInstanceVO.from(workflowService.execute(id, dto)));
     }
 
@@ -111,7 +111,7 @@ public class WorkflowController {
     @PostMapping(value = "/{id}/execute/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Map<String, Object>>> executeStream(
             @PathVariable Long id,
-            @RequestBody ExecuteWorkflowDTO dto) {
+            @Valid @RequestBody ExecuteWorkflowDTO dto) {
         log.info("流式执行工作流: definitionId={}", id);
         return workflowService.executeStream(id, dto)
                 .map(event -> ServerSentEvent.<Map<String, Object>>builder()
