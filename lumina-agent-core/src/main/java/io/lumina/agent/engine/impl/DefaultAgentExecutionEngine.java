@@ -20,6 +20,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
+import io.lumina.agent.engine.PlanExecuteAgent;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.loader.ConfigLoader;
@@ -500,10 +501,18 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         log.info("Agent 上下文消息数: {}", messages.size());
 
         try {
-            ReActAgent agent = createReActAgent(config);
+            String agentType = config.getAgentType();
+            Msg response;
 
-            Msg response = llmResilience.execute("agent-call",
-                    () -> agent.call(messages).block());
+            if ("PlanAndExecute".equalsIgnoreCase(agentType)) {
+                // Plan-Execute 模式：Planner → Executor → Summarizer
+                response = executePlanAndExecute(config, messages);
+            } else {
+                // 默认 ReAct 模式
+                ReActAgent agent = createReActAgent(config);
+                response = llmResilience.execute("agent-call",
+                        () -> agent.call(messages).block());
+            }
 
             if (response != null) {
                 return response;
@@ -520,6 +529,52 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             log.error("AgentScope 执行失败: {}", e.getMessage(), e);
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Plan-Execute 模式执行
+     *
+     * <p>用 Planner（无工具）分解任务 → Executor（带工具）逐步执行 → Summarizer 汇总。
+     *
+     * @since 3.3.0
+     */
+    private Msg executePlanAndExecute(AgentConfig config, List<Msg> messages) {
+        // 提取最后一条用户消息作为执行任务
+        String userPrompt = "";
+        String conversationContext = "";
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Msg msg = messages.get(i);
+            if (MsgRole.USER.equals(msg.getRole())) {
+                userPrompt = msg.getTextContent() != null ? msg.getTextContent() : "";
+                break;
+            }
+        }
+        // 历史上下文（最后 6 条）
+        int ctxStart = Math.max(0, messages.size() - 6);
+        StringBuilder ctx = new StringBuilder();
+        for (int i = ctxStart; i < messages.size(); i++) {
+            Msg msg = messages.get(i);
+            String role = msg.getRole() != null ? msg.getRole().name() : "UNKNOWN";
+            String text = msg.getTextContent();
+            if (text != null && !text.isBlank()) {
+                ctx.append(role).append(": ").append(text, 0, Math.min(500, text.length())).append("\n");
+            }
+        }
+        conversationContext = ctx.toString();
+
+        AgentConfig.LLMConfig llmConfig = resolveLlmConfig(config);
+        String modelKey = buildModelCacheKey(llmConfig);
+        Model model = modelCache.get(modelKey, k -> {
+            String resolvedApiKey = (llmConfig.getApiKey() != null && !llmConfig.getApiKey().isEmpty())
+                    ? llmConfig.getApiKey() : getApiKey();
+            return chatModelFactory.create(llmConfig, agentProperties.getLlm(), resolvedApiKey);
+        });
+        Toolkit toolkit = resolveToolkit(config);
+
+        PlanExecuteAgent peAgent = new PlanExecuteAgent(model, toolkit, userPrompt,
+                config.getPromptTemplate() != null ? config.getPromptTemplate() + "\n\n" + conversationContext : conversationContext);
+
+        return llmResilience.execute("agent-call", () -> peAgent.execute());
     }
 
     /**
