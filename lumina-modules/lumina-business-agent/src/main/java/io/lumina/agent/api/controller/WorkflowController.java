@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.agent.api.dto.CreateFromTemplateDTO;
 import io.lumina.agent.api.dto.ExecuteWorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowTemplateVO;
@@ -146,5 +147,19 @@ public class WorkflowController {
     @GetMapping("/templates")
     public R<List<WorkflowTemplateVO>> getTemplates() {
         return R.success(workflowService.getTemplates());
+    }
+
+    /**
+     * 从模板一键创建工作流
+     *
+     * <p>传入模板名 + Agent 映射，自动替换占位符并创建发布。
+     *
+     * @since 3.3.0
+     */
+    @Audit(module = "workflow", action = "CREATE", description = "从模板创建工作流")
+    @PostMapping("/from-template")
+    public R<WorkflowDefinitionVO> createFromTemplate(@Valid @RequestBody CreateFromTemplateDTO dto) {
+        return R.success(WorkflowDefinitionVO.from(
+                workflowService.createFromTemplate(dto.getTemplateName(), dto.getWorkflowName(), dto.getAgentMapping())));
     }
 }

@@ -1,0 +1,57 @@
+name: "plan-execute"
+description: "计划-执行模式：Planner Agent 分解任务为子步骤 → Executor Agent 逐步执行 → 汇总最终结果"
+
+inputs:
+  - name: task
+    type: string
+    required: true
+
+nodes:
+  - id: planner
+    type: agent
+    name: "Planner 分解任务"
+    agentId: ${agent1}
+    input: >
+      '请将以下任务分解为 1-5 个可执行的子步骤，以 JSON 数组格式返回，每个元素格式为 {"step": "步骤描述"}。
+      不要执行任务，只做规划。任务：' + #task
+    outputVar: "plan"
+
+  - id: parse-plan
+    type: transform
+    name: "解析计划为列表"
+    expression: "#plan"
+    outputVar: "subtasks"
+
+  - id: execute-loop
+    type: loop
+    name: "逐步执行子任务"
+    iterateVar: "#subtasks"
+    itemVar: "subtask"
+    loopTarget: executor
+    exitTarget: summarizer
+    maxIterations: 10
+
+  - id: executor
+    type: agent
+    name: "Executor 执行子任务"
+    agentId: ${agent2}
+    input: "'请执行以下子任务：' + #subtask"
+    outputVar: "exec_result"
+
+  - id: summarizer
+    type: agent
+    name: "汇总最终结果"
+    agentId: ${agent1}
+    input: "'基于以下各步执行结果，给出最终回答：' + #exec_result"
+    outputVar: "final_result"
+
+edges:
+  - from: planner
+    to: parse-plan
+  - from: parse-plan
+    to: execute-loop
+  - from: execute-loop
+    to: summarizer
+
+outputs:
+  result: "#final_result"

@@ -1,0 +1,59 @@
+name: "group-chat"
+description: "群聊讨论模式：多个 Agent 轮流发言讨论 → 主持人判断是否达成共识 → 总结者汇总结论"
+
+inputs:
+  - name: topic
+    type: string
+    required: true
+
+nodes:
+  - id: discuss-loop
+    type: loop
+    name: "多轮讨论"
+    conditionExpr: "#continue_discussion"
+    loopTarget: discussant-a
+    exitTarget: moderator-check
+    maxIterations: 3
+
+  - id: discussant-a
+    type: agent
+    name: "讨论者 A 发言"
+    agentId: ${agent1}
+    input: "'讨论话题：' + #topic + '。请从你的角度发表观点（100字内）。' + (#discussion == null ? '' : '已有讨论：' + #discussion)"
+    outputVar: "view_a"
+
+  - id: discussant-b
+    type: agent
+    name: "讨论者 B 发言"
+    agentId: ${agent2}
+    input: "'讨论话题：' + #topic + '。请从你的角度发表观点（100字内）。' + '已有观点：' + #view_a"
+    outputVar: "view_b"
+
+  - id: merge-round
+    type: transform
+    name: "合并本轮讨论"
+    expression: "(#discussion == null ? '' : #discussion) + '\\nA: ' + #view_a + '\\nB: ' + #view_b + '\\n'"
+    outputVar: "discussion"
+
+  - id: moderator-check
+    type: agent
+    name: "主持人判断共识"
+    agentId: ${agent3}
+    input: >
+      '判断以下讨论是否达成充分共识。回复 JSON：{"consensus": true/false, "reason": "简述"}。
+      讨论内容：' + #discussion
+    outputVar: "moderator_result"
+
+edges:
+  - from: discuss-loop
+    to: discussant-a
+  - from: discussant-a
+    to: discussant-b
+  - from: discussant-b
+    to: merge-round
+  - from: merge-round
+    to: discuss-loop
+
+outputs:
+  result: "#moderator_result"
+  discussion: "#discussion"

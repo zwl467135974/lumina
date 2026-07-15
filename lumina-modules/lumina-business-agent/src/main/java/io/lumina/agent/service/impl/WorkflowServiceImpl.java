@@ -487,7 +487,8 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     public List<WorkflowTemplateVO> getTemplates() {
         String[] templateNames = {
-                "supervisor-worker", "pipeline", "router", "human-in-the-loop", "debate"
+                "supervisor-worker", "pipeline", "router", "human-in-the-loop", "debate",
+                "plan-execute", "group-chat"
         };
 
         List<WorkflowTemplateVO> templates = new java.util.ArrayList<>();
@@ -499,11 +500,14 @@ public class WorkflowServiceImpl implements WorkflowService {
                 if (resource.exists()) {
                     try (var is = resource.getInputStream()) {
                         String yaml = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                        io.lumina.agent.orchestration.model.WorkflowDefinition def = workflowLoader.load(yaml);
+                        // 含占位符的模板需先替换为临时值才能通过 YAML 校验
+                        String yamlForValidation = yaml.replaceAll("\\$\\{\\w+\\}", "1");
+                        io.lumina.agent.orchestration.model.WorkflowDefinition def = workflowLoader.load(yamlForValidation);
                         WorkflowTemplateVO vo = new WorkflowTemplateVO();
                         vo.setName(def.getName());
                         vo.setDescription(def.getDescription());
                         vo.setDefinitionYaml(yaml);
+                        vo.setRequiredAgents(extractRequiredAgents(yaml));
                         templates.add(vo);
                     }
                 }
@@ -512,6 +516,98 @@ public class WorkflowServiceImpl implements WorkflowService {
             }
         }
         return templates;
+    }
+
+    /**
+     * 从 YAML 中提取占位符 agent 角色信息
+     */
+    private List<WorkflowTemplateVO.AgentRole> extractRequiredAgents(String yaml) {
+        List<WorkflowTemplateVO.AgentRole> roles = new java.util.ArrayList<>();
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\$\\{(\\w+)\\}");
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        java.util.regex.Matcher matcher = pattern.matcher(yaml);
+        while (matcher.find()) {
+            String placeholder = matcher.group(1);
+            if (seen.add(placeholder)) {
+                WorkflowTemplateVO.AgentRole role = new WorkflowTemplateVO.AgentRole();
+                role.setPlaceholder(placeholder);
+                role.setDescription(getAgentRoleDescription(placeholder));
+                roles.add(role);
+            }
+        }
+        return roles;
+    }
+
+    private String getAgentRoleDescription(String placeholder) {
+        return switch (placeholder) {
+            case "agent1" -> "主 Agent（Planner / 主管 / 发起者）";
+            case "agent2" -> "执行 Agent（Worker / 讨论者 B）";
+            case "agent3" -> "辅助 Agent（汇总 / 主持人）";
+            default -> "Agent 角色";
+        };
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public WorkflowDefinitionDO createFromTemplate(String templateName, String workflowName,
+                                                    java.util.Map<String, Long> agentMapping) {
+        log.info("从模板创建工作流: template={}, name={}, agentMapping={}", templateName, workflowName, agentMapping);
+
+        // 读取模板 YAML
+        String path = "workflow-templates/" + templateName + ".yaml";
+        org.springframework.core.io.ClassPathResource resource =
+                new org.springframework.core.io.ClassPathResource(path);
+        if (!resource.exists()) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "模板不存在: " + templateName);
+        }
+
+        String yaml;
+        try (var is = resource.getInputStream()) {
+            yaml = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "读取模板失败: " + templateName, e);
+        }
+
+        // 替换占位符 ${agent1} → 实际 agentId
+        if (agentMapping != null) {
+            for (var entry : agentMapping.entrySet()) {
+                if (entry.getValue() == null) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST,
+                            "Agent 映射缺少 ID: " + entry.getKey());
+                }
+                yaml = yaml.replace("${" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+            }
+        }
+
+        // 校验：检查是否还有未替换的占位符
+        java.util.regex.Pattern leftover = java.util.regex.Pattern.compile("\\$\\{\\w+\\}");
+        java.util.regex.Matcher m = leftover.matcher(yaml);
+        if (m.find()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "模板中有未映射的占位符: " + m.group() + "，请补全 agentMapping");
+        }
+
+        // 校验 YAML 合法性
+        try {
+            workflowLoader.load(yaml);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "模板 YAML 校验失败: " + e.getMessage(), e);
+        }
+
+        // 创建工作流（草稿）
+        WorkflowDTO dto = new WorkflowDTO();
+        dto.setName(workflowName);
+        io.lumina.agent.orchestration.model.WorkflowDefinition def = workflowLoader.load(yaml);
+        dto.setDescription(def.getDescription());
+        dto.setDefinitionYaml(yaml);
+
+        WorkflowDefinitionDO entity = create(dto);
+
+        // 自动发布
+        publish(entity.getId());
+
+        log.info("从模板创建并发布工作流成功: id={}, name={}", entity.getId(), workflowName);
+        return entity;
     }
 
     /**

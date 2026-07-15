@@ -57,4 +57,19 @@ public interface WorkflowService {
 
     /** 获取内置工作流模板列表 */
     List<WorkflowTemplateVO> getTemplates();
+
+    /**
+     * 从模板创建工作流（一键创建）
+     *
+     * <p>读取模板 YAML，用 agentMapping 替换占位符（如 ${agent1} → 实际 Agent ID），
+     * 然后创建并发布工作流。
+     *
+     * @param templateName  模板名称（如 plan-execute、group-chat）
+     * @param workflowName  新工作流名称
+     * @param agentMapping  占位符 → Agent ID 映射（如 {"agent1": 1, "agent2": 2}）
+     * @return 创建的工作流定义
+     * @since 3.3.0
+     */
+    WorkflowDefinitionDO createFromTemplate(String templateName, String workflowName,
+                                             java.util.Map<String, Long> agentMapping);
 }
