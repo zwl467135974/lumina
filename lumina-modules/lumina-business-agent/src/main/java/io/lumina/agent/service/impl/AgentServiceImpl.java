@@ -13,6 +13,8 @@ import io.lumina.agent.model.ExecuteResult;
 import io.lumina.common.core.BaseContext;
 import io.lumina.framework.storage.FileService;
 import io.lumina.framework.storage.entity.FileDO;
+import io.lumina.agent.model.MultimodalContent;
+import io.lumina.agent.model.MultimodalDocument;
 import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.ConversationService;
@@ -81,7 +83,7 @@ public class AgentServiceImpl implements AgentService {
     private boolean contentModerationStrict;
 
     private record MultimodalContext(Agent agent, AgentConfig config, String sessionId,
-                                     List<MultimodalImage> images, String fileIdsJson) {}
+                                     List<MultimodalContent> contents, String fileIdsJson) {}
 
     /**
      * Domain -> DO 转换
@@ -292,13 +294,15 @@ public class AgentServiceImpl implements AgentService {
     public String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
         MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
 
-        ExecuteResult result = agentExecutionEngine.executeMultimodalSync(
-                ctx.agent().getAgentType().toLowerCase(),
-                task,
-                ctx.images(),
-                ctx.config(),
-                ctx.sessionId()
-        );
+        ExecuteResult result = ((io.lumina.agent.engine.impl.DefaultAgentExecutionEngine) agentExecutionEngine)
+                .executeMultimodalSync(
+                        ctx.agent().getAgentType().toLowerCase(),
+                        task,
+                        ctx.contents(),
+                        ctx.config(),
+                        ctx.sessionId(),
+                        true
+                );
 
         if (!result.getSuccess()) {
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
@@ -379,13 +383,15 @@ public class AgentServiceImpl implements AgentService {
         final String sid = ctx.sessionId();
         final StringBuffer fullResponse = new StringBuffer();
 
-        return agentExecutionEngine.executeMultimodalStream(
-                ctx.agent().getAgentType().toLowerCase(),
-                task,
-                ctx.images(),
-                ctx.config(),
-                sid
-        )
+        return ((io.lumina.agent.engine.impl.DefaultAgentExecutionEngine) agentExecutionEngine)
+                .executeMultimodalStream(
+                        ctx.agent().getAgentType().toLowerCase(),
+                        task,
+                        ctx.contents(),
+                        ctx.config(),
+                        sid,
+                        true
+                )
         .doOnNext(chunk -> {
             String type = chunk.type();
             if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {
@@ -419,36 +425,139 @@ public class AgentServiceImpl implements AgentService {
         AgentConfig config = buildExecutionConfig(agent);
         String sessionId = resolveConversation(conversationUuid, agentId);
 
-        List<MultimodalImage> images = loadImages(fileUuids);
+        List<MultimodalContent> contents = loadFiles(fileUuids);
         String fileIdsJson = serializeFileIds(fileUuids);
 
         if (sessionId != null) {
             conversationService.saveMessage(sessionId, "user", task, 0, null, fileIdsJson);
         }
 
-        return new MultimodalContext(agent, config, sessionId, images, fileIdsJson);
+        return new MultimodalContext(agent, config, sessionId, contents, fileIdsJson);
     }
 
-    private List<MultimodalImage> loadImages(List<String> fileUuids) {
-        List<MultimodalImage> images = new ArrayList<>();
-        if (fileUuids != null) {
-            for (String uuid : fileUuids) {
-                FileDO fileDO = fileService.getByUuid(uuid);
-                if (fileDO == null || fileDO.getStatus() != 1) {
-                    log.warn("文件不存在或已删除: {}", uuid);
-                    continue;
-                }
+    /**
+     * 加载文件并按类型构造多模态内容
+     *
+     * <p>图片 → {@link MultimodalImage}（Base64）；
+     * PDF/Word/文本 → {@link MultimodalDocument}（解析提取文本）。
+     *
+     * @since 3.3.0
+     */
+    private List<MultimodalContent> loadFiles(List<String> fileUuids) {
+        List<MultimodalContent> contents = new ArrayList<>();
+        if (fileUuids == null) {
+            return contents;
+        }
+        for (String uuid : fileUuids) {
+            FileDO fileDO = fileService.getByUuid(uuid);
+            if (fileDO == null || fileDO.getStatus() != 1) {
+                log.warn("文件不存在或已删除: {}", uuid);
+                continue;
+            }
+            String contentType = fileDO.getContentType() != null ? fileDO.getContentType() : "";
+            String filename = fileDO.getOriginalName() != null ? fileDO.getOriginalName() : uuid;
+
+            if (contentType.startsWith("image/")) {
+                // 图片：Base64 直接投递
                 byte[] bytes;
                 try (java.io.InputStream is = fileService.download(uuid)) {
                     bytes = is.readAllBytes();
                 } catch (Exception e) {
-                    throw new BusinessException("读取图片失败: " + uuid, e);
+                    throw new BusinessException(ErrorCode.FILE_READ_FAILED, "读取图片失败: " + uuid, e);
                 }
-                images.add(new MultimodalImage(fileDO.getContentType(),
+                contents.add(new MultimodalImage(contentType,
                         java.util.Base64.getEncoder().encodeToString(bytes)));
+            } else {
+                // 文档（PDF/Word/文本）：解析提取文本
+                String text = extractDocumentText(uuid, filename, contentType);
+                if (text != null && !text.isBlank()) {
+                    contents.add(MultimodalDocument.of(text, filename));
+                    log.info("文档文本提取成功: file={}, textLen={}", filename, text.length());
+                } else {
+                    log.warn("文档文本提取为空，已跳过: file={}", filename);
+                }
             }
         }
-        return images;
+        return contents;
+    }
+
+    /**
+     * 提取文档文本（PDF/Word/纯文本）
+     *
+     * <p>复用 AgentScope Reader（与 RAG 入库同一路径），下载到临时文件后解析。
+     *
+     * @since 3.3.0
+     */
+    private String extractDocumentText(String uuid, String filename, String contentType) {
+        java.nio.file.Path tempFile = null;
+        try (java.io.InputStream is = fileService.download(uuid)) {
+            String suffix = guessFileSuffix(filename, contentType);
+            tempFile = java.nio.file.Files.createTempFile("lumina_mm_", suffix);
+            java.nio.file.Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            io.agentscope.core.rag.reader.ReaderInput input =
+                    io.agentscope.core.rag.reader.ReaderInput.fromPath(tempFile);
+
+            java.util.List<io.agentscope.core.rag.model.Document> docs = null;
+            String fmt = contentType.toLowerCase();
+            // 用大 chunkSize 减少分块数，便于拼全文本喂 LLM
+            int largeChunk = 50000;
+            if (fmt.contains("pdf") || filename.toLowerCase().endsWith(".pdf")) {
+                docs = new io.agentscope.core.rag.reader.PDFReader(
+                        largeChunk, io.agentscope.core.rag.reader.SplitStrategy.PARAGRAPH, 0)
+                        .read(input).block();
+            } else if (fmt.contains("word") || filename.toLowerCase().endsWith(".doc")
+                    || filename.toLowerCase().endsWith(".docx")) {
+                docs = new io.agentscope.core.rag.reader.WordReader(
+                        largeChunk, io.agentscope.core.rag.reader.SplitStrategy.PARAGRAPH, 0,
+                        false, true, io.agentscope.core.rag.reader.TableFormat.MARKDOWN)
+                        .read(input).block();
+            } else {
+                // 纯文本类（txt/md/csv/json 等）：直接读字符串
+                return java.nio.file.Files.readString(tempFile);
+            }
+
+            if (docs == null || docs.isEmpty()) {
+                return null;
+            }
+            StringBuilder sb = new StringBuilder();
+            for (var doc : docs) {
+                String chunkText = doc.getMetadata() != null ? doc.getMetadata().getContentText() : null;
+                if (chunkText != null) {
+                    sb.append(chunkText).append("\n\n");
+                }
+            }
+            return sb.toString().trim();
+
+        } catch (Exception e) {
+            log.error("文档文本提取失败: file={}, error={}", filename, e.getMessage(), e);
+            throw new BusinessException(ErrorCode.FILE_READ_FAILED, "文档解析失败: " + filename, e);
+        } finally {
+            if (tempFile != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(tempFile);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
+    /**
+     * 根据文件名或 contentType 推断临时文件后缀
+     */
+    private String guessFileSuffix(String filename, String contentType) {
+        if (filename != null) {
+            int dot = filename.lastIndexOf('.');
+            if (dot >= 0) {
+                return filename.substring(dot);
+            }
+        }
+        return switch (contentType) {
+            case "application/pdf" -> ".pdf";
+            case "application/msword" -> ".doc";
+            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> ".docx";
+            default -> ".txt";
+        };
     }
 
     private String serializeFileIds(List<String> fileUuids) {

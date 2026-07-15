@@ -11,13 +11,16 @@ import java.io.Serializable;
  *
  * <p>用于向 AgentScope 传递 Base64 图片内容，不依赖 Web 层类型。
  *
+ * <p>实现 {@link MultimodalContent} 密封接口，与 {@link MultimodalDocument} 共同构成
+ * 多模态内容体系。引擎层按 {@code instanceof} 分发到 {@code ImageBlock}。
+ *
  * @author Lumina Team
  * @since 1.3.0
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class MultimodalImage implements Serializable {
+public non-sealed class MultimodalImage implements MultimodalContent {
 
     private static final long serialVersionUID = 1L;
 

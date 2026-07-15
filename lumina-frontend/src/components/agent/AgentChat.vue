@@ -39,6 +39,11 @@
               <div v-if="msg.images && msg.images.length > 0" class="msg-images">
                 <img v-for="(img, idx) in msg.images" :key="idx" :src="img" class="msg-image-thumb" />
               </div>
+              <div v-if="msg.documents && msg.documents.length > 0" class="msg-documents">
+                <el-tag v-for="(doc, idx) in msg.documents" :key="idx" size="small" type="info" class="doc-chip">
+                  <el-icon><Document /></el-icon> {{ doc }}
+                </el-tag>
+              </div>
               <div v-if="msg.tokenCount" class="msg-meta">
                 Token: {{ msg.tokenCount }}<span v-if="msg.durationMs"> · {{ msg.durationMs }}ms</span>
               </div>
@@ -209,6 +214,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Document } from '@element-plus/icons-vue'
 import { streamExecuteAgent, streamExecuteMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
 import LumUploader from '@/components/common/LumUploader.vue'
 import {
@@ -240,6 +246,8 @@ const messagesRef = ref<HTMLElement | null>(null)
 // 文件上传（使用 LumUploader 组件）
 const uploaderRef = ref<InstanceType<typeof LumUploader> | null>(null)
 const selectedFileUuids = ref<string[]>([])
+// 文件元信息（区分图片/文档，用于即时预览）
+const uploadedFileMeta = ref<{ fileUuid: string; name: string; isImage: boolean }[]>([])
 
 const isBusy = computed(() => streaming.value)
 
@@ -463,8 +471,10 @@ const handleChunk = (chunk: StreamChunk) => {
 }
 
 // 文件上传事件处理（LumUploader 组件回调）
-const onFilesChange = (fileUuids: string[]) => {
-  selectedFileUuids.value = fileUuids
+const onFilesChange = (files: { fileUuid: string; name: string; isImage: boolean }[]) => {
+  selectedFileUuids.value = files.map((f) => f.fileUuid)
+  // 保存文件元信息，用于即时显示时区分图片和文档
+  uploadedFileMeta.value = files
 }
 
 const clearFiles = () => {
@@ -492,14 +502,23 @@ const send = async () => {
   }
 
   const hasFiles = selectedFileUuids.value.length > 0
-  const imageUrls = hasFiles ? selectedFileUuids.value.map(uuid => `/api/v1/files/${uuid}/download`) : undefined
+  // 按类型分流：仅图片才生成缩略图 URL，文档显示文件名
+  const imageUrls = hasFiles
+    ? uploadedFileMeta.value
+        .filter((f) => f.isImage)
+        .map((f) => `/api/v1/files/${f.fileUuid}/download`)
+    : undefined
+  const docNames = hasFiles
+    ? uploadedFileMeta.value.filter((f) => !f.isImage).map((f) => f.name)
+    : []
 
-  // 即时显示用户消息（含附件缩略图）
+  // 即时显示用户消息（含附件：图片缩略图 + 文档名 chip）
   historyMessages.value.push({
     messageId: Date.now(),
     role: 'user',
     content: t,
     images: imageUrls,
+    documents: docNames,
     tokenCount: 0,
     durationMs: null,
     createTime: new Date().toISOString()
@@ -711,6 +730,17 @@ defineExpose({ resetStream })
     gap: 6px;
     flex-wrap: wrap;
     margin-top: 8px;
+  }
+  .msg-documents {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .doc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
   .msg-image-thumb {
     width: 120px;

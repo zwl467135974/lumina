@@ -25,6 +25,8 @@ export interface MessageVO {
   fileIds?: string
   /** 图片 URL 列表（前端解析 fileIds 后填充，仅本地显示） */
   images?: string[]
+  /** 文档文件名列表（PDF/Word 等，仅本地即时显示用） */
+  documents?: string[]
 }
 
 /**

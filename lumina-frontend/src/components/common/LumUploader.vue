@@ -67,9 +67,17 @@ const props = withDefaults(
   }
 )
 
+/** 已上传文件项（含类型信息，供父组件区分图片/文档） */
+export interface UploadedFile {
+  fileUuid: string
+  name: string
+  isImage: boolean
+  url: string
+}
+
 const emit = defineEmits<{
-  /** 文件列表变化时触发，返回已上传的 fileUuid 列表 */
-  (e: 'change', fileUuids: string[]): void
+  /** 文件列表变化时触发，返回已上传的文件信息列表 */
+  (e: 'change', files: UploadedFile[]): void
 }>()
 
 const items = ref<UploadedItem[]>([])
@@ -158,7 +166,7 @@ function removeItem(idx: number) {
 }
 
 function emitChange() {
-  emit('change', items.value.map((i) => i.fileUuid))
+  emit('change', items.value.map((i) => ({ fileUuid: i.fileUuid, name: i.name, isImage: i.isImage, url: i.url })))
 }
 
 /** 清空已选文件（供父组件调用） */

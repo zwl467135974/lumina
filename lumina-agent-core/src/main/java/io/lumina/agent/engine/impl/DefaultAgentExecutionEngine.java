@@ -29,6 +29,8 @@ import io.lumina.agent.manager.MemoryManager;
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ChatModelFactory;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.MultimodalContent;
+import io.lumina.agent.model.MultimodalDocument;
 import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.model.StreamEventType;
@@ -156,18 +158,32 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Observed(name = "agent.execute.multimodal", contextualName = "agent-multimodal-execution")
     public ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalImage> images,
                                                AgentConfig config, String conversationId) {
-        return executeSyncInternal(businessType, task, images, config, conversationId);
+        List<MultimodalContent> contents = images != null
+                ? new ArrayList<>(images) : Collections.emptyList();
+        return executeSyncInternal(businessType, task, contents, config, conversationId);
     }
 
-    private ExecuteResult executeSyncInternal(String businessType, String task, List<MultimodalImage> images,
+    /**
+     * 执行多模态 Agent（支持图片 + 文档，阻塞等待结果）
+     *
+     * @param contents 多模态内容列表（图片或文档）
+     * @since 3.3.0
+     */
+    public ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalContent> contents,
+                                               AgentConfig config, String conversationId,
+                                               boolean contentMode) {
+        return executeSyncInternal(businessType, task, contents, config, conversationId);
+    }
+
+    private ExecuteResult executeSyncInternal(String businessType, String task, List<MultimodalContent> contents,
                                              AgentConfig config, String conversationId) {
         long startTime = System.currentTimeMillis();
         BaseContext.setConversationId(conversationId);
 
         try {
-            int imageCount = images != null ? images.size() : 0;
-            log.info("开始执行 Agent: businessType={}, task={}, imageCount={}, conversationId={}",
-                    businessType, task, imageCount, conversationId);
+            int contentCount = contents != null ? contents.size() : 0;
+            log.info("开始执行 Agent: businessType={}, task={}, contentCount={}, conversationId={}",
+                    businessType, task, contentCount, conversationId);
 
             // 加载配置
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
@@ -182,7 +198,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
             // 构建上下文消息（含历史记忆）
-            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, images);
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents);
 
             // 执行 Agent
             Msg agentResponse = executeAgentWithAgentScope(agentConfig, contextMessages);
@@ -308,9 +324,29 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Observed(name = "agent.execute.multimodalStream", contextualName = "agent-multimodal-stream")
     public Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalImage> images,
                                                       AgentConfig config, String conversationId) {
-        int imageCount = images != null ? images.size() : 0;
-        log.info("开始流式多模态执行 Agent: businessType={}, task={}, imageCount={}, conversationId={}",
-                businessType, task, imageCount, conversationId);
+        List<MultimodalContent> contents = images != null
+                ? new ArrayList<>(images) : Collections.emptyList();
+        return executeMultimodalStreamInternal(businessType, task, contents, config, conversationId);
+    }
+
+    /**
+     * 流式执行多模态 Agent（支持图片 + 文档）
+     *
+     * @param contents 多模态内容列表（图片或文档）
+     * @since 3.3.0
+     */
+    public Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalContent> contents,
+                                                      AgentConfig config, String conversationId,
+                                                      boolean contentMode) {
+        return executeMultimodalStreamInternal(businessType, task, contents, config, conversationId);
+    }
+
+    private Flux<StreamChunk> executeMultimodalStreamInternal(String businessType, String task,
+                                                               List<MultimodalContent> contents,
+                                                               AgentConfig config, String conversationId) {
+        int contentCount = contents != null ? contents.size() : 0;
+        log.info("开始流式多模态执行 Agent: businessType={}, task={}, contentCount={}, conversationId={}",
+                businessType, task, contentCount, conversationId);
         BaseContext.setConversationId(conversationId);
         try {
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
@@ -321,7 +357,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             }
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
-            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, images);
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents);
 
             ReActAgent agent = createReActAgent(agentConfig);
 
@@ -383,7 +419,22 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * @param images         当前用户输入携带的图片
      * @return AgentScope Msg 列表
      */
-    private List<Msg> buildContextMessages(String conversationId, String currentPrompt, List<MultimodalImage> images) {
+    /**
+     * 构建上下文消息（含历史记忆 + 当前多模态输入）
+     *
+     * <p>多模态内容按类型分发：
+     * <ul>
+     *   <li>{@link MultimodalImage} → {@code ImageBlock}（Base64 图片）</li>
+     *   <li>{@link MultimodalDocument} → {@code TextBlock}（文档提取文本）</li>
+     * </ul>
+     *
+     * @param conversationId 会话 ID（null 则无历史，仅当前输入）
+     * @param currentPrompt  当前用户提示词（已填充模板）
+     * @param contents       当前用户输入携带的多模态内容（图片或文档）
+     * @return AgentScope Msg 列表
+     */
+    private List<Msg> buildContextMessages(String conversationId, String currentPrompt,
+                                           List<MultimodalContent> contents) {
         List<Msg> messages = new ArrayList<>();
 
         if (conversationId != null) {
@@ -397,18 +448,27 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
 
         // 追加当前用户消息
-        if (images == null || images.isEmpty()) {
+        if (contents == null || contents.isEmpty()) {
             messages.add(Msg.builder().role(MsgRole.USER).textContent(currentPrompt).build());
         } else {
             List<ContentBlock> blocks = new ArrayList<>();
             blocks.add(TextBlock.builder().text(currentPrompt).build());
-            for (MultimodalImage image : images) {
-                blocks.add(ImageBlock.builder()
-                        .source(Base64Source.builder()
-                                .mediaType(image.getMediaType())
-                                .data(image.getData())
-                                .build())
-                        .build());
+            for (MultimodalContent content : contents) {
+                if (content instanceof MultimodalImage image) {
+                    blocks.add(ImageBlock.builder()
+                            .source(Base64Source.builder()
+                                    .mediaType(image.getMediaType())
+                                    .data(image.getData())
+                                    .build())
+                            .build());
+                } else if (content instanceof MultimodalDocument doc) {
+                    if (doc.text() != null && !doc.text().isBlank()) {
+                        blocks.add(TextBlock.builder()
+                                .text("[文档内容: " + (doc.sourceFileName() != null ? doc.sourceFileName() : "未命名") + "]\n"
+                                        + doc.text())
+                                .build());
+                    }
+                }
             }
             messages.add(Msg.builder().role(MsgRole.USER).content(blocks).build());
         }
