@@ -8,6 +8,8 @@ import io.agentscope.core.rag.store.InMemoryStore;
 import io.agentscope.core.rag.store.VDBStoreBase;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.config.RagProperties;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -191,7 +193,7 @@ public class RagKnowledgeFactory {
                 return new QdrantRestStore(qdrantHost, props.getQdrant().getCollection(), dims);
             }
         } catch (Exception e) {
-            throw new RuntimeException("向量存储初始化失败: " + props.getStoreType(), e);
+            throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "向量存储初始化失败: " + props.getStoreType(), e);
         }
     }
 

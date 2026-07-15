@@ -5,6 +5,8 @@ import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.TextBlock;
 import io.lumina.agent.evaluation.model.ScoringMethod;
 import io.lumina.agent.evaluation.model.TestCase;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -63,7 +65,7 @@ public class SemanticSimilarityScorer implements EvaluationScorer {
         ContentBlock block = TextBlock.builder().text(text).build();
         double[] vector = embeddingModel.embed(block).block();
         if (vector == null || vector.length == 0) {
-            throw new RuntimeException("Embedding 返回空向量");
+            throw new BusinessException(ErrorCode.RAG_EMBEDDING_FAILED, "Embedding 返回空向量");
         }
         return vector;
     }

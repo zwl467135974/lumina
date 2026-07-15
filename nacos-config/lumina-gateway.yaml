@@ -53,6 +53,11 @@ spring:
           predicates: [Path=/api/v1/base/tenants/**]
           filters: [StripPrefix=0]
 
+        - id: lumina-base-audit-logs-route
+          uri: lb://lumina-business-base
+          predicates: [Path=/api/v1/audit-logs/**]
+          filters: [StripPrefix=0]
+
         - id: lumina-base-fallback-route
           uri: lb://lumina-business-base
           predicates: [Path=/api/v1/base/**]

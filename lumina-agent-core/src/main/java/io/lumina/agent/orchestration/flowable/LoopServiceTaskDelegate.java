@@ -7,6 +7,8 @@ import io.lumina.agent.orchestration.model.WorkflowContext;
 import io.lumina.agent.orchestration.model.WorkflowDefinition;
 import io.lumina.agent.orchestration.model.WorkflowEdge;
 import io.lumina.agent.orchestration.model.WorkflowNode;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.springframework.stereotype.Component;
@@ -135,7 +137,7 @@ public class LoopServiceTaskDelegate extends AbstractWorkflowDelegate {
                 try {
                     lastResult = executor.execute(chainNode, ctx);
                 } catch (Exception e) {
-                    throw new RuntimeException("循环节点子链执行失败: " + chainNode.getId(), e);
+                    throw new BusinessException(ErrorCode.WORKFLOW_EXECUTE_FAILED, "循环节点子链执行失败: " + chainNode.getId(), e);
                 }
                 if (chainNode.getOutputVar() != null && !chainNode.getOutputVar().isBlank()) {
                     ctx.setVariable(chainNode.getOutputVar(), lastResult);

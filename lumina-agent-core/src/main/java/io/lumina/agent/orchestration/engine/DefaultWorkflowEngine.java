@@ -3,6 +3,8 @@ package io.lumina.agent.orchestration.engine;
 import io.lumina.agent.orchestration.expression.ExpressionEvaluator;
 import io.lumina.agent.orchestration.model.*;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -177,7 +179,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             listeners.forEach(l -> l.onNodeFailed(node.getId(), e));
             recordNodeTimer(node.getClass().getSimpleName(), "failure", duration);
             log.error("节点执行失败: id={}, durationMs={}", node.getId(), duration, e);
-            throw new RuntimeException("节点执行失败: " + node.getId(), e);
+            throw new BusinessException(ErrorCode.WORKFLOW_EXECUTE_FAILED, "节点执行失败: " + node.getId(), e);
         }
     }
 

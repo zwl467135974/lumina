@@ -10,6 +10,8 @@ import io.lumina.agent.orchestration.model.WorkflowDefinition;
 import io.lumina.agent.orchestration.model.WorkflowEdge;
 import io.lumina.agent.orchestration.model.WorkflowNode;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.common.core.ErrorCode;
+import io.lumina.common.exception.BusinessException;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.ExclusiveGateway;
@@ -397,7 +399,7 @@ public class FlowableBpmnConverter {
             ext.setElementText(json);
             element.addExtensionElement(ext);
         } catch (Exception e) {
-            throw new RuntimeException("序列化节点定义失败: " + node.getId(), e);
+            throw new BusinessException(ErrorCode.WORKFLOW_PARSE_FAILED, "序列化节点定义失败: " + node.getId(), e);
         }
     }
 

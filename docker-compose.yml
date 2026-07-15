@@ -166,12 +166,12 @@ services:
   # Business Base 基础业务服务
   business-base:
     build:
-      context: ./lumina-modules/lumina-business-base
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: lumina-modules/lumina-business-base/Dockerfile
     container_name: lumina-business-base
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "8082:8082"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -186,7 +186,7 @@ services:
     volumes:
       - ./logs/business-base:/app/logs
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -204,12 +204,12 @@ services:
   # Agent Service Agent 服务
   agent-service:
     build:
-      context: ./lumina-modules/lumina-business-agent
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: lumina-modules/lumina-business-agent/Dockerfile
     container_name: lumina-agent-service
     restart: unless-stopped
     ports:
-      - "8082:8082"
+      - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
@@ -224,7 +224,7 @@ services:
     volumes:
       - ./logs/agent-service:/app/logs
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
