@@ -294,15 +294,13 @@ public class AgentServiceImpl implements AgentService {
     public String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
         MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
 
-        ExecuteResult result = ((io.lumina.agent.engine.impl.DefaultAgentExecutionEngine) agentExecutionEngine)
-                .executeMultimodalSync(
-                        ctx.agent().getAgentType().toLowerCase(),
-                        task,
-                        ctx.contents(),
-                        ctx.config(),
-                        ctx.sessionId(),
-                        true
-                );
+        ExecuteResult result = agentExecutionEngine.executeMultimodalSync(
+                ctx.agent().getAgentType().toLowerCase(),
+                task,
+                ctx.contents(),
+                ctx.config(),
+                ctx.sessionId()
+        );
 
         if (!result.getSuccess()) {
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
@@ -383,15 +381,13 @@ public class AgentServiceImpl implements AgentService {
         final String sid = ctx.sessionId();
         final StringBuffer fullResponse = new StringBuffer();
 
-        return ((io.lumina.agent.engine.impl.DefaultAgentExecutionEngine) agentExecutionEngine)
-                .executeMultimodalStream(
-                        ctx.agent().getAgentType().toLowerCase(),
-                        task,
-                        ctx.contents(),
-                        ctx.config(),
-                        sid,
-                        true
-                )
+        return agentExecutionEngine.executeMultimodalStream(
+                ctx.agent().getAgentType().toLowerCase(),
+                task,
+                ctx.contents(),
+                ctx.config(),
+                sid
+        )
         .doOnNext(chunk -> {
             String type = chunk.type();
             if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {

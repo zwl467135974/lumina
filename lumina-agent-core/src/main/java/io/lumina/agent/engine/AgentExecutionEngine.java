@@ -2,6 +2,7 @@ package io.lumina.agent.engine;
 
 import io.lumina.agent.model.AgentConfig;
 import io.lumina.agent.model.ExecuteResult;
+import io.lumina.agent.model.MultimodalContent;
 import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import reactor.core.publisher.Flux;
@@ -38,11 +39,12 @@ public interface AgentExecutionEngine {
     ExecuteResult executeSync(String businessType, String task, AgentConfig config, String conversationId);
 
     /**
-     * 执行多模态 Agent（文本 + 图片，阻塞等待结果）
+     * 执行多模态 Agent（文本 + 图片/文档，阻塞等待结果）
      *
+     * @param contents       多模态内容列表（图片或文档）
      * @param conversationId 会话 ID（null 表示无会话上下文）
      */
-    ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalImage> images,
+    ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalContent> contents,
                                         AgentConfig config, String conversationId);
 
     /**
@@ -53,11 +55,12 @@ public interface AgentExecutionEngine {
     Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId);
 
     /**
-     * 流式执行多模态 Agent（文本 + 图片，逐片段返回，用于 SSE 打字机效果）
+     * 流式执行多模态 Agent（文本 + 图片/文档，逐片段返回，用于 SSE 打字机效果）
      *
+     * @param contents       多模态内容列表（图片或文档）
      * @param conversationId 会话 ID（null 表示无会话上下文）
      */
-    Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalImage> images,
+    Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalContent> contents,
                                               AgentConfig config, String conversationId);
 
     /**
@@ -93,9 +96,9 @@ public interface AgentExecutionEngine {
     /**
      * 兼容重载：执行多模态 Agent（无会话上下文）
      */
-    default ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalImage> images,
+    default ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalContent> contents,
                                                AgentConfig config) {
-        return executeMultimodalSync(businessType, task, images, config, null);
+        return executeMultimodalSync(businessType, task, contents, config, null);
     }
 
     /**
@@ -108,8 +111,8 @@ public interface AgentExecutionEngine {
     /**
      * 兼容重载：流式执行多模态 Agent（无会话上下文）
      */
-    default Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalImage> images,
+    default Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalContent> contents,
                                                        AgentConfig config) {
-        return executeMultimodalStream(businessType, task, images, config, null);
+        return executeMultimodalStream(businessType, task, contents, config, null);
     }
 }

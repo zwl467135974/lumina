@@ -155,24 +155,15 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         return executeSyncInternal(businessType, task, Collections.emptyList(), config, conversationId);
     }
 
-    @Override
-    @Observed(name = "agent.execute.multimodal", contextualName = "agent-multimodal-execution")
-    public ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalImage> images,
-                                               AgentConfig config, String conversationId) {
-        List<MultimodalContent> contents = images != null
-                ? new ArrayList<>(images) : Collections.emptyList();
-        return executeSyncInternal(businessType, task, contents, config, conversationId);
-    }
-
     /**
      * 执行多模态 Agent（支持图片 + 文档，阻塞等待结果）
      *
-     * @param contents 多模态内容列表（图片或文档）
      * @since 3.3.0
      */
+    @Override
+    @Observed(name = "agent.execute.multimodal", contextualName = "agent-multimodal-execution")
     public ExecuteResult executeMultimodalSync(String businessType, String task, List<MultimodalContent> contents,
-                                               AgentConfig config, String conversationId,
-                                               boolean contentMode) {
+                                               AgentConfig config, String conversationId) {
         return executeSyncInternal(businessType, task, contents, config, conversationId);
     }
 
@@ -321,24 +312,15 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
     }
 
-    @Override
-    @Observed(name = "agent.execute.multimodalStream", contextualName = "agent-multimodal-stream")
-    public Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalImage> images,
-                                                      AgentConfig config, String conversationId) {
-        List<MultimodalContent> contents = images != null
-                ? new ArrayList<>(images) : Collections.emptyList();
-        return executeMultimodalStreamInternal(businessType, task, contents, config, conversationId);
-    }
-
     /**
      * 流式执行多模态 Agent（支持图片 + 文档）
      *
-     * @param contents 多模态内容列表（图片或文档）
      * @since 3.3.0
      */
+    @Override
+    @Observed(name = "agent.execute.multimodalStream", contextualName = "agent-multimodal-stream")
     public Flux<StreamChunk> executeMultimodalStream(String businessType, String task, List<MultimodalContent> contents,
-                                                      AgentConfig config, String conversationId,
-                                                      boolean contentMode) {
+                                                      AgentConfig config, String conversationId) {
         return executeMultimodalStreamInternal(businessType, task, contents, config, conversationId);
     }
 

@@ -5,6 +5,7 @@ import io.lumina.agent.infrastructure.entity.PromptDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.model.AgentConfig;
+import io.lumina.agent.model.MultimodalContent;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.framework.storage.FileService;
 import io.lumina.agent.service.ConversationService;
