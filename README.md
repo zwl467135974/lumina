@@ -26,10 +26,15 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 ### 核心特性
 
 - **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、流式输出
+- **MCP 协议接入** - 支持 Model Context Protocol，通过 stdio/http 连接外部 MCP Server，自动注册工具（McpClientRegistry + McpToolRegistrar），提供只读监控 API
+- **工具系统** - 通用工具（HTTP 请求/时间查询/网络搜索/数学计算）+ 业务工具 + MCP 工具统一注册管理，支持熔断器、调用记录、超时控制
+- **网络搜索** - 策略模式适配智谱/Tavily/SerpAPI/Brave 四种搜索引擎，配置驱动切换
 - **工作流编排引擎** - 基于 Flowable 7.0 的 DAG 引擎，支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 5 种协作模板
 - **Prompt 版本管理** - DB 持久化、版本发布/激活、Agent 执行链路运行时动态生效
 - **Agent 评估框架** - YAML 数据集 + 4 种评分器（精确/包含/语义相似度/LLM Judge）+ A/B 对比 + CSV 导出
 - **RAG 知识库** - 文档上传 → 切片 → 向量化 → 检索增强（Qdrant REST + 多 Embedding 提供商）+ 来源可视化
+- **通知中心** - 独立通知模块，站内通知、已读/未读管理、通知偏好设置
+- **多模态** - 图片/PDF/Word 上传 + 流式多模态执行（LumUploader 可复用上传组件）
 - **微服务架构** - 基于 Spring Cloud Alibaba，支持服务注册、配置管理、负载均衡
 - **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
 - **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
@@ -38,7 +43,7 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）+ 频率限制 + 内容审核
 - **企业级安全** - 租户隔离自动检测、权限实时缓存、SpEL 表达式注入防护、登录防暴力破解
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V22)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V26)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
@@ -53,12 +58,12 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 lumina/
 ├── lumina-common/              # 公共模块（统一响应、异常体系、工具类）
 ├── lumina-framework/           # 框架模块（配置类、全局异常处理、Web 配置）
-├── lumina-agent-core/          # Agent 核心模块（执行引擎、Flowable 工作流、配置加载、工具管理、Resilience4j 熔断器）
+├── lumina-agent-core/          # Agent 核心模块（执行引擎、Flowable 工作流、配置加载、工具管理、MCP 接入、Resilience4j 熔断器）
 ├── lumina-gateway/             # API 网关模块（统一入口、路由、限流）
 └── lumina-modules/             # 业务模块聚合器
-    ├── lumina-business-base/   # 基础业务模块（用户、角色、权限、租户管理）
-    ├── lumina-business-agent/  # Agent 业务模块（Agent 配置、工具绑定等）
-    └── lumina-business-*/      # 其他领域业务模块
+    ├── lumina-business-base/       # 基础业务模块（用户、角色、权限、租户管理）
+    ├── lumina-business-agent/      # Agent 业务模块（Agent 配置、工具绑定、MCP 监控等）
+    └── lumina-business-notification/ # 通知中心模块（站内通知、已读管理）
 ```
 
 ### 前端项目
@@ -114,7 +119,7 @@ lumina-frontend/
 
 #### 前端环境
 
-- **Node.js 18+** - [下载](https://nodejs.org/)
+- **Node.js 20+** - [下载](https://nodejs.org/)
 - **pnpm 8+** (推荐) 或 npm 9+ / yarn 1.22+ - [下载](https://pnpm.io/)
 
 ### 安装步骤
@@ -168,7 +173,7 @@ $env:DASHSCOPE_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V22），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V26），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -572,13 +577,13 @@ npm install
 - ✅ Apache 2.0 License + CHANGELOG.md
 
 **测试**
-- ✅ 后端 300 单元测试（全 6 模块 `mvn verify` 通过）
-- ✅ 前端 80 测试（66 工具/Store + 14 组件）
+- ✅ 后端 455+ 测试（单元 + 集成，全模块 `mvn verify` 通过）
+- ✅ 前端 103 测试（Vitest 单元测试）
 - ✅ CI/CD 双流水线（GitHub Actions：后端 mvn verify + 前端 pnpm build + pnpm test）
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V22 + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V26 + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
@@ -601,7 +606,19 @@ npm install
 - ✅ Dashboard 首页 + 审计日志页 + 403/401 错误页
 - ✅ Nacos 配置统一（本地极简 + nacos-config 完整）
 - ✅ 前端设计技能包（自进化：DESIGN.md + ui-learnings.md）
-- ✅ Flyway V17-V22（权限/字段/模型/种子数据）
+- ✅ Flyway V17-V26（权限/字段/模型/通知/种子数据）
+
+### v3.2.0 能力完善与验证
+
+- ✅ MCP 协议接入（stdio/http 传输 + 工具自动注册 + 只读监控 API + 监控页面）
+- ✅ 通用工具系统迁移（HTTP/时间/搜索/计算工具从 base 迁至 agent-core，解决跨服务可见性）
+- ✅ 网络搜索适配层（智谱/Tavily/SerpAPI/Brave 四引擎 + 配置驱动切换）
+- ✅ 通知中心独立模块（站内通知 + 已读管理 + Flyway V26）
+- ✅ LumUploader 可复用上传组件 + 多模态扩展支持 PDF/Word
+- ✅ 端到端全链路验证（ReAct 工具调用 + MCP echo server + 流式 SSE + RAG Qdrant）
+- ✅ 测试扩充至 455+（MCP/搜索/工具/工作流节点/Flowable BPMN/知识库全覆盖）
+- ✅ CI/CD 修复（Redis 密码 + Dockerfile 多模块构建 + CD 上下文）
+- ✅ 异常规范化（17 处 RuntimeException → BusinessException + ErrorCode）
 
 ---
 

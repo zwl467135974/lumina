@@ -122,7 +122,7 @@ lumina-frontend/
 
 ### 环境要求
 
-- **Node.js**: 18.0+ (推荐使用 LTS 版本)
+- **Node.js**: 20.0+ (推荐使用 LTS 版本)
 - **包管理器**: pnpm 8.0+ (推荐) 或 npm 9.0+
 
 ### 安装依赖
@@ -277,20 +277,22 @@ server: {
 
 ## 相关文档
 
-- [前端架构设计](../docs/architecture/前端架构设计.md)
-- [前端开发指南](../docs/guides/前端开发指南.md)
-- [前端搭建执行计划](../docs/guides/前端搭建执行计划.md)
+- [前端架构设计](../docs/zh/architecture/前端架构设计.md)
+- [前端开发指南](../docs/zh/guides/前端开发指南.md)
 
 ---
 
-## 后续计划
+## 已实现功能
 
-- [ ] 添加单元测试（Vitest）
-- [ ] 添加 E2E 测试（Playwright）
-- [ ] 添加国际化支持（Vue I18n）
-- [ ] 添加主题切换功能
-- [ ] 添加 Mock 数据
-- [ ] 性能优化（路由懒加载、组件懒加载）
+- ✅ 单元测试（Vitest，103 个用例）
+- ✅ 国际化支持（Vue I18n，350+ key，中英文切换）
+- ✅ 主题切换（Luminous 暗色主题，130 CSS 变量）
+- ✅ 路由懒加载 + 组件懒加载
+- ✅ SSE 流式对话（@microsoft/fetch-event-source）
+- ✅ 多模态上传（LumUploader 组件，支持图片/PDF/Word）
+- ✅ 工作流可视化设计器（@vue-flow）
+- ✅ MCP 监控页面（Server 连接状态 + 工具列表）
+- ✅ Dashboard 首页 + 审计日志页
 
 ---
 

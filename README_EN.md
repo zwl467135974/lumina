@@ -26,10 +26,15 @@ Lumina is an enterprise-grade AI Agent platform built on [AgentScope Java](https
 ### Core Features
 
 - **AgentScope Integration** - Native ReAct Agent with tool calling and streaming output
+- **MCP Protocol** - Model Context Protocol support via stdio/http transport, auto-registering external MCP server tools (McpClientRegistry + McpToolRegistrar) with read-only monitoring API
+- **Tool System** - Unified registration for general tools (HTTP/time/search/calc) + business tools + MCP tools, with circuit breaker, invocation recording, and timeout control
+- **Web Search** - Strategy pattern adapting Zhipu/Tavily/SerpAPI/Brave search engines, config-driven switching
 - **Workflow Orchestration** - DAG-based workflow engine with 6 node types (Agent / Condition / Loop / Parallel / Transform / Human) + 5 collaboration templates
 - **Prompt Management** - Versioned prompt templates with DB-backed activation and runtime resolution
 - **Agent Evaluation** - YAML datasets + 4 scorers (exact match / contains / semantic similarity / LLM judge) + A/B comparison + CSV export
 - **RAG Knowledge Base** - Document upload → chunking → vectorization → retrieval-augmented generation (Qdrant + multi-provider embeddings) + source visualization
+- **Notification Center** - Standalone notification module with in-app notifications, read/unread management
+- **Multimodal** - Image/PDF/Word upload + streaming multimodal execution (LumUploader reusable component)
 - **Microservice Architecture** - Spring Cloud Alibaba with service discovery, config management, and load balancing
 - **Simplified Layered Architecture** - Clear separation: API, Service, Domain, Infrastructure
 - **Multi-turn Dialog & Memory** - Session-scoped context persistence (Redis hot memory + DB cold storage), history replay, token usage tracking
@@ -38,7 +43,7 @@ Lumina is an enterprise-grade AI Agent platform built on [AgentScope Java](https
 - **Multi-LLM Support** - DashScope, OpenAI/DeepSeek, Claude, Ollama
 - **Security** - Prompt injection detection, output PII sanitization, rate limiting (Redis sliding window), content moderation, multi-tenant RBAC
 - **Cost Management** - Token-based cost calculation with model pricing, trend charts, and dashboards
-- **Engineering** - Unified error codes, Flyway migrations (V1-V14), gateway rate limiting, tool circuit breaker
+- **Engineering** - Unified error codes, Flyway migrations (V1-V26), gateway rate limiting, tool circuit breaker
 - **Frontend** - Dynamic menus, Agent debug panel, dark theme, i18n
 
 ---
@@ -51,11 +56,12 @@ Lumina is an enterprise-grade AI Agent platform built on [AgentScope Java](https
 lumina/
 ├── lumina-common/              # Common utilities, unified response, exception hierarchy
 ├── lumina-framework/           # Framework infrastructure, global exception handling, web config
-├── lumina-agent-core/          # Agent execution engine, config loading, tool management
+├── lumina-agent-core/          # Agent execution engine, config loading, tool management, MCP integration
 ├── lumina-gateway/             # API gateway, routing, JWT auth, rate limiting
 └── lumina-modules/             # Business module aggregator
-    ├── lumina-business-base/   # User, role, permission, tenant management (multi-tenant RBAC)
-    └── lumina-business-agent/  # Agent CRUD, conversations, knowledge base, workflows, prompts
+    ├── lumina-business-base/       # User, role, permission, tenant management (multi-tenant RBAC)
+    ├── lumina-business-agent/      # Agent CRUD, conversations, knowledge base, workflows, prompts, MCP monitoring
+    └── lumina-business-notification/ # Notification center (in-app notifications)
 ```
 
 ### Frontend
@@ -176,6 +182,9 @@ Open http://localhost:3000
 | GET | `/api/v1/evaluations/datasets/{id}/trend` | Evaluation trend |
 | GET | `/api/v1/evaluations/runs/compare` | A/B compare two runs |
 | GET | `/api/v1/evaluations/runs/{id}/export` | Export CSV |
+| GET | `/api/v1/mcp/servers` | MCP server status |
+| GET | `/api/v1/mcp/tools` | List MCP tools |
+| GET | `/api/v1/notifications` | List notifications |
 
 ---
 
@@ -186,7 +195,7 @@ Open http://localhost:3000
 | Language | Java 21 |
 | Framework | Spring Boot 3.3.5, Spring Cloud 2023.0.3 |
 | AI Engine | AgentScope 1.0.7 |
-| Database | MySQL 8.0, Flyway V1-V14 |
+| Database | MySQL 8.0, Flyway V1-V26 |
 | ORM | MyBatis-Plus 3.5.7 |
 | Cache | Redis 7 + Redisson 3.24.3 |
 | Search | Qdrant (RAG vector store) |
@@ -213,7 +222,7 @@ helm install lumina deploy/helm/lumina \
   --set secrets.llmApiKey="your-key"
 ```
 
-See [Deployment Guide](docs/DEPLOYMENT.md) for details.
+See [Deployment Guide](docs/zh/deployment/部署指南.md) for details.
 
 ---
 

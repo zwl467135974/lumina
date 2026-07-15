@@ -1,7 +1,7 @@
 # Lumina Docker 部署指南
 
 > **注意**: 完整部署指南（含 RAG 配置、OpenTelemetry 追踪、K8s 参考、一键启动脚本）已迁移至
-> [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。本文件保留旧版 Docker 部署细节作补充参考。
+> [docs/zh/deployment/部署指南.md](docs/zh/deployment/部署指南.md)。本文件保留旧版 Docker 部署细节作补充参考。
 
 本文档介绍如何使用 Docker 和 Docker Compose 部署 Lumina 平台。
 
@@ -59,16 +59,27 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-### 4. 初始化数据库
+### 4. 数据库自动初始化
 
-首次启动时，需要初始化数据库结构：
+无需手动执行 SQL。base 服务启动时 Flyway 自动执行建表与种子数据（V1-V26）。
+只需确保 MySQL 已就绪，服务启动日志中出现 `Successfully applied migrations` 即表示完成。
+
+### 单独构建 Docker 镜像
+
+后端为多模块项目，Docker 构建上下文必须是项目根目录：
 
 ```bash
-# 等待 MySQL 启动完成（约30秒）
-sleep 30
+# Gateway
+docker build -f lumina-gateway/Dockerfile -t lumina-gateway .
 
-# 执行数据库初始化脚本
-docker-compose exec mysql mysql -ulumina -plumina_password lumina < docker/mysql/init/01-init.sql
+# Business Base
+docker build -f lumina-modules/lumina-business-base/Dockerfile -t lumina-business-base .
+
+# Agent Service
+docker build -f lumina-modules/lumina-business-agent/Dockerfile -t lumina-agent-service .
+
+# Frontend
+docker build -f lumina-frontend/Dockerfile -t lumina-frontend ./lumina-frontend
 ```
 
 ### 5. 访问服务
@@ -88,8 +99,8 @@ docker-compose exec mysql mysql -ulumina -plumina_password lumina < docker/mysql
 | redis | lumina-redis | 6379 | Redis缓存 |
 | nacos | lumina-nacos | 8848, 9848 | 服务注册与配置中心 |
 | gateway | lumina-gateway | 8080 | API网关 |
-| business-base | lumina-business-base | 8081 | 基础业务服务 |
-| agent-service | lumina-agent-service | 8082 | Agent服务 |
+| business-base | lumina-business-base | 8082 | 基础业务服务 |
+| agent-service | lumina-agent-service | 8081 | Agent服务 |
 | frontend | lumina-frontend | 80 | 前端界面 |
 
 ### 数据卷

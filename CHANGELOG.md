@@ -4,6 +4,52 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.2.0] - 2026-07-15
+
+### MCP 协议接入
+- **MCP Server 接入**: 支持 Model Context Protocol，通过 stdio/http 两种传输方式连接外部 MCP Server，将其工具自动注册给 Agent（`McpClientRegistry` + `McpToolRegistrar`）
+- **MCP echo 验证 server**: 新增 `scripts/mcp/echo_server.py`（零依赖 Python MCP Server），用于验证完整 MCP 接入链路
+- **MCP 监控 API**: 新增 `GET /api/v1/mcp/servers` + `GET /api/v1/mcp/tools` 只读监控接口（`McpController`）
+- **MCP 监控页面**: 前端新增 `views/monitor/mcp.vue`，展示 MCP Server 连接状态和工具列表
+- **MCP 单元测试**: 23 个测试覆盖注册流程、容错策略、调用链路、文本提取、Schema 序列化
+
+### 通用工具系统
+- **GeneralToolProvider**: 4 个通用 Agent 工具（HTTP 请求、当前时间、网络搜索、数学计算），从 base 迁移到 agent-core，解决跨服务工具不可见问题
+- **搜索 API 适配层**: 策略模式 + 配置驱动，支持智谱/Tavily/SerpAPI/Brave 四种搜索引擎，API key 通过环境变量注入
+- **工具执行超时控制**: ToolDefinitionToAgentToolAdapter 支持可配置超时（默认 60s）
+
+### 通知中心
+- **独立通知模块**: `lumina-business-notification` 模块，支持站内通知、已读/未读管理、通知偏好设置
+- **Flyway V26**: 通知中心数据表迁移
+
+### RAG 增强
+- **Qdrant 集成测试**: 6 个真实 Qdrant 集成测试覆盖 CRUD 全链路
+- **payload 丢失 bug 修复**: `QdrantRestStore.doSearch` 恢复 source/category 等额外 payload 字段
+
+### Bug 修复
+- **流式记忆保存**: `executeStream` 的 `doOnNext` 同时匹配 `FINAL` 和 `AGENT_RESULT` 事件类型，修复流式对话不保存 Redis 热记忆的问题
+- **集成测试 Redis 密码**: 三个模块的 `application-test.yml` 补充 Redis 密码配置，修复集成测试因 NOAUTH 全部失败
+- **异常规范化**: 17 处裸 `RuntimeException` 改为 `BusinessException` + `ErrorCode`，ErrorCode 新增 7 个枚举值
+
+### CI/CD 修复
+- **CI Redis 密码**: CI 环境添加 `SPRING_DATA_REDIS_PASSWORD=""` 适配无密码 Redis
+- **Dockerfile 多模块构建**: 后端 3 个 Dockerfile 重构为根目录全量编译模式（`mvn -pl {module} -am`），修复单模块 COPY 导致找不到父 pom 的致命问题
+- **前端 Dockerfile**: npm→pnpm + 去掉 `--only=production`
+- **CD context**: 后端 Docker 构建上下文改为根目录 + `file` 参数指定 Dockerfile
+- **端口映射**: base 修正为 8082、agent 修正为 8081
+
+### 前端
+- **LumUploader 组件**: 可复用文件上传组件，支持图片/PDF/Word，从 AgentChat 内联逻辑抽离
+- **AgentChat 重构**: 多模态上传支持扩展到文档类型（PDF/Word），删除 166 行内联上传代码
+- **@Valid 校验**: 5 个 Controller 端点补充 `@Valid` 注解 + DTO 约束
+
+### 测试扩充
+- **新增约 130 个测试**（总计 ~455）：MCP 23、GeneralToolProvider 37、McpController 11、RAG Qdrant 6、NodeExecutor 22、FlowableBpmnConverter 8、SearchProvider 14、AgentExecutionHandlerBridge 6、KnowledgeService 13、ExecutionEngine 7
+
+### 工程化
+- **Gateway 路由**: 新增 `lumina-agent-mcp-route`（`/api/v1/mcp/**`）
+- **Nacos 配置**: agent-service 新增 MCP 配置模板（默认不启用）
+
 ## [3.1.0] - 2026-07-10
 
 ### 后端代码审计与修复

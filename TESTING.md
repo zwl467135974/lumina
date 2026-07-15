@@ -1,6 +1,6 @@
 # Lumina 测试指南
 
-> **v3.2 更新**：自动化测试体系已覆盖后端 413+ @Test + 前端 103 用例。
+> **v3.2 更新**：自动化测试体系已覆盖后端 455+ @Test + 前端 103 用例。
 > 集成测试只需 MySQL + Redis 两个本地服务，无需 Nacos / RocketMQ / Docker。
 
 ---
@@ -12,7 +12,7 @@
 | 服务 | 地址 | 默认密码 | 用途 |
 |------|------|---------|------|
 | **MySQL 8.0** | localhost:3306 | root / 123456 | 数据持久化（库名 `lumina_dev`） |
-| **Redis** | localhost:6379 | 无密码 | 缓存 / 权限快照 / 在线用户 |
+| **Redis** | localhost:6379 | 123456 | 缓存 / 权限快照 / 在线用户 |
 
 ### 不需要的服务（test profile 已禁用）
 
@@ -82,12 +82,12 @@ export SPRING_DATASOURCE_PASSWORD=ci_pass
 
 ## 测试体系概览
 
-### 后端测试（413+ @Test）
+### 后端测试（455+ @Test）
 
 | 模块 | 单元测试 | 集成测试 | 说明 |
 |------|---------|---------|------|
 | lumina-common | 28 | - | 工具类、异常、上下文 |
-| lumina-agent-core | 110 | - | Agent 引擎、工具管理、工作流 |
+| lumina-agent-core | 221 | 6 (RAG Qdrant) | Agent 引擎、工具管理、MCP 接入、工作流、通用工具、搜索适配 |
 | lumina-framework | 50 | - | 框架配置、拦截器 |
 | lumina-gateway | 24 | - | 网关过滤器、白名单 |
 | lumina-business-base | 68 | 36 | 用户/角色/权限/租户/字典/审计 CRUD + 租户隔离 |

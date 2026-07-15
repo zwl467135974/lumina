@@ -35,9 +35,12 @@
 - [RAG 架构设计](zh/design/RAG架构设计.md)
 - [文件存储设计](zh/design/文件存储设计.md)
 - [Prompt 运行时规则](zh/design/Prompt运行时规则.md)
+- [Agent 评估框架设计](zh/design/E1-Agent评估框架设计方案.md)
 
 ### 路线图
 - [v2.0 路线图](zh/roadmap/v2.0路线图.md)
+- [v3.0 路线图](zh/roadmap/v3.0路线图.md)
+- [前端功能完善路线图](zh/roadmap/前端功能完善路线图.md)
 
 ### RFC
 - [Fastjson2 与 Jackson 对比分析](zh/rfc/Fastjson2与Jackson对比分析.md)
