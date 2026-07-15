@@ -19,14 +19,20 @@ jobs:
     strategy:
       matrix:
         service:
+          # 后端：构建上下文为根目录（多模块项目需要），通过 file 指定各模块 Dockerfile
           - name: gateway
-            context: ./lumina-gateway
+            context: .
+            file: ./lumina-gateway/Dockerfile
           - name: business-base
-            context: ./lumina-modules/lumina-business-base
+            context: .
+            file: ./lumina-modules/lumina-business-base/Dockerfile
           - name: agent-service
-            context: ./lumina-modules/lumina-business-agent
+            context: .
+            file: ./lumina-modules/lumina-business-agent/Dockerfile
+          # 前端：构建上下文为前端目录
           - name: frontend
             context: ./lumina-frontend
+            file: ./lumina-frontend/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -48,6 +54,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.file }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.service.name }}:${{ steps.tag.outputs.VERSION }}
