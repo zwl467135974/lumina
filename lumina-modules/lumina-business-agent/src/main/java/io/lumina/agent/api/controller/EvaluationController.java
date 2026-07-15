@@ -172,4 +172,37 @@ public class EvaluationController {
         if (value == null) return "";
         return value.replace("\"", "\"\"");
     }
+
+    // ==================== 评估回归（3.3.0 新增） ====================
+
+    /**
+     * 批量回归测试
+     */
+    @Audit(module = "evaluation", action = "EXECUTE", description = "批量回归测试")
+    @PostMapping("/regression/batch")
+    public R<Map<String, Object>> runBatchRegression(@Valid @RequestBody io.lumina.agent.api.dto.BatchRegressionDTO dto) {
+        log.info("批量回归测试: datasets={}, agentId={}", dto.getDatasetIds(), dto.getAgentId());
+        return R.success(evaluationService.runBatchRegression(dto));
+    }
+
+    /**
+     * 标记基线 run
+     */
+    @Audit(module = "evaluation", action = "UPDATE", description = "标记基线 run")
+    @PostMapping("/runs/{id}/baseline")
+    public R<Void> markBaseline(@PathVariable Long id) {
+        evaluationService.markBaseline(id);
+        return R.success();
+    }
+
+    /**
+     * 对比两个 Prompt 版本的内容差异
+     */
+    @GetMapping("/prompts/compare")
+    public R<Map<String, Object>> comparePromptVersions(
+            @RequestParam String name,
+            @RequestParam int vA,
+            @RequestParam int vB) {
+        return R.success(evaluationService.comparePromptVersions(name, vA, vB));
+    }
 }

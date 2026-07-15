@@ -26,6 +26,9 @@ public class EvaluationRunDO {
     private String agentType;
     private String modelName;
     private String provider;
+    private String promptName;
+    private Integer promptVersion;
+    private Integer isBaseline;
     private String scoringMethod;
     private BigDecimal thresholdValue;
     private Integer totalCases;

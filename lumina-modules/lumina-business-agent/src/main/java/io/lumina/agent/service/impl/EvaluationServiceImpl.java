@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.lumina.agent.api.dto.EvaluationDatasetDTO;
 import io.lumina.agent.api.dto.EvaluationRunDTO;
+import io.lumina.agent.api.dto.BatchRegressionDTO;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.evaluation.model.CaseResult;
 import io.lumina.agent.evaluation.model.EvaluationDataset;
@@ -75,6 +76,9 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
+
+    @Autowired
+    private io.lumina.agent.infrastructure.mapper.PromptMapper promptMapper;
 
     public EvaluationServiceImpl(EvaluationDatasetMapper datasetMapper,
                                  EvaluationRunMapper runMapper,
@@ -189,6 +193,9 @@ public class EvaluationServiceImpl implements EvaluationService {
         String[] modelInfo = resolveModelInfo(agent);
         run.setModelName(modelInfo[0]);
         run.setProvider(modelInfo[1]);
+        run.setPromptName(dto.getPromptName());
+        run.setPromptVersion(dto.getPromptVersion());
+        run.setIsBaseline(0);
         try {
             run.setResultsJson(jsonMapper.writeValueAsString(results));
         } catch (JsonProcessingException e) {
@@ -573,5 +580,180 @@ public class EvaluationServiceImpl implements EvaluationService {
             } catch (Exception ignored) {}
         }
         return new String[]{null, null};
+    }
+
+    // ==================== 评估回归（3.3.0 新增） ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markBaseline(Long runId) {
+        EvaluationRunDO run = runMapper.selectById(runId);
+        if (run == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "评估 run 不存在: " + runId);
+        }
+
+        // 清除同数据集的其他基线标记
+        LambdaQueryWrapper<EvaluationRunDO> clearWrapper = new LambdaQueryWrapper<>();
+        clearWrapper.eq(EvaluationRunDO::getDatasetId, run.getDatasetId())
+                .eq(EvaluationRunDO::getIsBaseline, 1);
+        EvaluationRunDO clearUpdate = new EvaluationRunDO();
+        clearUpdate.setIsBaseline(0);
+        runMapper.update(clearUpdate, clearWrapper);
+
+        // 标记当前 run 为基线
+        run.setIsBaseline(1);
+        runMapper.updateById(run);
+
+        log.info("已标记基线 run: runId={}, datasetId={}", runId, run.getDatasetId());
+    }
+
+    @Override
+    public Map<String, Object> runBatchRegression(BatchRegressionDTO dto) {
+        log.info("批量回归测试: datasets={}, agentId={}, promptName={}", dto.getDatasetIds(), dto.getAgentId(), dto.getPromptName());
+
+        List<Map<String, Object>> datasetResults = new ArrayList<>();
+        int totalDatasets = dto.getDatasetIds().size();
+        int totalPassed = 0;
+        int totalRegressed = 0;
+
+        for (Long datasetId : dto.getDatasetIds()) {
+            try {
+                EvaluationRunDTO runDto = new EvaluationRunDTO();
+                runDto.setAgentId(dto.getAgentId());
+                runDto.setScoringMethod(dto.getScoringMethod());
+                runDto.setThreshold(dto.getThreshold());
+                runDto.setPromptName(dto.getPromptName());
+                runDto.setPromptVersion(dto.getPromptVersion());
+
+                // 执行评估
+                RunReport report = runEvaluation(datasetId, runDto);
+
+                // 查询刚创建的 run
+                LambdaQueryWrapper<EvaluationRunDO> wrapper = new LambdaQueryWrapper<>();
+                wrapper.eq(EvaluationRunDO::getDatasetId, datasetId)
+                        .eq(EvaluationRunDO::getAgentId, dto.getAgentId())
+                        .orderByDesc(EvaluationRunDO::getCreateTime).last("LIMIT 1");
+                EvaluationRunDO latestRun = runMapper.selectOne(wrapper);
+
+                Map<String, Object> dsResult = new HashMap<>();
+                dsResult.put("datasetId", datasetId);
+                dsResult.put("runId", latestRun != null ? latestRun.getId() : null);
+                dsResult.put("passRate", latestRun != null ? latestRun.getPassRate() : null);
+                dsResult.put("totalCases", latestRun != null ? latestRun.getTotalCases() : 0);
+                dsResult.put("passedCases", latestRun != null ? latestRun.getPassedCases() : 0);
+                dsResult.put("status", "COMPLETED");
+
+                // 与基线对比
+                if (dto.getBaselineRunId() != null) {
+                    EvaluationRunDO baseline = runMapper.selectById(dto.getBaselineRunId());
+                    if (baseline != null && latestRun != null) {
+                        int regressed = compareRegressed(baseline, latestRun);
+                        dsResult.put("regressed", regressed);
+                        totalRegressed += regressed;
+                    }
+                }
+
+                if (latestRun != null) {
+                    totalPassed += latestRun.getPassedCases() != null ? latestRun.getPassedCases() : 0;
+                }
+                datasetResults.add(dsResult);
+
+            } catch (Exception e) {
+                log.error("数据集 {} 回归测试失败", datasetId, e);
+                Map<String, Object> dsResult = new HashMap<>();
+                dsResult.put("datasetId", datasetId);
+                dsResult.put("status", "FAILED");
+                dsResult.put("error", e.getMessage());
+                datasetResults.add(dsResult);
+            }
+        }
+
+        Map<String, Object> report = new HashMap<>();
+        report.put("totalDatasets", totalDatasets);
+        report.put("completedDatasets", datasetResults.stream().filter(r -> "COMPLETED".equals(r.get("status"))).count());
+        report.put("totalPassedCases", totalPassed);
+        report.put("totalRegressedCases", totalRegressed);
+        report.put("baselineRunId", dto.getBaselineRunId());
+        report.put("promptName", dto.getPromptName());
+        report.put("promptVersion", dto.getPromptVersion());
+        report.put("datasetResults", datasetResults);
+        report.put("pass", totalRegressed == 0);
+
+        log.info("批量回归测试完成: pass={}, regressed={}", totalRegressed == 0, totalRegressed);
+        return report;
+    }
+
+    /**
+     * 对比两次 run 的回归用例数（简化版：基于 passRate 变化判定）
+     */
+    private int compareRegressed(EvaluationRunDO baseline, EvaluationRunDO current) {
+        // 简化判定：如果 passRate 下降超过 5%，算回归
+        if (baseline.getPassRate() != null && current.getPassRate() != null) {
+            double diff = baseline.getPassRate().doubleValue() - current.getPassRate().doubleValue();
+            if (diff > 5.0) {
+                int baselinePassed = baseline.getPassedCases() != null ? baseline.getPassedCases() : 0;
+                int currentPassed = current.getPassedCases() != null ? current.getPassedCases() : 0;
+                return Math.max(0, baselinePassed - currentPassed);
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public Map<String, Object> comparePromptVersions(String name, int versionA, int versionB) {
+        // 通过 PromptMapper 查询两个版本
+        // 由于 PromptService 在另一个模块，这里直接用 Mapper
+        LambdaQueryWrapper<io.lumina.agent.infrastructure.entity.PromptDO> wrapperA = new LambdaQueryWrapper<>();
+        wrapperA.eq(io.lumina.agent.infrastructure.entity.PromptDO::getName, name)
+                .eq(io.lumina.agent.infrastructure.entity.PromptDO::getVersion, versionA);
+        io.lumina.agent.infrastructure.entity.PromptDO promptA = promptMapper.selectOne(wrapperA);
+
+        LambdaQueryWrapper<io.lumina.agent.infrastructure.entity.PromptDO> wrapperB = new LambdaQueryWrapper<>();
+        wrapperB.eq(io.lumina.agent.infrastructure.entity.PromptDO::getName, name)
+                .eq(io.lumina.agent.infrastructure.entity.PromptDO::getVersion, versionB);
+        io.lumina.agent.infrastructure.entity.PromptDO promptB = promptMapper.selectOne(wrapperB);
+
+        if (promptA == null || promptB == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND,
+                    "Prompt 版本不存在: " + name + " v" + versionA + " 或 v" + versionB);
+        }
+
+        // 行级 diff
+        String[] linesA = promptA.getContent().split("\n");
+        String[] linesB = promptB.getContent().split("\n");
+
+        List<Map<String, Object>> diff = new ArrayList<>();
+        int maxLines = Math.max(linesA.length, linesB.length);
+        for (int i = 0; i < maxLines; i++) {
+            String lineA = i < linesA.length ? linesA[i] : null;
+            String lineB = i < linesB.length ? linesB[i] : null;
+
+            if (lineA != null && lineB != null && lineA.equals(lineB)) {
+                continue; // 相同行跳过
+            }
+
+            Map<String, Object> diffEntry = new HashMap<>();
+            diffEntry.put("line", i + 1);
+            if (lineA == null) {
+                diffEntry.put("type", "ADDED");
+                diffEntry.put("content", lineB);
+            } else if (lineB == null) {
+                diffEntry.put("type", "REMOVED");
+                diffEntry.put("content", lineA);
+            } else {
+                diffEntry.put("type", "MODIFIED");
+                diffEntry.put("oldContent", lineA);
+                diffEntry.put("newContent", lineB);
+            }
+            diff.add(diffEntry);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("name", name);
+        result.put("versionA", versionA);
+        result.put("versionB", versionB);
+        result.put("diffLines", diff);
+        result.put("totalChanges", diff.size());
+        return result;
     }
 }

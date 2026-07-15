@@ -2,6 +2,7 @@ package io.lumina.agent.service;
 
 import io.lumina.agent.api.dto.EvaluationDatasetDTO;
 import io.lumina.agent.api.dto.EvaluationRunDTO;
+import io.lumina.agent.api.dto.BatchRegressionDTO;
 import io.lumina.agent.evaluation.model.EvaluationDataset;
 import io.lumina.agent.evaluation.model.RunReport;
 import io.lumina.agent.infrastructure.entity.EvaluationRunDO;
@@ -51,4 +52,25 @@ public interface EvaluationService {
      * 查询同一数据集的历史评估趋势（按时间正序，用于折线图）
      */
     List<EvaluationRunDO> getRunTrend(Long datasetId);
+
+    /**
+     * 标记某次 run 为基线（用于回归对比）
+     *
+     * @since 3.3.0
+     */
+    void markBaseline(Long runId);
+
+    /**
+     * 批量回归测试（对多个数据集跑同一组参数，聚合报告）
+     *
+     * @since 3.3.0
+     */
+    Map<String, Object> runBatchRegression(BatchRegressionDTO dto);
+
+    /**
+     * 对比两个 Prompt 版本的内容差异（行级 diff）
+     *
+     * @since 3.3.0
+     */
+    Map<String, Object> comparePromptVersions(String name, int versionA, int versionB);
 }
