@@ -111,6 +111,18 @@ lumina:
       host: ${QDRANT_HOST:localhost:6334}
       collection: ${QDRANT_COLLECTION:lumina_knowledge}
       tls: ${QDRANT_TLS:false}
+    # 混合检索（向量 + 关键词 RRF 融合），3.3.0 新增
+    hybrid:
+      enabled: ${RAG_HYBRID_ENABLED:false}
+      vector-weight: ${RAG_HYBRID_VECTOR_WEIGHT:0.7}
+      keyword-weight: ${RAG_HYBRID_KEYWORD_WEIGHT:0.3}
+    # Reranker 重排序（三模式：none / siliconflow / local），3.3.0 新增
+    rerank:
+      provider: ${RAG_RERANK_PROVIDER:none}
+      model: ${RAG_RERANK_MODEL:BAAI/bge-reranker-v2-m3}
+      api-key: ${RAG_RERANK_API_KEY:}
+      base-url: ${RAG_RERANK_BASE_URL:https://api.siliconflow.cn/v1}
+      top-k: ${RAG_RERANK_TOP_K:10}
 
   # MCP (Model Context Protocol) — 外部工具协议接入
   # 启用后自动连接配置的 MCP Server，将其工具注册给 Agent
