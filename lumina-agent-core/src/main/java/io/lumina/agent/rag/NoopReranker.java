@@ -16,6 +16,9 @@ public class NoopReranker implements RerankProvider {
 
     @Override
     public List<Document> rerank(String query, List<Document> docs, int topK) {
+        if (docs == null || docs.isEmpty()) {
+            return docs;
+        }
         // 不调外部模型，直接截断到 topK
         return docs.size() > topK ? docs.subList(0, topK) : docs;
     }
