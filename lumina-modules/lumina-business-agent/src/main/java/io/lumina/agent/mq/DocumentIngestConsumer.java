@@ -57,6 +57,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     private KnowledgeDocumentMapper documentMapper;
 
     @Autowired(required = false)
+    private io.lumina.agent.infrastructure.mapper.KnowledgeChunkMapper chunkMapper;
+
+    @Autowired(required = false)
     private RagProperties ragProperties;
 
     @Autowired
@@ -97,6 +100,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             String vectorDocIdsJson = objectMapper.writeValueAsString(vectorDocIds);
             updateStatus(msg.getUuid(), 1, docs != null ? docs.size() : 0, vectorDocIdsJson);
 
+            // 双写 chunk 原文到 MySQL（混合检索关键词路）
+            saveChunksToMysql(docs, msg.getUuid(), msg.getTenantId(), null);
+
             log.info("文档异步处理完成: uuid={}, chunks={}", msg.getUuid(), docs != null ? docs.size() : 0);
             try {
                 if (rocketMQTemplate != null) {
@@ -124,6 +130,38 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             } catch (Exception ex) {
                 log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
             }
+        }
+    }
+
+    /**
+     * 双写 chunk 原文到 MySQL（混合检索关键词路数据源）
+     *
+     * @since 3.3.0
+     */
+    private void saveChunksToMysql(List<Document> docs, String docUuid, Long tenantId, Long kbId) {
+        if (chunkMapper == null || docs == null || docs.isEmpty()) {
+            return;
+        }
+        try {
+            for (int i = 0; i < docs.size(); i++) {
+                Document d = docs.get(i);
+                String content = d.getMetadata() != null ? d.getMetadata().getContentText() : null;
+                if (content == null || content.isBlank()) {
+                    continue;
+                }
+                io.lumina.agent.infrastructure.entity.KnowledgeChunkDO chunk =
+                        new io.lumina.agent.infrastructure.entity.KnowledgeChunkDO();
+                chunk.setChunkId(d.getId() != null ? d.getId() : docUuid + "_chunk_" + i);
+                chunk.setDocUuid(docUuid);
+                chunk.setKbId(kbId);
+                chunk.setTenantId(tenantId != null ? tenantId : 0L);
+                chunk.setContent(content);
+                chunk.setChunkIndex(i);
+                chunk.setVectorDocId(d.getId());
+                chunkMapper.insert(chunk);
+            }
+        } catch (Exception e) {
+            log.warn("chunk 原文双写 MySQL 失败（不影响向量入库）: docUuid={}, error={}", docUuid, e.getMessage());
         }
     }
 

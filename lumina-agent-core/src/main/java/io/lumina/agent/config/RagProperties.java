@@ -23,6 +23,8 @@ public class RagProperties {
     private ReaderConfig reader = new ReaderConfig();
     private QdrantConfig qdrant = new QdrantConfig();
     private RouterConfig router = new RouterConfig();
+    private HybridConfig hybrid = new HybridConfig();
+    private RerankConfig rerank = new RerankConfig();
 
     @Data
     public static class EmbeddingConfig {
@@ -87,5 +89,41 @@ public class RagProperties {
         private String defaultModel = "default";
         /** 命名模型列表，每个都有完整的 EmbeddingConfig */
         private Map<String, EmbeddingConfig> models;
+    }
+
+    /**
+     * 混合检索配置（向量 + 关键词 RRF 融合）
+     *
+     * @since 3.3.0
+     */
+    @Data
+    public static class HybridConfig {
+        /** 是否启用混合检索（false 则纯向量检索） */
+        private boolean enabled = false;
+        /** 向量路权重（0-1，默认 0.7） */
+        private double vectorWeight = 0.7;
+        /** 关键词路权重（0-1，默认 0.3） */
+        private double keywordWeight = 0.3;
+    }
+
+    /**
+     * Reranker 重排序配置
+     *
+     * <p>三模式可选：siliconflow（免费 API）、local（本地模型）、none（不重排）。
+     *
+     * @since 3.3.0
+     */
+    @Data
+    public static class RerankConfig {
+        /** 提供商：none / siliconflow / local */
+        private String provider = "none";
+        /** 模型名称（siliconflow 默认 BAAI/bge-reranker-v2-m3） */
+        private String model;
+        /** API Key（siliconflow 必填，local 不需要） */
+        private String apiKey;
+        /** Base URL（siliconflow 默认 https://api.siliconflow.cn/v1，local 为本地服务地址） */
+        private String baseUrl;
+        /** 重排序候选 Top-K（默认 10） */
+        private int topK = 10;
     }
 }

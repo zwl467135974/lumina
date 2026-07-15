@@ -198,12 +198,59 @@ public class RagKnowledgeFactory {
     }
 
     @Bean
-    public Knowledge knowledge(EmbeddingModel embeddingModel, VDBStoreBase store) {
+    public Knowledge knowledge(EmbeddingModel embeddingModel, VDBStoreBase store,
+                                RagProperties props,
+                                org.springframework.beans.factory.ObjectProvider<KeywordSearcher> keywordSearcherProvider) {
+        // 混合检索模式：向量 + 关键词 + Reranker
+        if (props.getHybrid().isEnabled()) {
+            KeywordSearcher keywordSearcher = keywordSearcherProvider.getIfAvailable();
+            if (keywordSearcher == null) {
+                log.warn("混合检索已启用但 KeywordSearcher 未实现，降级为纯向量检索");
+                return SimpleKnowledge.builder()
+                        .embeddingModel(embeddingModel)
+                        .embeddingStore(store)
+                        .build();
+            }
+
+            RerankProvider rerankProvider = createRerankProvider(props);
+            log.info("RAG HybridKnowledge 初始化: vectorWeight={}, keywordWeight={}, reranker={}",
+                    props.getHybrid().getVectorWeight(), props.getHybrid().getKeywordWeight(),
+                    rerankProvider.getName());
+
+            return new HybridKnowledge(embeddingModel, store, keywordSearcher,
+                    rerankProvider, props.getHybrid());
+        }
+
+        // 纯向量检索模式（默认）
         log.info("RAG SimpleKnowledge 初始化完成");
         return SimpleKnowledge.builder()
                 .embeddingModel(embeddingModel)
                 .embeddingStore(store)
                 .build();
+    }
+
+    /**
+     * 按 lumina.rag.rerank.provider 创建 RerankProvider
+     */
+    private RerankProvider createRerankProvider(RagProperties props) {
+        String provider = props.getRerank().getProvider();
+        if (provider == null || "none".equalsIgnoreCase(provider)) {
+            return new NoopReranker();
+        }
+        if ("siliconflow".equalsIgnoreCase(provider)) {
+            String apiKey = props.getRerank().getApiKey();
+            if (apiKey == null || apiKey.isBlank()) {
+                log.warn("SiliconFlow Reranker 未配置 apiKey，降级为 NoopReranker");
+                return new NoopReranker();
+            }
+            return new SiliconFlowReranker(apiKey, props.getRerank().getBaseUrl(),
+                    props.getRerank().getModel());
+        }
+        if ("local".equalsIgnoreCase(provider)) {
+            return new LocalReranker(props.getRerank().getBaseUrl(), props.getRerank().getModel());
+        }
+        log.warn("未知的 rerank provider: {}，降级为 NoopReranker", provider);
+        return new NoopReranker();
     }
 
     private String getApiKey() {

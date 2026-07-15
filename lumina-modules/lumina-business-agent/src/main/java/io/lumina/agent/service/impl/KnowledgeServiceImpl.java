@@ -48,6 +48,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private KnowledgeDocumentMapper documentMapper;
 
     @Autowired(required = false)
+    private io.lumina.agent.infrastructure.mapper.KnowledgeChunkMapper chunkMapper;
+
+    @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
 
     @Autowired(required = false)
@@ -180,12 +183,51 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             doc.setStatus(1);
             documentMapper.insert(doc);
 
+            // 双写 chunk 原文到 MySQL（混合检索关键词路数据源）
+            saveChunksToMysql(docs, uuid, tenantId, kbId);
+
             log.info("文档同步入库成功: uuid={}, chunks={}", uuid, docs != null ? docs.size() : 0);
             return uuid;
 
         } catch (Exception e) {
             log.error("文档入库失败: {}", filename, e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文档处理失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 双写 chunk 原文到 MySQL（混合检索关键词路数据源）
+     *
+     * <p>当 chunkMapper 可用（混合检索启用）时，将每个 chunk 的原文写入 lumina_knowledge_chunk 表，
+     * 支持后续 MySQL FULLTEXT 关键词检索。失败仅记录日志，不影响主入库流程。
+     *
+     * @since 3.3.0
+     */
+    private void saveChunksToMysql(List<Document> docs, String docUuid, Long tenantId, Long kbId) {
+        if (chunkMapper == null || docs == null || docs.isEmpty()) {
+            return;
+        }
+        try {
+            for (int i = 0; i < docs.size(); i++) {
+                Document d = docs.get(i);
+                String content = d.getMetadata() != null ? d.getMetadata().getContentText() : null;
+                if (content == null || content.isBlank()) {
+                    continue;
+                }
+                io.lumina.agent.infrastructure.entity.KnowledgeChunkDO chunk =
+                        new io.lumina.agent.infrastructure.entity.KnowledgeChunkDO();
+                chunk.setChunkId(d.getId() != null ? d.getId() : docUuid + "_chunk_" + i);
+                chunk.setDocUuid(docUuid);
+                chunk.setKbId(kbId);
+                chunk.setTenantId(tenantId != null ? tenantId : 0L);
+                chunk.setContent(content);
+                chunk.setChunkIndex(i);
+                chunk.setVectorDocId(d.getId());
+                chunkMapper.insert(chunk);
+            }
+            log.debug("chunk 原文双写 MySQL 成功: docUuid={}, chunks={}", docUuid, docs.size());
+        } catch (Exception e) {
+            log.warn("chunk 原文双写 MySQL 失败（不影响向量入库）: docUuid={}, error={}", docUuid, e.getMessage());
         }
     }
 
