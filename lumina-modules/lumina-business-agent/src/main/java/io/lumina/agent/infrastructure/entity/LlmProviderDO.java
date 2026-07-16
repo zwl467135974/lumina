@@ -42,6 +42,9 @@ public class LlmProviderDO implements Serializable {
     @TableField("status")
     private Integer status;
 
+    @TableField("priority")
+    private Integer priority;
+
     @TableField("tenant_id")
     private Long tenantId;
 

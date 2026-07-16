@@ -21,6 +21,7 @@ import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.engine.PlanExecuteAgent;
+import io.lumina.agent.engine.ProviderFailover;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.loader.ConfigLoader;
@@ -437,10 +438,17 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 // Plan-Execute 模式：Planner → Executor → Summarizer
                 response = executePlanAndExecute(config, messages);
             } else {
-                // 默认 ReAct 模式
-                ReActAgent agent = createReActAgent(config);
-                response = llmResilience.execute("agent-call",
-                        () -> agent.call(messages).block());
+                // 默认 ReAct 模式 — 检查是否有 failover 链
+                List<AgentConfig.FallbackProvider> fallbacks = config.getLlmConfig() != null
+                        ? config.getLlmConfig().getFallbackProviders() : null;
+
+                if (fallbacks != null && !fallbacks.isEmpty()) {
+                    response = executeWithFailoverChain(config, messages, fallbacks);
+                } else {
+                    ReActAgent agent = createReActAgent(config);
+                    response = llmResilience.execute("agent-call",
+                            () -> agent.call(messages).block());
+                }
             }
 
             if (response != null) {
@@ -458,6 +466,77 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             log.error("AgentScope 执行失败: {}", e.getMessage(), e);
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 使用 Failover 链执行 ReAct Agent
+     *
+     * <p>主 Provider 失败时按 fallbackProviders 顺序尝试，每个 Provider 独立构建 Model + Agent。
+     *
+     * @since 3.3.1
+     */
+    private Msg executeWithFailoverChain(AgentConfig config, List<Msg> messages,
+                                         List<AgentConfig.FallbackProvider> fallbacks) {
+        Toolkit toolkit = resolveToolkit(config);
+        List<java.util.function.Supplier<Msg>> chain = new java.util.ArrayList<>();
+        List<String> names = new java.util.ArrayList<>();
+
+        // 主 Provider
+        AgentConfig.LLMConfig primaryConfig = resolveLlmConfig(config);
+        chain.add(() -> {
+            Model model = buildModelFromConfig(primaryConfig);
+            ReActAgent agent = buildReActAgent(model, toolkit, config);
+            return llmResilience.execute("agent-call", () -> agent.call(messages).block());
+        });
+        names.add(primaryConfig.getModelType() + "/" + primaryConfig.getModelName());
+
+        // Fallback Providers
+        for (AgentConfig.FallbackProvider fp : fallbacks) {
+            AgentConfig.LLMConfig fbConfig = new AgentConfig.LLMConfig();
+            fbConfig.setModelType(fp.getModelType());
+            fbConfig.setModelName(fp.getModelName());
+            fbConfig.setApiKey(fp.getApiKey());
+            fbConfig.setBaseUrl(fp.getBaseUrl());
+            // 继承主配置的参数
+            fbConfig.setTemperature(primaryConfig.getTemperature());
+            fbConfig.setMaxTokens(primaryConfig.getMaxTokens());
+
+            chain.add(() -> {
+                log.info("Failover 尝试: {}/{}", fp.getModelType(), fp.getModelName());
+                Model model = buildModelFromConfig(fbConfig);
+                ReActAgent agent = buildReActAgent(model, toolkit, config);
+                return agent.call(messages).block();
+            });
+            names.add(fp.getModelType() + "/" + fp.getModelName());
+        }
+
+        log.info("启用 Provider Failover 链: {} 个 Provider", chain.size());
+        return ProviderFailover.executeWithFailover(chain, names);
+    }
+
+    /**
+     * 从 LLMConfig 构建 Model（带缓存）
+     */
+    private Model buildModelFromConfig(AgentConfig.LLMConfig llmConfig) {
+        String modelKey = buildModelCacheKey(llmConfig);
+        return modelCache.get(modelKey, k -> {
+            String resolvedApiKey = (llmConfig.getApiKey() != null && !llmConfig.getApiKey().isEmpty())
+                    ? llmConfig.getApiKey() : getApiKey();
+            return chatModelFactory.create(llmConfig, agentProperties.getLlm(), resolvedApiKey);
+        });
+    }
+
+    /**
+     * 从 Model + Toolkit 构建 ReActAgent
+     */
+    private ReActAgent buildReActAgent(Model model, Toolkit toolkit, AgentConfig config) {
+        return ReActAgent.builder()
+                .name(config.getAgentName() != null ? config.getAgentName() : "LuminaAgent")
+                .sysPrompt(config.getPromptTemplate() != null ? config.getPromptTemplate() : "You are a helpful AI assistant.")
+                .model(model)
+                .toolkit(toolkit)
+                .memory(new InMemoryMemory())
+                .build();
     }
 
     /**

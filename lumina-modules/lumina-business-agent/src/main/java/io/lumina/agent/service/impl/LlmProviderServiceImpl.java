@@ -174,4 +174,15 @@ public class LlmProviderServiceImpl implements LlmProviderService {
         vo.setApiKeyMasked(provider.getMaskedApiKey());
         return vo;
     }
+
+    @Override
+    public List<LlmProvider> listActiveByPriority() {
+        LambdaQueryWrapper<LlmProviderDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(LlmProviderDO::getTenantId, currentTenantId())
+                .eq(LlmProviderDO::getStatus, 1)
+                .orderByAsc(LlmProviderDO::getPriority);
+        return llmProviderMapper.selectList(wrapper).stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
 }

@@ -36,6 +36,8 @@ public class LlmProvider implements Serializable {
 
     private Integer status;
 
+    private Integer priority;
+
     private Long tenantId;
 
     private LocalDateTime createTime;

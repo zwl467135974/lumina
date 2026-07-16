@@ -165,6 +165,44 @@ public class AgentConfig implements Serializable {
          * @since 3.3.1
          */
         private String reasoningEffort;
+
+        /**
+         * Failover 备选 Provider 列表（主 Provider 失败后按顺序尝试）
+         *
+         * @since 3.3.1
+         */
+        private java.util.List<FallbackProvider> fallbackProviders;
+    }
+
+    /**
+     * Failover 备选 Provider
+     *
+     * @since 3.3.1
+     */
+    @Data
+    public static class FallbackProvider implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 模型类型（如：dashscope、openai、glm）
+         */
+        private String modelType;
+
+        /**
+         * 模型名称（如：qwen-max、gpt-4）
+         */
+        private String modelName;
+
+        /**
+         * API Key
+         */
+        private String apiKey;
+
+        /**
+         * API Base URL
+         */
+        private String baseUrl;
     }
 
     /**

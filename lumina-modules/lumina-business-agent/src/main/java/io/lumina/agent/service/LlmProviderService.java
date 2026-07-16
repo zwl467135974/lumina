@@ -31,4 +31,12 @@ public interface LlmProviderService {
      * 解密获取 Provider 的 API Key（供内部调用）
      */
     String getDecryptedApiKey(Long id);
+
+    /**
+     * 按优先级查询当前租户的活跃 Provider 列表（用于 failover 链）
+     *
+     * @return 按 priority ASC 排序的活跃 Provider 领域实体列表
+     * @since 3.3.1
+     */
+    List<io.lumina.agent.domain.model.LlmProvider> listActiveByPriority();
 }
