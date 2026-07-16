@@ -79,6 +79,9 @@ public class AgentServiceImpl implements AgentService {
     @Autowired(required = false)
     private io.lumina.agent.security.ContentModerationService contentModerationService;
 
+    @Autowired(required = false)
+    private io.lumina.agent.service.AbTestService abTestService;
+
     @org.springframework.beans.factory.annotation.Value("${lumina.agent.content-moderation.strict:false}")
     private boolean contentModerationStrict;
 
@@ -255,11 +258,13 @@ public class AgentServiceImpl implements AgentService {
 
         moderateContent(task);
 
-        // 构建配置
-        AgentConfig config = buildExecutionConfig(agent);
-
-        // 会话上下文校验 + 保存用户消息到数据库
+        // 会话上下文校验
         String sessionId = resolveConversation(conversationUuid, agentId);
+
+        // 构建配置（传入 sessionId 用于 A/B 变体粘滞分配）
+        AgentConfig config = buildExecutionConfig(agent, sessionId);
+
+        // 保存用户消息到数据库
         if (sessionId != null) {
             conversationService.saveMessage(sessionId, "user", task, 0, null);
         }
@@ -271,6 +276,9 @@ public class AgentServiceImpl implements AgentService {
                 config,
                 sessionId
         );
+
+        // A/B 曝光记录
+        recordAbExposure(result, sessionId);
 
         if (!result.getSuccess()) {
             throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
@@ -341,11 +349,13 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
 
-        // 构建配置
-        AgentConfig config = buildExecutionConfig(agent);
-
-        // 会话上下文校验 + 保存用户消息到数据库
+        // 会话上下文校验
         String sessionId = resolveConversation(conversationUuid, agentId);
+
+        // 构建配置（含 A/B 变体分配）
+        AgentConfig config = buildExecutionConfig(agent, sessionId);
+
+        // 保存用户消息
         if (sessionId != null) {
             conversationService.saveMessage(sessionId, "user", task, 0, null);
         }
@@ -418,8 +428,8 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
 
-        AgentConfig config = buildExecutionConfig(agent);
         String sessionId = resolveConversation(conversationUuid, agentId);
+        AgentConfig config = buildExecutionConfig(agent, sessionId);
 
         List<MultimodalContent> contents = loadFiles(fileUuids);
         String fileIdsJson = serializeFileIds(fileUuids);
@@ -595,7 +605,16 @@ public class AgentServiceImpl implements AgentService {
         return conv.getConversationUuid();
     }
 
+    /**
+     * A/B 变体上下文 ThreadLocal（供执行后记录曝光使用）
+     */
+    private final ThreadLocal<io.lumina.agent.service.AbTestService.VariantContext> abVariantHolder = new ThreadLocal<>();
+
     private AgentConfig buildExecutionConfig(Agent agent) {
+        return buildExecutionConfig(agent, null);
+    }
+
+    private AgentConfig buildExecutionConfig(Agent agent, String conversationId) {
         AgentConfig config = new AgentConfig();
         config.setAgentId(agent.getAgentId());
         config.setAgentName(agent.getAgentName());
@@ -630,6 +649,62 @@ public class AgentServiceImpl implements AgentService {
             config.setToolConfig(toolConfig);
         }
 
+        // A/B 测试变体注入（如果有活跃实验，用变体配置覆盖 LLM/Prompt）
+        if (abTestService != null) {
+            try {
+                io.lumina.agent.service.AbTestService.VariantContext variant =
+                        abTestService.assignVariant(agent.getAgentId(), conversationId);
+                if (variant != null) {
+                    abVariantHolder.set(variant);
+                    if (variant.llmConfig() != null) {
+                        // 变体 LLM 配置覆盖 Agent 默认配置
+                        AgentConfig.LLMConfig merged = variant.llmConfig();
+                        // 合并：变体有的字段覆盖，没有的保留 Agent 原配置
+                        AgentConfig.LLMConfig base = config.getLlmConfig();
+                        if (base != null && merged.getModelType() == null) merged.setModelType(base.getModelType());
+                        if (base != null && merged.getModelName() == null) merged.setModelName(base.getModelName());
+                        if (base != null && merged.getApiKey() == null) merged.setApiKey(base.getApiKey());
+                        config.setLlmConfig(merged);
+                    }
+                    if (variant.promptName() != null) {
+                        // 变体指定了 Prompt，加载该 Prompt
+                        PromptDO variantPrompt = promptService.getActive(variant.promptName().toLowerCase());
+                        if (variantPrompt != null && StringUtils.hasText(variantPrompt.getContent())) {
+                            config.setPromptTemplate(variantPrompt.getContent());
+                        }
+                    }
+                    log.info("A/B 变体生效: experiment={}, variant={}", variant.experimentId(), variant.variantName());
+                }
+            } catch (Exception e) {
+                log.debug("A/B 变体分配失败（不影响执行）: {}", e.getMessage());
+            }
+        }
+
         return config;
+    }
+
+    /**
+     * 记录 A/B 测试曝光（执行后调用）
+     */
+    private void recordAbExposure(ExecuteResult result, String sessionId) {
+        io.lumina.agent.service.AbTestService.VariantContext variant = abVariantHolder.get();
+        if (variant != null && abTestService != null) {
+            try {
+                Integer tokens = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
+                abTestService.recordExposure(
+                        variant.experimentId(),
+                        variant.variantId(),
+                        variant.variantName(),
+                        sessionId,
+                        result.getSuccess(),
+                        result.getDuration() != null ? result.getDuration() : 0,
+                        tokens,
+                        result.getError());
+            } catch (Exception e) {
+                log.debug("A/B 曝光记录失败（不影响结果）: {}", e.getMessage());
+            } finally {
+                abVariantHolder.remove();
+            }
+        }
     }
 }
