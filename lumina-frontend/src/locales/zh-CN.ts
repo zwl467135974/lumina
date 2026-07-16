@@ -184,6 +184,8 @@ export default {
     form: {
       basicInfo: '基本信息',
       llmConfig: 'LLM 配置',
+      failoverConfig: 'Provider 主备切换',
+      addFallback: '添加备选 Provider',
       toolConfig: '工具配置',
       knowledgeMount: '知识库挂载',
       advancedConfig: '高级配置',
@@ -366,6 +368,38 @@ export default {
     remaining: '剩余',
     alert: '告警',
     deleteConfirm: '确认删除该预算规则？'
+  },
+  abTest: {
+    title: 'A/B 测试',
+    description: '创建实验，按权重分配流量到不同模型/Prompt 配置，对比效果',
+    create: '创建实验',
+    name: '实验名称',
+    agentId: 'Agent ID',
+    variants: '变体',
+    traffic: '流量',
+    exposures: '曝光数',
+    report: '效果报告',
+    reportTitle: '实验效果对比',
+    start: '启动',
+    pause: '暂停',
+    complete: '完成',
+    addVariant: '添加变体',
+    validateError: '请填写实验名称且至少 2 个变体',
+    startSuccess: '实验已启动',
+    pauseSuccess: '实验已暂停',
+    completeConfirm: '确认完成该实验？完成后不可恢复',
+    completeSuccess: '实验已完成',
+    totalExposures: '总曝光数',
+    variantName: '变体',
+    successRate: '成功率',
+    avgLatency: '平均延迟',
+    avgTokens: '平均Token',
+    status: {
+      DRAFT: '草稿',
+      RUNNING: '运行中',
+      PAUSED: '已暂停',
+      COMPLETED: '已完成'
+    }
   },
   evaluation: {
     title: 'Agent 评估',

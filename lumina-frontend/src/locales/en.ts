@@ -184,6 +184,8 @@ export default {
     form: {
       basicInfo: 'Basic Information',
       llmConfig: 'LLM Configuration',
+      failoverConfig: 'Provider Failover',
+      addFallback: 'Add Fallback Provider',
       toolConfig: 'Tool Configuration',
       knowledgeMount: 'Knowledge Base',
       advancedConfig: 'Advanced Configuration',
@@ -366,6 +368,38 @@ export default {
     remaining: 'Remaining',
     alert: 'Alert',
     deleteConfirm: 'Delete this budget rule?'
+  },
+  abTest: {
+    title: 'A/B Testing',
+    description: 'Create experiments to split traffic across model/prompt variants and compare performance',
+    create: 'Create Experiment',
+    name: 'Name',
+    agentId: 'Agent ID',
+    variants: 'Variants',
+    traffic: 'Traffic',
+    exposures: 'Exposures',
+    report: 'Report',
+    reportTitle: 'Experiment Report',
+    start: 'Start',
+    pause: 'Pause',
+    complete: 'Complete',
+    addVariant: 'Add Variant',
+    validateError: 'Please provide a name and at least 2 variants',
+    startSuccess: 'Experiment started',
+    pauseSuccess: 'Experiment paused',
+    completeConfirm: 'Complete this experiment? This cannot be undone.',
+    completeSuccess: 'Experiment completed',
+    totalExposures: 'Total Exposures',
+    variantName: 'Variant',
+    successRate: 'Success Rate',
+    avgLatency: 'Avg Latency',
+    avgTokens: 'Avg Tokens',
+    status: {
+      DRAFT: 'Draft',
+      RUNNING: 'Running',
+      PAUSED: 'Paused',
+      COMPLETED: 'Completed'
+    }
   },
   evaluation: {
     title: 'Agent Evaluation',

@@ -167,6 +167,21 @@
           />
         </el-form-item>
 
+        <!-- Provider Failover 配置 -->
+        <el-divider content-position="left">{{ t('agent.form.failoverConfig') }}</el-divider>
+        <div v-for="(fp, i) in formData.llmConfig.fallbackProviders" :key="i" class="fallback-row">
+          <el-input v-model="fp.modelType" placeholder="类型 (glm/deepseek/qwen)" style="width: 140px" />
+          <el-input v-model="fp.modelName" placeholder="模型名" style="width: 160px" />
+          <el-input v-model="fp.apiKey" placeholder="API Key" style="width: 200px" type="password" show-password />
+          <el-input v-model="fp.baseUrl" placeholder="Base URL (可选)" style="flex: 1" />
+          <el-button link type="danger" @click="formData.llmConfig.fallbackProviders.splice(i, 1)">
+            <el-icon><Delete /></el-icon>
+          </el-button>
+        </div>
+        <el-button text @click="addFallbackProvider">
+          <el-icon><Plus /></el-icon> {{ t('agent.form.addFallback') }}
+        </el-button>
+
         <el-divider content-position="left">{{ t('agent.form.toolConfig') }}</el-divider>
 
         <el-form-item :label="t('agent.form.availableTools')">
@@ -246,6 +261,7 @@ import { reactive, ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { Delete, Plus } from '@element-plus/icons-vue'
 import { createAgent, updateAgent, getAgent } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import { getTools, type ToolDefinitionVO } from '@/api/modules/tools'
@@ -285,7 +301,8 @@ const formData = reactive({
     maxTokens: 4096,
     topP: 0.9,
     frequencyPenalty: 0,
-    presencePenalty: 0
+    presencePenalty: 0,
+    fallbackProviders: [] as Array<{ modelType: string; modelName: string; apiKey: string; baseUrl: string }>
   },
   tools: [] as string[],
   rateLimit: 0,
@@ -415,6 +432,12 @@ const handleBack = () => {
   router.push('/agent')
 }
 
+function addFallbackProvider() {
+  formData.llmConfig.fallbackProviders.push({
+    modelType: '', modelName: '', apiKey: '', baseUrl: ''
+  })
+}
+
 const loadKnowledgeBases = async () => {
   try {
     const res = await listKnowledgeBases()
@@ -442,6 +465,12 @@ watch(() => formData.agentType, () => {
     font-size: 12px;
     color: var(--lumina-text-muted);
     margin-top: 4px;
+  }
+  .fallback-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
   }
   max-width: 1000px;
   margin: 0 auto;

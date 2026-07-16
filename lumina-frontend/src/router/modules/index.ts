@@ -390,6 +390,20 @@ export const knowledgeBaseRoutes: AppRouteRecordRaw[] = [
   }
 ]
 
+// A/B 测试路由
+export const abTestRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/ab-test',
+    name: 'AbTest',
+    component: () => import('@/views/ab-test/index.vue'),
+    meta: {
+      title: 'A/B 测试',
+      icon: 'Aim',
+      requiresAuth: true
+    }
+  }
+]
+
 // 通知中心路由
 export const notificationRoutes: AppRouteRecordRaw[] = [
   {
