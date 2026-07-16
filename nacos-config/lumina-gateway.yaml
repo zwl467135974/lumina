@@ -104,6 +104,11 @@ spring:
           predicates: [Path=/api/v1/evaluations/**]
           filters: [StripPrefix=0]
 
+        - id: lumina-agent-ab-tests-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/api/v1/ab-tests/**]
+          filters: [StripPrefix=0]
+
         - id: lumina-agent-knowledge-bases-route
           uri: lb://lumina-agent-service
           predicates: [Path=/api/v1/knowledge-bases/**]

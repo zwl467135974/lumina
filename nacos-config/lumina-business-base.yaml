@@ -43,6 +43,8 @@ rocketmq:
   consumer:
     notification:
       enabled: true
+    audit-log:
+      enabled: ${ROCKETMQ_AUDIT_LOG_ENABLED:true}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

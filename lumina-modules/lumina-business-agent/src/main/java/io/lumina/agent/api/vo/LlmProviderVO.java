@@ -21,6 +21,7 @@ public class LlmProviderVO {
     private String defaultModel;
     private String defaultParams;
     private Integer status;
+    private Integer priority;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

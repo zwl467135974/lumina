@@ -70,6 +70,9 @@ public class LlmProviderServiceImpl implements LlmProviderService {
         if (dto.getStatus() == null) {
             provider.setStatus(1);
         }
+        if (provider.getPriority() == null) {
+            provider.setPriority(100);
+        }
         provider.setTenantId(currentTenantId());
 
         provider.validateName();

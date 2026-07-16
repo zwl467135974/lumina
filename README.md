@@ -46,7 +46,9 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
 - **工程化** - 统一错误码、Flyway 版本迁移(V1-V30)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
-- **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
+- **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Gemini(Vertex AI)、Ollama 等主流模型 + OpenAI 兼容预设（GLM/Kimi/豆包/DeepSeek 等零代码扩展）
+- **Provider Failover** - Agent 级 fallbackProviders 主备链 + DB Provider priority 排序，LLM 服务故障时自动切换（超时/5xx/429 触发，鉴权错误不切换）
+- **A/B Testing** - 实验框架（实验/变体/曝光三表），按权重流量分发 + 同会话粘滞 + 效果报告（成功率/延迟/Token 对比），Agent 配置灰度验证
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
 
 ---

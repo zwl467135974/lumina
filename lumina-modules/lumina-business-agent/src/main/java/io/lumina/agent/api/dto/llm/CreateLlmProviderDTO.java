@@ -40,4 +40,10 @@ public class CreateLlmProviderDTO extends BaseDTO {
     @Min(value = 0, message = "状态值最小为0")
     @Max(value = 1, message = "状态值最大为1")
     private Integer status;
+
+    /**
+     * 优先级（越小越高，默认100，用于 Provider Failover 链排序）
+     */
+    @Min(value = 1, message = "优先级最小为1")
+    private Integer priority;
 }

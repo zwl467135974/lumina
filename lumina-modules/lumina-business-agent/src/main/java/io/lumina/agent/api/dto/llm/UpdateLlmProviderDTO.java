@@ -26,4 +26,9 @@ public class UpdateLlmProviderDTO extends BaseDTO {
     private String defaultParams;
 
     private Integer status;
+
+    /**
+     * 优先级（越小越高，默认100，用于 Provider Failover 链排序）
+     */
+    private Integer priority;
 }
