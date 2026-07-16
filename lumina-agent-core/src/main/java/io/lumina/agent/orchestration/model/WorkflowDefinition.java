@@ -67,8 +67,8 @@ public class WorkflowDefinition {
     /** 边列表（定义节点间连接） */
     private List<WorkflowEdge> edges = new ArrayList<>();
 
-    /** 输出映射（变量名 → 表达式） */
-    private MapEntry[] outputs;
+    /** 输出映射（变量名 → 表达式），YAML 格式: outputs: { result: "#final_result" } */
+    private java.util.LinkedHashMap<String, String> outputs;
 
     @JsonIgnore
     private transient volatile Map<String, List<WorkflowEdge>> outgoingEdgeIndex;

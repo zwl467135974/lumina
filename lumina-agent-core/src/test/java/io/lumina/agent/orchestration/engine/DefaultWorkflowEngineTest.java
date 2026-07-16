@@ -214,9 +214,7 @@ class DefaultWorkflowEngineTest {
 
         def.setNodes(List.of(node));
         def.setEdges(List.of());
-        def.setOutputs(new WorkflowDefinition.MapEntry[]{
-                new WorkflowDefinition.MapEntry("final", "#raw")
-        });
+        def.setOutputs(new java.util.LinkedHashMap<>(Map.of("final", "#raw")));
 
         WorkflowContext ctx = engine.execute(def, Map.of());
 

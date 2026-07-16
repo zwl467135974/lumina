@@ -18,8 +18,8 @@ nodes:
 
   - id: parse-plan
     type: transform
-    name: "解析计划为列表"
-    expression: "#plan"
+    name: "解析计划为文本"
+    transformExpr: "#plan"
     outputVar: "subtasks"
 
   - id: execute-loop

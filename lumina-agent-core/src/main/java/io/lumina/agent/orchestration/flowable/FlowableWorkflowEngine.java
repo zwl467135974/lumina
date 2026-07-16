@@ -254,7 +254,7 @@ public class FlowableWorkflowEngine implements WorkflowEngine {
 
     private void evaluateOutputs(WorkflowDefinition definition, WorkflowContext ctx) {
         if (definition.getOutputs() == null) return;
-        for (WorkflowDefinition.MapEntry entry : definition.getOutputs()) {
+        for (var entry : definition.getOutputs().entrySet()) {
             if (entry.getValue() != null && !entry.getValue().isBlank()) {
                 Object value = expressionEvaluator.evaluate(entry.getValue(), ctx.toEvaluationRoot());
                 ctx.setVariable(entry.getKey(), value);

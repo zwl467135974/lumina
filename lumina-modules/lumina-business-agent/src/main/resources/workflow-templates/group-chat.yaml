@@ -32,7 +32,7 @@ nodes:
   - id: merge-round
     type: transform
     name: "合并本轮讨论"
-    expression: "(#discussion == null ? '' : #discussion) + '\\nA: ' + #view_a + '\\nB: ' + #view_b + '\\n'"
+    transformExpr: "(#discussion == null ? '' : #discussion) + '\\nA: ' + #view_a + '\\nB: ' + #view_b + '\\n'"
     outputVar: "discussion"
 
   - id: moderator-check
