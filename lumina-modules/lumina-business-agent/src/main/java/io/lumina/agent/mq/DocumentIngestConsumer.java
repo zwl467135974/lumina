@@ -68,6 +68,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
 
+    @Autowired(required = false)
+    private io.lumina.agent.rag.PdfOcrProcessor pdfOcrProcessor;
+
     @Override
     public void onMessage(DocumentIngestMessage msg) {
         log.info("开始异步处理文档: {}", msg);
@@ -82,26 +85,41 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
 
             List<Document> docs = parseDocument(filePath, msg.getFormat(), msg.getChunkSize(), msg.getOverlap());
 
-            Files.deleteIfExists(filePath);
-
             // 扫描件检测：PDF 解析后无任何文本内容（扫描件/图片型 PDF 无可提取文本层）
             if ((docs == null || docs.isEmpty()) && "pdf".equalsIgnoreCase(msg.getFormat())) {
-                log.warn("PDF 文档无可提取文本（疑似扫描件）: uuid={}", msg.getUuid());
-                updateStatus(msg.getUuid(), 2, 0, null);
-                try {
-                    if (rocketMQTemplate != null) {
-                        rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                                new NotificationEvent(null, "DOCUMENT",
-                                        "文档解析为空",
-                                        "文档 " + msg.getUuid() + " 似乎是扫描件或图片型 PDF，无法提取文本。"
-                                                + "当前系统暂不支持 OCR，请上传可复制文字的电子版 PDF。",
-                                        "WARN", "knowledge_document", msg.getUuid(), msg.getTenantId()));
+                log.warn("PDF 文档无可提取文本（疑似扫描件），尝试 OCR: uuid={}", msg.getUuid());
+
+                // 尝试 OCR 识别（OCR 未启用时返回空字符串）
+                if (pdfOcrProcessor != null) {
+                    String ocrText = pdfOcrProcessor.processPdf(filePath);
+                    if (!ocrText.isBlank()) {
+                        log.info("OCR 识别成功，文字长度: {}", ocrText.length());
+                        // 将 OCR 结果转为 Document 走正常入库流程
+                        docs = ocrTextToDocuments(ocrText, msg.getChunkSize(), msg.getOverlap());
                     }
-                } catch (Exception ex) {
-                    log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
                 }
-                return;
+
+                // OCR 后仍为空 → 走原失败逻辑
+                if (docs == null || docs.isEmpty()) {
+                    updateStatus(msg.getUuid(), 2, 0, null);
+                    try {
+                        if (rocketMQTemplate != null) {
+                            rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                                    new NotificationEvent(null, "DOCUMENT",
+                                            "文档解析为空",
+                                            "文档 " + msg.getUuid() + " 似乎是扫描件或图片型 PDF，无法提取文本。"
+                                                    + "请上传可复制文字的电子版 PDF。",
+                                            "WARN", "knowledge_document", msg.getUuid(), msg.getTenantId()));
+                        }
+                    } catch (Exception ex) {
+                        log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+                    }
+                    Files.deleteIfExists(filePath);
+                    return;
+                }
             }
+
+            Files.deleteIfExists(filePath);
 
             if (docs != null && !docs.isEmpty() && knowledge != null) {
                 knowledge.addDocuments(docs).block();
@@ -209,6 +227,24 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             }
         }
         return SplitStrategy.PARAGRAPH;
+    }
+
+    /**
+     * 将 OCR 识别出的文本转为 Document 列表（复用 TextReader 分块逻辑）
+     */
+    private List<Document> ocrTextToDocuments(String text, int chunkSize, int overlap) {
+        try {
+            // 写入临时文件让 TextReader 处理分块
+            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
+            java.nio.file.Files.writeString(tempFile, text);
+            ReaderInput input = ReaderInput.fromPath(tempFile);
+            List<Document> docs = new TextReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
+            java.nio.file.Files.deleteIfExists(tempFile);
+            return docs;
+        } catch (Exception e) {
+            log.warn("OCR 文本转 Document 失败: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     private void updateStatus(String uuid, int status, int chunkCount, String vectorDocIdsJson) {

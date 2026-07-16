@@ -82,6 +82,9 @@ public class AgentServiceImpl implements AgentService {
     @Autowired(required = false)
     private io.lumina.agent.service.AbTestService abTestService;
 
+    @Autowired(required = false)
+    private io.lumina.agent.rag.PdfOcrProcessor pdfOcrProcessor;
+
     @org.springframework.beans.factory.annotation.Value("${lumina.agent.content-moderation.strict:false}")
     private boolean contentModerationStrict;
 
@@ -480,12 +483,29 @@ public class AgentServiceImpl implements AgentService {
                     contents.add(MultimodalDocument.of(text, filename));
                     log.info("文档文本提取成功: file={}, textLen={}", filename, text.length());
                 } else {
-                    // PDF/图片型文档可能为扫描件（无可提取文本层），给出明确提示而非静默跳过
+                    // PDF 可能为扫描件 → 尝试 OCR
                     boolean likelyScanned = contentType.contains("pdf")
                             || (filename != null && filename.toLowerCase().endsWith(".pdf"));
+                    if (likelyScanned && pdfOcrProcessor != null) {
+                        // 下载文件到临时路径尝试 OCR
+                        java.nio.file.Path ocrTempFile = downloadToTempFile(uuid, filename, contentType);
+                        try {
+                            String ocrText = pdfOcrProcessor.processPdf(ocrTempFile);
+                            if (!ocrText.isBlank()) {
+                                // 截断防止超长文本
+                                contents.add(MultimodalDocument.of(ocrText, filename));
+                                log.info("文档 OCR 识别成功: file={}, textLen={}", filename, ocrText.length());
+                                continue;
+                            }
+                        } finally {
+                            try { java.nio.file.Files.deleteIfExists(ocrTempFile); } catch (Exception ignored) {}
+                        }
+                    }
+
+                    // OCR 后仍为空 → 给出提示
                     String hint = likelyScanned
                             ? "（注意：文档 " + filename + " 似乎是扫描件或图片型 PDF，无法提取文本。"
-                            + "当前系统暂不支持 OCR，请提供可复制文字的电子版 PDF 或纯文本文件。）"
+                            + "请提供可复制文字的电子版 PDF 或纯文本文件。）"
                             : "（注意：文档 " + filename + " 文本内容为空，已跳过。）";
                     contents.add(MultimodalDocument.of(hint, filename));
                     log.warn("文档文本提取为空: file={}, likelyScanned={}", filename, likelyScanned);
@@ -553,6 +573,20 @@ public class AgentServiceImpl implements AgentService {
                 } catch (Exception ignored) {
                 }
             }
+        }
+    }
+
+    /**
+     * 下载文件到临时路径（用于 OCR 处理）
+     */
+    private java.nio.file.Path downloadToTempFile(String uuid, String filename, String contentType) {
+        try (java.io.InputStream is = fileService.download(uuid)) {
+            String suffix = guessFileSuffix(filename, contentType);
+            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", suffix);
+            java.nio.file.Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return tempFile;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.FILE_READ_FAILED, "下载文件失败: " + uuid, e);
         }
     }
 

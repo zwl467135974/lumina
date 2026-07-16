@@ -76,6 +76,33 @@ public class RagProperties {
         private int chunkSize = 512;
         private int overlap = 50;
         private String splitStrategy = "PARAGRAPH";
+        private OcrConfig ocr = new OcrConfig();
+    }
+
+    /**
+     * OCR 配置（扫描件 PDF 文字识别）
+     *
+     * <p>当 PDF 文本提取为空（扫描件/图片型 PDF）时，自动触发 OCR 识别。
+     * 默认关闭（provider=none），需配置云 OCR 服务的 API Key 后启用。
+     *
+     * @since 3.3.1
+     */
+    @Data
+    public static class OcrConfig {
+        /** 是否启用 OCR（PDF 文本提取为空时触发） */
+        private boolean enabled = false;
+        /** 提供商：none / baidu / tencent / google / alibaba */
+        private String provider = "none";
+        /** OCR 服务 API Key */
+        private String apiKey;
+        /** OCR 服务 Secret Key（百度/阿里云需要双 Key） */
+        private String secretKey;
+        /** 识别语言（默认中文简体） */
+        private String language = "chi_sim";
+        /** 单文件最大 OCR 页数（成本控制，默认 50 页） */
+        private int maxPages = 50;
+        /** PDF 页面渲染 DPI（越高越准但越慢，默认 200） */
+        private int dpi = 200;
     }
 
     @Data
