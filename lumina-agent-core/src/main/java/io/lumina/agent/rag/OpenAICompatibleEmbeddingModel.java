@@ -38,23 +38,36 @@ public class OpenAICompatibleEmbeddingModel implements EmbeddingModel {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
+    private final boolean sendDimensions;
+
     /**
      * @param apiKey     API Key
      * @param modelName  模型名称（如 BAAI/bge-large-zh-v1.5）
      * @param baseUrl    服务地址（如 https://api.siliconflow.cn/v1）
-     * @param dimensions 向量维度（仅用于元数据，不发送给 API）
+     * @param dimensions 向量维度
+     * @param sendDimensions 是否将 dimensions 发送给 API（true 适用于 OpenAI embedding-3 等支持缩减维度的模型，
+     *                       false 适用于 SiliconFlow 等不支持该参数的服务）
      */
-    public OpenAICompatibleEmbeddingModel(String apiKey, String modelName, String baseUrl, int dimensions) {
+    public OpenAICompatibleEmbeddingModel(String apiKey, String modelName, String baseUrl, int dimensions, boolean sendDimensions) {
         this.apiKey = apiKey;
         this.modelName = modelName;
         this.dimensions = dimensions;
+        this.sendDimensions = sendDimensions;
         this.embeddingsUrl = baseUrl.endsWith("/")
                 ? baseUrl + "embeddings"
                 : baseUrl + "/embeddings";
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .build();
-        log.info("OpenAI 兼容 Embedding 初始化: url={}, model={}, dims={}", embeddingsUrl, modelName, dimensions);
+        log.info("OpenAI 兼容 Embedding 初始化: url={}, model={}, dims={}, sendDimensions={}",
+                embeddingsUrl, modelName, dimensions, sendDimensions);
+    }
+
+    /**
+     * 向后兼容构造器（默认不发 dimensions）
+     */
+    public OpenAICompatibleEmbeddingModel(String apiKey, String modelName, String baseUrl, int dimensions) {
+        this(apiKey, modelName, baseUrl, dimensions, false);
     }
 
     @Override
@@ -83,6 +96,10 @@ public class OpenAICompatibleEmbeddingModel implements EmbeddingModel {
         requestBody.put("model", modelName);
         requestBody.put("input", text);
         requestBody.put("encoding_format", "float");
+        // 按需发送 dimensions 参数（OpenAI embedding-3 / 智谱 embedding-3 支持，SiliconFlow 不支持）
+        if (sendDimensions && dimensions > 0) {
+            requestBody.put("dimensions", dimensions);
+        }
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(embeddingsUrl))

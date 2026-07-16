@@ -25,7 +25,8 @@ class ChatModelFactoryTest {
 
     @BeforeEach
     void setUp() {
-        factory = new ChatModelFactory();
+        LuminaAgentProperties props = new LuminaAgentProperties();
+        factory = new ChatModelFactory(props);
         defaults = new LuminaAgentProperties.LLMConfig();
         defaults.setType("dashscope");
         defaults.setModel("qwen-max");

@@ -865,19 +865,25 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     /**
-     * 获取 API Key（优先从 Spring 配置 lumina.agent.llm.api-key，兼容 DASHSCOPE_API_KEY 环境变量）
+     * 获取 LLM API Key
+     *
+     * <p>优先级：Spring 配置 lumina.agent.llm.api-key → LLM_API_KEY 环境变量
+     * → DASHSCOPE_API_KEY 环境变量（向后兼容，已废弃）
      */
     private String getApiKey() {
         String apiKey = agentProperties.getLlm().getApiKey();
         if (apiKey == null || apiKey.isEmpty()) {
-            apiKey = System.getenv("DASHSCOPE_API_KEY");
-        }
-        if (apiKey == null || apiKey.isEmpty()) {
             apiKey = System.getenv("LLM_API_KEY");
         }
         if (apiKey == null || apiKey.isEmpty()) {
-            log.error("未配置 LLM API Key（lumina.agent.llm.api-key 或 DASHSCOPE_API_KEY），Agent 无法执行");
-            throw new IllegalStateException("LLM API Key 未配置，请在 Nacos 或环境变量中设置 lumina.agent.llm.api-key");
+            apiKey = System.getenv("DASHSCOPE_API_KEY");
+            if (apiKey != null && !apiKey.isEmpty()) {
+                log.warn("检测到使用 DASHSCOPE_API_KEY 环境变量，该变量已废弃，请改用 LLM_API_KEY");
+            }
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            log.error("未配置 LLM API Key（lumina.agent.llm.api-key 或 LLM_API_KEY），Agent 无法执行");
+            throw new IllegalStateException("LLM API Key 未配置，请在 Nacos 或环境变量中设置 lumina.agent.llm.api-key 或 LLM_API_KEY");
         }
         return apiKey;
     }

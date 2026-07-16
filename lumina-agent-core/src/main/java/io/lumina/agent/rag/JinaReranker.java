@@ -19,21 +19,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 硅基流动（SiliconFlow）Reranker
+ * Jina Reranker
  *
- * <p>调用 SiliconFlow /rerank API（免费额度），支持 BGE-Reranker 等模型。
- * API 文档：https://docs.siliconflow.cn/api-reference/rerank/create-rerank
+ * <p>调用 Jina AI /rerank API，协议与 SiliconFlow 兼容（Cohere 风格），
+ * 但支持服务端 top_n 截断。
+ * API 文档：https://jina.ai/reranker/
  *
  * @author Lumina Team
  * @since 3.3.0
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "lumina.rag.rerank", name = "provider", havingValue = "siliconflow")
-public class SiliconFlowReranker implements RerankProvider {
+@ConditionalOnProperty(prefix = "lumina.rag.rerank", name = "provider", havingValue = "jina")
+public class JinaReranker implements RerankProvider {
 
-    private static final String DEFAULT_BASE_URL = "https://api.siliconflow.cn/v1";
-    private static final String DEFAULT_MODEL = "BAAI/bge-reranker-v2-m3";
+    private static final String DEFAULT_BASE_URL = "https://api.jina.ai/v1";
+    private static final String DEFAULT_MODEL = "jina-reranker-v2-base-multilingual";
 
     private final String apiKey;
     private final String baseUrl;
@@ -41,7 +42,7 @@ public class SiliconFlowReranker implements RerankProvider {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public SiliconFlowReranker(
+    public JinaReranker(
             @Value("${lumina.rag.rerank.api-key:}") String apiKey,
             @Value("${lumina.rag.rerank.base-url:}") String baseUrl,
             @Value("${lumina.rag.rerank.model:}") String model) {
@@ -68,6 +69,8 @@ public class SiliconFlowReranker implements RerankProvider {
                 String content = doc.getMetadata() != null ? doc.getMetadata().getContentText() : "";
                 documentsArray.add(content != null ? content : "");
             }
+            // Jina 支持服务端 top_n 截断（优于 SiliconFlow 的客户端截断）
+            requestBody.put("top_n", Math.min(topK, docs.size()));
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/rerank"))
@@ -80,14 +83,11 @@ public class SiliconFlowReranker implements RerankProvider {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                log.warn("SiliconFlow rerank 请求失败: status={}, body={}", response.statusCode(),
-                        response.body().length() > 200 ? response.body().substring(0, 200) : response.body());
-                // 降级：返回原顺序截断
+                log.warn("Jina rerank 请求失败: status={}", response.statusCode());
                 return docs.size() > topK ? docs.subList(0, topK) : docs;
             }
 
-            JsonNode root = objectMapper.readTree(response.body());
-            JsonNode results = root.path("results");
+            JsonNode results = objectMapper.readTree(response.body()).path("results");
             if (!results.isArray() || results.isEmpty()) {
                 return docs.size() > topK ? docs.subList(0, topK) : docs;
             }
@@ -98,23 +98,21 @@ public class SiliconFlowReranker implements RerankProvider {
                 double score = item.path("relevance_score").asDouble();
                 if (index >= 0 && index < docs.size()) {
                     Document doc = docs.get(index);
-                    // 更新 rerank 分数
                     doc.setScore(score);
                     reranked.add(doc);
                 }
             }
-            log.debug("SiliconFlow rerank 完成: input={}, output={}", docs.size(), reranked.size());
-            // 客户端截断到 topK（API 不支持 top_n 参数）
-            return reranked.size() > topK ? reranked.subList(0, topK) : reranked;
+            log.debug("Jina rerank 完成: input={}, output={}", docs.size(), reranked.size());
+            return reranked;
 
         } catch (Exception e) {
-            log.warn("SiliconFlow rerank 异常，降级到原顺序: {}", e.getMessage());
+            log.warn("Jina rerank 异常，降级到原顺序: {}", e.getMessage());
             return docs.size() > topK ? docs.subList(0, topK) : docs;
         }
     }
 
     @Override
     public String getName() {
-        return "siliconflow";
+        return "jina";
     }
 }

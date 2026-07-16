@@ -89,7 +89,8 @@ public class RagKnowledgeFactory {
                         resolveEmbeddingApiKey(config, props),
                         config.getModel(),
                         config.getBaseUrl() != null ? config.getBaseUrl() : "https://api.openai.com/v1",
-                        config.getDimensions());
+                        config.getDimensions(),
+                        props.getEmbedding().isSendDimensions());
             case "ollama":
                 return io.agentscope.core.embedding.ollama.OllamaTextEmbedding.builder()
                         .baseUrl(config.getBaseUrl() != null ? config.getBaseUrl() : "http://localhost:11434")
@@ -147,7 +148,8 @@ public class RagKnowledgeFactory {
                 apiKey,
                 props.getEmbedding().getModel(),
                 baseUrl,
-                props.getEmbedding().getDimensions());
+                props.getEmbedding().getDimensions(),
+                props.getEmbedding().isSendDimensions());
     }
 
     /**
@@ -200,7 +202,8 @@ public class RagKnowledgeFactory {
     @Bean
     public Knowledge knowledge(EmbeddingModel embeddingModel, VDBStoreBase store,
                                 RagProperties props,
-                                org.springframework.beans.factory.ObjectProvider<KeywordSearcher> keywordSearcherProvider) {
+                                org.springframework.beans.factory.ObjectProvider<KeywordSearcher> keywordSearcherProvider,
+                                RerankProvider rerankProvider) {
         // 混合检索模式：向量 + 关键词 + Reranker
         if (props.getHybrid().isEnabled()) {
             KeywordSearcher keywordSearcher = keywordSearcherProvider.getIfAvailable();
@@ -212,7 +215,6 @@ public class RagKnowledgeFactory {
                         .build();
             }
 
-            RerankProvider rerankProvider = createRerankProvider(props);
             log.info("RAG HybridKnowledge 初始化: vectorWeight={}, keywordWeight={}, reranker={}",
                     props.getHybrid().getVectorWeight(), props.getHybrid().getKeywordWeight(),
                     rerankProvider.getName());
@@ -229,37 +231,19 @@ public class RagKnowledgeFactory {
                 .build();
     }
 
-    /**
-     * 按 lumina.rag.rerank.provider 创建 RerankProvider
-     */
-    private RerankProvider createRerankProvider(RagProperties props) {
-        String provider = props.getRerank().getProvider();
-        if (provider == null || "none".equalsIgnoreCase(provider)) {
-            return new NoopReranker();
-        }
-        if ("siliconflow".equalsIgnoreCase(provider)) {
-            String apiKey = props.getRerank().getApiKey();
-            if (apiKey == null || apiKey.isBlank()) {
-                log.warn("SiliconFlow Reranker 未配置 apiKey，降级为 NoopReranker");
-                return new NoopReranker();
-            }
-            return new SiliconFlowReranker(apiKey, props.getRerank().getBaseUrl(),
-                    props.getRerank().getModel());
-        }
-        if ("local".equalsIgnoreCase(provider)) {
-            return new LocalReranker(props.getRerank().getBaseUrl(), props.getRerank().getModel());
-        }
-        log.warn("未知的 rerank provider: {}，降级为 NoopReranker", provider);
-        return new NoopReranker();
-    }
-
     private String getApiKey() {
         String apiKey = System.getenv("RAG_EMBEDDING_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             apiKey = agentProperties.getLlm().getApiKey();
         }
         if (apiKey == null || apiKey.isEmpty()) {
+            apiKey = System.getenv("LLM_API_KEY");
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
             apiKey = System.getenv("DASHSCOPE_API_KEY");
+            if (apiKey != null && !apiKey.isEmpty()) {
+                log.warn("检测到使用 DASHSCOPE_API_KEY 环境变量，该变量已废弃，请改用 LLM_API_KEY 或 RAG_EMBEDDING_API_KEY");
+            }
         }
         return apiKey;
     }

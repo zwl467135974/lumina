@@ -173,8 +173,14 @@ public class LlmJudgeScorer implements EvaluationScorer {
         String apiKey = agentProperties.getLlm().getApiKey();
         if (apiKey == null || apiKey.isBlank()) {
             apiKey = System.getenv("LUMINA_LLM_API_KEY");
-            if (apiKey == null) {
-                apiKey = System.getenv("DASHSCOPE_API_KEY");
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            apiKey = System.getenv("LLM_API_KEY");
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            apiKey = System.getenv("DASHSCOPE_API_KEY");
+            if (apiKey != null && !apiKey.isBlank()) {
+                log.warn("检测到使用 DASHSCOPE_API_KEY 环境变量，该变量已废弃，请改用 LLM_API_KEY");
             }
         }
         return apiKey;

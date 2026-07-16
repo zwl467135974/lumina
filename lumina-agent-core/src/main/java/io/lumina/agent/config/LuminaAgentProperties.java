@@ -4,6 +4,8 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 /**
  * Lumina Agent 配置属性
  *
@@ -47,6 +49,18 @@ public class LuminaAgentProperties {
          * Base URL（仅用于 OpenAI 等需要自定义 URL 的模型）
          */
         private String baseUrl;
+
+        /**
+         * 自定义 OpenAI 兼容预设（v3.3.0 新增）
+         *
+         * <p>配置示例：
+         * <pre>
+         * lumina.agent.llm.presets.acme: https://api.acme.com/v1
+         * lumina.agent.llm.presets.myllm: https://my-llm.local/v1
+         * </pre>
+         * 配置后 type=acme 即可自动使用对应 baseUrl，无需改代码。
+         */
+        private Map<String, String> presets;
 
         /**
          * 温度（0-1，默认：0.7）

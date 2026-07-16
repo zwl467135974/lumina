@@ -2,11 +2,13 @@ package io.lumina.agent.model;
 
 import io.agentscope.core.formatter.anthropic.AnthropicChatFormatter;
 import io.agentscope.core.formatter.dashscope.DashScopeChatFormatter;
+import io.agentscope.core.formatter.gemini.GeminiChatFormatter;
 import io.agentscope.core.formatter.ollama.OllamaChatFormatter;
 import io.agentscope.core.formatter.openai.OpenAIChatFormatter;
 import io.agentscope.core.model.AnthropicChatModel;
 import io.agentscope.core.model.DashScopeChatModel;
 import io.agentscope.core.model.GenerateOptions;
+import io.agentscope.core.model.GeminiChatModel;
 import io.agentscope.core.model.Model;
 import io.agentscope.core.model.OllamaChatModel;
 import io.agentscope.core.model.OpenAIChatModel;
@@ -21,7 +23,8 @@ import org.springframework.stereotype.Component;
  * 聊天模型工厂
  *
  * <p>按 {@link LLMConfig#getModelType()} 创建对应的 AgentScope {@link Model}，
- * 支持 DashScope / OpenAI / Anthropic / Ollama 四类模型。
+ * 支持 DashScope / OpenAI / Anthropic / Gemini / Ollama 五类模型，
+ * 以及 GLM/Kimi/豆包/DeepSeek 等 OpenAI 兼容预设。
  *
  * <p>新增模型只需在 {@link #create} 的 switch 中追加分支。
  *
@@ -31,6 +34,23 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class ChatModelFactory {
+
+    private final LuminaAgentProperties agentProperties;
+
+    public ChatModelFactory(LuminaAgentProperties agentProperties) {
+        this.agentProperties = agentProperties;
+    }
+
+    /**
+     * 启动时注册自定义 OpenAI 兼容预设（从 lumina.agent.llm.presets 配置读取）
+     */
+    @jakarta.annotation.PostConstruct
+    public void registerCustomPresets() {
+        if (agentProperties.getLlm() != null && agentProperties.getLlm().getPresets() != null) {
+            ProviderPresets.registerAll(agentProperties.getLlm().getPresets());
+            log.info("已注册自定义 LLM 预设: {}", agentProperties.getLlm().getPresets().keySet());
+        }
+    }
 
     /**
      * 创建聊天模型
@@ -60,13 +80,18 @@ public class ChatModelFactory {
             case "ollama":
                 model = createOllama(config, modelName);
                 break;
+            case "gemini":
+            case "google":
+                model = createGemini(config, defaults, apiKey, modelName);
+                break;
             default:
                 if (ProviderPresets.isOpenAICompatible(type)) {
                     model = createOpenAICompatiblePreset(type, config, defaults, apiKey, modelName);
                     break;
                 }
                 throw new SystemException(ErrorCode.AGENT_CONFIG_ERROR, "不支持的模型类型: " + type
-                    + "。支持: dashscope/openai/anthropic/ollama/glm/kimi/doubao/minimax/deepseek/yi/qwen");
+                    + "。支持: dashscope/openai/anthropic(claude)/gemini(google)/ollama"
+                    + "/glm/kimi/doubao/minimax/deepseek/yi/qwen");
         }
 
         log.info("创建聊天模型: type={}, model={}", type, modelName);
@@ -141,6 +166,27 @@ public class ChatModelFactory {
 
         if (config.getBaseUrl() != null) {
             builder.baseUrl(config.getBaseUrl());
+        }
+        return builder.build();
+    }
+
+    /**
+     * Google Gemini（通过 Google Gen AI SDK，支持 Vertex AI 模式）
+     *
+     * <p>默认走 AI Studio API（仅需 apiKey），Vertex AI 需额外配置 project/location。
+     *
+     * @since 3.3.0
+     */
+    private Model createGemini(LLMConfig config, LuminaAgentProperties.LLMConfig defaults,
+                                String apiKey, String modelName) {
+        GeminiChatModel.Builder builder = GeminiChatModel.builder()
+                .apiKey(apiKey)
+                .modelName(modelName)
+                .streamEnabled(defaults.getStream())
+                .formatter(new GeminiChatFormatter());
+
+        if (config.getTemperature() != null) {
+            builder.defaultOptions(buildGenerateOptions(config));
         }
         return builder.build();
     }

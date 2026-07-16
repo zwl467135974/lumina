@@ -54,6 +54,15 @@ public class RagProperties {
          * 向量维度（需与模型一致）
          */
         private int dimensions = 1024;
+
+        /**
+         * 是否将 dimensions 参数发送给 Embedding API（v3.3.0 新增）
+         *
+         * <p>false（默认）：不发，适用于 SiliconFlow 等 API（发 400 错误）
+         * <p>true：发送，适用于 OpenAI text-embedding-3、智谱 embedding-3 等
+         * 支持通过 dimensions 参数缩减输出维度的模型
+         */
+        private boolean sendDimensions = false;
     }
 
     @Data

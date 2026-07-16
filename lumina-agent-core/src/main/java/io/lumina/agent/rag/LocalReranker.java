@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.agentscope.core.rag.model.Document;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -24,6 +27,8 @@ import java.util.List;
  * @since 3.3.0
  */
 @Slf4j
+@Component
+@ConditionalOnProperty(prefix = "lumina.rag.rerank", name = "provider", havingValue = "local")
 public class LocalReranker implements RerankProvider {
 
     private final String baseUrl;
@@ -31,9 +36,11 @@ public class LocalReranker implements RerankProvider {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public LocalReranker(String baseUrl, String model) {
-        this.baseUrl = baseUrl != null ? baseUrl : "http://localhost:8001";
-        this.model = model != null ? model : "bge-reranker-v2-m3";
+    public LocalReranker(
+            @Value("${lumina.rag.rerank.base-url:http://localhost:8001}") String baseUrl,
+            @Value("${lumina.rag.rerank.model:bge-reranker-v2-m3}") String model) {
+        this.baseUrl = baseUrl;
+        this.model = model;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();

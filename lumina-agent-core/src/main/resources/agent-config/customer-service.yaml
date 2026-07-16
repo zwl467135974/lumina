@@ -9,7 +9,7 @@ agent:
   llm:
     model-type: dashscope
     model-name: qwen-max
-    api-key: ${DASHSCOPE_API_KEY}  # 从环境变量读取
+    api-key: ${LLM_API_KEY:}  # 从环境变量读取（兼容 LLM_API_KEY / DASHSCOPE_API_KEY）
     temperature: 0.7
     max-tokens: 2000
 
