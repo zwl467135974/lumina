@@ -166,10 +166,10 @@ cd nacos/bin
 
 ```bash
 # Linux/Mac
-export DASHSCOPE_API_KEY=your_api_key_here
+export LLM_API_KEY=your_api_key_here
 
 # Windows (PowerShell)
-$env:DASHSCOPE_API_KEY="your_api_key_here"
+$env:LLM_API_KEY="your_api_key_here"
 ```
 
 #### 4. 初始化数据库（Flyway 自动迁移）

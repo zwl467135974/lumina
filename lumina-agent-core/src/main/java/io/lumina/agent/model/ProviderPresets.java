@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 时自动填充对应 base-url（用户显式配置 base-url 时优先用户值）。
  *
  * <p>支持运行时动态注册自定义预设（通过 {@link #register}），
- * 配合 Spring 配置 {@code lumina.agent.llm.presits} 可实现零代码扩展。
+ * 配合 Spring 配置 {@code lumina.agent.llm.presets} 可实现零代码扩展。
  *
  * @author Lumina Team
  * @since 1.3.0

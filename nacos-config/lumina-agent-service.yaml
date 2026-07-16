@@ -100,6 +100,8 @@ lumina:
       base-url: ${RAG_EMBEDDING_BASE_URL:}
       model: ${RAG_EMBEDDING_MODEL:text-embedding-v3}
       dimensions: ${RAG_EMBEDDING_DIMENSIONS:1024}
+      # 是否向 Embedding API 发送 dimensions 参数（OpenAI embedding-3 / 智谱 embedding-3 支持，SiliconFlow 不支持）
+      send-dimensions: ${RAG_EMBEDDING_SEND_DIMENSIONS:false}
     retrieve:
       limit: 3
       score-threshold: 0.3
@@ -116,7 +118,7 @@ lumina:
       enabled: ${RAG_HYBRID_ENABLED:false}
       vector-weight: ${RAG_HYBRID_VECTOR_WEIGHT:0.7}
       keyword-weight: ${RAG_HYBRID_KEYWORD_WEIGHT:0.3}
-    # Reranker 重排序（三模式：none / siliconflow / local），3.3.0 新增
+    # Reranker 重排序（四模式：none / siliconflow / jina / local），3.3.0 新增
     rerank:
       provider: ${RAG_RERANK_PROVIDER:none}
       model: ${RAG_RERANK_MODEL:BAAI/bge-reranker-v2-m3}

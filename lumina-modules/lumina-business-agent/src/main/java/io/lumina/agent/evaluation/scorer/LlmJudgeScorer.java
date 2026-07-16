@@ -172,9 +172,6 @@ public class LlmJudgeScorer implements EvaluationScorer {
     private String getApiKey() {
         String apiKey = agentProperties.getLlm().getApiKey();
         if (apiKey == null || apiKey.isBlank()) {
-            apiKey = System.getenv("LUMINA_LLM_API_KEY");
-        }
-        if (apiKey == null || apiKey.isBlank()) {
             apiKey = System.getenv("LLM_API_KEY");
         }
         if (apiKey == null || apiKey.isBlank()) {
@@ -182,6 +179,10 @@ public class LlmJudgeScorer implements EvaluationScorer {
             if (apiKey != null && !apiKey.isBlank()) {
                 log.warn("检测到使用 DASHSCOPE_API_KEY 环境变量，该变量已废弃，请改用 LLM_API_KEY");
             }
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            log.error("未配置 LLM API Key（lumina.agent.llm.api-key 或 LLM_API_KEY），LLM 评分将不可用");
+            throw new IllegalStateException("LLM API Key 未配置，请在 Nacos 或环境变量中设置 lumina.agent.llm.api-key 或 LLM_API_KEY");
         }
         return apiKey;
     }
