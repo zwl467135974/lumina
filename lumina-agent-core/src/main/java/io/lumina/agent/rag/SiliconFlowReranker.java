@@ -60,8 +60,6 @@ public class SiliconFlowReranker implements RerankProvider {
                 String content = doc.getMetadata() != null ? doc.getMetadata().getContentText() : "";
                 documentsArray.add(content != null ? content : "");
             }
-            requestBody.put("top_n", Math.min(topK, docs.size()));
-            requestBody.put("return_documents", false);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/rerank"))
@@ -98,7 +96,8 @@ public class SiliconFlowReranker implements RerankProvider {
                 }
             }
             log.debug("SiliconFlow rerank 完成: input={}, output={}", docs.size(), reranked.size());
-            return reranked;
+            // 客户端截断到 topK（API 不支持 top_n 参数）
+            return reranked.size() > topK ? reranked.subList(0, topK) : reranked;
 
         } catch (Exception e) {
             log.warn("SiliconFlow rerank 异常，降级到原顺序: {}", e.getMessage());
