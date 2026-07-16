@@ -3,13 +3,19 @@ package io.lumina.agent.engine;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.ReActAgent;
+import io.agentscope.core.agent.Event;
+import io.agentscope.core.agent.StreamOptions;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.ChatUsage;
 import io.agentscope.core.model.Model;
 import io.agentscope.core.tool.Toolkit;
 import io.lumina.agent.model.AgentConfig;
+import io.lumina.agent.model.StreamChunk;
+import io.lumina.agent.model.StreamEventType;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +68,11 @@ public class PlanExecuteAgent {
     private long totalInputTokens = 0;
     private long totalOutputTokens = 0;
 
+    /**
+     * 流式执行时的中间结果收集器（每个 PlanExecuteAgent 实例对应一次执行，线程安全容器）
+     */
+    private final java.util.List<String> streamResults = java.util.Collections.synchronizedList(new ArrayList<>());
+
     public PlanExecuteAgent(Model model, Toolkit toolkit, String userPrompt, String systemPrompt) {
         this.model = model;
         this.toolkit = toolkit;
@@ -99,6 +110,189 @@ public class PlanExecuteAgent {
         Msg summary = summarize(subTasks, results);
         log.info("Plan-Execute: 完成, inputTokens={}, outputTokens={}", totalInputTokens, totalOutputTokens);
         return summary;
+    }
+
+    /**
+     * 流式执行 Plan-Execute 流程
+     *
+     * <p>阶段事件流：
+     * <ol>
+     *   <li>emit 子任务规划（type=REASONING_CHUNK，每条一行）</li>
+     *   <li>逐个子任务执行并 emit 进度（type=ACTING_CHUNK）</li>
+     *   <li>最终汇总（type=FINAL，last=true）</li>
+     * </ol>
+     *
+     * @return StreamChunk 流
+     * @since 3.3.1
+     */
+    public Flux<StreamChunk> executeStream() {
+        StreamOptions options = StreamOptions.builder()
+                .incremental(true)
+                .includeReasoningChunk(true)
+                .includeActingChunk(true)
+                .build();
+
+        return Mono.fromCallable(this::plan)
+                .flatMapMany(subTasks -> {
+                    if (subTasks.isEmpty()) {
+                        // 规划失败，降级为直接流式执行
+                        log.warn("Plan-Execute 流式: 规划失败，降级为直接执行");
+                        return executeDirectStream(options);
+                    }
+
+                    log.info("Plan-Execute 流式: 分解出 {} 个子任务", subTasks.size());
+
+                    // 1. 先推送规划结果
+                    Flux<StreamChunk> planFlux = Flux.fromStream(subTasks.stream()
+                            .map(t -> new StreamChunk(StreamEventType.REASONING_CHUNK,
+                                    "📋 " + t, false)));
+
+                    // 2. 逐个子任务执行（串行，保持依赖顺序）
+                    Flux<StreamChunk> execFlux = Flux.fromIterable(subTasks)
+                            .index()
+                            .concatMap(tuple -> {
+                                int idx = tuple.getT1().intValue();
+                                String task = tuple.getT2();
+                                List<String> prev = new ArrayList<>(streamResults);
+                                return executeSubTaskStream(task, idx, subTasks.size(), prev, options)
+                                        .doOnNext(chunk -> {
+                                            if (StreamEventType.AGENT_RESULT.equals(chunk.type())
+                                                    || StreamEventType.FINAL.equals(chunk.type())) {
+                                                if (chunk.content() != null) {
+                                                    streamResults.add(chunk.content());
+                                                }
+                                            }
+                                        });
+                            });
+
+                    // 3. 汇总阶段
+                    Flux<StreamChunk> summaryFlux = Flux.defer(() -> {
+                        List<String> results = new ArrayList<>(streamResults);
+                        return summarizeStream(subTasks, results, options);
+                    });
+
+                    return Flux.concat(planFlux, execFlux, summaryFlux);
+                })
+                .onErrorResume(e -> {
+                    log.error("Plan-Execute 流式执行失败", e);
+                    return Flux.just(new StreamChunk(StreamEventType.ERROR,
+                            e.getMessage() != null ? e.getMessage() : "Plan-Execute 流式失败", true));
+                });
+    }
+
+    /**
+     * 流式执行单个子任务（emit 进度标题 + Agent 流式结果）
+     */
+    private Flux<StreamChunk> executeSubTaskStream(String task, int index, int total,
+                                                    List<String> prevResults, StreamOptions options) {
+        ReActAgent executor = ReActAgent.builder()
+                .name("Executor-" + (index + 1))
+                .sysPrompt(EXECUTOR_PROMPT)
+                .model(model)
+                .toolkit(toolkit)
+                .memory(new io.agentscope.core.memory.InMemoryMemory())
+                .build();
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Sub-task ").append(index + 1).append(": ").append(task);
+        if (!prevResults.isEmpty()) {
+            prompt.append("\n\nPrevious results:\n");
+            for (int i = 0; i < prevResults.size(); i++) {
+                prompt.append("Step ").append(i + 1).append(" result: ")
+                        .append(prevResults.get(i)).append("\n");
+            }
+        }
+
+        Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(prompt.toString()).build();
+
+        // 子任务进度标题
+        StreamChunk progress = new StreamChunk(StreamEventType.ACTING_CHUNK,
+                "▶ 子任务 " + (index + 1) + "/" + total + ": " + task + "\n", false);
+
+        return Flux.concat(
+                Flux.just(progress),
+                executor.stream(List.of(userMsg), options)
+                        .map(this::eventToChunk)
+                        .doOnNext(c -> {
+                            if (c.content() != null && !c.content().isBlank()) {
+                                log.debug("Plan-Execute 流式: 子任务 {}/{} chunk type={}",
+                                        index + 1, total, c.type());
+                            }
+                        })
+                        .doOnComplete(() -> log.info("Plan-Execute 流式: 子任务 {}/{} 完成", index + 1, total))
+        );
+    }
+
+    /**
+     * 流式汇总
+     */
+    private Flux<StreamChunk> summarizeStream(List<String> subTasks, List<String> results,
+                                               StreamOptions options) {
+        ReActAgent summarizer = ReActAgent.builder()
+                .name("Summarizer")
+                .sysPrompt(SUMMARIZER_PROMPT + "\n\nOriginal context: " + systemPrompt)
+                .model(model)
+                .toolkit(new Toolkit())
+                .memory(new io.agentscope.core.memory.InMemoryMemory())
+                .build();
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Original request: ").append(userPrompt).append("\n\n");
+        prompt.append("Sub-task execution results:\n");
+        for (int i = 0; i < subTasks.size(); i++) {
+            prompt.append("Step ").append(i + 1).append(" [").append(subTasks.get(i)).append("]:\n");
+            String r = i < results.size() ? results.get(i) : "(no result)";
+            prompt.append(r).append("\n\n");
+        }
+        prompt.append("Please synthesize these results into a final answer.");
+
+        Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(prompt.toString()).build();
+        log.info("Plan-Execute 流式: Summarize 阶段开始");
+
+        return summarizer.stream(List.of(userMsg), options)
+                .map(this::eventToChunk)
+                .map(c -> {
+                    // Summarizer 的最后一个 chunk 标记为 FINAL + last
+                    if (StreamEventType.AGENT_RESULT.equals(c.type())) {
+                        return new StreamChunk(StreamEventType.FINAL, c.content(), true);
+                    }
+                    return c;
+                });
+    }
+
+    /**
+     * 规划失败降级：流式直接执行
+     */
+    private Flux<StreamChunk> executeDirectStream(StreamOptions options) {
+        ReActAgent agent = ReActAgent.builder()
+                .name("FallbackAgent")
+                .sysPrompt(systemPrompt)
+                .model(model)
+                .toolkit(toolkit)
+                .memory(new io.agentscope.core.memory.InMemoryMemory())
+                .build();
+
+        Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(userPrompt).build();
+        return agent.stream(List.of(userMsg), options)
+                .map(this::eventToChunk)
+                .map(c -> {
+                    if (StreamEventType.AGENT_RESULT.equals(c.type())) {
+                        return new StreamChunk(StreamEventType.FINAL, c.content(), true);
+                    }
+                    return c;
+                });
+    }
+
+    /**
+     * AgentScope Event → StreamChunk
+     */
+    private StreamChunk eventToChunk(Event event) {
+        String type = event.getType() != null ? event.getType().name() : "CHUNK";
+        String content = "";
+        if (event.getMessage() != null && event.getMessage().getTextContent() != null) {
+            content = event.getMessage().getTextContent();
+        }
+        return new StreamChunk(type, content, event.isLast());
     }
 
     /**

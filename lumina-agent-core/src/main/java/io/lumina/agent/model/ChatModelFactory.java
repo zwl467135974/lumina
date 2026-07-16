@@ -106,8 +106,8 @@ public class ChatModelFactory {
         DashScopeChatModel.Builder builder = DashScopeChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
-                .stream(defaults.getStream())
-                .enableThinking(defaults.getEnableThinking())
+                .stream(resolveStream(config, defaults))
+                .enableThinking(resolveEnableThinking(config, defaults))
                 .formatter(new DashScopeChatFormatter());
 
         if (config.getTemperature() != null) {
@@ -124,7 +124,7 @@ public class ChatModelFactory {
         OpenAIChatModel.Builder builder = OpenAIChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
-                .stream(defaults.getStream())
+                .stream(resolveStream(config, defaults))
                 .formatter(new OpenAIChatFormatter());
 
         if (config.getBaseUrl() != null) {
@@ -144,7 +144,7 @@ public class ChatModelFactory {
         AnthropicChatModel.Builder builder = AnthropicChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
-                .stream(defaults.getStream())
+                .stream(resolveStream(config, defaults))
                 .formatter(new AnthropicChatFormatter());
 
         if (config.getBaseUrl() != null) {
@@ -182,7 +182,7 @@ public class ChatModelFactory {
         GeminiChatModel.Builder builder = GeminiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
-                .streamEnabled(defaults.getStream())
+                .streamEnabled(resolveStream(config, defaults))
                 .formatter(new GeminiChatFormatter());
 
         if (config.getTemperature() != null) {
@@ -207,7 +207,7 @@ public class ChatModelFactory {
         OpenAIChatModel.Builder builder = OpenAIChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
-                .stream(defaults.getStream())
+                .stream(resolveStream(config, defaults))
                 .formatter(new OpenAIChatFormatter());
 
         builder.baseUrl(effectiveBaseUrl);
@@ -216,6 +216,20 @@ public class ChatModelFactory {
             builder.generateOptions(buildGenerateOptions(config));
         }
         return builder.build();
+    }
+
+    /**
+     * 解析流式开关：Agent 级配置优先，未设置时回退全局默认
+     */
+    private boolean resolveStream(LLMConfig config, LuminaAgentProperties.LLMConfig defaults) {
+        return Boolean.TRUE.equals(config.getStream() != null ? config.getStream() : defaults.getStream());
+    }
+
+    /**
+     * 解析思考模式开关：Agent 级配置优先，未设置时回退全局默认
+     */
+    private boolean resolveEnableThinking(LLMConfig config, LuminaAgentProperties.LLMConfig defaults) {
+        return Boolean.TRUE.equals(config.getEnableThinking() != null ? config.getEnableThinking() : defaults.getEnableThinking());
     }
 
     /**

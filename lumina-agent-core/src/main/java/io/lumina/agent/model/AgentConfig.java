@@ -97,6 +97,16 @@ public class AgentConfig implements Serializable {
         private String baseUrl;
 
         /**
+         * 是否启用流式输出（null 时使用全局默认）
+         */
+        private Boolean stream;
+
+        /**
+         * 是否启用思考模式（null 时使用全局默认）
+         */
+        private Boolean enableThinking;
+
+        /**
          * Top-P 核采样
          */
         private Double topP;

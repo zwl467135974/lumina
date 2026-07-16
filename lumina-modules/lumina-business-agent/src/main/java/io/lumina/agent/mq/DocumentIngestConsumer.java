@@ -84,6 +84,25 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
 
             Files.deleteIfExists(filePath);
 
+            // 扫描件检测：PDF 解析后无任何文本内容（扫描件/图片型 PDF 无可提取文本层）
+            if ((docs == null || docs.isEmpty()) && "pdf".equalsIgnoreCase(msg.getFormat())) {
+                log.warn("PDF 文档无可提取文本（疑似扫描件）: uuid={}", msg.getUuid());
+                updateStatus(msg.getUuid(), 2, 0, null);
+                try {
+                    if (rocketMQTemplate != null) {
+                        rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+                                new NotificationEvent(null, "DOCUMENT",
+                                        "文档解析为空",
+                                        "文档 " + msg.getUuid() + " 似乎是扫描件或图片型 PDF，无法提取文本。"
+                                                + "当前系统暂不支持 OCR，请上传可复制文字的电子版 PDF。",
+                                        "WARN", "knowledge_document", msg.getUuid(), msg.getTenantId()));
+                    }
+                } catch (Exception ex) {
+                    log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+                }
+                return;
+            }
+
             if (docs != null && !docs.isEmpty() && knowledge != null) {
                 knowledge.addDocuments(docs).block();
             }

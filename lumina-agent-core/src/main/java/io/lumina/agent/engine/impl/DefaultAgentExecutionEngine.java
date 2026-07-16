@@ -271,39 +271,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 构建上下文消息（含历史记忆）
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt);
 
-            ReActAgent agent = createReActAgent(agentConfig);
-
-            // 流式选项：增量输出，包含推理片段与行动片段
-            StreamOptions options = StreamOptions.builder()
-                    .incremental(true)
-                    .includeReasoningChunk(true)
-                    .includeActingChunk(true)
-                    .build();
-
-            // 累积最终回复内容（用于流结束后保存记忆）
-            StringBuilder finalResponse = new StringBuilder();
-
             Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
 
-            return Flux.concat(ragSourcesFlux, agent.stream(contextMessages, options)
-                    .map(this::toStreamChunk)
-                    .doOnNext(chunk -> {
-                        // SDK 实际产生 AGENT_RESULT 类型（非 FINAL），两者都需匹配
-                        if (StreamEventType.FINAL.equals(chunk.type())
-                                || StreamEventType.AGENT_RESULT.equals(chunk.type())) {
-                            finalResponse.append(chunk.content());
-                        }
-                    })
-                    .doOnComplete(() -> {
-                        if (conversationId != null && finalResponse.length() > 0) {
-                            memoryManager.addMemory(conversationId, "user", task);
-                            memoryManager.addMemory(conversationId, "assistant", finalResponse.toString());
-                        }
-                    })
-                    .onErrorResume(e -> {
-                        log.error("流式执行失败: businessType={}", businessType, e);
-                        return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
-                    }))
+            // 按 agentType 分发（PlanAndExecute 走组合流，其他走 ReAct）
+            Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task, conversationId);
+
+            return Flux.concat(ragSourcesFlux, agentFlux)
                     .doFinally(signal -> BaseContext.clearConversationId());
         } catch (Exception e) {
             log.error("构建流式 Agent 失败: businessType={}", businessType, e);
@@ -342,38 +315,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents);
 
-            ReActAgent agent = createReActAgent(agentConfig);
-
-            StreamOptions options = StreamOptions.builder()
-                    .incremental(true)
-                    .includeReasoningChunk(true)
-                    .includeActingChunk(true)
-                    .build();
-
-            StringBuilder finalResponse = new StringBuilder();
-
             Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
 
-            return Flux.concat(ragSourcesFlux, agent.stream(contextMessages, options)
-                    .map(this::toStreamChunk)
-                    .doOnNext(chunk -> {
-                        // SDK 实际产生 AGENT_RESULT 类型（非 FINAL），两者都需匹配
-                        if (StreamEventType.FINAL.equals(chunk.type())
-                                || StreamEventType.AGENT_RESULT.equals(chunk.type())) {
-                            finalResponse.append(chunk.content());
-                        }
-                    })
-                    .doOnComplete(() -> {
-                        if (conversationId != null && finalResponse.length() > 0) {
-                            memoryManager.addMemory(conversationId, "user", task);
-                            memoryManager.addMemory(conversationId, "assistant", finalResponse.toString());
-                        }
-                    })
-                    .onErrorResume(e -> {
-                        log.error("流式多模态执行失败: businessType={}", businessType, e);
-                        return Flux.just(new StreamChunk(StreamEventType.ERROR,
-                                e.getMessage() != null ? e.getMessage() : "流式多模态执行失败", true));
-                    }))
+            // 按 agentType 分发（PlanAndExecute 走组合流，其他走 ReAct）
+            Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task, conversationId);
+
+            return Flux.concat(ragSourcesFlux, agentFlux)
                     .doFinally(signal -> BaseContext.clearConversationId());
         } catch (Exception e) {
             log.error("构建流式多模态 Agent 失败: businessType={}", businessType, e);
@@ -560,6 +507,99 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     /**
+     * 构建 Agent 流式输出 Flux（按 agentType 分发：PlanAndExecute 走 PlanExecuteAgent，其他走 ReAct）
+     *
+     * <p>统一应用流式选项、回复累积、记忆保存、错误降级。
+     *
+     * @param agentConfig     Agent 配置
+     * @param contextMessages 上下文消息（ReAct 路径使用）
+     * @param userPrompt      用户原始 prompt（Plan-Execute 路径使用，用于提取任务）
+     * @param task            任务文本（用于记忆保存）
+     * @param conversationId  会话 ID
+     * @return StreamChunk 流
+     * @since 3.3.1
+     */
+    private Flux<StreamChunk> buildAgentStreamFlux(AgentConfig agentConfig, List<Msg> contextMessages,
+                                                    String userPrompt, String task, String conversationId) {
+        StringBuilder finalResponse = new StringBuilder();
+
+        Flux<StreamChunk> agentFlux;
+        String agentType = agentConfig.getAgentType();
+        if ("PlanAndExecute".equalsIgnoreCase(agentType)) {
+            // Plan-Execute 流式
+            agentFlux = buildPlanExecuteStreamFlux(agentConfig, userPrompt, contextMessages);
+        } else {
+            // ReAct 流式
+            ReActAgent agent = createReActAgent(agentConfig);
+            StreamOptions options = StreamOptions.builder()
+                    .incremental(true)
+                    .includeReasoningChunk(true)
+                    .includeActingChunk(true)
+                    .build();
+            agentFlux = agent.stream(contextMessages, options).map(this::toStreamChunk);
+        }
+
+        return agentFlux
+                .doOnNext(chunk -> {
+                    if (StreamEventType.FINAL.equals(chunk.type())
+                            || StreamEventType.AGENT_RESULT.equals(chunk.type())) {
+                        finalResponse.append(chunk.content());
+                    }
+                })
+                .doOnComplete(() -> {
+                    if (conversationId != null && finalResponse.length() > 0) {
+                        memoryManager.addMemory(conversationId, "user", task);
+                        memoryManager.addMemory(conversationId, "assistant", finalResponse.toString());
+                    }
+                })
+                .onErrorResume(e -> {
+                    log.error("流式执行失败: agentType={}", agentType, e);
+                    return Flux.just(new StreamChunk(StreamEventType.ERROR,
+                            e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
+                });
+    }
+
+    /**
+     * 构建 Plan-Execute 流式 Flux
+     */
+    private Flux<StreamChunk> buildPlanExecuteStreamFlux(AgentConfig agentConfig, String userPrompt,
+                                                          List<Msg> contextMessages) {
+        // 历史上下文（最后 6 条）
+        int ctxStart = Math.max(0, contextMessages.size() - 6);
+        StringBuilder ctx = new StringBuilder();
+        for (int i = ctxStart; i < contextMessages.size(); i++) {
+            Msg msg = contextMessages.get(i);
+            String role = msg.getRole() != null ? msg.getRole().name() : "UNKNOWN";
+            String text = msg.getTextContent();
+            if (text != null && !text.isBlank()) {
+                ctx.append(role).append(": ")
+                        .append(text, 0, Math.min(500, text.length())).append("\n");
+            }
+        }
+        String conversationContext = ctx.toString();
+
+        AgentConfig.LLMConfig llmConfig = resolveLlmConfig(agentConfig);
+        String modelKey = buildModelCacheKey(llmConfig);
+        Model model = modelCache.get(modelKey, k -> {
+            String resolvedApiKey = (llmConfig.getApiKey() != null && !llmConfig.getApiKey().isEmpty())
+                    ? llmConfig.getApiKey() : getApiKey();
+            return chatModelFactory.create(llmConfig, agentProperties.getLlm(), resolvedApiKey);
+        });
+        Toolkit toolkit = resolveToolkit(agentConfig);
+
+        String sysPrompt = agentConfig.getPromptTemplate() != null
+                ? agentConfig.getPromptTemplate() + "\n\n" + conversationContext
+                : conversationContext;
+
+        PlanExecuteAgent peAgent = new PlanExecuteAgent(model, toolkit,
+                userPrompt != null ? userPrompt : "", sysPrompt);
+
+        // 流式场景不包裹 resilience（Flux 是 lazy 的，内部各子任务的 block() 调用
+        // 已是同步点，熔断器对 Flux 组装无意义；错误由调用方的 onErrorResume 兜底）
+        return peAgent.executeStream();
+    }
+
+    /**
      * 从 AgentScope 响应中提取 Token 使用量
      */
     private ExecuteResult.TokenUsage extractTokenUsage(Msg response) {
@@ -638,6 +678,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         resolved.setBaseUrl(defaults.getBaseUrl());
         resolved.setTemperature(defaults.getTemperature());
         resolved.setMaxTokens(defaults.getMaxTokens());
+        resolved.setStream(defaults.getStream());
+        resolved.setEnableThinking(defaults.getEnableThinking());
         resolved.setTopP(defaults.getTopP());
         resolved.setFrequencyPenalty(defaults.getFrequencyPenalty());
         resolved.setPresencePenalty(defaults.getPresencePenalty());
@@ -657,6 +699,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 str(config.getBaseUrl()),
                 str(config.getTemperature()),
                 str(config.getMaxTokens()),
+                str(config.getStream()),
+                str(config.getEnableThinking()),
                 str(config.getTopP()),
                 str(config.getFrequencyPenalty()),
                 str(config.getPresencePenalty()),

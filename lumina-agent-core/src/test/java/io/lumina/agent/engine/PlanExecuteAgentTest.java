@@ -159,6 +159,21 @@ class PlanExecuteAgentTest {
         assertThat(agent.getTotalOutputTokens()).isEqualTo(0L);
     }
 
+    @Test
+    void executeStreamReturnsFluxAndHandlesErrorGracefully() {
+        // Mock Model 在调用时会抛异常 → executeStream 应通过 onErrorResume 降级为 ERROR chunk
+        PlanExecuteAgent agent = createAgent();
+
+        reactor.core.publisher.Flux<io.lumina.agent.model.StreamChunk> flux = agent.executeStream();
+
+        java.util.List<io.lumina.agent.model.StreamChunk> chunks = flux.collectList().block();
+
+        assertThat(chunks).isNotNull();
+        assertThat(chunks).hasSize(1);
+        assertThat(chunks.get(0).type()).isEqualTo(io.lumina.agent.model.StreamEventType.ERROR);
+        assertThat(chunks.get(0).last()).isTrue();
+    }
+
     // ==================== 辅助方法 ====================
 
     /**

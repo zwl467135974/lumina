@@ -155,6 +155,14 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
             Files.deleteIfExists(tempFile);
 
+            // 扫描件检测：PDF 解析后无任何文本内容（扫描件/图片型 PDF 无可提取文本层）
+            if ((docs == null || docs.isEmpty()) && "pdf".equalsIgnoreCase(format)) {
+                log.warn("PDF 文档无可提取文本（疑似扫描件）: uuid={}, file={}", uuid, filename);
+                throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED,
+                        "文档 " + filename + " 似乎是扫描件或图片型 PDF，无法提取文本。"
+                                + "当前系统暂不支持 OCR，请上传可复制文字的电子版 PDF。");
+            }
+
             if (docs != null && !docs.isEmpty() && knowledge != null) {
                 knowledge.addDocuments(docs).block();
             }

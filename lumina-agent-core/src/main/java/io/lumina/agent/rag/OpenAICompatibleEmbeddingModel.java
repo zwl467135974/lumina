@@ -124,8 +124,17 @@ public class OpenAICompatibleEmbeddingModel implements EmbeddingModel {
         }
 
         ArrayNode vector = (ArrayNode) embeddings.get(0).path("embedding");
-        double[] result = new double[vector.size()];
-        for (int i = 0; i < vector.size(); i++) {
+        int actualDims = vector.size();
+        if (dimensions > 0 && actualDims != dimensions) {
+            log.error("Embedding 维度不匹配: 配置={}, 实际={}, model={}。"
+                    + "向量库集合维度可能与 Embedding 模型输出不一致，请检查 rag.embedding.dimensions 配置或重建向量集合。",
+                    dimensions, actualDims, modelName);
+            throw new BusinessException(ErrorCode.RAG_EMBEDDING_FAILED,
+                    "Embedding 维度不匹配: 配置=" + dimensions + ", 实际=" + actualDims
+                            + "（模型 " + modelName + "）。请检查 rag.embedding.dimensions 配置。");
+        }
+        double[] result = new double[actualDims];
+        for (int i = 0; i < actualDims; i++) {
             result[i] = vector.get(i).asDouble();
         }
         return result;

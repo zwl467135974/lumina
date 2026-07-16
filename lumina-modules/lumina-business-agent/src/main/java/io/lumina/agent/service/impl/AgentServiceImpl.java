@@ -470,7 +470,15 @@ public class AgentServiceImpl implements AgentService {
                     contents.add(MultimodalDocument.of(text, filename));
                     log.info("文档文本提取成功: file={}, textLen={}", filename, text.length());
                 } else {
-                    log.warn("文档文本提取为空，已跳过: file={}", filename);
+                    // PDF/图片型文档可能为扫描件（无可提取文本层），给出明确提示而非静默跳过
+                    boolean likelyScanned = contentType.contains("pdf")
+                            || (filename != null && filename.toLowerCase().endsWith(".pdf"));
+                    String hint = likelyScanned
+                            ? "（注意：文档 " + filename + " 似乎是扫描件或图片型 PDF，无法提取文本。"
+                            + "当前系统暂不支持 OCR，请提供可复制文字的电子版 PDF 或纯文本文件。）"
+                            : "（注意：文档 " + filename + " 文本内容为空，已跳过。）";
+                    contents.add(MultimodalDocument.of(hint, filename));
+                    log.warn("文档文本提取为空: file={}, likelyScanned={}", filename, likelyScanned);
                 }
             }
         }

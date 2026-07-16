@@ -164,4 +164,31 @@ class ChatModelFactoryTest {
             // OK
         }
     }
+
+    @Test
+    void agentLevelStreamOverridesGlobalDefault() {
+        // 全局 stream=false，Agent 级 stream=true，应创建成功且不报路由错误
+        LLMConfig config = new LLMConfig();
+        config.setModelType("dashscope");
+        config.setModelName("qwen-plus");
+        config.setStream(true);
+        config.setEnableThinking(true);
+        config.setApiKey("sk-dummy");
+
+        var model = factory.create(config, defaults, "fallback-key");
+        assertThat(model).isNotNull();
+    }
+
+    @Test
+    void agentLevelStreamNullFallsBackToGlobal() {
+        // Agent 级 stream=null（未设置），应回退到全局默认（false）
+        LLMConfig config = new LLMConfig();
+        config.setModelType("dashscope");
+        config.setModelName("qwen-plus");
+        // 不设置 stream / enableThinking
+        config.setApiKey("sk-dummy");
+
+        var model = factory.create(config, defaults, "fallback-key");
+        assertThat(model).isNotNull();
+    }
 }
