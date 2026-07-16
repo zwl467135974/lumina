@@ -86,3 +86,4 @@ logs/
 *.log.*
 tmp/
 temp/
+data/knowledge/

@@ -59,8 +59,17 @@ public class HybridKnowledge implements Knowledge {
 
     @Override
     public Mono<Void> addDocuments(List<Document> documents) {
-        // 直接委托给底层向量存储（chunk 原文双写在入库链路已做）
-        return vectorStore.add(documents);
+        // 先对每个文档做 embedding，再写入向量存储
+        // （与 SimpleKnowledge 行为一致，不能跳过 embed 步骤）
+        return Mono.fromCallable(() -> {
+            for (Document doc : documents) {
+                if (doc.getMetadata() != null && doc.getMetadata().getContent() != null) {
+                    double[] embedding = embeddingModel.embed(doc.getMetadata().getContent()).block();
+                    doc.setEmbedding(embedding);
+                }
+            }
+            return documents;
+        }).flatMap(vectorStore::add);
     }
 
     @Override
@@ -121,6 +130,13 @@ public class HybridKnowledge implements Knowledge {
         for (int i = 0; i < keywordResults.size(); i++) {
             String key = keyExtractor.apply(keywordResults.get(i));
             rrfScores.merge(key, keywordWeight / (RRF_K + i + 1), Double::sum);
+        }
+
+        // RRF 分数归一化到 0-1 区间（RRF 原始分数在 0.001-0.02 量级，
+        // 不归一化会被外部 scoreThreshold=0.3 过滤掉）
+        double maxRrf = rrfScores.values().stream().mapToDouble(Double::doubleValue).max().orElse(1.0);
+        if (maxRrf > 0) {
+            rrfScores.replaceAll((k, v) -> v / maxRrf);
         }
 
         // 按 RRF 分数排序
