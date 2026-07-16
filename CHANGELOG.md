@@ -4,6 +4,58 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.3.0] - 2026-07-16
+
+### 多模态 PDF/Word 文档理解
+- **文档直接喂 LLM**: PDF/Word 不再只走 RAG 入库，可直接作为对话附件投递给多模态 LLM（纯文本化方案）
+- **MultimodalContent 统一接口**: sealed interface 统一图片（`MultimodalImage`）和文档（`MultimodalDocument`），引擎按 instanceof 分发到 ImageBlock/TextBlock
+- **文档文本提取**: 复用 AgentScope PDFReader/WordReader 解析全文，超 50000 字符自动截断
+- **前端预览分流**: 图片显示缩略图，PDF/Word 显示文件名 chip
+
+### 多 Agent 高层封装
+- **一键创建工作流**: `POST /api/v1/workflows/from-template`，传入模板名 + Agent 映射即可创建发布
+- **占位符替换机制**: 模板中 `${agent1}` 自动替换为实际 Agent ID，替换后校验 + 自动发布
+- **新增工作流模板**: `plan-execute`（Planner→Executor→Summarizer）、`group-chat`（多 Agent 轮流讨论→共识判断）
+- **requiredAgents 元数据**: `getTemplates` 返回每个模板所需的 Agent 角色信息
+
+### RAG 混合检索 + Reranker
+- **HybridKnowledge**: 并行向量检索 + 关键词检索，RRF（Reciprocal Rank Fusion）算法融合两路结果
+- **MySQL FULLTEXT 关键词路**: `lumina_knowledge_chunk` 表双写 chunk 原文，ngram 分词支持中文全文检索
+- **三模式 Reranker**: SiliconFlow（免费 API）、Local（本地模型服务）、None（仅 RRF 融合不调模型）
+- **配置驱动**: `lumina.rag.hybrid.enabled` + `lumina.rag.rerank.provider` 一键切换
+- **Flyway V28**: `lumina_knowledge_chunk` 表（FULLTEXT ngram 索引）
+
+### Plan-Execute 推理模式
+- **PlanExecuteAgent**: 三阶段组合编排（Planner 分解任务 → Executor 逐步执行 → Summarizer 汇总）
+- **agentType 切换**: 配置 `agentType: PlanAndExecute` 即可启用，向后兼容 ReAct
+- **JSON 子任务解析**: 支持环绕文本、malformed JSON、超上限截断等边界场景
+- **降级机制**: Planner 规划失败时自动降级为直接执行
+
+### 评估回归
+- **批量回归测试**: `POST /api/v1/evaluations/regression/batch`，一次跑多个数据集，聚合报告
+- **基线标记**: `POST /api/v1/evaluations/runs/{id}/baseline`，标记基线 run 用于回归对比
+- **Prompt 版本 diff**: `GET /api/v1/evaluations/prompts/compare`，行级差异对比
+- **Prompt 版本绑定**: EvaluationRunDO 新增 `prompt_name`/`prompt_version`/`is_baseline` 字段
+- **Flyway V29**: `lumina_evaluation_regression_rule` 表 + evaluation_run 扩展列
+
+### Bug 修复
+- **WorkflowDefinition.outputs 反序列化失败**: `MapEntry[]` 改为 `LinkedHashMap<String,String>`，修复所有模板加载失败
+- **模板 transform 字段名错误**: `expression` → `transformExpr` 匹配 TransformNode 实际字段名
+- **NoopReranker NPE**: null 输入未检查导致空指针
+- **CI JDBC URL**: `SPRING_DATASOURCE_URL` 中 `3306:lumina_dev` 修正为 `3306/lumina_dev`
+
+### 测试
+- **新增 39 个单元测试**: HybridKnowledge(8)、RerankProvider(8)、PlanExecuteAgent(9)、MultimodalDocument(6)、WorkflowTemplate(2)、EvaluationRegression(5)
+- **总计 487 个测试全过**（agent-core 258 + business-agent 170 + 其他 59）
+
+### 端到端验证
+- V28/V29 迁移: ✅ 表结构 + FULLTEXT 索引完整
+- agent-service 启动: ✅ Bean 注册正常
+- 多模态文档注入: ✅ 文档内容确认到达 LLM（containsSecret=true）
+- Plan-Execute: ✅ 三阶段完整执行（5 子任务，Token 统计正确）
+- 工作流模板: ✅ 7 模板加载 + 占位符替换无残留
+- 评估回归: ✅ 版本 diff（3 处差异）+ 基线标记（is_baseline=1）
+
 ## [3.2.0] - 2026-07-15
 
 ### MCP 协议接入

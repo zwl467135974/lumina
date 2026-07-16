@@ -1,7 +1,8 @@
 # Lumina 测试指南
 
-> **v3.2 更新**：自动化测试体系已覆盖后端 455+ @Test + 前端 103 用例。
+> **v3.3 更新**：自动化测试体系已覆盖后端 487 @Test + 前端 103 用例。
 > 集成测试只需 MySQL + Redis 两个本地服务，无需 Nacos / RocketMQ / Docker。
+> v3.3 新增 39 个测试覆盖混合检索 RRF 融合、Reranker 三模式、Plan-Execute JSON 解析、多模态文档截断、工作流模板、评估回归。
 
 ---
 
@@ -82,17 +83,28 @@ export SPRING_DATASOURCE_PASSWORD=ci_pass
 
 ## 测试体系概览
 
-### 后端测试（455+ @Test）
+### 后端测试（487 @Test）
 
 | 模块 | 单元测试 | 集成测试 | 说明 |
 |------|---------|---------|------|
 | lumina-common | 28 | - | 工具类、异常、上下文 |
-| lumina-agent-core | 221 | 6 (RAG Qdrant) | Agent 引擎、工具管理、MCP 接入、工作流、通用工具、搜索适配 |
+| lumina-agent-core | 252 | 6 (RAG Qdrant) | Agent 引擎、工具管理、MCP、工作流、混合检索、Reranker、Plan-Execute、多模态 |
 | lumina-framework | 50 | - | 框架配置、拦截器 |
 | lumina-gateway | 24 | - | 网关过滤器、白名单 |
 | lumina-business-base | 68 | 36 | 用户/角色/权限/租户/字典/审计 CRUD + 租户隔离 |
-| lumina-business-agent | 92 | 41 | Agent/对话/知识库/工作流/评估/成本/Prompt/LlmProvider |
+| lumina-business-agent | 163 | 41 | Agent/对话/知识库/工作流/评估回归/成本/Prompt/LlmProvider |
 | lumina-business-notification | - | 6 | 通知 CRUD/已读/租户隔离 |
+
+### v3.3 新增测试（39 个）
+
+| 测试文件 | 用例数 | 覆盖点 |
+|---------|--------|--------|
+| HybridKnowledgeTest | 8 | RRF 融合算法、去重、阈值过滤、limit 截断、null 降级 |
+| RerankProviderTest | 8 | NoopReranker/SiliconFlow/Local 三模式降级 |
+| PlanExecuteAgentTest | 9 | JSON 子任务解析（6 场景）+ Token 累加 |
+| MultimodalDocumentTest | 6 | 文本截断（短/长/边界/null）+ 接口兼容 |
+| WorkflowFromTemplateTest | 2 | 占位符提取 + 加载容错 |
+| EvaluationRegressionTest | 5 | 基线标记 + 版本 diff |
 
 ### 前端测试（103 用例 / 15 文件）
 

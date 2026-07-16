@@ -25,16 +25,17 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 
 ### 核心特性
 
-- **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct、工具调用、流式输出
+- **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct/Plan-Execute、工具调用、流式输出
+- **Plan-Execute 推理** - Planner 分解任务 → Executor 逐步执行 → Summarizer 汇总，复杂任务成功率更高
 - **MCP 协议接入** - 支持 Model Context Protocol，通过 stdio/http 连接外部 MCP Server，自动注册工具（McpClientRegistry + McpToolRegistrar），提供只读监控 API
 - **工具系统** - 通用工具（HTTP 请求/时间查询/网络搜索/数学计算）+ 业务工具 + MCP 工具统一注册管理，支持熔断器、调用记录、超时控制
 - **网络搜索** - 策略模式适配智谱/Tavily/SerpAPI/Brave 四种搜索引擎，配置驱动切换
-- **工作流编排引擎** - 基于 Flowable 7.0 的 DAG 引擎，支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 5 种协作模板
-- **Prompt 版本管理** - DB 持久化、版本发布/激活、Agent 执行链路运行时动态生效
-- **Agent 评估框架** - YAML 数据集 + 4 种评分器（精确/包含/语义相似度/LLM Judge）+ A/B 对比 + CSV 导出
-- **RAG 知识库** - 文档上传 → 切片 → 向量化 → 检索增强（Qdrant REST + 多 Embedding 提供商）+ 来源可视化
+- **工作流编排引擎** - 基于 Flowable 7.0 的 DAG 引擎，支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 7 种协作模板（含 plan-execute、group-chat）+ 一键模板创建
+- **Prompt 版本管理** - DB 持久化、版本发布/激活、版本行级 diff、Agent 执行链路运行时动态生效
+- **Agent 评估回归** - YAML 数据集 + 4 种评分器 + 批量回归测试 + 基线标记 + A/B 对比 + CSV 导出
+- **RAG 混合检索** - 向量检索 + 关键词检索（MySQL FULLTEXT）RRF 融合 + 三模式 Reranker（SiliconFlow/Local/None）
+- **多模态** - 图片 + PDF/Word 文档直接喂 LLM（MultimodalContent 统一接口）+ 流式多模态执行
 - **通知中心** - 独立通知模块，站内通知、已读/未读管理、通知偏好设置
-- **多模态** - 图片/PDF/Word 上传 + 流式多模态执行（LumUploader 可复用上传组件）
 - **微服务架构** - 基于 Spring Cloud Alibaba，支持服务注册、配置管理、负载均衡
 - **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
 - **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
@@ -43,7 +44,7 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）+ 频率限制 + 内容审核
 - **企业级安全** - 租户隔离自动检测、权限实时缓存、SpEL 表达式注入防护、登录防暴力破解
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V26)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V29)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换

@@ -124,3 +124,52 @@ export function importEvaluationDataset(file: File, name?: string, agentType?: s
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
+
+// ==================== 评估回归（v3.3 新增） ====================
+
+/** 批量回归 DTO */
+export interface BatchRegressionDTO {
+  datasetIds: number[]
+  agentId: number
+  scoringMethod?: ScoringMethod
+  threshold?: number
+  promptName?: string
+  promptVersion?: number
+  baselineRunId?: number
+}
+
+/** Prompt 版本 diff 结果 */
+export interface PromptDiffResult {
+  name: string
+  versionA: number
+  versionB: number
+  diffLines: Array<{
+    line: number
+    type: 'ADDED' | 'REMOVED' | 'MODIFIED'
+    content?: string
+    oldContent?: string
+    newContent?: string
+  }>
+  totalChanges: number
+}
+
+/**
+ * 批量回归测试
+ */
+export function runBatchRegression(data: BatchRegressionDTO) {
+  return request.post<R<Record<string, any>>>('/api/v1/evaluations/regression/batch', data, { timeout: 300000 })
+}
+
+/**
+ * 标记基线 run
+ */
+export function markBaseline(runId: number) {
+  return request.post<R<void>>(`/api/v1/evaluations/runs/${runId}/baseline`)
+}
+
+/**
+ * 对比两个 Prompt 版本
+ */
+export function comparePromptVersions(name: string, vA: number, vB: number) {
+  return request.get<R<PromptDiffResult>>('/api/v1/evaluations/prompts/compare', { params: { name, vA, vB } })
+}

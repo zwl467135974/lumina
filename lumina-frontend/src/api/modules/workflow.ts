@@ -54,6 +54,21 @@ export interface WorkflowTemplateVO {
   name: string
   description?: string
   definitionYaml: string
+  /** 模板所需的 Agent 角色（v3.3 新增） */
+  requiredAgents?: AgentRole[]
+}
+
+/** 模板 Agent 角色 */
+export interface AgentRole {
+  placeholder: string
+  description?: string
+}
+
+/** 从模板创建 DTO（v3.3 新增） */
+export interface CreateFromTemplateDTO {
+  templateName: string
+  workflowName: string
+  agentMapping: Record<string, number>
 }
 
 /** 创建/更新 DTO */
@@ -173,4 +188,11 @@ export function getInstanceLogs(instanceId: number) {
 
 export function getWorkflowTemplates() {
   return request.get<R<WorkflowTemplateVO[]>>('/api/v1/workflows/templates')
+}
+
+/**
+ * 从模板一键创建工作流（v3.3 新增）
+ */
+export function createWorkflowFromTemplate(data: CreateFromTemplateDTO) {
+  return request.post<R<WorkflowDefinitionVO>>('/api/v1/workflows/from-template', data)
 }
