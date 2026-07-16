@@ -68,14 +68,44 @@
     </el-dialog>
 
     <!-- 模板选择对话框 -->
-    <el-dialog v-model="templateDialogVisible" title="选择模板" width="600px">
+    <el-dialog v-model="templateDialogVisible" title="选择模板" width="650px">
       <div v-loading="templatesLoading">
-        <el-card v-for="tpl in templates" :key="tpl.name" shadow="hover" class="template-card" @click="useTemplate(tpl)">
-          <div class="template-name">{{ tpl.name }}</div>
-          <div class="template-desc">{{ tpl.description }}</div>
+        <el-card v-for="tpl in templates" :key="tpl.name" shadow="hover" class="template-card">
+          <div class="template-header">
+            <div>
+              <div class="template-name">{{ tpl.name }}</div>
+              <div class="template-desc">{{ tpl.description }}</div>
+            </div>
+            <div class="template-actions">
+              <el-button size="small" @click="useTemplate(tpl)">编辑 YAML</el-button>
+              <el-button size="small" type="primary" @click="openFromTemplateDialog(tpl)">一键创建</el-button>
+            </div>
+          </div>
+          <div v-if="tpl.requiredAgents && tpl.requiredAgents.length > 0" class="template-agents">
+            <el-tag v-for="r in tpl.requiredAgents" :key="r.placeholder" size="small" type="info">
+              {{ r.placeholder }}: {{ r.description }}
+            </el-tag>
+          </div>
         </el-card>
         <el-empty v-if="!templatesLoading && templates.length === 0" description="暂无模板" />
       </div>
+    </el-dialog>
+
+    <!-- 从模板一键创建对话框 -->
+    <el-dialog v-model="fromTemplateDialogVisible" title="从模板创建工作流" width="500px">
+      <el-form :model="fromTemplateForm" label-width="100px">
+        <el-form-item label="工作流名称">
+          <el-input v-model="fromTemplateForm.workflowName" placeholder="输入工作流名称" />
+        </el-form-item>
+        <el-form-item v-for="role in fromTemplateForm.roles" :key="role.placeholder" :label="role.placeholder">
+          <el-input-number v-model="role.agentId" :min="1" placeholder="Agent ID" controls-position="right" />
+          <span class="role-desc">{{ role.description }}</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="fromTemplateDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="fromTemplateLoading" @click="confirmFromTemplate">创建并发布</el-button>
+      </template>
     </el-dialog>
 
     <!-- 执行对话框 -->
@@ -169,8 +199,9 @@ import { PageHeader, LumTablePanel, type SearchField } from '@/components/common
 import {
   listWorkflows, createWorkflow, updateWorkflow, deleteWorkflow,
   publishWorkflow, streamExecuteWorkflow, listInstances, getWorkflowTemplates,
+  createWorkflowFromTemplate,
   type WorkflowDefinitionVO, type WorkflowTemplateVO, type WorkflowDTO, type WorkflowInstanceVO,
-  type WorkflowStreamEvent
+  type WorkflowStreamEvent, type AgentRole
 } from '@/api/modules/workflow'
 
 const router = useRouter()
@@ -306,6 +337,66 @@ const useTemplate = (tpl: WorkflowTemplateVO) => {
   editingId.value = null
   templateDialogVisible.value = false
   dialogVisible.value = true
+}
+
+// 从模板一键创建
+const fromTemplateDialogVisible = ref(false)
+const fromTemplateLoading = ref(false)
+const fromTemplateForm = reactive<{
+  templateName: string
+  workflowName: string
+  roles: Array<{ placeholder: string; description: string; agentId: number | undefined }>
+}>({
+  templateName: '',
+  workflowName: '',
+  roles: []
+})
+
+const openFromTemplateDialog = (tpl: WorkflowTemplateVO) => {
+  fromTemplateForm.templateName = tpl.name
+  fromTemplateForm.workflowName = tpl.name + '-instance'
+  fromTemplateForm.roles = (tpl.requiredAgents || []).map((r: AgentRole) => ({
+    placeholder: r.placeholder,
+    description: r.description || '',
+    agentId: undefined
+  }))
+  // 无占位符的模板（如 pipeline），直接用默认 agentId=1
+  if (fromTemplateForm.roles.length === 0) {
+    fromTemplateForm.roles = [{ placeholder: 'agent1', description: '默认 Agent', agentId: 1 }]
+  }
+  fromTemplateDialogVisible.value = true
+}
+
+const confirmFromTemplate = async () => {
+  if (!fromTemplateForm.workflowName.trim()) {
+    ElMessage.warning('请输入工作流名称')
+    return
+  }
+  const mapping: Record<string, number> = {}
+  for (const role of fromTemplateForm.roles) {
+    if (!role.agentId) {
+      ElMessage.warning(`请为 ${role.placeholder} 指定 Agent ID`)
+      return
+    }
+    mapping[role.placeholder] = role.agentId
+  }
+
+  fromTemplateLoading.value = true
+  try {
+    await createWorkflowFromTemplate({
+      templateName: fromTemplateForm.templateName,
+      workflowName: fromTemplateForm.workflowName,
+      agentMapping: mapping
+    })
+    ElMessage.success('工作流创建并发布成功')
+    fromTemplateDialogVisible.value = false
+    templateDialogVisible.value = false
+    loadList()
+  } catch (e: any) {
+    ElMessage.error(e.message || '创建失败')
+  } finally {
+    fromTemplateLoading.value = false
+  }
 }
 
 // 执行
@@ -493,13 +584,16 @@ loadList()
 .search-card { margin-bottom: 12px; }
 .list-card { margin-bottom: 12px; }
 .template-card {
-  cursor: pointer;
   margin-bottom: 10px;
   transition: border-color 0.2s;
   &:hover { border-color: var(--el-color-primary); }
+  .template-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
   .template-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
   .template-desc { font-size: 13px; color: var(--el-text-color-secondary); }
+  .template-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .template-agents { margin-top: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
 }
+.role-desc { margin-left: 8px; font-size: 12px; color: var(--el-text-color-secondary); }
 .yaml-editor :deep(.el-textarea__inner) {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;

@@ -145,6 +145,7 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="loadReport(row.id)">{{ t('common.view') }}</el-button>
             <el-button link type="info" @click="startCompare(row.id)">{{ t('evaluation.compare') }}</el-button>
+            <el-button link type="warning" @click="handleMarkBaseline(row.id)">标记基线</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -214,6 +215,98 @@
         </el-table>
       </div>
     </el-dialog>
+
+    <!-- 回归测试面板 -->
+    <el-card class="panel-card">
+      <template #header>
+        <div class="card-header">
+          <span>批量回归测试 & Prompt 版本对比</span>
+          <el-button size="small" @click="regressionDialogVisible = true">发起批量回归</el-button>
+        </div>
+      </template>
+
+      <!-- Prompt 版本对比 -->
+      <el-form :inline="true" class="prompt-compare-form">
+        <el-form-item label="Prompt 名称">
+          <el-input v-model="promptCompare.name" placeholder="如 react / assistant" style="width: 150px" />
+        </el-form-item>
+        <el-form-item label="版本 A">
+          <el-input-number v-model="promptCompare.vA" :min="1" controls-position="right" style="width: 90px" />
+        </el-form-item>
+        <el-form-item label="版本 B">
+          <el-input-number v-model="promptCompare.vB" :min="1" controls-position="right" style="width: 90px" />
+        </el-form-item>
+        <el-form-item>
+          <el-button size="small" :loading="promptCompareLoading" @click="doPromptCompare">对比差异</el-button>
+        </el-form-item>
+      </el-form>
+
+      <div v-if="promptDiff" class="prompt-diff-result">
+        <el-tag type="info">共 {{ promptDiff.totalChanges }} 处差异</el-tag>
+        <div v-for="d in promptDiff.diffLines" :key="d.line" class="diff-line">
+          <span class="diff-line-num">L{{ d.line }}</span>
+          <el-tag size="small" :type="d.type === 'ADDED' ? 'success' : d.type === 'REMOVED' ? 'danger' : 'warning'">{{ d.type }}</el-tag>
+          <span v-if="d.type === 'MODIFIED'" class="diff-content">
+            <span class="diff-old">{{ d.oldContent }}</span> → <span class="diff-new">{{ d.newContent }}</span>
+          </span>
+          <span v-else class="diff-content">{{ d.content }}</span>
+        </div>
+      </div>
+    </el-card>
+
+    <!-- 批量回归对话框 -->
+    <el-dialog v-model="regressionDialogVisible" title="批量回归测试" width="550px">
+      <el-form :model="regressionForm" label-width="110px">
+        <el-form-item label="数据集 ID">
+          <el-input v-model="regressionForm.datasetIdsStr" placeholder="逗号分隔，如 139,140" />
+        </el-form-item>
+        <el-form-item label="Agent ID">
+          <el-input-number v-model="regressionForm.agentId" :min="1" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="评分方式">
+          <el-select v-model="regressionForm.scoringMethod" style="width: 100%">
+            <el-option label="精确匹配" value="EXACT_MATCH" />
+            <el-option label="包含匹配" value="CONTAINS" />
+            <el-option label="语义相似度" value="SEMANTIC_SIMILARITY" />
+            <el-option label="LLM Judge" value="LLM_JUDGE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="阈值">
+          <el-slider v-model="regressionForm.threshold" :min="0" :max="1" :step="0.05" show-input style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="Prompt 名称">
+          <el-input v-model="regressionForm.promptName" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="regressionDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="regressionLoading" @click="doBatchRegression">执行回归</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 回归结果对话框 -->
+    <el-dialog v-model="regressionResultVisible" title="回归测试报告" width="600px">
+      <div v-if="regressionResult">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="数据集数">{{ regressionResult.totalDatasets }}</el-descriptions-item>
+          <el-descriptions-item label="完成数">{{ regressionResult.completedDatasets }}</el-descriptions-item>
+          <el-descriptions-item label="通过用例">{{ regressionResult.totalPassedCases }}</el-descriptions-item>
+          <el-descriptions-item label="回归用例">{{ regressionResult.totalRegressedCases }}</el-descriptions-item>
+          <el-descriptions-item label="结果">
+            <el-tag :type="regressionResult.pass ? 'success' : 'danger'">
+              {{ regressionResult.pass ? '通过' : '有回归' }}
+            </el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-table v-if="regressionResult.datasetResults" :data="regressionResult.datasetResults" size="small" style="margin-top: 12px">
+          <el-table-column prop="datasetId" label="数据集" width="80" />
+          <el-table-column prop="passRate" label="通过率" width="80" />
+          <el-table-column prop="passedCases" label="通过" width="60" />
+          <el-table-column prop="regressed" label="回归" width="60" />
+          <el-table-column prop="status" label="状态" />
+        </el-table>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -238,6 +331,9 @@ import {
   listEvaluationRuns,
   runEvaluation,
   runEvaluationAsync,
+  runBatchRegression,
+  markBaseline,
+  comparePromptVersions,
   type EvaluationDataset,
   type EvaluationRunRecord,
   type RunReport,
@@ -525,6 +621,73 @@ onMounted(() => {
   loadRuns()
   listAgents({ pageNum: 1, pageSize: 100 }).then(res => { agents.value = res.data.list || [] }).catch(() => {})
 })
+
+// ==================== 批量回归 & Prompt 版本对比 ====================
+const regressionDialogVisible = ref(false)
+const regressionLoading = ref(false)
+const regressionResultVisible = ref(false)
+const regressionResult = ref<Record<string, any> | null>(null)
+const regressionForm = reactive({
+  datasetIdsStr: '',
+  agentId: 1,
+  scoringMethod: 'EXACT_MATCH' as ScoringMethod,
+  threshold: 0.7,
+  promptName: ''
+})
+
+const doBatchRegression = async () => {
+  const ids = regressionForm.datasetIdsStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+  if (ids.length === 0) {
+    ElMessage.warning('请输入至少一个数据集 ID')
+    return
+  }
+  regressionLoading.value = true
+  try {
+    const res = await runBatchRegression({
+      datasetIds: ids,
+      agentId: regressionForm.agentId,
+      scoringMethod: regressionForm.scoringMethod,
+      threshold: regressionForm.threshold,
+      promptName: regressionForm.promptName || undefined
+    })
+    regressionResult.value = res.data
+    regressionResultVisible.value = true
+    regressionDialogVisible.value = false
+    ElMessage.success('回归测试完成')
+  } catch (e: any) {
+    ElMessage.error(e.message || '回归测试失败')
+  } finally {
+    regressionLoading.value = false
+  }
+}
+
+// 标记基线
+const handleMarkBaseline = async (runId: number) => {
+  try {
+    await ElMessageBox.confirm(`确认将 Run #${runId} 标记为基线？`, '标记基线', { type: 'warning' })
+    await markBaseline(runId)
+    ElMessage.success('基线标记成功')
+    loadRuns()
+  } catch { /* cancelled */ }
+}
+
+// Prompt 版本对比
+const promptCompare = reactive({ name: 'react', vA: 1, vB: 2 })
+const promptCompareLoading = ref(false)
+const promptDiff = ref<{ totalChanges: number; diffLines: Array<Record<string, any>> } | null>(null)
+
+const doPromptCompare = async () => {
+  promptCompareLoading.value = true
+  try {
+    const res = await comparePromptVersions(promptCompare.name, promptCompare.vA, promptCompare.vB)
+    promptDiff.value = res.data
+  } catch (e: any) {
+    ElMessage.error(e.message || '对比失败')
+    promptDiff.value = null
+  } finally {
+    promptCompareLoading.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -539,6 +702,13 @@ onMounted(() => {
 .result-table { margin-top: 16px; }
 .async-tag { margin-left: 12px; }
 .yaml-input :deep(textarea) { font-family: Consolas, Monaco, monospace; }
+.prompt-compare-form { margin-bottom: 12px; }
+.prompt-diff-result { margin-top: 12px; }
+.diff-line { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+.diff-line-num { color: var(--el-text-color-secondary); min-width: 40px; }
+.diff-content { flex: 1; }
+.diff-old { color: var(--el-color-danger); text-decoration: line-through; }
+.diff-new { color: var(--el-color-success); }
 @media (max-width: 900px) {
   .evaluation-page :deep(.el-col) { max-width: 100%; flex: 0 0 100%; }
 }
