@@ -258,6 +258,12 @@ public class ChatModelFactory {
         if (config.getTopK() != null) {
             ob.topK(config.getTopK());
         }
+        if (config.getThinkingBudget() != null) {
+            ob.thinkingBudget(config.getThinkingBudget());
+        }
+        if (config.getReasoningEffort() != null && !config.getReasoningEffort().isBlank()) {
+            ob.reasoningEffort(config.getReasoningEffort());
+        }
         return ob.build();
     }
 }

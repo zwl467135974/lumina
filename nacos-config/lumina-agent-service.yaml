@@ -89,6 +89,9 @@ lumina:
       temperature: ${LLM_TEMPERATURE:0.7}
       max-tokens: ${LLM_MAX_TOKENS:2000}
       stream: ${LLM_STREAM:false}
+      # 推理模型参数（可选）
+      thinking-budget: ${LLM_THINKING_BUDGET:}    # Anthropic/Gemini 扩展思考 Token 预算
+      reasoning-effort: ${LLM_REASONING_EFFORT:}  # OpenAI o-series: low/medium/high
 
   rag:
     enabled: ${RAG_ENABLED:false}

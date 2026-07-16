@@ -21,6 +21,7 @@ import java.time.Duration;
  * <ul>
  *   <li>{@code lumina.agent.rate-limit.max-requests} — 窗口内最大请求数（默认 30）</li>
  *   <li>{@code lumina.agent.rate-limit.window-seconds} — 时间窗口秒数（默认 60）</li>
+ *   <li>{@code lumina.agent.rate-limit.fail-open} — Redis 不可用时是否放行（默认 false，即 fail-closed 拒绝请求）</li>
  * </ul>
  *
  * @author Lumina Team
@@ -40,6 +41,15 @@ public class AgentRateLimiter {
 
     @Value("${lumina.agent.rate-limit.window-seconds:60}")
     private int windowSeconds;
+
+    /**
+     * Redis 不可用时的策略：true=放行（fail-open），false=拒绝（fail-closed，默认）
+     *
+     * <p>安全场景默认 fail-closed（拒绝请求），避免限流被绕过；
+     * 可用性优先场景可设为 true（放行请求），避免 Redis 抖动导致全局不可用。
+     */
+    @Value("${lumina.agent.rate-limit.fail-open:false}")
+    private boolean failOpen;
 
     /**
      * 检查当前用户对指定 Agent 的调用频率
@@ -67,7 +77,15 @@ public class AgentRateLimiter {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("频率限制检查失败（Redis 可能不可用），放行请求: agentId={}, error={}", agentId, e.getMessage());
+            if (failOpen) {
+                log.warn("频率限制检查失败（Redis 可能不可用），fail-open 模式放行请求: agentId={}, error={}",
+                        agentId, e.getMessage());
+            } else {
+                log.error("频率限制检查失败（Redis 可能不可用），fail-closed 模式拒绝请求: agentId={}, error={}",
+                        agentId, e.getMessage());
+                throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED,
+                        "限流服务暂时不可用，请稍后重试");
+            }
         }
     }
 }

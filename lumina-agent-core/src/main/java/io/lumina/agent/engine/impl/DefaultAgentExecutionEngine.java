@@ -685,6 +685,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         resolved.setPresencePenalty(defaults.getPresencePenalty());
         resolved.setSeed(defaults.getSeed());
         resolved.setTopK(defaults.getTopK());
+        resolved.setThinkingBudget(defaults.getThinkingBudget());
+        resolved.setReasoningEffort(defaults.getReasoningEffort());
         return resolved;
     }
 
@@ -705,7 +707,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 str(config.getFrequencyPenalty()),
                 str(config.getPresencePenalty()),
                 str(config.getSeed()),
-                str(config.getTopK()));
+                str(config.getTopK()),
+                str(config.getThinkingBudget()),
+                str(config.getReasoningEffort()));
     }
 
     /**

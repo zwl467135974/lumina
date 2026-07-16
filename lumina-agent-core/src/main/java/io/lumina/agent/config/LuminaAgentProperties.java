@@ -106,6 +106,20 @@ public class LuminaAgentProperties {
          * Top-K 采样（null 则不传）
          */
         private Integer topK;
+
+        /**
+         * 思考 Token 预算（Anthropic/Gemini 扩展思考模式，null 则不传）
+         *
+         * @since 3.3.1
+         */
+        private Integer thinkingBudget;
+
+        /**
+         * 推理强度（OpenAI o-series: low/medium/high，null 则不传）
+         *
+         * @since 3.3.1
+         */
+        private String reasoningEffort;
     }
 
     /**

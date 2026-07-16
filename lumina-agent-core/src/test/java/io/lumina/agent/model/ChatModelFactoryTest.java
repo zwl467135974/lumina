@@ -191,4 +191,19 @@ class ChatModelFactoryTest {
         var model = factory.create(config, defaults, "fallback-key");
         assertThat(model).isNotNull();
     }
+
+    @Test
+    void reasoningModelOptionsAreAccepted() {
+        // thinkingBudget + reasoningEffort 应能传入 GenerateOptions 而不报错
+        LLMConfig config = new LLMConfig();
+        config.setModelType("dashscope");
+        config.setModelName("qwen-plus");
+        config.setApiKey("sk-dummy");
+        config.setTemperature(0.5);  // 触发 buildGenerateOptions
+        config.setThinkingBudget(4096);
+        config.setReasoningEffort("medium");
+
+        var model = factory.create(config, defaults, "fallback-key");
+        assertThat(model).isNotNull();
+    }
 }

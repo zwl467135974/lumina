@@ -107,8 +107,26 @@ class AgentRateLimiterTest {
     }
 
     @Test
-    void redisFailureDoesNotBlock() {
+    void redisFailureFailsClosedByDefault() {
+        // 默认 fail-closed：Redis 宕机时拒绝请求（安全优先）
         when(redisCacheManager.incrementAndGet(anyString())).thenThrow(new RuntimeException("Redis down"));
+
+        assertThatThrownBy(() -> agentRateLimiter.checkRateLimit(1L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assert be.getErrorCode() == ErrorCode.AGENT_RATE_LIMITED;
+                });
+    }
+
+    @Test
+    void redisFailureFailsOpenWhenConfigured() throws Exception {
+        // fail-open=true 时 Redis 宕机放行请求（可用性优先）
+        when(redisCacheManager.incrementAndGet(anyString())).thenThrow(new RuntimeException("Redis down"));
+
+        Field failOpenField = AgentRateLimiter.class.getDeclaredField("failOpen");
+        failOpenField.setAccessible(true);
+        failOpenField.set(agentRateLimiter, true);
 
         assertThatCode(() -> agentRateLimiter.checkRateLimit(1L))
                 .doesNotThrowAnyException();
