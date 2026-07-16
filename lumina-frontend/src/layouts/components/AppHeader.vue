@@ -84,6 +84,12 @@
             </div>
           </div>
           <p class="notif-empty" v-else>{{ t('header.noNotifications') }}</p>
+          <!-- View all link -->
+          <div class="notif-panel-footer">
+            <el-button link type="primary" size="small" @click="goToNotificationPage">
+              {{ t('notification.viewAll') }}
+            </el-button>
+          </div>
         </div>
       </el-popover>
 
@@ -148,6 +154,11 @@ const collapseTitle = computed(() => t(appStore.sidebarCollapsed ? 'common.expan
 /** 通知面板打开时刷新列表 */
 function onNotificationPanelOpen() {
   notificationStore.fetchList()
+}
+
+/** 跳转到通知中心页面 */
+function goToNotificationPage() {
+  router.push('/notification')
 }
 
 /** 点击通知项：标记已读 + 跳转关联页面 */
@@ -527,6 +538,13 @@ function handleUserCommand(command: string) {
   font-size: var(--lumina-font-size-sm);
   padding: var(--lumina-spacing-lg);
   margin: 0;
+}
+
+.notif-panel-footer {
+  text-align: center;
+  border-top: 1px solid var(--lumina-border);
+  padding-top: var(--lumina-spacing-sm);
+  margin-top: var(--lumina-spacing-sm);
 }
 
 /* ---------- Badge Override ---------- */

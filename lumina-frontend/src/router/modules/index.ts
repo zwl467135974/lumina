@@ -389,3 +389,17 @@ export const knowledgeBaseRoutes: AppRouteRecordRaw[] = [
     redirect: '/knowledge'
   }
 ]
+
+// 通知中心路由
+export const notificationRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/notification',
+    name: 'Notification',
+    component: () => import('@/views/notification/index.vue'),
+    meta: {
+      title: '通知中心',
+      icon: 'Bell',
+      requiresAuth: true
+    }
+  }
+]

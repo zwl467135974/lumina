@@ -81,11 +81,30 @@ export default {
     noNotifications: '暂无新通知'
   },
   notification: {
-    title: '通知',
+    title: '通知中心',
+    description: '查看所有系统通知和历史消息',
     markAllRead: '全部已读',
+    markRead: '标记已读',
+    markReadSuccess: '已标记为已读',
+    readAllConfirm: '确定将所有通知标记为已读吗？',
+    readAllSuccess: '全部标记为已读',
     justNow: '刚刚',
     minutesAgo: '分钟前',
     hoursAgo: '小时前',
+    filterAll: '全部',
+    filterUnread: '未读',
+    filterRead: '已读',
+    categoryLabel: '分类',
+    titleLabel: '标题',
+    contentLabel: '内容',
+    severityLabel: '级别',
+    readStatusLabel: '状态',
+    viewAll: '查看全部通知',
+    severity: {
+      INFO: '信息',
+      WARN: '警告',
+      ERROR: '错误'
+    },
     category: {
       BUDGET: '预算',
       TASK: '任务',
@@ -98,7 +117,8 @@ export default {
   route: {
     login: '登录',
     notFound: '页面不存在',
-    unauthorized: '未授权'
+    unauthorized: '未授权',
+    notification: '通知中心'
   },
   login: {
     title: 'Lumina AI Agent 平台',
@@ -630,6 +650,6 @@ export default {
     confirmPasswordRequired: '请再次输入新密码',
     passwordLength: '密码长度 6-20 个字符',
     passwordMismatch: '两次输入的密码不一致',
-    passwordFeatureHint: '密码修改功能需要后端接口支持，即将上线'
+    changePasswordSuccess: '密码修改成功'
   }
 }

@@ -54,6 +54,13 @@ export function resetPassword(data: ResetPasswordDTO) {
 }
 
 /**
+ * 自助修改密码（当前登录用户）
+ */
+export function changePassword(data: { oldPassword: string; newPassword: string; confirmPassword: string }) {
+  return request.put<R<boolean>>('/api/v1/base/users/me/password', data)
+}
+
+/**
  * 分配用户角色
  */
 export function assignRoles(userId: number, roleIds: number[]) {

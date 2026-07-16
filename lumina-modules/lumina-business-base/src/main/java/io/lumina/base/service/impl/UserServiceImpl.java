@@ -3,6 +3,7 @@ package io.lumina.base.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.lumina.base.api.dto.user.AssignRoleDTO;
+import io.lumina.base.api.dto.user.ChangePasswordDTO;
 import io.lumina.base.api.dto.user.CreateUserDTO;
 import io.lumina.base.api.dto.user.ResetPasswordDTO;
 import io.lumina.base.api.dto.user.UpdateUserDTO;
@@ -341,6 +342,41 @@ public class UserServiceImpl implements UserService {
         int result = userMapper.updateById(userDO);
 
         log.info("密码重置成功: userId={}", dto.getUserId());
+        return result > 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean changePassword(ChangePasswordDTO dto) {
+        Long userId = BaseContext.getUserId();
+        log.info("自助修改密码: userId={}", userId);
+
+        // 1. 验证新密码一致性
+        if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_NOT_MATCH);
+        }
+
+        // 2. 查询当前用户
+        UserDO userDO = userMapper.selectById(userId);
+        if (userDO == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 3. 验证旧密码
+        if (!PasswordUtil.verify(dto.getOldPassword(), userDO.getPassword())) {
+            throw new BusinessException(ErrorCode.PASSWORD_ERROR);
+        }
+
+        // 4. 新旧密码不能相同
+        if (dto.getOldPassword().equals(dto.getNewPassword())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "新密码不能与当前密码相同");
+        }
+
+        // 5. 更新密码
+        userDO.setPassword(PasswordUtil.hash(dto.getNewPassword()));
+        int result = userMapper.updateById(userDO);
+
+        log.info("密码修改成功: userId={}", userId);
         return result > 0;
     }
 

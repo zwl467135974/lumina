@@ -84,7 +84,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { useUserStore, useAppStore } from '@/stores'
-import { updateUser } from '@/api/modules/system-user'
+import { updateUser, changePassword } from '@/api/modules/system-user'
 import { PageHeader } from '@/components/common'
 
 const { t, locale } = useI18n()
@@ -170,10 +170,17 @@ const handleChangePassword = async () => {
     if (!valid) return
     changingPassword.value = true
     try {
-      ElMessage.info(t('profile.passwordFeatureHint'))
+      await changePassword({
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword,
+      })
+      ElMessage.success(t('profile.changePasswordSuccess'))
       passwordForm.oldPassword = ''
       passwordForm.newPassword = ''
       passwordForm.confirmPassword = ''
+    } catch {
+      // 错误由全局拦截器处理
     } finally {
       changingPassword.value = false
     }

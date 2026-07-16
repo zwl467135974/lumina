@@ -2,6 +2,7 @@ package io.lumina.base.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.lumina.base.api.dto.user.AssignRoleDTO;
+import io.lumina.base.api.dto.user.ChangePasswordDTO;
 import io.lumina.base.api.dto.user.CreateUserDTO;
 import io.lumina.base.api.dto.user.ResetPasswordDTO;
 import io.lumina.base.api.dto.user.UpdateUserDTO;
@@ -79,4 +80,12 @@ public interface UserService {
      * @return 是否成功
      */
     Boolean resetPassword(ResetPasswordDTO dto);
+
+    /**
+     * 自助修改密码（验证旧密码）
+     *
+     * @param dto 修改密码 DTO
+     * @return 是否成功
+     */
+    Boolean changePassword(ChangePasswordDTO dto);
 }

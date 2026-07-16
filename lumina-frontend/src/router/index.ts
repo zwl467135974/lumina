@@ -3,14 +3,14 @@
  */
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { basicRoutes, agentRoutes, systemRoutes, knowledgeRoutes, monitorRoutes, workflowRoutes, promptRoutes, costRoutes, budgetRoutes, evaluationRoutes, knowledgeBaseRoutes } from './modules'
+import { basicRoutes, agentRoutes, systemRoutes, knowledgeRoutes, monitorRoutes, workflowRoutes, promptRoutes, costRoutes, budgetRoutes, evaluationRoutes, knowledgeBaseRoutes, notificationRoutes } from './modules'
 import { setupRouterGuards } from './guards'
 
 const routes = [
   {
     path: '/',
     component: () => import('@/layouts/DefaultLayout.vue'),
-    children: [...agentRoutes, ...systemRoutes, ...knowledgeRoutes, ...monitorRoutes, ...workflowRoutes, ...promptRoutes, ...costRoutes, ...budgetRoutes, ...evaluationRoutes, ...knowledgeBaseRoutes]
+    children: [...agentRoutes, ...systemRoutes, ...knowledgeRoutes, ...monitorRoutes, ...workflowRoutes, ...promptRoutes, ...costRoutes, ...budgetRoutes, ...evaluationRoutes, ...knowledgeBaseRoutes, ...notificationRoutes]
   },
   ...basicRoutes,
   {

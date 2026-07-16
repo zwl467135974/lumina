@@ -82,10 +82,29 @@ export default {
   },
   notification: {
     title: 'Notifications',
+    description: 'View all system notifications and history',
     markAllRead: 'Mark all read',
+    markRead: 'Mark read',
+    markReadSuccess: 'Marked as read',
+    readAllConfirm: 'Mark all notifications as read?',
+    readAllSuccess: 'All marked as read',
     justNow: 'just now',
     minutesAgo: 'min ago',
     hoursAgo: 'h ago',
+    filterAll: 'All',
+    filterUnread: 'Unread',
+    filterRead: 'Read',
+    categoryLabel: 'Category',
+    titleLabel: 'Title',
+    contentLabel: 'Content',
+    severityLabel: 'Severity',
+    readStatusLabel: 'Status',
+    viewAll: 'View all notifications',
+    severity: {
+      INFO: 'Info',
+      WARN: 'Warning',
+      ERROR: 'Error'
+    },
     category: {
       BUDGET: 'Budget',
       TASK: 'Task',
@@ -98,7 +117,8 @@ export default {
   route: {
     login: 'Login',
     notFound: 'Page Not Found',
-    unauthorized: 'Unauthorized'
+    unauthorized: 'Unauthorized',
+    notification: 'Notifications'
   },
   login: {
     title: 'Lumina AI Agent Platform',
@@ -630,6 +650,6 @@ export default {
     confirmPasswordRequired: 'Please confirm new password',
     passwordLength: 'Password must be 6-20 characters',
     passwordMismatch: 'Passwords do not match',
-    passwordFeatureHint: 'Password change requires backend API, coming soon'
+    changePasswordSuccess: 'Password changed successfully'
   }
 }

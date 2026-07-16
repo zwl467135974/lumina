@@ -2,6 +2,7 @@ package io.lumina.base.api.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.lumina.base.api.dto.user.AssignRoleDTO;
+import io.lumina.base.api.dto.user.ChangePasswordDTO;
 import io.lumina.base.api.dto.user.CreateUserDTO;
 import io.lumina.base.api.dto.user.ResetPasswordDTO;
 import io.lumina.base.api.dto.user.UpdateUserDTO;
@@ -199,6 +200,28 @@ public class UserController {
         log.info("重置密码请求: userId={}", userId);
         dto.setUserId(userId);
         Boolean result = userService.resetPassword(dto);
+        return R.success(result);
+    }
+
+    /**
+     * 自助修改密码
+     *
+     * <p>当前登录用户修改自己的密码，需验证旧密码。无需管理员权限。
+     *
+     * @since 3.3.1
+     */
+    @PutMapping("/me/password")
+    @Audit(module = "user", action = "UPDATE")
+    @Operation(summary = "自助修改密码", description = "当前登录用户修改自己的密码，需提供旧密码验证")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "修改成功"),
+        @ApiResponse(responseCode = "400", description = "旧密码错误或新密码不合法")
+    })
+    public R<Boolean> changePassword(
+            @Parameter(description = "密码修改信息", required = true)
+            @Valid @RequestBody ChangePasswordDTO dto) {
+        log.info("自助修改密码请求");
+        Boolean result = userService.changePassword(dto);
         return R.success(result);
     }
 }
