@@ -92,6 +92,10 @@ lumina:
       # 推理模型参数（可选）
       thinking-budget: ${LLM_THINKING_BUDGET:}    # Anthropic/Gemini 扩展思考 Token 预算
       reasoning-effort: ${LLM_REASONING_EFFORT:}  # OpenAI o-series: low/medium/high
+      # Gemini Vertex AI 模式（可选，启用后使用 project/location 而非 api-key）
+      vertex-ai: ${LLM_VERTEX_AI:false}           # true 启用 Vertex AI 模式
+      project-id: ${LLM_PROJECT_ID:}              # GCP 项目 ID
+      location: ${LLM_LOCATION:us-central1}       # GCP 区域
 
   rag:
     enabled: ${RAG_ENABLED:false}

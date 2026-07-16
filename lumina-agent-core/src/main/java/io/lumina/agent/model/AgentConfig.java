@@ -97,6 +97,27 @@ public class AgentConfig implements Serializable {
         private String baseUrl;
 
         /**
+         * Gemini Vertex AI 模式：是否启用（true 时使用 project/location 而非 apiKey）
+         *
+         * @since 3.3.1
+         */
+        private Boolean vertexAi;
+
+        /**
+         * Gemini Vertex AI：GCP 项目 ID
+         *
+         * @since 3.3.1
+         */
+        private String projectId;
+
+        /**
+         * Gemini Vertex AI：区域（如 us-central1）
+         *
+         * @since 3.3.1
+         */
+        private String location;
+
+        /**
          * 是否启用流式输出（null 时使用全局默认）
          */
         private Boolean stream;

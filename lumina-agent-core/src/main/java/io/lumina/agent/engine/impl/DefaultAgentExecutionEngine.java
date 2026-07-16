@@ -676,6 +676,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         resolved.setModelName(defaults.getModel());
         resolved.setApiKey(getApiKey());
         resolved.setBaseUrl(defaults.getBaseUrl());
+        resolved.setVertexAi(defaults.getVertexAi());
+        resolved.setProjectId(defaults.getProjectId());
+        resolved.setLocation(defaults.getLocation());
         resolved.setTemperature(defaults.getTemperature());
         resolved.setMaxTokens(defaults.getMaxTokens());
         resolved.setStream(defaults.getStream());
@@ -699,6 +702,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 str(config.getModelName()),
                 hashSensitive(config.getApiKey()),
                 str(config.getBaseUrl()),
+                str(config.getVertexAi()),
+                str(config.getProjectId()),
+                str(config.getLocation()),
                 str(config.getTemperature()),
                 str(config.getMaxTokens()),
                 str(config.getStream()),

@@ -44,7 +44,7 @@ Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https
 - **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）+ 频率限制 + 内容审核
 - **企业级安全** - 租户隔离自动检测、权限实时缓存、SpEL 表达式注入防护、登录防暴力破解
 - **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V29)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
+- **工程化** - 统一错误码、Flyway 版本迁移(V1-V30)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
 - **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
 - **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Ollama 等主流模型
 - **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
@@ -174,7 +174,7 @@ $env:LLM_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V26），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V30），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -578,13 +578,13 @@ npm install
 - ✅ Apache 2.0 License + CHANGELOG.md
 
 **测试**
-- ✅ 后端 455+ 测试（单元 + 集成，全模块 `mvn verify` 通过）
+- ✅ 后端 600+ 测试（单元 + 集成，全模块 `mvn verify` 通过）
 - ✅ 前端 103 测试（Vitest 单元测试）
 - ✅ CI/CD 双流水线（GitHub Actions：后端 mvn verify + 前端 pnpm build + pnpm test）
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V26 + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V30 + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
@@ -607,17 +607,17 @@ npm install
 - ✅ Dashboard 首页 + 审计日志页 + 403/401 错误页
 - ✅ Nacos 配置统一（本地极简 + nacos-config 完整）
 - ✅ 前端设计技能包（自进化：DESIGN.md + ui-learnings.md）
-- ✅ Flyway V17-V26（权限/字段/模型/通知/种子数据）
+- ✅ Flyway V17-V30（权限/字段/模型/通知/种子数据/评估回归/通知菜单）
 
 ### v3.2.0 能力完善与验证
 
 - ✅ MCP 协议接入（stdio/http 传输 + 工具自动注册 + 只读监控 API + 监控页面）
 - ✅ 通用工具系统迁移（HTTP/时间/搜索/计算工具从 base 迁至 agent-core，解决跨服务可见性）
 - ✅ 网络搜索适配层（智谱/Tavily/SerpAPI/Brave 四引擎 + 配置驱动切换）
-- ✅ 通知中心独立模块（站内通知 + 已读管理 + Flyway V26）
+- ✅ 通知中心独立模块（站内通知 + 已读管理 + 前端通知页面 + Flyway V26/V30）
 - ✅ LumUploader 可复用上传组件 + 多模态扩展支持 PDF/Word
 - ✅ 端到端全链路验证（ReAct 工具调用 + MCP echo server + 流式 SSE + RAG Qdrant）
-- ✅ 测试扩充至 455+（MCP/搜索/工具/工作流节点/Flowable BPMN/知识库全覆盖）
+- ✅ 测试扩充至 600+（MCP/搜索/工具/工作流节点/Flowable BPMN/知识库全覆盖）
 - ✅ CI/CD 修复（Redis 密码 + Dockerfile 多模块构建 + CD 上下文）
 - ✅ 异常规范化（17 处 RuntimeException → BusinessException + ErrorCode）
 

@@ -171,19 +171,38 @@ public class ChatModelFactory {
     }
 
     /**
-     * Google Gemini（通过 Google Gen AI SDK，支持 Vertex AI 模式）
+     * Google Gemini（通过 Google Gen AI SDK，支持 AI Studio 和 Vertex AI 两种模式）
      *
-     * <p>默认走 AI Studio API（仅需 apiKey），Vertex AI 需额外配置 project/location。
+     * <p>AI Studio 模式（默认）：仅需 apiKey。
+     * <p>Vertex AI 模式：需配置 vertex-ai=true + project-id + location，
+     * 并设置环境变量 GOOGLE_APPLICATION_CREDENTIALS 指向服务账号 JSON。
      *
      * @since 3.3.0
      */
     private Model createGemini(LLMConfig config, LuminaAgentProperties.LLMConfig defaults,
                                 String apiKey, String modelName) {
         GeminiChatModel.Builder builder = GeminiChatModel.builder()
-                .apiKey(apiKey)
                 .modelName(modelName)
                 .streamEnabled(resolveStream(config, defaults))
                 .formatter(new GeminiChatFormatter());
+
+        // Vertex AI 模式 vs AI Studio 模式
+        boolean useVertexAi = Boolean.TRUE.equals(config.getVertexAi() != null
+                ? config.getVertexAi() : defaults.getVertexAi());
+        if (useVertexAi) {
+            String projectId = config.getProjectId() != null ? config.getProjectId() : defaults.getProjectId();
+            String location = config.getLocation() != null ? config.getLocation() : defaults.getLocation();
+            if (projectId == null || projectId.isBlank()) {
+                throw new SystemException(ErrorCode.AGENT_CONFIG_ERROR,
+                        "Gemini Vertex AI 模式需要配置 project-id（lumina.agent.llm.project-id）");
+            }
+            builder.vertexAI(true)
+                    .project(projectId)
+                    .location(location != null ? location : "us-central1");
+            log.info("Gemini Vertex AI 模式: project={}, location={}", projectId, location);
+        } else {
+            builder.apiKey(apiKey);
+        }
 
         if (config.getTemperature() != null) {
             builder.defaultOptions(buildGenerateOptions(config));

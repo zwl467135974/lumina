@@ -51,6 +51,29 @@ public class LuminaAgentProperties {
         private String baseUrl;
 
         /**
+         * Gemini Vertex AI 模式：是否启用（true 时使用 project/location 而非 apiKey）
+         *
+         * <p>启用后需设置 GOOGLE_APPLICATION_CREDENTIALS 环境变量指向服务账号 JSON 文件。
+         *
+         * @since 3.3.1
+         */
+        private Boolean vertexAi = false;
+
+        /**
+         * Gemini Vertex AI：GCP 项目 ID
+         *
+         * @since 3.3.1
+         */
+        private String projectId;
+
+        /**
+         * Gemini Vertex AI：区域（如 us-central1）
+         *
+         * @since 3.3.1
+         */
+        private String location;
+
+        /**
          * 自定义 OpenAI 兼容预设（v3.3.0 新增）
          *
          * <p>配置示例：

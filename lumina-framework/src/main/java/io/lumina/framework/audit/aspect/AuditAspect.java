@@ -3,13 +3,14 @@ package io.lumina.framework.audit.aspect;
 import io.lumina.common.core.BaseContext;
 import io.lumina.framework.audit.annotation.Audit;
 import io.lumina.framework.audit.event.AuditEvent;
+import io.lumina.framework.config.RocketMQConfig;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -21,8 +22,13 @@ import java.lang.reflect.Parameter;
 /**
  * 审计日志切面
  *
- * <p>拦截标注 {@link Audit} 的方法，记录执行结果并发布 {@link AuditEvent}，
- * 由审计监听器通过 auditExecutor 线程池异步持久化。
+ * <p>拦截标注 {@link Audit} 的方法，记录执行结果并发布 {@link AuditEvent}。
+ *
+ * <p>发布策略（自动降级）：
+ * <ol>
+ *   <li>RocketMQ 可用时 → 发送到 {@link RocketMQConfig#TOPIC_AUDIT_LOG}，由 AuditLogConsumer 异步消费持久化</li>
+ *   <li>RocketMQ 不可用时 → 降级为 Spring ApplicationEvent，由 AuditLogEventListener @Async 持久化</li>
+ * </ol>
  *
  * @author Lumina Team
  * @since 1.1.0
@@ -30,10 +36,16 @@ import java.lang.reflect.Parameter;
 @Slf4j
 @Aspect
 @Component
-@RequiredArgsConstructor
 public class AuditAspect {
 
     private final ApplicationEventPublisher eventPublisher;
+
+    @Autowired(required = false)
+    private org.apache.rocketmq.spring.core.RocketMQTemplate rocketMQTemplate;
+
+    public AuditAspect(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Around("@annotation(audit)")
     public Object around(ProceedingJoinPoint pjp, Audit audit) throws Throwable {
@@ -89,6 +101,15 @@ public class AuditAspect {
                 .requestIp(request != null ? getClientIp(request) : null)
                 .build();
 
+        // 优先走 MQ（跨实例消费、削峰），降级走 Spring ApplicationEvent（@Async 本地异步）
+        if (rocketMQTemplate != null) {
+            try {
+                rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_AUDIT_LOG, event);
+                return;
+            } catch (Exception e) {
+                log.warn("审计事件发送 MQ 失败，降级为本地事件: {}", e.getMessage());
+            }
+        }
         eventPublisher.publishEvent(event);
     }
 
