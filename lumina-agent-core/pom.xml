@@ -137,6 +137,13 @@
             <artifactId>flowable-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- Docker 容器隔离（Code Interpreter 沙箱） -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

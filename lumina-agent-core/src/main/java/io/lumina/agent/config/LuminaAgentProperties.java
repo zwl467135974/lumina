@@ -205,6 +205,36 @@ public class LuminaAgentProperties {
         private String nodePath = "node";
         /** 临时脚本工作目录 */
         private String workDir = System.getProperty("java.io.tmpdir") + "/lumina-code";
+
+        /**
+         * 执行模式：process（本地进程）或 docker（Docker 容器隔离）
+         */
+        private String mode = "process";
+
+        /**
+         * Docker 镜像（Python）
+         */
+        private String pythonImage = "python:3.11-slim";
+
+        /**
+         * Docker 镜像（Node.js）
+         */
+        private String nodeImage = "node:20-slim";
+
+        /**
+         * Docker 内存限制（MB）
+         */
+        private int memoryLimitMb = 256;
+
+        /**
+         * Docker CPU 核心数限制
+         */
+        private double cpuLimit = 1.0;
+
+        /**
+         * 是否禁止网络访问
+         */
+        private boolean networkDisabled = true;
     }
 
     /**

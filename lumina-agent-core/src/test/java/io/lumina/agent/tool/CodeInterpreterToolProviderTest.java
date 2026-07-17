@@ -32,6 +32,13 @@ class CodeInterpreterToolProviderTest {
         ReflectionTestUtils.setField(provider, "nodePath", "node");
         ReflectionTestUtils.setField(provider, "workDir",
                 System.getProperty("java.io.tmpdir") + "/lumina-code-test");
+        // Docker 相关字段（测试用 process 模式，不依赖 Docker）
+        ReflectionTestUtils.setField(provider, "mode", "process");
+        ReflectionTestUtils.setField(provider, "pythonImage", "python:3.11-slim");
+        ReflectionTestUtils.setField(provider, "nodeImage", "node:20-slim");
+        ReflectionTestUtils.setField(provider, "memoryLimitMb", 256);
+        ReflectionTestUtils.setField(provider, "cpuLimit", 1.0);
+        ReflectionTestUtils.setField(provider, "networkDisabled", true);
     }
 
     @Test
