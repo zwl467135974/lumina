@@ -18,7 +18,6 @@ import io.lumina.agent.util.JsonUtils;
 import io.lumina.common.core.BaseContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -46,9 +45,6 @@ public class ReflectiveMemoryServiceImpl implements ReflectiveMemoryService {
     private final LongTermMemoryMapper memoryMapper;
     private final ChatModelFactory chatModelFactory;
     private final LuminaAgentProperties agentProperties;
-
-    @Autowired(required = false)
-    private io.lumina.agent.engine.AgentExecutionEngine agentExecutionEngine;
 
     private static final Pattern JSON_OBJECT_PATTERN = Pattern.compile("\\{.*}", Pattern.DOTALL);
 
