@@ -35,6 +35,12 @@ public class AgentTaskDO {
     private String modelName;
     private String provider;
     private Long durationMs;
+
+    /**
+     * 触发来源（定时 trigger 的 id，手动提交为 null）
+     */
+    private Long triggerId;
+
     private Long tenantId;
     private Long createBy;
     private LocalDateTime createTime;

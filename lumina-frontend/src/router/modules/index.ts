@@ -106,6 +106,16 @@ export const agentRoutes: AppRouteRecordRaw[] = [
           requiresAuth: true,
           keepAlive: true
         }
+      },
+      {
+        path: 'triggers',
+        name: 'AgentTriggers',
+        component: () => import('@/views/trigger/index.vue'),
+        meta: {
+          title: '定时触发器',
+          requiresAuth: true,
+          keepAlive: true
+        }
       }
     ]
   }

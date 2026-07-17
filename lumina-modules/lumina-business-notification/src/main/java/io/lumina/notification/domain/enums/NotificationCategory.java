@@ -37,6 +37,11 @@ public enum NotificationCategory {
     EVALUATION("评估"),
 
     /**
+     * 定时触发器
+     */
+    TRIGGER("定时触发器"),
+
+    /**
      * 系统
      */
     SYSTEM("系统");

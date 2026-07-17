@@ -121,6 +121,11 @@ lumina:
       - /actuator/health
       - /actuator/info
 
+  # Agent 定时触发器（cron 触发，Redisson 锁防多实例重复）
+  trigger:
+    enabled: ${LUMINA_TRIGGER_ENABLED:true}
+    poll-interval-ms: ${LUMINA_TRIGGER_POLL_MS:30000}
+
   # 文件存储（默认本地磁盘，无 MinIO 依赖）
   storage:
     type: ${STORAGE_TYPE:local}

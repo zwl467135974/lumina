@@ -1,0 +1,48 @@
+# Lumina 监控栈（Prometheus + Grafana）
+# 可叠加到任意部署模式：
+#   微服务：docker compose -f docker-compose.yml -f docker-compose-monitoring.yml up
+#   单体：  docker compose -f docker-compose-standalone.yml -f docker-compose-monitoring.yml up
+#
+# Grafana 预置 3 个仪表盘（Agent / Tools+RAG / Workflow+Trigger），首次启动自动加载。
+# 访问 http://localhost:3001（admin/admin）
+
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: lumina-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+    networks:
+      - default
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: lumina-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/lumina-agent-overview.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana-data:
+  prometheus-data:

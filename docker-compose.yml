@@ -336,8 +336,14 @@ services:
       - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      # 启动时自动加载 dashboards/ 下的 JSON，默认首页为 Agent 总览
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/lumina-agent-overview.json
     volumes:
       - grafana-data:/var/lib/grafana
+      # provisioning：数据源 + dashboard 提供者（启动时自动配置）
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      # dashboards：3 个预置仪表盘 JSON（随仓库分发，开箱即用）
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - lumina-network
     depends_on:

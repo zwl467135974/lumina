@@ -12,18 +12,27 @@ scrape_configs:
         labels:
           service: 'gateway'
 
-  # Business Base 基础服务
+  # Business Base 基础服务（端口 8082）
   - job_name: 'lumina-base'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['business-base:8081']
+      - targets: ['business-base:8082']
         labels:
           service: 'base'
 
-  # Agent Service Agent 服务
+  # Agent Service Agent 服务（端口 8081）
   - job_name: 'lumina-agent'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['agent-service:8082']
+      - targets: ['agent-service:8081']
         labels:
           service: 'agent'
+
+  # Standalone 单体模式（仅 standalone 部署时启用，容器名 lumina-standalone）
+  # 微服务模式下此 job 无 target，Prometheus 会标 DOWN 但不影响其它 job
+  - job_name: 'lumina-standalone'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['lumina-standalone:8080']
+        labels:
+          service: 'standalone'

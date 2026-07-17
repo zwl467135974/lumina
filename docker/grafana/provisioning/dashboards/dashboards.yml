@@ -1,0 +1,15 @@
+# Grafana 仪表盘自动配置
+# 启动时从 /var/lib/grafana/dashboards/ 自动加载所有 JSON
+apiVersion: 1
+
+providers:
+  - name: 'Lumina 默认仪表盘'
+    orgId: 1
+    folder: 'Lumina'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

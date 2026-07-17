@@ -28,6 +28,13 @@ public interface AgentTaskService {
      */
     PageResult<AgentTaskDO> pageTasks(Long agentId, String status, int pageNum, int pageSize);
 
+    /**
+     * 同步执行已入库的任务（供 MQ 消费者 / 定时触发器复用完整执行管线）
+     *
+     * <p>内部自行 set/clear BaseContext，执行结果通过任务状态与 SSE 进度流反馈，不抛业务异常。
+     */
+    void executeTask(String taskUuid, io.lumina.common.core.LoginContext loginContext);
+
     /** 取消任务（仅 QUEUED / RUNNING 可取消） */
     AgentTaskDO cancelTask(String taskUuid);
 
