@@ -27,23 +27,47 @@ public final class CryptoUtil {
     private static final int GCM_TAG_LENGTH = 128;
     private static final int IV_LENGTH = 12;
 
-    private static final byte[] KEY;
+    private static volatile byte[] KEY;
+
+    private static volatile boolean usingDefaultKey;
 
     static {
         String envKey = System.getenv("LUMINA_CRYPTO_KEY");
         if (envKey == null || envKey.isBlank()) {
             log.warn("CryptoUtil 正在使用默认开发密钥，生产环境必须通过 LUMINA_CRYPTO_KEY 环境变量配置独立密钥");
             envKey = DEFAULT_KEY;
+            usingDefaultKey = true;
         }
+        KEY = deriveKey(envKey);
+    }
+
+    private CryptoUtil() {
+    }
+
+    private static byte[] deriveKey(String key) {
         try {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-            KEY = Arrays.copyOf(sha256.digest(envKey.getBytes(StandardCharsets.UTF_8)), 32);
+            return Arrays.copyOf(sha256.digest(key.getBytes(StandardCharsets.UTF_8)), 32);
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.CRYPTO_FAILED, "Failed to initialize CryptoUtil", e);
         }
     }
 
-    private CryptoUtil() {
+    /**
+     * 注入密钥（供 Spring 初始化时从配置中心注入，优先级高于环境变量）
+     */
+    public static void setKey(String key) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        KEY = deriveKey(key);
+        usingDefaultKey = DEFAULT_KEY.equals(key);
+    }
+
+    private static void warnIfDefaultKey() {
+        if (usingDefaultKey) {
+            log.warn("CryptoUtil 正在使用默认开发密钥加解密数据，生产环境必须通过 LUMINA_CRYPTO_KEY 配置独立密钥");
+        }
     }
 
     /**
@@ -56,6 +80,7 @@ public final class CryptoUtil {
         if (plaintext == null || plaintext.isEmpty()) {
             return null;
         }
+        warnIfDefaultKey();
         try {
             byte[] iv = new byte[IV_LENGTH];
             new SecureRandom().nextBytes(iv);
@@ -84,6 +109,7 @@ public final class CryptoUtil {
         if (ciphertext == null || ciphertext.isEmpty()) {
             return null;
         }
+        warnIfDefaultKey();
         try {
             byte[] combined = Base64.getDecoder().decode(ciphertext);
             byte[] iv = Arrays.copyOfRange(combined, 0, IV_LENGTH);

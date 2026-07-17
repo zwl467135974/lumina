@@ -75,8 +75,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     public void onMessage(DocumentIngestMessage msg) {
         log.info("开始异步处理文档: {}", msg);
 
+        Path filePath = null;
         try {
-            Path filePath = Path.of(msg.getFilePath());
+            filePath = Path.of(msg.getFilePath());
             if (!Files.exists(filePath)) {
                 log.error("文档文件不存在: {}", msg.getFilePath());
                 updateStatus(msg.getUuid(), 2, 0, null);
@@ -119,8 +120,6 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
                 }
             }
 
-            Files.deleteIfExists(filePath);
-
             if (docs != null && !docs.isEmpty() && knowledge != null) {
                 knowledge.addDocuments(docs).block();
             }
@@ -153,6 +152,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
                 log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
             }
 
+            // 入库成功后才删除源文件（过早删除会导致失败重试时文件已丢失）
+            Files.deleteIfExists(filePath);
+
         } catch (Exception e) {
             log.error("文档异步处理失败: {}", msg.getUuid(), e);
             updateStatus(msg.getUuid(), 2, 0, null);
@@ -166,6 +168,14 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
                 }
             } catch (Exception ex) {
                 log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
+            }
+            // 本方法不 rethrow，MQ 不会再投递重试；删除残留源文件避免磁盘泄漏
+            if (filePath != null) {
+                try {
+                    Files.deleteIfExists(filePath);
+                } catch (Exception ex) {
+                    log.warn("删除残留源文件失败: {}", ex.getMessage());
+                }
             }
         }
     }

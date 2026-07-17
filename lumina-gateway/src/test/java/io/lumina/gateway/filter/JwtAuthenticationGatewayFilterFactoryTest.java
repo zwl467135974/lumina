@@ -21,6 +21,7 @@ import reactor.test.StepVerifier;
 import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -59,7 +60,7 @@ class JwtAuthenticationGatewayFilterFactoryTest {
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         GatewayFilterChain chain = mock(GatewayFilterChain.class);
-        when(chain.filter(exchange)).thenReturn(Mono.empty());
+        when(chain.filter(any())).thenReturn(Mono.empty());
 
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
@@ -75,7 +76,7 @@ class JwtAuthenticationGatewayFilterFactoryTest {
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         GatewayFilterChain chain = mock(GatewayFilterChain.class);
-        when(chain.filter(exchange)).thenReturn(Mono.empty());
+        when(chain.filter(any())).thenReturn(Mono.empty());
 
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
@@ -146,7 +147,7 @@ class JwtAuthenticationGatewayFilterFactoryTest {
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         GatewayFilterChain chain = mock(GatewayFilterChain.class);
-        when(chain.filter(exchange)).thenReturn(Mono.empty());
+        when(chain.filter(any())).thenReturn(Mono.empty());
 
         when(jwtUtil.validateToken("valid-token")).thenReturn(true);
         when(jwtUtil.parseTokenToLoginUser("valid-token")).thenReturn(loginUser);
@@ -195,7 +196,7 @@ class JwtAuthenticationGatewayFilterFactoryTest {
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         GatewayFilterChain chain = mock(GatewayFilterChain.class);
-        when(chain.filter(exchange)).thenReturn(Mono.empty());
+        when(chain.filter(any())).thenReturn(Mono.empty());
         when(jwtUtil.validateToken("tok")).thenReturn(true);
         when(jwtUtil.parseTokenToLoginUser("tok")).thenReturn(loginUser);
 

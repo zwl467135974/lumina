@@ -209,29 +209,36 @@ public class CodeInterpreterToolProvider {
         pb.directory(scriptFile.getParent().toFile());
 
         long startNanos = System.nanoTime();
-        Process process = pb.start();
+        Process process = null;
+        try {
+            process = pb.start();
 
-        boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-        if (!finished) {
-            process.destroyForcibly();
+            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+            if (!finished) {
+                long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+                result.put("success", false);
+                result.put("error", "代码执行超时（超过 " + timeoutSeconds + " 秒）");
+                result.put("durationMs", durationMs);
+                return result;
+            }
+
             long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
-            result.put("success", false);
-            result.put("error", "代码执行超时（超过 " + timeoutSeconds + " 秒）");
+
+            String stdout = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            stdout = truncate(stdout);
+
+            int exitCode = process.exitValue();
+            result.put("success", exitCode == 0);
+            result.put("stdout", stdout);
+            result.put("exitCode", exitCode);
             result.put("durationMs", durationMs);
             return result;
+        } finally {
+            // 任何路径（超时、异常）都不残留子进程
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
         }
-
-        long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
-
-        String stdout = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        stdout = truncate(stdout);
-
-        int exitCode = process.exitValue();
-        result.put("success", exitCode == 0);
-        result.put("stdout", stdout);
-        result.put("exitCode", exitCode);
-        result.put("durationMs", durationMs);
-        return result;
     }
 
     /**
@@ -257,6 +264,7 @@ public class CodeInterpreterToolProvider {
         if (poolSize > 0) {
             // 容器池路径：借容器 → 执行 → 归还（容器保持运行以便复用）
             PooledContainer pooled = null;
+            boolean containerReusable = true;
             try {
                 pooled = pool().borrowContainer(image,
                         () -> createContainer(image, codeDir, POOLED_CONTAINER_KEEPALIVE_SECONDS));
@@ -267,6 +275,10 @@ public class CodeInterpreterToolProvider {
                 }
 
                 return execAndBuildResult(container, cmd, containerScriptPath, startNanos, result);
+            } catch (TimeoutException te) {
+                // 超时的容器内可能仍有进程在跑，不能归还池中复用
+                containerReusable = false;
+                return buildTimeoutResult(startNanos, result);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 result.put("success", false);
@@ -279,7 +291,16 @@ public class CodeInterpreterToolProvider {
                 return result;
             } finally {
                 if (pooled != null) {
-                    pool().returnContainer(pooled);
+                    if (containerReusable) {
+                        pool().returnContainer(pooled);
+                    } else {
+                        log.warn("代码执行超时，销毁容器不归还池: image={}", image);
+                        try {
+                            pooled.getContainer().stop();
+                        } catch (Exception se) {
+                            log.warn("销毁超时容器失败: {}", se.getMessage());
+                        }
+                    }
                 }
             }
         }
@@ -294,6 +315,8 @@ public class CodeInterpreterToolProvider {
 
             return execAndBuildResult(container, cmd, containerScriptPath, startNanos, result);
 
+        } catch (TimeoutException te) {
+            return buildTimeoutResult(startNanos, result);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             result.put("success", false);
@@ -342,20 +365,15 @@ public class CodeInterpreterToolProvider {
 
     /**
      * 在容器内执行脚本（带超时）并组装返回结果
+     *
+     * <p>超时抛出 {@link TimeoutException} 由调用方处理——池化路径需要据此
+     * 判定容器不可复用（超时的容器内可能仍有进程在跑）。
      */
     private Map<String, Object> execAndBuildResult(GenericContainer<?> container, String cmd,
                                                    String containerScriptPath, long startNanos,
                                                    Map<String, Object> result) throws Exception {
-        Container.ExecResult execResult;
-        try {
-            execResult = execInContainerWithTimeout(container, timeoutSeconds, cmd, containerScriptPath);
-        } catch (TimeoutException te) {
-            long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
-            result.put("success", false);
-            result.put("error", "代码执行超时（超过 " + timeoutSeconds + " 秒）");
-            result.put("durationMs", durationMs);
-            return result;
-        }
+        Container.ExecResult execResult =
+                execInContainerWithTimeout(container, timeoutSeconds, cmd, containerScriptPath);
 
         long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
 
@@ -368,6 +386,17 @@ public class CodeInterpreterToolProvider {
         result.put("success", exitCode == 0);
         result.put("stdout", output);
         result.put("exitCode", exitCode);
+        result.put("durationMs", durationMs);
+        return result;
+    }
+
+    /**
+     * 组装超时结果
+     */
+    private Map<String, Object> buildTimeoutResult(long startNanos, Map<String, Object> result) {
+        long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
+        result.put("success", false);
+        result.put("error", "代码执行超时（超过 " + timeoutSeconds + " 秒）");
         result.put("durationMs", durationMs);
         return result;
     }

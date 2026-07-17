@@ -1,5 +1,6 @@
 package io.lumina.base.infrastructure.mapper;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import io.lumina.base.infrastructure.entity.UserDO;
 import org.apache.ibatis.annotations.Mapper;
@@ -24,6 +25,7 @@ public interface UserMapper extends BaseMapper<UserDO> {
      * @param username 用户名
      * @return 用户实体
      */
+    @InterceptorIgnore(tenantLine = "true")
     @Select("SELECT * FROM lumina_user WHERE tenant_id = #{tenantId} AND username = #{username} AND deleted = 0")
     UserDO selectByTenantIdAndUsername(@Param("tenantId") Long tenantId, @Param("username") String username);
 

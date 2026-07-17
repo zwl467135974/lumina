@@ -32,9 +32,9 @@ public class JwtUtil implements InitializingBean {
             "dev-only-secret-please-change-for-production-use-at-least-32-chars";
 
     /**
-     * JWT 密钥（从配置文件/环境变量读取；默认值仅供开发，生产必须由 LUMINA_JWT_SECRET 覆盖）
+     * JWT 密钥（必须通过 lumina.jwt.secret-key 配置，未配置或使用默认开发密钥时启动失败）
      */
-    @Value("${lumina.jwt.secret-key:" + DEFAULT_SECRET_KEY + "}")
+    @Value("${lumina.jwt.secret-key:}")
     private String secretKey;
 
     /**
@@ -47,8 +47,9 @@ public class JwtUtil implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
-        if (DEFAULT_SECRET_KEY.equals(secretKey)) {
-            log.warn("JWT 正在使用默认开发密钥，生产环境必须通过 lumina.jwt.secret-key 配置独立密钥");
+        if (secretKey == null || secretKey.isBlank() || DEFAULT_SECRET_KEY.equals(secretKey)) {
+            throw new IllegalStateException(
+                    "JWT 密钥未配置或仍为默认开发密钥，拒绝启动：请通过 lumina.jwt.secret-key 配置独立密钥（至少 32 字符）");
         }
     }
 

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.lumina.base.infrastructure.entity.AuditLogDO;
 import io.lumina.base.infrastructure.mapper.AuditLogMapper;
 import io.lumina.base.service.AuditLogService;
+import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.PageResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,9 @@ public class AuditLogServiceImpl implements AuditLogService {
     public PageResult<AuditLogDO> listAuditLogs(String module, String action, Long userId,
                                                 Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AuditLogDO> wrapper = new LambdaQueryWrapper<>();
+        // lumina_audit_log 在租户插件 ALWAYS_IGNORE 列表中，需手动追加租户过滤
+        Long tenantId = BaseContext.getTenantId();
+        wrapper.eq(AuditLogDO::getTenantId, tenantId != null ? tenantId : 0L);
         if (StringUtils.hasText(module)) {
             wrapper.eq(AuditLogDO::getModule, module);
         }

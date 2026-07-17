@@ -322,24 +322,37 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         log.info("文档已删除: uuid={}", uuid);
     }
 
+    /**
+     * 删除向量数据；任一向量删除失败即抛异常中止，避免 MySQL 记录被删后留下孤儿向量
+     */
     private void removeVectorDocuments(String vectorDocIdsJson) {
         if (embeddingStore == null || vectorDocIdsJson == null || vectorDocIdsJson.isBlank()) {
             return;
         }
+        List<String> ids;
         try {
-            List<String> ids = objectMapper.readValue(vectorDocIdsJson, new TypeReference<List<String>>() {});
-            for (String id : ids) {
-                try {
-                    Boolean ok = embeddingStore.delete(id).block();
-                    if (Boolean.TRUE.equals(ok)) {
-                        log.info("向量文档已删除: id={}", id);
-                    }
-                } catch (Exception e) {
-                    log.warn("删除向量文档失败: id={}", id, e);
-                }
-            }
+            ids = objectMapper.readValue(vectorDocIdsJson, new TypeReference<List<String>>() {});
         } catch (Exception e) {
             log.warn("解析向量文档ID列表失败: {}", vectorDocIdsJson, e);
+            return;
+        }
+        for (String id : ids) {
+            try {
+                Boolean ok = embeddingStore.delete(id).block();
+                if (Boolean.TRUE.equals(ok)) {
+                    log.info("向量文档已删除: id={}", id);
+                } else {
+                    log.error("删除向量数据失败（Qdrant 返回失败），中止删除: id={}", id);
+                    throw new BusinessException(ErrorCode.INTERNAL_ERROR,
+                            "删除知识库文档失败（向量数据清理失败），请重试或联系管理员");
+                }
+            } catch (BusinessException be) {
+                throw be;
+            } catch (Exception e) {
+                log.error("删除向量数据失败，中止删除: id={}", id, e);
+                throw new BusinessException(ErrorCode.INTERNAL_ERROR,
+                        "删除知识库文档失败（向量数据清理失败），请重试或联系管理员", e);
+            }
         }
     }
 

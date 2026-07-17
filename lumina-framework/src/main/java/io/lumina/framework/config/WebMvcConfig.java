@@ -16,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    @Value("${lumina.cors.allowed-origins:*}")
+    @Value("${lumina.cors.allowed-origins:http://localhost:5173}")
     private String[] allowedOrigins;
 
     /**

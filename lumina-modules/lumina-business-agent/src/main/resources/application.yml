@@ -20,4 +20,4 @@ spring:
         file-extension: yaml
 
   config:
-    import: optional:nacos:lumina-agent-service.yaml
+    import: nacos:lumina-agent-service.yaml

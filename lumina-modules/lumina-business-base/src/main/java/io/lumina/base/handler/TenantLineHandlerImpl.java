@@ -89,6 +89,10 @@ public class TenantLineHandlerImpl implements TenantLineHandler {
             return true;
         }
         Set<String> detected = tablesWithTenantId;
-        return detected == null || !detected.contains(tableName.toLowerCase());
+        if (detected == null) {
+            // 表检测未完成时 fail-closed（不忽略任何非 ALWAYS_IGNORE 表）
+            return false;
+        }
+        return !detected.contains(tableName.toLowerCase());
     }
 }

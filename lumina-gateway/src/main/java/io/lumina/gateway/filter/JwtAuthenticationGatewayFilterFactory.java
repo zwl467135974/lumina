@@ -9,6 +9,7 @@ import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFac
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -53,6 +54,16 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
+            // 无论是否白名单，先剥离客户端可能携带的身份头，防止伪造身份透传到下游
+            ServerHttpRequest strippedRequest = exchange.getRequest().mutate()
+                    .headers(h -> {
+                        for (String name : TRUSTED_IDENTITY_HEADERS) {
+                            h.remove(name);
+                        }
+                    })
+                    .build();
+            exchange = exchange.mutate().request(strippedRequest).build();
+
             String path = exchange.getRequest().getURI().getPath();
 
             // 检查白名单（支持配置文件配置）
@@ -94,19 +105,15 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
                 // 权限实时缓存：优先 Redis 快照，未命中回退 JWT claims 并异步刷新
                 String permissionsStr = resolvePermissions(loginUser);
 
-                // 将用户信息添加到请求 header，传递给下游服务
-                exchange.getRequest().mutate()
-                        .headers(h -> {
-                            for (String name : TRUSTED_IDENTITY_HEADERS) {
-                                h.remove(name);
-                            }
-                        })
+                // 将用户信息添加到请求 header，传递给下游服务（身份头已在入口统一剥离）
+                ServerHttpRequest authenticatedRequest = exchange.getRequest().mutate()
                         .header("X-User-Id", String.valueOf(loginUser.getUserId()))
                         .header("X-Username", loginUser.getUsername())
                         .header("X-Tenant-Id", loginUser.getTenantId() != null ? String.valueOf(loginUser.getTenantId()) : "0")
                         .header("X-Roles", loginUser.getRoles() != null ? String.join(",", loginUser.getRoles()) : "")
                         .header("X-Permissions", permissionsStr)
                         .build();
+                exchange = exchange.mutate().request(authenticatedRequest).build();
 
                 log.debug("JWT 认证成功: username={}, path={}", loginUser.getUsername(), path);
 

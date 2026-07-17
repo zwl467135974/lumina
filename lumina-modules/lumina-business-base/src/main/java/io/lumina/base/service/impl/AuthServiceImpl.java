@@ -147,19 +147,26 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
+        // 1. 黑名单写入（失败要报错）
         try {
             long remainingTtl = (jwtUtil.getExpiration(token).getTime() - System.currentTimeMillis()) / 1000;
             if (remainingTtl > 0) {
                 redisCacheManager.addTokenToBlacklist(token, remainingTtl);
             }
+        } catch (Exception e) {
+            log.error("登出时 Redis 黑名单写入失败: {}", e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "登出失败，请重试");
+        }
 
+        // 2. 清除在线记录（失败不影响登出）
+        try {
             io.lumina.common.core.LoginUser loginUser = jwtUtil.parseTokenToLoginUser(token);
             if (loginUser != null && loginUser.getUserId() != null) {
                 onlineUserService.recordLogout(loginUser.getUserId());
                 log.info("清除在线记录: userId={}", loginUser.getUserId());
             }
         } catch (Exception e) {
-            log.warn("登出时解析 token 失败（可能已过期）: {}", e.getMessage());
+            log.warn("清除在线记录失败（不影响登出）: {}", e.getMessage());
         }
     }
 

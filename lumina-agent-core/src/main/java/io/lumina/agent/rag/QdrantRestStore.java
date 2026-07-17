@@ -13,6 +13,7 @@ import io.agentscope.core.rag.store.dto.SearchDocumentDto;
 import io.lumina.agent.util.JsonUtils;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
+import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -162,8 +163,14 @@ public class QdrantRestStore implements VDBStoreBase {
                 throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "写入向量失败: HTTP " + resp.statusCode());
             }
             log.info("向量写入成功: count={}", documents.size());
+        } catch (BusinessException e) {
+            Metrics.counter("qdrant.error.count", "operation", "add").increment();
+            log.error("向量入库失败: collection={}, count={}", collectionName, documents.size(), e);
+            throw e;
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "向量写入异常", e);
+            Metrics.counter("qdrant.error.count", "operation", "add").increment();
+            log.error("向量入库失败: collection={}, count={}", collectionName, documents.size(), e);
+            throw new BusinessException(ErrorCode.RAG_EMBEDDING_FAILED, "向量入库失败", e);
         }
     }
 
@@ -236,7 +243,9 @@ public class QdrantRestStore implements VDBStoreBase {
             log.debug("向量检索完成: query_dims={}, results={}", dto.getQueryEmbedding().length, docs.size());
             return docs;
         } catch (Exception e) {
-            log.error("向量检索异常", e);
+            // 检索失败不阻断 Agent 执行，返回空结果，但记录足够定位问题的上下文
+            log.error("向量检索异常，返回空结果: collection={}, baseUrl={}, limit={}, error={}",
+                    collectionName, baseUrl, dto.getLimit(), e.getMessage(), e);
             return List.of();
         }
     }
@@ -259,8 +268,10 @@ public class QdrantRestStore implements VDBStoreBase {
             }
             return ok;
         } catch (Exception e) {
+            // 删除失败不应静默（会导致孤儿向量数据），rethrow 让调用者感知
+            Metrics.counter("qdrant.error.count", "operation", "delete").increment();
             log.error("向量删除异常: id={}", id, e);
-            return false;
+            throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "向量删除失败: id=" + id, e);
         }
     }
 

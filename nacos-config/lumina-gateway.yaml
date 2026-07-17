@@ -176,6 +176,9 @@ lumina:
       - /actuator/health
       - /actuator/info
   gateway:
+    cors:
+      # 生产环境务必改为实际前端域名，禁止通配符
+      allowed-origins: ${LUMINA_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
     rate-limit:
       global: 100
       per-ip: 20

@@ -20,4 +20,4 @@ spring:
         file-extension: yaml
 
   config:
-    import: optional:nacos:lumina-gateway.yaml
+    import: nacos:lumina-gateway.yaml
