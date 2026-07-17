@@ -115,6 +115,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Nullable
     private final RagProperties ragProperties;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.service.ReflectiveMemoryService reflectiveMemoryService;
+
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
@@ -190,8 +193,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 填充提示词
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
-            // 构建上下文消息（含历史记忆）
-            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents);
+            // 构建上下文消息（含历史记忆 + 长期记忆）
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents, agentConfig);
 
             // 执行 Agent
             Msg agentResponse = executeAgentWithAgentScope(agentConfig, contextMessages);
@@ -269,8 +272,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             }
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
-            // 构建上下文消息（含历史记忆）
-            List<Msg> contextMessages = buildContextMessages(conversationId, prompt);
+            // 构建上下文消息（含历史记忆 + 长期记忆）
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, Collections.emptyList(), agentConfig);
 
             Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
 
@@ -314,7 +317,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             }
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
-            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents);
+            List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents, agentConfig);
 
             Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
 
@@ -339,7 +342,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * @return AgentScope Msg 列表
      */
     private List<Msg> buildContextMessages(String conversationId, String currentPrompt) {
-        return buildContextMessages(conversationId, currentPrompt, Collections.emptyList());
+        return buildContextMessages(conversationId, currentPrompt, Collections.emptyList(), null);
+    }
+
+    private List<Msg> buildContextMessages(String conversationId, String currentPrompt,
+                                           List<MultimodalContent> contents) {
+        return buildContextMessages(conversationId, currentPrompt, contents, null);
     }
 
     /**
@@ -365,8 +373,26 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * @return AgentScope Msg 列表
      */
     private List<Msg> buildContextMessages(String conversationId, String currentPrompt,
-                                           List<MultimodalContent> contents) {
+                                           List<MultimodalContent> contents, AgentConfig agentConfig) {
         List<Msg> messages = new ArrayList<>();
+
+        // Reflective Memory: 注入长期记忆（用户关键事实/偏好）
+        if (reflectiveMemoryService != null && conversationId != null
+                && agentProperties.getMemory().getReflective().isEnabled()) {
+            try {
+                Long userId = BaseContext.getUserId();
+                Long agentId = agentConfig != null ? agentConfig.getAgentId() : null;
+                List<String> longTerm = reflectiveMemoryService.getLongTermMemories(userId, agentId);
+                if (longTerm != null && !longTerm.isEmpty()) {
+                    String memoryText = "以下是关于用户的长期记忆（供你参考，不要逐条复述）：\n"
+                            + String.join("\n", longTerm);
+                    messages.add(Msg.builder().role(MsgRole.SYSTEM).textContent(memoryText).build());
+                    log.debug("注入长期记忆: userId={}, 条数={}", userId, longTerm.size());
+                }
+            } catch (Exception e) {
+                log.debug("长期记忆加载失败（不影响执行）: {}", e.getMessage());
+            }
+        }
 
         if (conversationId != null) {
             List<MemoryManager.Memory> history = memoryManager.getRecentMemories(conversationId, CONTEXT_WINDOW);

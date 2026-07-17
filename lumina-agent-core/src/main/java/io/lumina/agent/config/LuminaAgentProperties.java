@@ -146,9 +146,42 @@ public class LuminaAgentProperties {
     }
 
     /**
+     * 记忆配置
+     */
+    private MemoryConfig memory = new MemoryConfig();
+
+    /**
      * 工具配置
      */
     private ToolConfig tool = new ToolConfig();
+
+    /**
+     * 记忆配置（含 Reflective Memory）
+     *
+     * @since 3.3.1
+     */
+    @Data
+    public static class MemoryConfig {
+        /**
+         * 是否启用反思记忆（对话后异步提取关键事实）
+         */
+        private ReflectiveConfig reflective = new ReflectiveConfig();
+    }
+
+    /**
+     * Reflective Memory 配置
+     */
+    @Data
+    public static class ReflectiveConfig {
+        /** 是否启用反思记忆提取（默认 false） */
+        private boolean enabled = false;
+        /** 每次对话最多提取的事实条数 */
+        private int maxFactsPerTurn = 5;
+        /** 加载到上下文的最大记忆条数 */
+        private int maxContextMemories = 20;
+        /** 事实内容最大长度（字符） */
+        private int maxFactLength = 500;
+    }
 
     /**
      * 工具配置

@@ -85,6 +85,13 @@ public class AgentServiceImpl implements AgentService {
     @Autowired(required = false)
     private io.lumina.agent.rag.PdfOcrProcessor pdfOcrProcessor;
 
+    @Autowired(required = false)
+    private io.lumina.agent.service.ReflectiveMemoryService reflectiveMemoryService;
+
+    @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("agentTaskExecutor")
+    private java.util.concurrent.Executor agentTaskExecutor;
+
     @org.springframework.beans.factory.annotation.Value("${lumina.agent.content-moderation.strict:false}")
     private boolean contentModerationStrict;
 
@@ -296,6 +303,9 @@ public class AgentServiceImpl implements AgentService {
             conversationService.saveMessage(sessionId, "assistant", sanitizedResult, tokenCount, result.getDuration());
             conversationService.incrementMessageCount(sessionId, 2);
         }
+
+        // Reflective Memory: 异步提取关键事实（不阻塞用户响应）
+        triggerReflectiveMemory(agentId, sessionId, task, sanitizedResult);
 
         log.info("Agent 执行成功: id={}", agentId);
         return sanitizedResult;
@@ -747,6 +757,27 @@ public class AgentServiceImpl implements AgentService {
             } finally {
                 abVariantHolder.remove();
             }
+        }
+    }
+
+    /**
+     * 异步触发反思记忆提取（不阻塞用户响应）
+     */
+    private void triggerReflectiveMemory(Long agentId, String sessionId, String userMsg, String assistantReply) {
+        if (reflectiveMemoryService == null || sessionId == null) {
+            return;
+        }
+        try {
+            Long userId = BaseContext.getUserId();
+            agentTaskExecutor.execute(() -> {
+                try {
+                    reflectiveMemoryService.extractAndSave(userId, agentId, sessionId, userMsg, assistantReply);
+                } catch (Exception e) {
+                    log.debug("反思记忆提取失败（不影响主流程）: {}", e.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            log.debug("反思记忆异步提交失败: {}", e.getMessage());
         }
     }
 }

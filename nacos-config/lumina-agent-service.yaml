@@ -81,6 +81,12 @@ lumina:
     content-moderation:
       enabled: ${CONTENT_MODERATION_ENABLED:true}
       strict: ${CONTENT_MODERATION_STRICT:false}
+    memory:
+      reflective:
+        enabled: ${REFLECTIVE_MEMORY_ENABLED:false}   # 对话后异步提取关键事实
+        max-facts-per-turn: ${REFLECTIVE_MAX_FACTS:5} # 每次提取最大条数
+        max-context-memories: ${REFLECTIVE_MAX_CONTEXT:20} # 上下文注入最大条数
+        max-fact-length: ${REFLECTIVE_MAX_LENGTH:500} # 单条最大长度
     llm:
       type: ${LLM_TYPE:dashscope}
       api-key: ${LLM_API_KEY:}
