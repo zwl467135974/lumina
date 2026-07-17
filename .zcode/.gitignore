@@ -3,3 +3,4 @@ plans/
 
 # 本地私有指令（不提交，仅当前机器生效）
 LOCAL.md
+tasks/

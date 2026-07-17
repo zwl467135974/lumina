@@ -15,10 +15,10 @@ import io.lumina.agent.infrastructure.entity.KnowledgeDocumentDO;
 import io.lumina.agent.infrastructure.mapper.KnowledgeDocumentMapper;
 import io.lumina.framework.config.RocketMQConfig;
 import io.lumina.notification.event.NotificationEvent;
+import io.lumina.notification.event.NotificationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 知识库文档异步处理消费者
@@ -65,8 +66,8 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired(required = false)
-    private RocketMQTemplate rocketMQTemplate;
+    @Autowired
+    private NotificationEventPublisher notificationEventPublisher;
 
     @Autowired(required = false)
     private io.lumina.agent.rag.PdfOcrProcessor pdfOcrProcessor;
@@ -104,14 +105,12 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
                 if (docs == null || docs.isEmpty()) {
                     updateStatus(msg.getUuid(), 2, 0, null);
                     try {
-                        if (rocketMQTemplate != null) {
-                            rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                                    new NotificationEvent(null, "DOCUMENT",
-                                            "文档解析为空",
-                                            "文档 " + msg.getUuid() + " 似乎是扫描件或图片型 PDF，无法提取文本。"
-                                                    + "请上传可复制文字的电子版 PDF。",
-                                            "WARN", "knowledge_document", msg.getUuid(), msg.getTenantId()));
-                        }
+                        notificationEventPublisher.publish(
+                                new NotificationEvent(null, "DOCUMENT",
+                                        "文档解析为空",
+                                        "文档 " + msg.getUuid() + " 似乎是扫描件或图片型 PDF，无法提取文本。"
+                                                + "请上传可复制文字的电子版 PDF。",
+                                        "WARN", "knowledge_document", msg.getUuid(), msg.getTenantId()));
                     } catch (Exception ex) {
                         log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
                     }
@@ -121,6 +120,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             }
 
             if (docs != null && !docs.isEmpty() && knowledge != null) {
+                // 多租户隔离：写入向量前必须把 tenant_id/kb_id stamp 到 doc payload，
+                // QdrantRestStore.doAdd 才会落到 Qdrant point payload，doSearch 才能按租户过滤。
+                stampTenantAndKb(docs, msg.getTenantId(), msg.getKbId());
                 knowledge.addDocuments(docs).block();
             }
 
@@ -137,17 +139,15 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             updateStatus(msg.getUuid(), 1, docs != null ? docs.size() : 0, vectorDocIdsJson);
 
             // 双写 chunk 原文到 MySQL（混合检索关键词路）
-            saveChunksToMysql(docs, msg.getUuid(), msg.getTenantId(), null);
+            saveChunksToMysql(docs, msg.getUuid(), msg.getTenantId(), msg.getKbId());
 
             log.info("文档异步处理完成: uuid={}, chunks={}", msg.getUuid(), docs != null ? docs.size() : 0);
             try {
-                if (rocketMQTemplate != null) {
-                    rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                            new NotificationEvent(null, "DOCUMENT",
-                                    "文档处理完成",
-                                    "文档 " + msg.getUuid() + " 已处理完成,共 " + (docs != null ? docs.size() : 0) + " 个分块",
-                                    "INFO", "knowledge_document", msg.getUuid(), msg.getTenantId()));
-                }
+                notificationEventPublisher.publish(
+                        new NotificationEvent(null, "DOCUMENT",
+                                "文档处理完成",
+                                "文档 " + msg.getUuid() + " 已处理完成,共 " + (docs != null ? docs.size() : 0) + " 个分块",
+                                "INFO", "knowledge_document", msg.getUuid(), msg.getTenantId()));
             } catch (Exception ex) {
                 log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
             }
@@ -159,13 +159,11 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             log.error("文档异步处理失败: {}", msg.getUuid(), e);
             updateStatus(msg.getUuid(), 2, 0, null);
             try {
-                if (rocketMQTemplate != null) {
-                    rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                            new NotificationEvent(null, "DOCUMENT",
-                                    "文档处理失败",
-                                    "文档 " + msg.getUuid() + " 处理失败: " + e.getMessage(),
-                                    "ERROR", "knowledge_document", msg.getUuid(), msg.getTenantId()));
-                }
+                notificationEventPublisher.publish(
+                        new NotificationEvent(null, "DOCUMENT",
+                                "文档处理失败",
+                                "文档 " + msg.getUuid() + " 处理失败: " + e.getMessage(),
+                                "ERROR", "knowledge_document", msg.getUuid(), msg.getTenantId()));
             } catch (Exception ex) {
                 log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
             }
@@ -279,6 +277,35 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             documentMapper.update(null, wrapper);
         } catch (Exception e) {
             log.error("更新文档状态失败: uuid={}", uuid, e);
+        }
+    }
+
+    /**
+     * 在 ingest 时把 tenant_id / kb_id 写入每个 doc 的 payload。
+     *
+     * <p>多租户隔离的关键：QdrantRestStore.doAdd 会从 doc payload 取这两个值写到 Qdrant point payload，
+     * doSearch 再用 filter.must[].tenant_id 做下推过滤。不 stamp 会导致向量层无法区分租户。
+     *
+     * <p>{@link io.agentscope.core.rag.model.DocumentMetadata#getPayload()} 返回内部 HashMap 引用，
+     * 直接 put 即可生效。
+     */
+    private void stampTenantAndKb(List<Document> docs, Long tenantId, Long kbId) {
+        if (docs == null || docs.isEmpty()) {
+            return;
+        }
+        long effectiveTenantId = tenantId != null ? tenantId : 0L;
+        for (Document d : docs) {
+            if (d.getMetadata() == null) {
+                continue;
+            }
+            Map<String, Object> payload = d.getMetadata().getPayload();
+            if (payload == null) {
+                payload = new java.util.HashMap<>();
+            }
+            payload.put("tenant_id", effectiveTenantId);
+            if (kbId != null) {
+                payload.put("kb_id", kbId);
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ import io.lumina.agent.evaluation.scorer.EvaluationScorer;
 import io.lumina.agent.evaluation.scorer.ScoreResult;
 import io.lumina.agent.infrastructure.entity.AgentDO;
 import io.lumina.agent.infrastructure.entity.EvaluationDatasetDO;
+import io.lumina.agent.infrastructure.entity.EvaluationRegressionRuleDO;
 import io.lumina.agent.infrastructure.entity.EvaluationRunDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.infrastructure.mapper.EvaluationDatasetMapper;
@@ -29,10 +30,10 @@ import io.lumina.agent.service.EvaluationService;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
-import io.lumina.framework.config.RocketMQConfig;
 import io.lumina.notification.event.NotificationEvent;
+import io.lumina.notification.event.NotificationEventPublisher;
+import io.lumina.notification.service.WebhookSender;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,11 +75,20 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     private final io.lumina.agent.security.OutputSanitizer outputSanitizer;
 
-    @Autowired(required = false)
-    private RocketMQTemplate rocketMQTemplate;
+    @Autowired
+    private NotificationEventPublisher notificationEventPublisher;
 
     @Autowired
     private io.lumina.agent.infrastructure.mapper.PromptMapper promptMapper;
+
+    @Autowired
+    private io.lumina.agent.infrastructure.mapper.EvaluationRegressionRuleMapper regressionRuleMapper;
+
+    /**
+     * 回归告警 webhook 发送器（notification 模块提供，直连 alert_webhook 统一出口）
+     */
+    @Autowired(required = false)
+    private WebhookSender webhookSender;
 
     public EvaluationServiceImpl(EvaluationDatasetMapper datasetMapper,
                                  EvaluationRunMapper runMapper,
@@ -268,12 +278,10 @@ public class EvaluationServiceImpl implements EvaluationService {
                 update.setResultsJson(jsonMapper.writeValueAsString(report.getResults()));
                 runMapper.updateById(update);
                 try {
-                    if (rocketMQTemplate != null) {
-                        rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                                new NotificationEvent(userId, "EVALUATION",
-                                        "评估完成", "评估任务已完成", "INFO",
-                                        "evaluation_run", String.valueOf(runId), tenantId));
-                    }
+                    notificationEventPublisher.publish(
+                            new NotificationEvent(userId, "EVALUATION",
+                                    "评估完成", "评估任务已完成", "INFO",
+                                    "evaluation_run", String.valueOf(runId), tenantId));
                 } catch (Exception ex) {
                     log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
                 }
@@ -290,13 +298,11 @@ public class EvaluationServiceImpl implements EvaluationService {
                 }
                 runMapper.updateById(update);
                 try {
-                    if (rocketMQTemplate != null) {
-                        rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                                new NotificationEvent(userId, "EVALUATION",
-                                        "评估失败",
-                                        "评估任务失败: " + (e.getMessage() != null ? e.getMessage() : "unknown"),
-                                        "ERROR", "evaluation_run", String.valueOf(runId), tenantId));
-                    }
+                    notificationEventPublisher.publish(
+                            new NotificationEvent(userId, "EVALUATION",
+                                    "评估失败",
+                                    "评估任务失败: " + (e.getMessage() != null ? e.getMessage() : "unknown"),
+                                    "ERROR", "evaluation_run", String.valueOf(runId), tenantId));
                 } catch (Exception ex) {
                     log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
                 }
@@ -643,13 +649,22 @@ public class EvaluationServiceImpl implements EvaluationService {
                 dsResult.put("passedCases", latestRun != null ? latestRun.getPassedCases() : 0);
                 dsResult.put("status", "COMPLETED");
 
-                // 与基线对比
-                if (dto.getBaselineRunId() != null) {
-                    EvaluationRunDO baseline = runMapper.selectById(dto.getBaselineRunId());
+                // 与基线对比（优先用 DTO 指定的基线，否则回退到回归规则配置的基线）
+                EvaluationRegressionRuleDO rule = regressionRuleMapper.selectOne(
+                        new LambdaQueryWrapper<EvaluationRegressionRuleDO>()
+                                .eq(EvaluationRegressionRuleDO::getDatasetId, datasetId)
+                                .eq(EvaluationRegressionRuleDO::getEnabled, 1)
+                                .last("LIMIT 1"));
+                Long baselineRunId = dto.getBaselineRunId() != null ? dto.getBaselineRunId()
+                        : (rule != null ? rule.getBaselineRunId() : null);
+                if (baselineRunId != null) {
+                    EvaluationRunDO baseline = runMapper.selectById(baselineRunId);
                     if (baseline != null && latestRun != null) {
                         int regressed = compareRegressed(baseline, latestRun);
                         dsResult.put("regressed", regressed);
                         totalRegressed += regressed;
+                        // 回归超过规则阈值时触发告警（alert_webhook 直连 + 站内通知）
+                        triggerRegressionAlert(rule, datasetId, latestRun, regressed);
                     }
                 }
 
@@ -681,6 +696,40 @@ public class EvaluationServiceImpl implements EvaluationService {
 
         log.info("批量回归测试完成: pass={}, regressed={}", totalRegressed == 0, totalRegressed);
         return report;
+    }
+
+    /**
+     * 触发评估回归告警：回归用例数超过规则阈值时，
+     * 直发规则配置的 alert_webhook（复用 WebhookSender 统一出口）并发送站内通知
+     */
+    private void triggerRegressionAlert(EvaluationRegressionRuleDO rule, Long datasetId,
+                                        EvaluationRunDO run, int regressed) {
+        if (rule == null) {
+            return;
+        }
+        int maxRegressed = rule.getMaxRegressed() != null ? rule.getMaxRegressed() : 0;
+        if (regressed <= maxRegressed) {
+            return;
+        }
+        NotificationEvent event = new NotificationEvent(
+                BaseContext.getUserId(), "EVALUATION",
+                "评估回归告警: " + rule.getName(),
+                String.format("数据集 %d 回归用例数 %d 超过阈值 %d（run=%d）",
+                        datasetId, regressed, maxRegressed, run.getId()),
+                "WARN", "evaluation_run", String.valueOf(run.getId()), currentTenantId());
+        if (webhookSender != null && StringUtils.hasText(rule.getAlertWebhook())) {
+            try {
+                boolean success = webhookSender.sendToUrl(rule.getAlertWebhook(), null, event);
+                log.info("评估回归告警 webhook 已发送: ruleId={}, success={}", rule.getId(), success);
+            } catch (Exception e) {
+                log.warn("评估回归告警 webhook 发送失败(不影响主流程): {}", e.getMessage());
+            }
+        }
+        try {
+            notificationEventPublisher.publish(event);
+        } catch (Exception e) {
+            log.warn("评估回归告警通知发送失败(不影响主流程): {}", e.getMessage());
+        }
     }
 
     /**

@@ -70,6 +70,19 @@ public interface AgentService {
     String executeAgent(Long agentId, String task, String conversationUuid);
 
     /**
+     * 执行 Agent 任务并返回完整执行结果（含 Token 用量与耗时）
+     *
+     * <p>与 {@link #executeAgent(Long, String, String)} 走同一执行管线
+     * （限流/预算/Prompt 注入检测/审计/输出脱敏），供 OpenAI 兼容层等需要 usage 的调用方使用。
+     *
+     * @param agentId          Agent ID
+     * @param task             任务描述
+     * @param conversationUuid 会话 UUID（null 表示无会话上下文）
+     * @return 完整执行结果（result 字段为脱敏后文本）
+     */
+    io.lumina.agent.model.ExecuteResult executeAgentForResult(Long agentId, String task, String conversationUuid);
+
+    /**
      * 执行多模态 Agent 任务（文本 + 图片，带会话上下文）
      *
      * @param agentId          Agent ID

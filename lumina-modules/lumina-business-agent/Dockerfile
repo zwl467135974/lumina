@@ -37,7 +37,7 @@ RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
 # 从构建阶段复制 jar 包
-COPY --from=builder /app/lumina-modules/lumina-business-agent/target/*.jar app.jar
+COPY --from=builder /app/lumina-modules/lumina-business-agent/target/*-exec.jar app.jar
 
 # 暴露端口
 EXPOSE 8081

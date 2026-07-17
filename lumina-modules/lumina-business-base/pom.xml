@@ -137,6 +137,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- exec 分类器：保留 plain jar 作为主构件，供 lumina-standalone 作为依赖聚合；
+                         可执行 fat jar 输出为 *-exec.jar（Dockerfile 同步调整） -->
+                    <classifier>exec</classifier>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>

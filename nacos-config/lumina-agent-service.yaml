@@ -170,6 +170,10 @@ lumina:
   mcp:
     enabled: ${MCP_ENABLED:false}
     tool-prefix: ${MCP_TOOL_PREFIX:mcp__}
+    # 健康检查：定时 listTools 探活，失败自动按 server 的 reconnect 配置重连
+    health-check:
+      enabled: ${MCP_HEALTH_CHECK_ENABLED:true}
+      interval-seconds: ${MCP_HEALTH_CHECK_INTERVAL:60}
     servers:
       # stdio 示例：通过子进程启动 MCP Server
       # - name: filesystem
@@ -183,6 +187,19 @@ lumina:
       # - name: remote-tools
       #   transport: http
       #   url: http://localhost:8081/mcp/sse
+      # streamable-http 示例：带鉴权的远程 MCP Server（headers 支持任意请求头）
+      # - name: remote-search
+      #   transport: streamable-http
+      #   url: https://mcp.example.com/mcp
+      #   headers:
+      #     Authorization: "Bearer ${REMOTE_MCP_TOKEN}"
+      #   reconnect:
+      #     enabled: true
+      #     max-attempts: 3
+      #     backoff-ms: 2000
+      #     backoff-multiplier: 2.0
+      #   health-check:
+      #     enabled: true
 
 logging:
   level:

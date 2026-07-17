@@ -16,6 +16,7 @@ import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.config.RocketMQConfig;
 import io.lumina.notification.event.NotificationEvent;
+import io.lumina.notification.event.NotificationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,9 @@ public class AgentTaskServiceImpl implements AgentTaskService {
 
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
+
+    @Autowired
+    private NotificationEventPublisher notificationEventPublisher;
 
     @Autowired
     private io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper;
@@ -250,12 +254,10 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         progressRegistry.emit(taskUuid, buildEvent(task));
         log.info("Agent 异步任务完成: taskUuid={}, durationMs={}", taskUuid, durationMs);
         try {
-            if (rocketMQTemplate != null) {
-                rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                        new NotificationEvent(task.getCreateBy(), "TASK",
-                                "任务完成: " + taskUuid, "Agent 任务已完成",
-                                "INFO", "agent_task", taskUuid, task.getTenantId()));
-            }
+            notificationEventPublisher.publish(
+                    new NotificationEvent(task.getCreateBy(), "TASK",
+                            "任务完成: " + taskUuid, "Agent 任务已完成",
+                            "INFO", "agent_task", taskUuid, task.getTenantId()));
         } catch (Exception ex) {
             log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
         }
@@ -276,13 +278,11 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         progressRegistry.emit(taskUuid, buildEvent(task));
         log.error("Agent 异步任务失败: taskUuid={}", taskUuid, e);
         try {
-            if (rocketMQTemplate != null) {
-                String errorMessage = e.getMessage();
-                rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
-                        new NotificationEvent(task.getCreateBy(), "TASK",
-                                "任务失败: " + taskUuid, "Agent 任务失败: " + errorMessage,
-                                "ERROR", "agent_task", taskUuid, task.getTenantId()));
-            }
+            String errorMessage = e.getMessage();
+            notificationEventPublisher.publish(
+                    new NotificationEvent(task.getCreateBy(), "TASK",
+                            "任务失败: " + taskUuid, "Agent 任务失败: " + errorMessage,
+                            "ERROR", "agent_task", taskUuid, task.getTenantId()));
         } catch (Exception ex) {
             log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
         }

@@ -139,6 +139,12 @@ spring:
           predicates: [Path=/api/v1/files/**]
           filters: [StripPrefix=0]
 
+        # OpenAI 兼容端点路由（认证由 ApiTokenAuthGlobalFilter 负责）
+        - id: lumina-openai-compat-route
+          uri: lb://lumina-agent-service
+          predicates: [Path=/v1/**]
+          filters: [StripPrefix=0]
+
         # 通知中心路由（随 base 服务部署）
         - id: lumina-notification-route
           uri: lb://lumina-business-base
@@ -175,6 +181,8 @@ lumina:
       - /api/v1/base/auth/login
       - /actuator/health
       - /actuator/info
+      # OpenAI 兼容端点：跳过 JWT 认证，由 ApiTokenAuthGlobalFilter 兜底校验 sk- Token
+      - /v1/**
   gateway:
     cors:
       # 生产环境务必改为实际前端域名，禁止通配符

@@ -11,6 +11,7 @@ import io.agentscope.core.rag.model.DocumentMetadata;
 import io.agentscope.core.rag.store.VDBStoreBase;
 import io.agentscope.core.rag.store.dto.SearchDocumentDto;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.micrometer.core.instrument.Metrics;
@@ -35,11 +36,21 @@ import java.util.Map;
  *
  * <p>REST API 文档: https://qdrant.github.io/qdrant/redoc/index.html
  *
+ * <p>多租户隔离：所有租户共享同一 collection，写入时把 {@code tenant_id}（可选 {@code kb_id}）
+ * 写入 Qdrant payload，检索时下推 {@code filter.must[].tenant_id} 条件，并在 collection
+ * 创建后建立 payload 索引以加速 pre-filter。tenant_id 取自 {@link BaseContext#getTenantId()}，
+ * 与关键词检索路（{@code HybridKnowledge}）的取值方式一致。
+ *
  * @author Lumina Team
  * @since 1.2.0
  */
 @Slf4j
 public class QdrantRestStore implements VDBStoreBase {
+
+    /** payload 中租户字段的 key（写入 + 检索 filter 必须保持一致） */
+    private static final String PAYLOAD_KEY_TENANT_ID = "tenant_id";
+    /** payload 中知识库字段的 key（可选，用于按 kbId 二次过滤） */
+    private static final String PAYLOAD_KEY_KB_ID = "kb_id";
 
     private final String collectionName;
     private final int dimensions;
@@ -120,18 +131,58 @@ public class QdrantRestStore implements VDBStoreBase {
         HttpResponse<String> resp = sendPut("/collections/" + collectionName, body);
         if (resp.statusCode() == 200) {
             log.info("Qdrant 集合创建成功: {}, dims={}", collectionName, dimensions);
+            // 建 tenant_id payload 索引：让 Qdrant 在 ANN 之前先按租户 pre-filter，
+            // 否则 filter 仍会扫所有 point 再事后剔除，多租户隔离形同虚设。
+            createPayloadIndex(PAYLOAD_KEY_TENANT_ID, "keyword");
+            createPayloadIndex(PAYLOAD_KEY_KB_ID, "keyword");
         } else {
             throw new BusinessException(ErrorCode.RAG_STORE_ERROR, "创建集合失败: HTTP " + resp.statusCode());
         }
     }
 
     /**
+     * 在 collection 上建立 payload 字段索引
+     *
+     * <p>Qdrant 的 {@code PUT /collections/{name}/index}，{@code field_schema} 用 "keyword"
+     * 适合等值过滤（tenant_id 是整数但取值离散，keyword 索引即可）。
+     */
+    private void createPayloadIndex(String fieldName, String schema) {
+        try {
+            ObjectNode body = objectMapper.createObjectNode();
+            body.put("field_name", fieldName);
+            body.put("field_schema", schema);
+            HttpResponse<String> resp = sendPut("/collections/" + collectionName + "/index?wait=true", body);
+            if (resp.statusCode() == 200) {
+                log.info("Qdrant payload 索引创建成功: collection={}, field={}", collectionName, fieldName);
+            } else {
+                log.warn("Qdrant payload 索引创建返回非 200: collection={}, field={}, status={}, body={}",
+                        collectionName, fieldName, resp.statusCode(), resp.body());
+            }
+        } catch (Exception e) {
+            // 索引创建失败不中断启动——filter 仍能正确隔离，只是性能差（post-filter）
+            log.warn("Qdrant payload 索引创建异常（隔离仍生效，仅性能退化）: collection={}, field={}, error={}",
+                    collectionName, fieldName, e.getMessage());
+        }
+    }
+
+    /**
      * 批量写入向量
+     *
+     * <p>每个 point 的 payload 必须含 {@code tenant_id}（必填）和 {@code kb_id}（可选），
+     * 否则 {@link #doSearch} 的租户过滤会把所有租户的数据都搜出来——这是多租户隔离的根基。
+     *
+     * <p>tenant_id 优先取自 doc 已有的 payload（由调用方在 ingest 时 stamp），
+     * 其次 fallback 到 {@link BaseContext#getTenantId()}（与 keyword 路一致，依赖
+     * Reactor Context Propagation 跨线程传递）。
      */
     private void doAdd(List<Document> documents) {
         try {
             ObjectNode body = objectMapper.createObjectNode();
             ArrayNode points = body.putArray("points");
+
+            // BaseContext 在 reactor.boundedElastic 上仍可读（Context Propagation 已配置），
+            // 作为 doc payload 缺失时的兜底，确保 tenant_id 一定写入。
+            Long contextTenantId = BaseContext.getTenantId();
 
             for (Document doc : documents) {
                 ObjectNode point = points.addObject();
@@ -148,12 +199,23 @@ public class QdrantRestStore implements VDBStoreBase {
                 payload.put("docId", doc.getMetadata().getDocId());
                 payload.put("chunkId", doc.getMetadata().getChunkId());
 
+                // 多租户隔离关键：强制写入 tenant_id（取值优先级：doc payload > BaseContext > 0）
+                Long tenantId = resolveTenantId(doc, contextTenantId);
+                payload.put(PAYLOAD_KEY_TENANT_ID, tenantId);
+
+                Long kbId = resolveKbId(doc);
+                if (kbId != null) {
+                    payload.put(PAYLOAD_KEY_KB_ID, kbId);
+                }
+
                 Map<String, Object> extra = doc.getMetadata().getPayload();
                 if (extra != null) {
                     for (Map.Entry<String, Object> e : extra.entrySet()) {
-                        if (!"content".equals(e.getKey()) && e.getValue() != null) {
-                            payload.putPOJO(e.getKey(), e.getValue());
+                        // 跳过保留字段（避免覆盖 tenant_id/kb_id/content/docId/chunkId）
+                        if (isReservedPayloadKey(e.getKey()) || e.getValue() == null) {
+                            continue;
                         }
+                        payload.putPOJO(e.getKey(), e.getValue());
                     }
                 }
             }
@@ -175,7 +237,54 @@ public class QdrantRestStore implements VDBStoreBase {
     }
 
     /**
+     * 解析 doc 的 tenant_id：优先 doc payload（ingest 时 stamp），fallback BaseContext，最后 0
+     */
+    private Long resolveTenantId(Document doc, Long contextTenantId) {
+        Object fromPayload = doc.getPayloadValue(PAYLOAD_KEY_TENANT_ID);
+        if (fromPayload != null) {
+            return toLong(fromPayload);
+        }
+        // 也兼容历史调用方用驼峰 key 写入的情况
+        Object fromPayloadCamel = doc.getPayloadValue("tenantId");
+        if (fromPayloadCamel != null) {
+            return toLong(fromPayloadCamel);
+        }
+        return contextTenantId != null ? contextTenantId : 0L;
+    }
+
+    /**
+     * 解析 doc 的 kb_id：优先 doc payload（snake_case），其次驼峰 key，都没有返回 null
+     */
+    private Long resolveKbId(Document doc) {
+        Object fromPayload = doc.getPayloadValue(PAYLOAD_KEY_KB_ID);
+        if (fromPayload != null) {
+            return toLong(fromPayload);
+        }
+        Object fromPayloadCamel = doc.getPayloadValue("kbId");
+        return fromPayloadCamel != null ? toLong(fromPayloadCamel) : null;
+    }
+
+    private static Long toLong(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.longValue();
+        try { return Long.parseLong(String.valueOf(v)); } catch (NumberFormatException e) { return null; }
+    }
+
+    private static boolean isReservedPayloadKey(String key) {
+        return "content".equals(key) || "docId".equals(key) || "chunkId".equals(key)
+                || PAYLOAD_KEY_TENANT_ID.equals(key) || "tenantId".equals(key)
+                || PAYLOAD_KEY_KB_ID.equals(key) || "kbId".equals(key);
+    }
+
+    /**
      * 向量相似度检索
+     *
+     * <p>下推 {@code filter.must[].tenant_id} 条件到 Qdrant：只有当前租户的向量才参与 ANN。
+     * 这是多租户隔离的核心防线——之前所有租户向量都被搜出来，仅靠应用层事后过滤，
+     * 而 ingest 时根本没写 tenant_id，事后过滤恒为 null 失效，等于卖点自反。
+     *
+     * <p>tenant_id 取自 {@link BaseContext#getTenantId()}。检索路径 reactor.boundedElastic 上
+     * BaseContext 仍可读（与 keyword 路一致）。
      */
     private List<Document> doSearch(SearchDocumentDto dto) {
         try {
@@ -190,6 +299,15 @@ public class QdrantRestStore implements VDBStoreBase {
                 body.put("score_threshold", dto.getScoreThreshold());
             }
             body.put("with_payload", true);
+
+            // 多租户隔离：下推 tenant_id filter 到 Qdrant（必填，缺值用 0 兜底以避免误命中其他租户）
+            Long tenantId = BaseContext.getTenantId();
+            long effectiveTenantId = tenantId != null ? tenantId : 0L;
+            ObjectNode filter = body.putObject("filter");
+            ArrayNode must = filter.putArray("must");
+            ObjectNode tenantCond = must.addObject();
+            tenantCond.put("key", PAYLOAD_KEY_TENANT_ID);
+            tenantCond.putObject("match").put("value", effectiveTenantId);
 
             HttpResponse<String> resp = sendPost("/collections/" + collectionName + "/points/search", body);
             if (resp.statusCode() != 200) {
@@ -240,7 +358,8 @@ public class QdrantRestStore implements VDBStoreBase {
                 docs.add(doc);
             }
 
-            log.debug("向量检索完成: query_dims={}, results={}", dto.getQueryEmbedding().length, docs.size());
+            log.debug("向量检索完成: tenant={}, query_dims={}, results={}",
+                    effectiveTenantId, dto.getQueryEmbedding().length, docs.size());
             return docs;
         } catch (Exception e) {
             // 检索失败不阻断 Agent 执行，返回空结果，但记录足够定位问题的上下文

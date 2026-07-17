@@ -118,7 +118,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
             DocumentIngestMessage msg = new DocumentIngestMessage(
                     uuid, destFile.toAbsolutePath().toString(), format,
-                    agentId, tenantId, chunkSize, overlap);
+                    agentId, tenantId, kbId, chunkSize, overlap);
 
             rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_KNOWLEDGE_INGEST, msg);
 
@@ -190,6 +190,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             }
 
             if (docs != null && !docs.isEmpty() && knowledge != null) {
+                // 多租户隔离：在 ingest 时把 tenant_id/kb_id 写入每个 doc 的 payload，
+                // 这样 QdrantRestStore.doAdd 才能把它们落到 Qdrant point payload，
+                // doSearch 才能用 filter.must[].tenant_id 做隔离过滤。
+                stampTenantAndKb(docs, tenantId, kbId);
                 knowledge.addDocuments(docs).block();
             }
 
@@ -427,5 +431,36 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             return ragProperties.getEmbedding().getModel();
         }
         return "unknown";
+    }
+
+    /**
+     * 在 ingest 时把 tenant_id / kb_id 写入每个 doc 的 payload。
+     *
+     * <p>多租户隔离的关键：QdrantRestStore.doAdd 会从 doc payload 取这两个值写到 Qdrant point 的 payload，
+     * doSearch 再用 filter.must[].tenant_id 做下推过滤。不调用本方法会导致向量层无法区分租户，
+     * 与关键词路（已用 MySQL WHERE tenant_id 过滤）形成隔离断层。
+     *
+     * <p>{@link DocumentMetadata#getPayload()} 返回的是内部 HashMap 引用（非拷贝），
+     * 直接 put 即可生效。
+     */
+    private void stampTenantAndKb(List<Document> docs, Long tenantId, Long kbId) {
+        if (docs == null || docs.isEmpty()) {
+            return;
+        }
+        long effectiveTenantId = tenantId != null ? tenantId : 0L;
+        for (Document d : docs) {
+            if (d.getMetadata() == null) {
+                continue;
+            }
+            Map<String, Object> payload = d.getMetadata().getPayload();
+            if (payload == null) {
+                // 极少走到这里：DocumentMetadata 构造时会 new HashMap
+                payload = new java.util.HashMap<>();
+            }
+            payload.put("tenant_id", effectiveTenantId);
+            if (kbId != null) {
+                payload.put("kb_id", kbId);
+            }
+        }
     }
 }

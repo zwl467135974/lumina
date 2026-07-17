@@ -14,9 +14,11 @@ import io.lumina.notification.infrastructure.entity.NotificationDO;
 import io.lumina.notification.infrastructure.mapper.NotificationMapper;
 import io.lumina.notification.service.NotificationService;
 import io.lumina.notification.service.NotificationSseRegistry;
+import io.lumina.notification.service.WebhookDispatcher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
@@ -38,6 +40,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationMapper notificationMapper;
     private final NotificationSseRegistry sseRegistry;
+
+    /**
+     * webhook 分发器（可通过 lumina.notification.webhook.enabled=false 关闭，关闭时为 null）
+     */
+    @Autowired(required = false)
+    private WebhookDispatcher webhookDispatcher;
 
     @Override
     public PageResult<NotificationVO> list(NotificationQueryDTO query) {
@@ -149,6 +157,15 @@ public class NotificationServiceImpl implements NotificationService {
         // 推送到在线用户的 SSE 流
         NotificationVO vo = toVO(notif);
         sseRegistry.push(event.getUserId(), vo);
+
+        // 异步分发到订阅的外部 webhook（失败不影响通知主链）
+        if (webhookDispatcher != null) {
+            try {
+                webhookDispatcher.dispatch(event);
+            } catch (Throwable t) {
+                log.warn("Webhook 分发失败（不影响通知主链）: {}", t.getMessage());
+            }
+        }
     }
 
     @Override

@@ -258,6 +258,19 @@ public class RedisCacheManager {
     }
 
     /**
+     * 按模式批量删除缓存（如 {@code webhook:user:1:event:*}）
+     *
+     * @param pattern key 匹配模式（支持 * 通配符）
+     * @return 删除的 key 数量
+     */
+    public long deleteByPattern(String pattern) {
+        RKeys keys = redissonClient.getKeys();
+        long deleted = keys.deleteByPattern(pattern);
+        log.debug("按模式删除缓存: pattern={}, count={}", pattern, deleted);
+        return deleted;
+    }
+
+    /**
      * 检查缓存是否存在
      *
      * @param key 缓存键

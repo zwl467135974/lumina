@@ -166,6 +166,93 @@ class QdrantRestStoreIntegrationTest {
         assertThat(found.getMetadata().getPayload()).containsEntry("category", "unit-test");
     }
 
+    /**
+     * 多租户隔离核心测试：不同租户的向量互相不可见。
+     *
+     * <p>验证：tenant_id=1 写入的文档，在 tenant_id=2 上下文下搜索必须返回空，
+     * 反之亦然。这是主卖点"多租户"在向量层的可证伪断言。
+     */
+    @Test
+    void tenantIsolationFiltersByTenantId() throws Exception {
+        // given: 两个租户各写一篇相似向量文档（payload 里 stamp tenant_id）
+        Document tenant1Doc = createDocumentWithPayload("it-tenant-1", "chunk-t1",
+                "租户1的文档", new double[]{1.0, 0.0, 0.0, 0.0},
+                java.util.Map.of("tenant_id", 1L));
+        Document tenant2Doc = createDocumentWithPayload("it-tenant-2", "chunk-t2",
+                "租户2的文档", new double[]{1.0, 0.0, 0.0, 0.0},
+                java.util.Map.of("tenant_id", 2L));
+
+        store.add(List.of(tenant1Doc, tenant2Doc)).block();
+
+        // 等索引生效（payload index 是 async 的）
+        Thread.sleep(500);
+
+        SearchDocumentDto query = SearchDocumentDto.builder()
+                .queryEmbedding(new double[]{1.0, 0.0, 0.0, 0.0})
+                .limit(10)
+                .build();
+
+        // when: 以 tenant=1 搜索
+        io.lumina.common.core.BaseContext.setTenantId(1L);
+        List<Document> asTenant1;
+        try {
+            asTenant1 = store.search(query).block();
+        } finally {
+            io.lumina.common.core.BaseContext.clear();
+        }
+
+        // then: 只返回 tenant 1 的文档
+        assertThat(asTenant1).isNotEmpty();
+        assertThat(asTenant1).allMatch(d -> {
+            Object t = d.getPayloadValue("tenant_id");
+            return t != null && Long.valueOf(1L).equals(((Number) t).longValue());
+        });
+        assertThat(asTenant1).noneMatch(d -> "it-tenant-2".equals(d.getMetadata().getDocId()));
+
+        // when: 以 tenant=2 搜索
+        io.lumina.common.core.BaseContext.setTenantId(2L);
+        List<Document> asTenant2;
+        try {
+            asTenant2 = store.search(query).block();
+        } finally {
+            io.lumina.common.core.BaseContext.clear();
+        }
+
+        // then: 只返回 tenant 2 的文档
+        assertThat(asTenant2).isNotEmpty();
+        assertThat(asTenant2).allMatch(d -> {
+            Object t = d.getPayloadValue("tenant_id");
+            return t != null && Long.valueOf(2L).equals(((Number) t).longValue());
+        });
+        assertThat(asTenant2).noneMatch(d -> "it-tenant-1".equals(d.getMetadata().getDocId()));
+    }
+
+    /**
+     * BaseContext 缺失时用 tenant_id=0 兜底（不误命中其他租户数据）。
+     */
+    @Test
+    void searchFallsBackToTenantZeroWhenContextMissing() throws Exception {
+        // given: 写一篇 tenant_id=0 的文档
+        Document doc = createDocumentWithPayload("it-default", "chunk-d",
+                "默认租户文档", new double[]{0.0, 1.0, 0.0, 0.0},
+                java.util.Map.of("tenant_id", 0L));
+        store.add(List.of(doc)).block();
+        Thread.sleep(500);
+
+        SearchDocumentDto query = SearchDocumentDto.builder()
+                .queryEmbedding(new double[]{0.0, 1.0, 0.0, 0.0})
+                .limit(5)
+                .build();
+
+        // when: BaseContext 无 tenant（getTenantId 返回 null）
+        io.lumina.common.core.BaseContext.clear();
+        List<Document> results = store.search(query).block();
+
+        // then: tenant_id=0 的文档可被搜到（fallback 到 0）
+        assertThat(results).isNotEmpty();
+        assertThat(results).anyMatch(d -> "it-default".equals(d.getMetadata().getDocId()));
+    }
+
     // ==================== 辅助方法 ====================
 
     private Document createDocument(String docId, String chunkId, String content, double[] vector) {

@@ -1,0 +1,251 @@
+# ============================================================
+# Lumina Standalone 单体模式配置
+#
+# 合并自 nacos-config/lumina-business-base.yaml + lumina-agent-service.yaml，
+# "禁 Nacos + 禁 RocketMQ" 部分参考两个模块的 application-test.yml。
+# 仅依赖 MySQL + Redis 两个外部组件。
+# ============================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: lumina-standalone
+
+  profiles:
+    active: standalone
+
+  main:
+    allow-bean-definition-overriding: true
+    web-application-type: servlet  # 强制 servlet，防止误判
+
+  # 禁用 Nacos（服务发现 + 配置中心）
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
+
+  # 禁用 RocketMQ autoconfiguration（无 MQ，通知走 Spring ApplicationEvent 本地降级）
+  autoconfigure:
+    exclude:
+      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  # 单一 MySQL datasource
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/lumina_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+      username: ${SPRING_DATASOURCE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_PASSWORD:123456}
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+
+  # Redis（外部，standalone 唯二依赖之一）
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:123456}
+
+  # Flyway（base 模块的 db/migration 建出全部业务表）
+  flyway:
+    encoding: UTF-8
+    out-of-order: true
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
+# 禁用全部 RocketMQ 消费者（autoconfiguration 已 exclude，双保险）
+rocketmq:
+  name-server: localhost:9876
+  consumer:
+    notification:
+      enabled: false
+    audit-log:
+      enabled: false
+    agent-task:
+      enabled: false
+    knowledge-ingest:
+      enabled: false
+
+# MyBatis-Plus（base + agent + notification 三包实体并集）
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.lumina.base.infrastructure.entity,io.lumina.agent.infrastructure.entity,io.lumina.notification.infrastructure.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+lumina:
+  jwt:
+    secret-key: ${LUMINA_JWT_SECRET:dev-only-secret-please-change-for-production-use-at-least-32-chars-standalone}
+    expiration: 604800000
+
+  # CORS（framework WebMvcConfig 读取）
+  cors:
+    allowed-origins: ${LUMINA_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+  # 认证白名单（StandaloneJwtFilter 读取，与 gateway 配置保持一致）
+  whitelist:
+    paths:
+      - /api/v1/auth/login
+      - /api/v1/base/auth/login
+      - /actuator/health
+      - /actuator/info
+
+  # 文件存储（默认本地磁盘，无 MinIO 依赖）
+  storage:
+    type: ${STORAGE_TYPE:local}
+    local:
+      base-path: ${STORAGE_LOCAL_PATH:./data/files}
+      url-prefix: /api/v1/files
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket: ${MINIO_BUCKET:lumina-files}
+
+  agent:
+    content-moderation:
+      enabled: ${CONTENT_MODERATION_ENABLED:true}
+      strict: ${CONTENT_MODERATION_STRICT:false}
+    memory:
+      reflective:
+        enabled: ${REFLECTIVE_MEMORY_ENABLED:false}   # 对话后异步提取关键事实
+        max-facts-per-turn: ${REFLECTIVE_MAX_FACTS:5} # 每次提取最大条数
+        max-context-memories: ${REFLECTIVE_MAX_CONTEXT:20} # 上下文注入最大条数
+        max-fact-length: ${REFLECTIVE_MAX_LENGTH:500} # 单条最大长度
+    code-interpreter:
+      enabled: ${CODE_INTERPRETER_ENABLED:false}          # 是否启用代码解释器
+      mode: ${CODE_INTERPRETER_MODE:process}              # 执行模式：process 或 docker
+      timeout-seconds: ${CODE_INTERPRETER_TIMEOUT:30}     # 单次执行超时（秒）
+      max-output-length: ${CODE_INTERPRETER_MAX_OUTPUT:10000} # 输出最大长度（字符）
+      python-path: ${CODE_INTERPRETER_PYTHON_PATH:python3} # Python 解释器路径
+      node-path: ${CODE_INTERPRETER_NODE_PATH:node}        # Node.js 解释器路径
+      work-dir: ${CODE_INTERPRETER_WORK_DIR:}              # 临时脚本工作目录（空则用系统临时目录）
+      python-image: ${CODE_INTERPRETER_PYTHON_IMAGE:python:3.11-slim} # Docker 模式 Python 镜像
+      node-image: ${CODE_INTERPRETER_NODE_IMAGE:node:20-slim}         # Docker 模式 Node.js 镜像
+      memory-limit-mb: ${CODE_INTERPRETER_MEMORY:256}     # Docker 内存限制（MB）
+      cpu-limit: ${CODE_INTERPRETER_CPU:1.0}              # Docker CPU 核心数限制
+      network-disabled: ${CODE_INTERPRETER_NO_NETWORK:true} # Docker 是否禁止网络访问
+      auto-install-deps: ${CODE_INTERPRETER_AUTO_INSTALL:false} # 运行时依赖安装（pip/npm，需要联网）
+      pool-size: ${CODE_INTERPRETER_POOL_SIZE:2}          # 容器池大小（0=不启用容器池每次新建）
+      pool-idle-timeout-minutes: ${CODE_INTERPRETER_POOL_IDLE_TIMEOUT:10} # 容器空闲超时（分钟）
+      stream-output: ${CODE_INTERPRETER_STREAM_OUTPUT:false} # 流式输出（预留，暂未实现）
+    llm:
+      type: ${LLM_TYPE:dashscope}
+      api-key: ${LLM_API_KEY:}
+      model: ${LLM_MODEL:qwen-plus}
+      base-url: ${LLM_BASE_URL:}
+      temperature: ${LLM_TEMPERATURE:0.7}
+      max-tokens: ${LLM_MAX_TOKENS:2000}
+      stream: ${LLM_STREAM:false}
+      # 推理模型参数（可选）
+      thinking-budget: ${LLM_THINKING_BUDGET:}    # Anthropic/Gemini 扩展思考 Token 预算
+      reasoning-effort: ${LLM_REASONING_EFFORT:}  # OpenAI o-series: low/medium/high
+      # Gemini Vertex AI 模式（可选，启用后使用 project/location 而非 api-key）
+      vertex-ai: ${LLM_VERTEX_AI:false}           # true 启用 Vertex AI 模式
+      project-id: ${LLM_PROJECT_ID:}              # GCP 项目 ID
+      location: ${LLM_LOCATION:us-central1}       # GCP 区域
+
+  # RAG 默认关闭，避免 Qdrant 依赖（需要时设 RAG_ENABLED=true 并部署 Qdrant）
+  rag:
+    enabled: ${RAG_ENABLED:false}
+    store-type: ${RAG_STORE_TYPE:memory}
+    mode: ${RAG_MODE:generic}
+    embedding:
+      provider: ${RAG_EMBEDDING_PROVIDER:dashscope}
+      api-key: ${RAG_EMBEDDING_API_KEY:}
+      base-url: ${RAG_EMBEDDING_BASE_URL:}
+      model: ${RAG_EMBEDDING_MODEL:text-embedding-v3}
+      dimensions: ${RAG_EMBEDDING_DIMENSIONS:1024}
+      # 是否向 Embedding API 发送 dimensions 参数（OpenAI embedding-3 / 智谱 embedding-3 支持，SiliconFlow 不支持）
+      send-dimensions: ${RAG_EMBEDDING_SEND_DIMENSIONS:false}
+    retrieve:
+      limit: 3
+      score-threshold: 0.3
+    reader:
+      chunk-size: 512
+      overlap: 50
+      split-strategy: PARAGRAPH
+      # OCR 扫描件识别（PDF 文本提取为空时触发，默认关闭）
+      ocr:
+        enabled: ${RAG_OCR_ENABLED:false}
+        provider: ${RAG_OCR_PROVIDER:none}         # none/baidu/tencent/google/alibaba
+        api-key: ${RAG_OCR_API_KEY:}
+        secret-key: ${RAG_OCR_SECRET_KEY:}          # 百度/腾讯需要双 Key
+        language: ${RAG_OCR_LANGUAGE:chi_sim}       # 识别语言
+        max-pages: ${RAG_OCR_MAX_PAGES:50}          # 单文件最大 OCR 页数
+        dpi: ${RAG_OCR_DPI:200}                      # PDF 渲染分辨率
+    qdrant:
+      host: ${QDRANT_HOST:localhost:6334}
+      collection: ${QDRANT_COLLECTION:lumina_knowledge}
+      tls: ${QDRANT_TLS:false}
+    # 混合检索（向量 + 关键词 RRF 融合）
+    hybrid:
+      enabled: ${RAG_HYBRID_ENABLED:false}
+      vector-weight: ${RAG_HYBRID_VECTOR_WEIGHT:0.7}
+      keyword-weight: ${RAG_HYBRID_KEYWORD_WEIGHT:0.3}
+    # Reranker 重排序（四模式：none / siliconflow / jina / local）
+    rerank:
+      provider: ${RAG_RERANK_PROVIDER:none}
+      model: ${RAG_RERANK_MODEL:BAAI/bge-reranker-v2-m3}
+      api-key: ${RAG_RERANK_API_KEY:}
+      base-url: ${RAG_RERANK_BASE_URL:https://api.siliconflow.cn/v1}
+      top-k: ${RAG_RERANK_TOP_K:10}
+
+  # MCP (Model Context Protocol) 默认关闭
+  mcp:
+    enabled: ${MCP_ENABLED:false}
+    tool-prefix: ${MCP_TOOL_PREFIX:mcp__}
+
+logging:
+  level:
+    io.lumina: ${LUMINA_LOG_LEVEL:INFO}
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId:--}] [t:%X{tenantId:--}/u:%X{userId:--}] %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  # 单体模式默认不采样（无 Jaeger），需要时设 OTEL_SAMPLING_PROBABILITY=1.0
+  tracing:
+    sampling:
+      probability: ${OTEL_SAMPLING_PROBABILITY:0.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}

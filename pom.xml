@@ -20,6 +20,7 @@
         <module>lumina-framework</module>
         <module>lumina-gateway</module>
         <module>lumina-modules</module>
+        <module>lumina-standalone</module>
     </modules>
 
     <properties>

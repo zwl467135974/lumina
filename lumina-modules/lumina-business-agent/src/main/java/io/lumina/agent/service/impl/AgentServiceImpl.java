@@ -250,6 +250,11 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public String executeAgent(Long agentId, String task, String conversationUuid) {
+        return executeAgentForResult(agentId, task, conversationUuid).getResult();
+    }
+
+    @Override
+    public ExecuteResult executeAgentForResult(Long agentId, String task, String conversationUuid) {
         log.info("执行 Agent: id={}, task={}, conversation={}", agentId, task, conversationUuid);
 
         agentRateLimiter.checkRateLimit(agentId);
@@ -296,6 +301,7 @@ public class AgentServiceImpl implements AgentService {
 
         // 输出脱敏
         String sanitizedResult = outputSanitizer.sanitize(result.getResult());
+        result.setResult(sanitizedResult);
 
         // 保存助手回复到数据库
         if (sessionId != null) {
@@ -308,7 +314,7 @@ public class AgentServiceImpl implements AgentService {
         triggerReflectiveMemory(agentId, sessionId, task, sanitizedResult);
 
         log.info("Agent 执行成功: id={}", agentId);
-        return sanitizedResult;
+        return result;
     }
 
     @Override

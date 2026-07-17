@@ -217,6 +217,15 @@ export const systemRoutes: AppRouteRecordRaw[] = [
           requiresAuth: true,
           permissions: ['model:list']
         }
+      },
+      {
+        path: 'api-tokens',
+        name: 'SystemApiTokens',
+        component: () => import('@/views/system/api-tokens.vue'),
+        meta: {
+          title: 'API Token',
+          requiresAuth: true
+        }
       }
     ]
   }
@@ -423,11 +432,31 @@ export const notificationRoutes: AppRouteRecordRaw[] = [
   {
     path: '/notification',
     name: 'Notification',
-    component: () => import('@/views/notification/index.vue'),
+    redirect: '/notification/list',
     meta: {
       title: '通知中心',
       icon: 'Bell',
       requiresAuth: true
-    }
+    },
+    children: [
+      {
+        path: 'list',
+        name: 'NotificationList',
+        component: () => import('@/views/notification/index.vue'),
+        meta: {
+          title: '通知列表',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'webhooks',
+        name: 'NotificationWebhooks',
+        component: () => import('@/views/notification/webhooks.vue'),
+        meta: {
+          title: 'Webhook 订阅',
+          requiresAuth: true
+        }
+      }
+    ]
   }
 ]

@@ -21,35 +21,53 @@
 
 ## 项目简介
 
-Lumina 是一个企业级 AI Agent 开发框架，基于 [AgentScope Java](https://github.com/modelscope/agentscope-java) 和 [Spring Cloud](https://spring.io/projects/spring-cloud) 构建，提供开箱即用的 Agent 能力、微服务架构和企业级特性。
+Lumina 是一套**企业私有化 AI Agent 中台**，基于 [AgentScope Java](https://github.com/modelscope/agentscope-java) 和 [Spring Cloud Alibaba](https://spring.io/projects/spring-cloud-alibaba) 构建，主打**私有化部署、租户隔离、算得清账**——给需要私有化+多租户的中国 ToB 软件商和企业 IT 部门使用。
 
-### 核心特性
+### 为什么选 Lumina
 
-- **AgentScope 集成** - 原生集成 AgentScope 框架，支持 ReAct/Plan-Execute、工具调用、流式输出
-- **Plan-Execute 推理** - Planner 分解任务 → Executor 逐步执行 → Summarizer 汇总，复杂任务成功率更高
-- **MCP 协议接入** - 支持 Model Context Protocol，通过 stdio/http 连接外部 MCP Server，自动注册工具（McpClientRegistry + McpToolRegistrar），提供只读监控 API
-- **工具系统** - 通用工具（HTTP 请求/时间查询/网络搜索/数学计算）+ 业务工具 + MCP 工具统一注册管理，支持熔断器、调用记录、超时控制
-- **网络搜索** - 策略模式适配智谱/Tavily/SerpAPI/Brave 四种搜索引擎，配置驱动切换
-- **工作流编排引擎** - 基于 Flowable 7.0 的 DAG 引擎，支持 Agent/条件/循环/并行/数据转换/人工审批 6 种节点 + 7 种协作模板（含 plan-execute、group-chat）+ 一键模板创建
-- **Prompt 版本管理** - DB 持久化、版本发布/激活、版本行级 diff、Agent 执行链路运行时动态生效
-- **Agent 评估回归** - YAML 数据集 + 4 种评分器 + 批量回归测试 + 基线标记 + A/B 对比 + CSV 导出
-- **RAG 混合检索** - 向量检索 + 关键词检索（MySQL FULLTEXT）RRF 融合 + 三模式 Reranker（SiliconFlow/Local/None）
-- **多模态** - 图片 + PDF/Word 文档直接喂 LLM（MultimodalContent 统一接口）+ 流式多模态执行
-- **通知中心** - 独立通知模块，站内通知、已读/未读管理、通知偏好设置
-- **微服务架构** - 基于 Spring Cloud Alibaba，支持服务注册、配置管理、负载均衡
-- **简化分层架构** - 清晰的 API、Service、Domain、Infrastructure 四层架构
-- **多轮对话与记忆** - 会话维度上下文持久化（Redis 热记忆 + DB 冷存储）、历史回放、Token 用量统计
-- **异步任务执行** - 提交后立即返回 taskId，后台线程池执行，状态查询与独立列表页管理
-- **成本管理** - 模型价格表 + Token 用量计费 + 消费汇总仪表盘 + 趋势图表
-- **安全防护** - Prompt 注入检测 + 输出 PII 脱敏（手机号/身份证/银行卡/邮箱）+ 频率限制 + 内容审核
-- **企业级安全** - 租户隔离自动检测、权限实时缓存、SpEL 表达式注入防护、登录防暴力破解
-- **全链路可观测** - MDC 结构化日志 + 审计日志 + Micrometer 指标(Prometheus/Grafana) + OpenTelemetry 分布式追踪(Jaeger)
-- **工程化** - 统一错误码、Flyway 版本迁移(V1-V33)、网关限流、API 版本策略、Resilience4j 熔断器/重试、Flowable 工作流引擎
-- **响应式编程** - 基于 Project Reactor + Context Propagation，支持跨线程租户上下文传递
-- **多 LLM 支持** - 支持 DashScope、OpenAI/DeepSeek、Claude、Gemini(Vertex AI)、Ollama 等主流模型 + OpenAI 兼容预设（GLM/Kimi/豆包/DeepSeek 等零代码扩展）
-- **Provider Failover** - Agent 级 fallbackProviders 主备链 + DB Provider priority 排序，LLM 服务故障时自动切换（超时/5xx/429 触发，鉴权错误不切换）
-- **A/B Testing** - 实验框架（实验/变体/曝光三表），按权重流量分发 + 同会话粘滞 + 效果报告（成功率/延迟/Token 对比），Agent 配置灰度验证
-- **前端增强** - 动态菜单（后端权限下发）、Agent 调试面板、暗色主题、i18n 中英文切换
+唯一对 Dify 开源版 / LangGraph / Spring AI Alibaba 形成**净优势**的维度是**企业级特性**：
+
+| 能力 | Dify 开源版 | LangGraph | Spring AI Alibaba | **Lumina** |
+|---|---|---|---|---|
+| **行级多租户隔离** | ❌ 工作区粒度 | ❌ 不管 | ❌ 不管 | ✅ fail-closed + 集成测试 |
+| **五表 RBAC + 审计** | 部分 | ❌ | ❌ | ✅ `@Audit` AOP |
+| **预算管控（Token 计费）** | 部分 | ❌ | ❌ | ✅ 按租户/Agent 归集 |
+| **Prompt 注入检测 + PII 脱敏** | 部分 | ❌ | ❌ | ✅ 11 种模式 |
+| **JWT fail-fast + 身份头防伪造** | N/A | N/A | N/A | ✅ 网关入口剥离 |
+| 通用 AI 应用平台 | **✅** | ❌ | ❌ | ❌ |
+| 复杂状态机编排 | ❌ | **✅** | 部分 | 部分 |
+| Spring 生态无缝集成 | ❌ | ❌ | **✅** | ✅ |
+
+完整对比见 [`市场定位分析`](docs/zh/strategy/市场定位分析.md)。一句话主张：**"Dify 开源版没有的多租户/RBAC/预算/审计，Lumina 全有且带测试。"**
+
+### 适用场景
+
+✅ **推荐**：需要私有化部署 + 多租户 + Java 技术栈（Spring Cloud Alibaba / MyBatis-Plus / Nacos）+ 成本归集 + 审计合规的企业场景
+❌ **不推荐**：通用 AI 应用平台（选 Dify）、研究型复杂 Agent（选 LangGraph）、已有 Spring AI 应用加 Agent（选 Spring AI Alibaba）、Python 技术栈
+
+### 五条主线能力
+
+- **🏢 企业级特性** - 行级多租户隔离（fail-closed）、五表 RBAC、审计日志、预算管控、JWT fail-fast、Prompt 注入检测 + PII 脱敏——全仓库最扎实、有集成测试
+- **🤖 Agent 执行引擎** - AgentScope 1.0.7 ReAct/Plan-Execute、SSE 流式（REASONING/ACTING/RAG_SOURCES）、多模态、Provider Failover 主备链
+- **🔧 工具与集成** - MCP 协议接入（stdio/SSE/streamable-http 三传输 + headers 鉴权 + 重连健康检查）、OpenAI 兼容 `/v1/chat/completions` 出口、Webhook、企业微信机器人、Code Interpreter（Docker 容器池）
+- **📚 知识与编排** - RAG 混合检索（RRF + reranker + 5 OCR）、Flowable 7.0 DAG 工作流（6 节点 + 7 模板）、Prompt 版本管理、Agent 评估回归（4 评分器 + A/B 对比）
+- **🎨 工程化前端** - Vue 3 + Element Plus 32 视图、暗色主题、i18n、Agent 调试面板、动态菜单（权限下发）
+
+<details>
+<summary><b>📋 完整能力清单（点击展开）</b></summary>
+
+- **微服务架构** - Spring Cloud Alibaba，Gateway(8080) + Agent(8081) + Base(8082)；**也支持 standalone 单体模式**（仅 MySQL+Redis 两件套）
+- **简化分层架构** - API/Service/Domain/Infrastructure 四层
+- **多轮对话与记忆** - Redis 热记忆 + DB 冷存储 + Reflective Memory（LLM 提取事实注入）
+- **异步任务执行** - 提交即返回 taskId，后台执行，状态查询
+- **成本管理** - 模型价格表 + Token 计费 + 消费汇总仪表盘 + 趋势图表
+- **全链路可观测** - MDC 结构化日志 + Micrometer 指标 + OpenTelemetry 分布式追踪
+- **工程化** - 统一错误码、Flyway V1-V38+、网关限流、Resilience4j 熔断器/重试
+- **响应式编程** - Project Reactor + Context Propagation，跨线程租户上下文传递
+- **多 LLM 支持** - DashScope/OpenAI/DeepSeek/Claude/Gemini/Ollama + OpenAI 兼容预设（GLM/Kimi/豆包零代码扩展）
+- **A/B Testing** - 实验框架，按权重流量分发 + 同会话粘滞 + 效果报告
+
+</details>
 
 ---
 
@@ -110,31 +128,64 @@ lumina-frontend/
 
 ## 快速开始
 
-### 环境要求
+Lumina 提供两种启动方式：
 
-#### 后端环境
+- **standalone 单体模式（推荐体验）** — 只需 MySQL + Redis，5 分钟跑起来。无需 Nacos / RocketMQ / 独立 Gateway 进程
+- **微服务模式（推荐生产）** — Gateway + Agent + Base 三服务 + Nacos + 可选 RocketMQ
+
+### 方式一：standalone 单体模式（推荐）
+
+#### 环境要求（仅两件套）
+
+- **Docker** + Docker Compose（最简单）
+- 或 **JDK 21+** + **Maven 3.9+** + **MySQL 8.0+** + **Redis 7.0+**
+
+#### 一键启动
+
+```bash
+git clone https://github.com/zwl467135974/lumina.git
+cd lumina
+
+# 必填 LLM API Key（智谱 GLM / 阿里 DashScope 等）
+export LLM_API_KEY=your-api-key
+
+# 一条命令拉起 MySQL + Redis + Lumina（端口 8080）
+docker compose -f docker-compose-standalone.yml up
+```
+
+启动后：
+- 健康检查：http://localhost:8080/actuator/health
+- 默认账号：`admin` / `admin123`（系统租户 tenant_id=0）
+
+详见 [`standalone 部署指南`](docs/zh/deployment/standalone部署.md)。
+
+### 方式二：微服务模式（生产部署）
+
+#### 环境要求
+
+##### 后端环境
 
 - **JDK 21+** - [下载](https://adoptium.net/)
 - **Maven 3.9+** - [下载](https://maven.apache.org/download.cgi)
 - **MySQL 8.0+** - [下载](https://dev.mysql.com/downloads/mysql/)
 - **Redis 7.0+** - [下载](https://redis.io/download)
-- **Nacos 3.1.1+** - [下载](https://nacos.io/zh-cn/docs/quick-start.html)
+- **Nacos 3.1.1+** - [下载](https://nacos.io/zh-cn/docs/quick-start.html)（**必装**：服务发现与配置中心）
 
-#### 前端环境
+##### 前端环境
 
 - **Node.js 20+** - [下载](https://nodejs.org/)
 - **pnpm 8+** (推荐) 或 npm 9+ / yarn 1.22+ - [下载](https://pnpm.io/)
 
-### 安装步骤
+#### 安装步骤
 
-#### 1. 克隆项目
+##### 1. 克隆项目
 
 ```bash
 git clone https://github.com/zwl467135974/lumina.git
 cd lumina
 ```
 
-#### 2. 启动基础设施
+##### 2. 启动基础设施
 
 **启动 MySQL**
 
@@ -176,7 +227,7 @@ $env:LLM_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1-V33），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1–V38+），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -586,7 +637,7 @@ npm install
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V33 + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V38+ + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
@@ -613,7 +664,7 @@ npm install
 
 ### v3.2.0 能力完善与验证
 
-- ✅ MCP 协议接入（stdio/http 传输 + 工具自动注册 + 只读监控 API + 监控页面）
+- ✅ MCP 协议接入（stdio/SSE/streamable-http 三传输 + headers 鉴权 + 重连健康检查 + 工具自动注册 + 监控 API）
 - ✅ 通用工具系统迁移（HTTP/时间/搜索/计算工具从 base 迁至 agent-core，解决跨服务可见性）
 - ✅ 网络搜索适配层（智谱/Tavily/SerpAPI/Brave 四引擎 + 配置驱动切换）
 - ✅ 通知中心独立模块（站内通知 + 已读管理 + 前端通知页面 + Flyway V26/V30）

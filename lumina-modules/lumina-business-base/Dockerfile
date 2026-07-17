@@ -34,7 +34,7 @@ WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
 
-COPY --from=builder /app/lumina-modules/lumina-business-base/target/*.jar app.jar
+COPY --from=builder /app/lumina-modules/lumina-business-base/target/*-exec.jar app.jar
 
 EXPOSE 8082
 

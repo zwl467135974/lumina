@@ -24,12 +24,10 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.common.core.ErrorCode;
-import io.lumina.framework.config.RocketMQConfig;
 import io.lumina.notification.event.NotificationEvent;
+import io.lumina.notification.event.NotificationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -56,8 +54,7 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     private final ObjectMapper objectMapper;
 
-    @Autowired(required = false)
-    private RocketMQTemplate rocketMQTemplate;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -394,10 +391,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     private void sendWorkflowNotification(WorkflowInstanceDO instance, String category,
                                             String title, String content, String severity) {
         try {
-            if (rocketMQTemplate == null) {
-                return;
-            }
-            rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_NOTIFICATION,
+            notificationEventPublisher.publish(
                     new NotificationEvent(instance.getCreateBy(), category, title,
                             content != null ? content : title, severity,
                             "workflow_instance", String.valueOf(instance.getId()),

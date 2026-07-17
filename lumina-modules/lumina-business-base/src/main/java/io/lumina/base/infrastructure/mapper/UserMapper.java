@@ -30,6 +30,18 @@ public interface UserMapper extends BaseMapper<UserDO> {
     UserDO selectByTenantIdAndUsername(@Param("tenantId") Long tenantId, @Param("username") String username);
 
     /**
+     * 根据用户 ID 查询用户（跳过租户插件）
+     *
+     * <p>API Token 校验路径在请求早期，BaseContext 尚未初始化，需跳过租户插件按主键直查。
+     *
+     * @param userId 用户 ID
+     * @return 用户实体
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("SELECT * FROM lumina_user WHERE user_id = #{userId} AND deleted = 0")
+    UserDO selectByUserId(@Param("userId") Long userId);
+
+    /**
      * 根据用户 ID 查询用户角色 ID 列表
      *
      * @param userId 用户 ID

@@ -57,6 +57,15 @@ public class McpServerProperties {
     private String toolPrefix = "mcp__";
 
     /**
+     * 全局健康检查配置
+     *
+     * <p>驱动 {@code McpClientRegistry#scheduledHealthCheck()} 的定时探测：
+     * {@code enabled} 为总开关，{@code intervalSeconds} 为探测间隔。
+     * 单个 server 可通过自身的 {@code health-check.enabled=false} 单独退出探测。
+     */
+    private HealthCheckConfig healthCheck = new HealthCheckConfig();
+
+    /**
      * 单个 MCP Server 的连接配置
      *
      * @author Lumina Team
@@ -73,10 +82,11 @@ public class McpServerProperties {
         private String name;
 
         /**
-         * 传输类型：stdio | http（默认：stdio）
+         * 传输类型：stdio | http | streamable-http（默认：stdio）
          *
          * <p>stdio：通过子进程方式启动 MCP Server；
-         * http：通过 HTTP/SSE 连接远程 MCP Server（当前实现以 stdio 为主）。
+         * http：通过 HTTP/SSE 连接远程 MCP Server；
+         * streamable-http：通过 Streamable HTTP 连接远程 MCP Server（MCP 新版传输协议）。
          */
         private String transport = "stdio";
 
@@ -96,13 +106,78 @@ public class McpServerProperties {
         private Map<String, String> env;
 
         /**
-         * HTTP 传输的 Server URL
+         * HTTP/SSE/streamable-http 传输的 Server URL
          */
         private String url;
 
         /**
-         * HTTP 传输的请求头
+         * HTTP/SSE/streamable-http 传输的请求头（如 Authorization、X-API-Key）
+         *
+         * <p>value 可能含敏感凭证，日志中只允许输出 key，禁止输出 value。
          */
         private Map<String, String> headers;
+
+        /**
+         * 重连配置（仅对 http / streamable-http 传输生效）
+         */
+        private ReconnectConfig reconnect = new ReconnectConfig();
+
+        /**
+         * 健康检查配置（server 级开关，探测间隔由全局 {@code lumina.mcp.health-check} 控制）
+         */
+        private HealthCheckConfig healthCheck = new HealthCheckConfig();
+    }
+
+    /**
+     * MCP Server 重连配置
+     *
+     * <p>连接断开（健康检查失败）后按指数退避重连：
+     * 第 n 次尝试前等待 {@code backoffMs * backoffMultiplier^(n-1)} 毫秒。
+     *
+     * @author Lumina Team
+     * @since 3.4.0
+     */
+    @Data
+    public static class ReconnectConfig {
+
+        /**
+         * 是否启用自动重连（默认：true）
+         */
+        private boolean enabled = true;
+
+        /**
+         * 单次重连最大尝试次数（默认：3）
+         */
+        private int maxAttempts = 3;
+
+        /**
+         * 初始退避时间，毫秒（默认：2000）
+         */
+        private long backoffMs = 2000;
+
+        /**
+         * 退避倍数（默认：2.0）
+         */
+        private double backoffMultiplier = 2.0;
+    }
+
+    /**
+     * MCP Server 健康检查配置
+     *
+     * @author Lumina Team
+     * @since 3.4.0
+     */
+    @Data
+    public static class HealthCheckConfig {
+
+        /**
+         * 是否启用健康检查（默认：true）
+         */
+        private boolean enabled = true;
+
+        /**
+         * 探测间隔，秒（默认：60；仅全局配置生效，server 级配置忽略此字段）
+         */
+        private int intervalSeconds = 60;
     }
 }

@@ -9,6 +9,7 @@ import io.lumina.agent.orchestration.engine.WorkflowEngine;
 import io.lumina.agent.orchestration.loader.WorkflowLoader;
 import io.lumina.agent.orchestration.model.WorkflowDefinition;
 import io.lumina.common.core.BaseContext;
+import io.lumina.notification.event.NotificationEventPublisher;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,8 @@ class WorkflowFromTemplateTest {
     private WorkflowEngine workflowEngine;
     @Mock
     private ObjectMapper objectMapper;
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
 
     private WorkflowServiceImpl service;
 
@@ -54,7 +57,7 @@ class WorkflowFromTemplateTest {
         BaseContext.setTenantId(1L);
         BaseContext.setUserId(100L);
         service = new WorkflowServiceImpl(definitionMapper, instanceMapper, logMapper,
-                workflowLoader, workflowEngine, objectMapper);
+                workflowLoader, workflowEngine, objectMapper, notificationEventPublisher);
     }
 
     @AfterEach
