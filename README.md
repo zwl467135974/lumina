@@ -40,6 +40,17 @@ Lumina 是一套**企业私有化 AI Agent 中台**，基于 [AgentScope Java](h
 
 完整对比见 [`市场定位分析`](docs/zh/strategy/市场定位分析.md)。一句话主张：**"Dify 开源版没有的多租户/RBAC/预算/审计，Lumina 全有且带测试。"**
 
+### 30 秒看懂
+
+```bash
+export LLM_API_KEY=your-glm-or-dashscope-key
+docker compose -f docker-compose-standalone.yml up
+# 打开 http://localhost:8080，admin / admin123
+```
+
+只需 MySQL + Redis（compose 自带），无需 Nacos / RocketMQ / 独立 Gateway 进程。
+配好 Key 后一条命令到登录页，详见下方 [快速开始](#快速开始)。
+
 ### 适用场景
 
 ✅ **推荐**：需要私有化部署 + 多租户 + Java 技术栈（Spring Cloud Alibaba / MyBatis-Plus / Nacos）+ 成本归集 + 审计合规的企业场景
@@ -62,12 +73,73 @@ Lumina 是一套**企业私有化 AI Agent 中台**，基于 [AgentScope Java](h
 - **异步任务执行** - 提交即返回 taskId，后台执行，状态查询
 - **成本管理** - 模型价格表 + Token 计费 + 消费汇总仪表盘 + 趋势图表
 - **全链路可观测** - MDC 结构化日志 + Micrometer 指标 + OpenTelemetry 分布式追踪
-- **工程化** - 统一错误码、Flyway V1-V38+、网关限流、Resilience4j 熔断器/重试
+- **工程化** - 统一错误码、Flyway V1-V42+、网关限流、Resilience4j 熔断器/重试
 - **响应式编程** - Project Reactor + Context Propagation，跨线程租户上下文传递
 - **多 LLM 支持** - DashScope/OpenAI/DeepSeek/Claude/Gemini/Ollama + OpenAI 兼容预设（GLM/Kimi/豆包零代码扩展）
 - **A/B Testing** - 实验框架，按权重流量分发 + 同会话粘滞 + 效果报告
 
 </details>
+
+### 架构
+
+> 两种部署模式共享同一套业务代码：**standalone**（单体，仅 MySQL+Redis，体验/PoC）和**微服务**（Gateway+Base+Agent 三服务，生产）。所有外部集成都可通过 Webhook / OpenAI 兼容出口 / MCP 接入。
+
+```mermaid
+graph TB
+    subgraph 客户端
+        WEB[Vue 3 前端<br/>32 视图 / SSE 流式对话]
+        SDK[外部 OpenAI SDK<br/>Python / Node]
+    end
+
+    subgraph Lumina 平台
+        GW["Gateway / Standalone Filter<br/>(JWT 校验 + 身份头防伪造)"]
+
+        subgraph 业务服务
+            BASE[Base 服务<br/>用户 / 多租户 RBAC / 审计 / 预算]
+            AGENT[Agent 服务<br/>ReAct + Plan-Execute + RAG + 工作流]
+            NOTIF[通知服务<br/>站内 SSE / Webhook / 企微]
+            TRIGGER[Cron 触发器<br/>定时执行 + 分布式锁]
+        end
+    end
+
+    subgraph 数据与基础设施
+        MySQL[(MySQL 8<br/>业务 + 审计 + 预算)]
+        Redis[(Redis 7<br/>缓存 / 限流 / 黑名单)]
+        Qdrant[(Qdrant<br/>向量检索 + 租户 filter)]
+    end
+
+    subgraph 外部集成
+        LLM[LLM<br/>GLM / DashScope / OpenAI / Ollama]
+        WECOM[企业微信]
+        HOOK[外部 Webhook<br/>Jira / n8n / 自建系统]
+        MCP[MCP Server<br/>GitHub / 文件系统 / DB]
+    end
+
+    WEB --> GW
+    SDK -.->|/v1/chat/completions| GW
+    GW --> BASE
+    GW --> AGENT
+    AGENT --> NOTIF
+    TRIGGER -.->|cron 定时| AGENT
+
+    BASE --> MySQL
+    AGENT --> MySQL
+    AGENT --> Qdrant
+    BASE --> Redis
+    AGENT --> Redis
+
+    AGENT --> LLM
+    NOTIF --> WECOM
+    NOTIF --> HOOK
+    AGENT --> MCP
+
+    classDef highlight fill:#ffa726,color:#fff,stroke:#e65100,stroke-width:2px;
+    classDef primary fill:#1e3a8a,color:#fff,stroke:#0d1b4e,stroke-width:2px;
+    classDef success fill:#4caf50,color:#fff,stroke:#1b5e20,stroke-width:2px;
+    class GW highlight;
+    class AGENT primary;
+    class TRIGGER success;
+```
 
 ---
 
@@ -79,12 +151,13 @@ Lumina 是一套**企业私有化 AI Agent 中台**，基于 [AgentScope Java](h
 lumina/
 ├── lumina-common/              # 公共模块（统一响应、异常体系、工具类）
 ├── lumina-framework/           # 框架模块（配置类、全局异常处理、Web 配置）
-├── lumina-agent-core/          # Agent 核心模块（执行引擎、Flowable 工作流、配置加载、工具管理、MCP 接入、Resilience4j 熔断器）
-├── lumina-gateway/             # API 网关模块（统一入口、路由、限流）
+├── lumina-agent-core/          # Agent 核心（执行引擎、Flowable 工作流、配置加载、工具管理、MCP 接入、Resilience4j）
+├── lumina-gateway/             # API 网关（统一入口、JWT 认证、OpenAI 兼容端点路由）
+├── lumina-standalone/          # 单体模式启动器（base+agent+notification 合一，仅 MySQL+Redis）
 └── lumina-modules/             # 业务模块聚合器
-    ├── lumina-business-base/       # 基础业务模块（用户、角色、权限、租户管理）
-    ├── lumina-business-agent/      # Agent 业务模块（Agent 配置、工具绑定、MCP 监控等）
-    └── lumina-business-notification/ # 通知中心模块（站内通知、已读管理）
+    ├── lumina-business-base/       # 基础业务（用户、角色、权限、多租户、审计、预算、API Token）
+    ├── lumina-business-agent/      # Agent 业务（Agent 配置、知识库、工作流、Cron 触发器、评估、Prompt）
+    └── lumina-business-notification/ # 通知中心（站内 SSE、Webhook、企业微信）
 ```
 
 ### 前端项目
@@ -227,7 +300,7 @@ $env:LLM_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1–V38+），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1–V42+），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -637,7 +710,7 @@ npm install
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V38+ + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V42+ + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
@@ -673,6 +746,23 @@ npm install
 - ✅ 测试扩充至 600+（MCP/搜索/工具/工作流节点/Flowable BPMN/知识库全覆盖）
 - ✅ CI/CD 修复（Redis 密码 + Dockerfile 多模块构建 + CD 上下文）
 - ✅ 异常规范化（17 处 RuntimeException → BusinessException + ErrorCode）
+
+### v3.4 战略补齐：企业集成出口 + standalone
+
+- ✅ **standalone 单体模式** — base+agent+notification 合并为单 jar，仅需 MySQL+Redis，`docker compose up` 一条命令到登录页
+- ✅ **OpenAI 兼容出口** — `/v1/chat/completions` + `/v1/models`，标准 OpenAI SDK 直接调用，API Token（sk-xxx）管理
+- ✅ **向量层多租户隔离修复** — Qdrant payload filter 下推 + tenant_id 索引（之前是安全洞）
+- ✅ **MCP 生产化** — streamable-http + headers 鉴权 + 重连健康检查 + 运行时动态注册
+- ✅ **Webhook 系统** — per-user/per-category 订阅 + HMAC-SHA256 签名 + 连续失败自动禁用
+- ✅ **企业微信机器人** — markdown 着色 + 4096 字节分片 + 限频
+- ✅ 定位重写：竞品对比表 + 收窄到"企业私有化 Agent 中台"
+
+### v3.5 生产就绪：自动化 + 可观测
+
+- ✅ **Cron 触发器** — Agent 按定时执行，Redisson 分布式锁防多实例重复，misfire 策略，复用 executeTask 管线
+- ✅ **Grafana 3 个预置仪表盘** — Agent 执行 / 工具+RAG / 工作流+Trigger，provisioning 开箱即用
+- ✅ **监控叠加文件** — `docker-compose-monitoring.yml` 任意模式一键加监控
+- ✅ 230 测试通过（v3.4 的 208 + 22 个 trigger 测试）
 
 ---
 
