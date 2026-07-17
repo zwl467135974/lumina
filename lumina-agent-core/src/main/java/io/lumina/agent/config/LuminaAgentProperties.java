@@ -151,6 +151,11 @@ public class LuminaAgentProperties {
     private MemoryConfig memory = new MemoryConfig();
 
     /**
+     * 代码解释器配置
+     */
+    private CodeInterpreterConfig codeInterpreter = new CodeInterpreterConfig();
+
+    /**
      * 工具配置
      */
     private ToolConfig tool = new ToolConfig();
@@ -181,6 +186,25 @@ public class LuminaAgentProperties {
         private int maxContextMemories = 20;
         /** 事实内容最大长度（字符） */
         private int maxFactLength = 500;
+    }
+
+    /**
+     * 代码解释器配置
+     */
+    @Data
+    public static class CodeInterpreterConfig {
+        /** 是否启用代码解释器（默认 false） */
+        private boolean enabled = false;
+        /** 单次执行超时（秒） */
+        private int timeoutSeconds = 30;
+        /** 标准输出最大长度（字符） */
+        private int maxOutputLength = 10000;
+        /** Python 解释器路径 */
+        private String pythonPath = "python3";
+        /** Node.js 解释器路径 */
+        private String nodePath = "node";
+        /** 临时脚本工作目录 */
+        private String workDir = System.getProperty("java.io.tmpdir") + "/lumina-code";
     }
 
     /**

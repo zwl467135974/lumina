@@ -87,6 +87,13 @@ lumina:
         max-facts-per-turn: ${REFLECTIVE_MAX_FACTS:5} # 每次提取最大条数
         max-context-memories: ${REFLECTIVE_MAX_CONTEXT:20} # 上下文注入最大条数
         max-fact-length: ${REFLECTIVE_MAX_LENGTH:500} # 单条最大长度
+    code-interpreter:
+      enabled: ${CODE_INTERPRETER_ENABLED:false}          # 是否启用代码解释器
+      timeout-seconds: ${CODE_INTERPRETER_TIMEOUT:30}     # 单次执行超时（秒）
+      max-output-length: ${CODE_INTERPRETER_MAX_OUTPUT:10000} # 输出最大长度（字符）
+      python-path: ${CODE_INTERPRETER_PYTHON_PATH:python3} # Python 解释器路径
+      node-path: ${CODE_INTERPRETER_NODE_PATH:node}        # Node.js 解释器路径
+      work-dir: ${CODE_INTERPRETER_WORK_DIR:}              # 临时脚本工作目录（空则用系统临时目录）
     llm:
       type: ${LLM_TYPE:dashscope}
       api-key: ${LLM_API_KEY:}
