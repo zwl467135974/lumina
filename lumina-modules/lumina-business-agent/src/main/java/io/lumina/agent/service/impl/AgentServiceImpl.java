@@ -580,13 +580,21 @@ public class AgentServiceImpl implements AgentService {
      * 下载文件到临时路径（用于 OCR 处理）
      */
     private java.nio.file.Path downloadToTempFile(String uuid, String filename, String contentType) {
+        java.nio.file.Path tempFile = null;
         try (java.io.InputStream is = fileService.download(uuid)) {
             String suffix = guessFileSuffix(filename, contentType);
-            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", suffix);
+            tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", suffix);
             java.nio.file.Files.copy(is, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return tempFile;
+            java.nio.file.Path result = tempFile;
+            tempFile = null; // 成功 → 交给调用方清理
+            return result;
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.FILE_READ_FAILED, "下载文件失败: " + uuid, e);
+        } finally {
+            // 失败时清理已创建但未返回的临时文件
+            if (tempFile != null) {
+                try { java.nio.file.Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
+            }
         }
     }
 

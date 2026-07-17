@@ -12,7 +12,6 @@ import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,13 +23,15 @@ import java.util.Map;
  * <p>当 lumina.rag.enabled=true 时，自动创建 EmbeddingModel + VDBStoreBase + Knowledge。
  * 支持双 Store（InMemoryStore 开发 / QdrantStore 生产）配置切换。
  *
+ * <p>注意：{@link RagProperties} 由 {@link io.lumina.agent.config.RagPropertiesConfig}
+ * 无条件注册，本类仅负责创建 RAG 运行时 Bean。
+ *
  * @author Lumina Team
  * @since 1.2.0
  */
 @Slf4j
 @Configuration
 @ConditionalOnProperty(prefix = "lumina.rag", name = "enabled", havingValue = "true")
-@EnableConfigurationProperties(RagProperties.class)
 public class RagKnowledgeFactory {
 
     private final LuminaAgentProperties agentProperties;

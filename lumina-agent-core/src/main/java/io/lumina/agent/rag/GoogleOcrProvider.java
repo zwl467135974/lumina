@@ -46,13 +46,12 @@ public class GoogleOcrProvider extends AbstractHttpOcrProvider {
     protected HttpRequest buildRequest(byte[] imageBytes, String language) throws Exception {
         String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
-        // Google Vision API: DOCUMENT_TEXT_DETECTION
+        // Google Vision API: AnnotateImageRequest.features 必须是数组
         ObjectNode request = objectMapper.createObjectNode();
-        ObjectNode feature = request.putObject("features").putArray("features").addObject();
-        feature.put("type", "DOCUMENT_TEXT_DETECTION");
-
-        ObjectNode image = request.putObject("image");
-        image.put("content", base64Image);
+        request.putObject("image").put("content", base64Image);
+        request.putArray("features")
+                .addObject()
+                .put("type", "DOCUMENT_TEXT_DETECTION");
 
         if (language != null && !language.isBlank()) {
             ArrayNode hints = request.putObject("imageContext")

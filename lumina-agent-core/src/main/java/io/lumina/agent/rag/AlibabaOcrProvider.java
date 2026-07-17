@@ -1,31 +1,36 @@
 package io.lumina.agent.rag;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
 import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
-import java.util.Base64;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 /**
- * 阿里云 OCR（通用文字识别）
+ * 阿里云 OCR（通用文字识别 RecognizeBasic）
  *
  * <p>API 文档：https://help.aliyun.com/zh/ocr/developer-reference/api-ocr-api-2021-07-07-recognizebasic
- * <p>请求方式：POST JSON 到 ocr-api.cn-hangzhou.aliyuncs.com
- * <p>鉴权方式：阿里云 ACS 签名（此处使用简化的 Bearer Token 方式 — AppCode）
- *
- * <p>注意：阿里云正式签名需要 ACS3-HMAC-SHA256 计算。本实现使用更简单的 AppCode 方式
- * （在阿里云市场购买 OCR 服务后获得 AppCode），适合快速集成。
- * 生产环境如需精细控制，建议使用阿里云 SDK（com.aliyun:ocr_api20210707）。
+ * <p>鉴权方式：ACS3-HMAC-SHA256 签名（阿里云 OpenAPI V3 签名规范，完整实现）
+ * <p>请求方式：POST 原始图片字节到 HTTP body（官方 API 接受 body 传图，非 base64）
+ * <p>响应：RequestId + Data.content（文字块汇总文本）
  *
  * <p>配置：
  * <pre>
  * lumina.rag.reader.ocr.provider: alibaba
- * lumina.rag.reader.ocr.api-key: 阿里云AppCode
+ * lumina.rag.reader.ocr.api-key: 阿里云 AccessKeyId
+ * lumina.rag.reader.ocr.secret-key: 阿里云 AccessKeySecret
  * </pre>
  *
  * @author Lumina Team
@@ -36,35 +41,68 @@ import java.util.Base64;
 @ConditionalOnProperty(prefix = "lumina.rag.reader.ocr", name = "provider", havingValue = "alibaba")
 public class AlibabaOcrProvider extends AbstractHttpOcrProvider {
 
-    /**
-     * 阿里云市场 OCR 接口（通用文字识别 - AppCode 模式）
-     */
-    private static final String ENDPOINT =
-            "https://ocrapi-recognizedata.taobao.com/ocrservice/ocr";
+    private static final String HOST = "ocr-api.cn-hangzhou.aliyuncs.com";
+    private static final String SERVICE = "ocr-api";
+    private static final String VERSION = "2021-07-07";
+    private static final String ACTION = "RecognizeBasic";
 
     public AlibabaOcrProvider(
             @Value("${lumina.rag.reader.ocr.api-key:}") String apiKey,
             @Value("${lumina.rag.reader.ocr.secret-key:}") String secretKey) {
         super(apiKey, secretKey);
-        log.info("阿里云 OCR 初始化（AppCode 模式）");
+        log.info("阿里云 OCR 初始化（ACS3-HMAC-SHA256 签名, RecognizeBasic）");
     }
 
     @Override
     protected HttpRequest buildRequest(byte[] imageBytes, String language) throws Exception {
-        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+        // ACS3 签名需要 payload 的 SHA-256
+        String hashedPayload = sha256Hex(imageBytes);
+        String nonce = UUID.randomUUID().toString();
 
-        ObjectNode body = objectMapper.createObjectNode();
-        body.put("img", base64Image);
-        body.put("prob", false);
-        if ("chi_sim".equals(language)) {
-            body.put("languageType", "CHN_ENG");
-        }
+        ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+        String timestamp = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
+        String date = now.format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        // 1. CanonicalRequest
+        String canonicalRequest = String.join("\n",
+                "POST",
+                "/",
+                "",
+                "host:" + HOST + "\n" +
+                        "x-acs-action:" + ACTION + "\n" +
+                        "x-acs-content-sha256:" + hashedPayload + "\n" +
+                        "x-acs-date:" + timestamp + "\n" +
+                        "x-acs-signature-nonce:" + nonce + "\n" +
+                        "x-acs-version:" + VERSION,
+                "",
+                "host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version",
+                hashedPayload);
+
+        // 2. StringToSign
+        String credentialScope = date + "/" + SERVICE;
+        String hashedCanonicalRequest = sha256Hex(canonicalRequest.getBytes(StandardCharsets.UTF_8));
+        String stringToSign = "ACS3-HMAC-SHA256\n" + hashedCanonicalRequest;
+
+        // 3. 签名
+        String signature = bytesToHex(hmacSha256(
+                secretKey.getBytes(StandardCharsets.UTF_8), stringToSign));
+
+        // 4. Authorization
+        String authorization = "ACS3-HMAC-SHA256 Credential=" + apiKey + "/" + credentialScope +
+                ",SignedHeaders=host;x-acs-action;x-acs-content-sha256;x-acs-date;x-acs-signature-nonce;x-acs-version" +
+                ",Signature=" + signature;
 
         return HttpRequest.newBuilder()
-                .uri(URI.create(ENDPOINT))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "APPCODE " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
+                .uri(URI.create("https://" + HOST))
+                .header("Content-Type", "application/octet-stream")
+                .header("Host", HOST)
+                .header("x-acs-action", ACTION)
+                .header("x-acs-version", VERSION)
+                .header("x-acs-date", timestamp)
+                .header("x-acs-signature-nonce", nonce)
+                .header("x-acs-content-sha256", hashedPayload)
+                .header("Authorization", authorization)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(imageBytes))
                 .timeout(Duration.ofSeconds(30))
                 .build();
     }
@@ -74,30 +112,53 @@ public class AlibabaOcrProvider extends AbstractHttpOcrProvider {
         var root = objectMapper.readTree(responseBody);
 
         // 检查错误
-        var code = root.path("code");
-        if (!code.isMissingNode() && code.asInt() != 200) {
-            log.error("阿里云 OCR 返回错误: code={}, msg={}",
-                    code.asText(), root.path("msg").asText());
+        String code = root.path("Code").asText("");
+        if (!code.isBlank() && !code.equals("0") && !code.equals("null")) {
+            log.error("阿里云 OCR 返回错误: Code={}, Message={}",
+                    code, root.path("Message").asText(""));
             return "";
         }
 
-        // content 字段包含识别结果
-        var content = root.path("content");
-        if (!content.isMissingNode()) {
-            return content.asText("");
-        }
-
-        // 备用：words 数组
-        var words = root.path("words");
-        if (words.isArray()) {
-            StringBuilder sb = new StringBuilder();
-            for (var w : words) {
-                sb.append(w.asText("")).append("\n");
+        // Data.content 是识别出的文字块汇总
+        var data = root.path("Data");
+        if (!data.isMissingNode()) {
+            String content = data.path("content").asText("");
+            if (!content.isBlank()) {
+                return content;
             }
-            return sb.toString();
+            // 备用：Data.prism_wordsInfo[].word
+            var wordsInfo = data.path("prism_wordsInfo");
+            if (wordsInfo.isArray()) {
+                StringBuilder sb = new StringBuilder();
+                for (JsonNode w : wordsInfo) {
+                    sb.append(w.path("word").asText("")).append("\n");
+                }
+                return sb.toString();
+            }
         }
 
         return "";
+    }
+
+    // ==================== HMAC/SHA256 工具 ====================
+
+    private static String sha256Hex(byte[] data) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        return bytesToHex(md.digest(data));
+    }
+
+    private static byte[] hmacSha256(byte[] key, String data) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(key, "HmacSHA256"));
+        return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 
     @Override

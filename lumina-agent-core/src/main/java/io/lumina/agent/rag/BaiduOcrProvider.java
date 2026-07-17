@@ -66,6 +66,15 @@ public class BaiduOcrProvider extends AbstractHttpOcrProvider {
     @Override
     protected String extractText(String responseBody) throws Exception {
         var root = objectMapper.readTree(responseBody);
+
+        // 检查百度 API 错误（error_code 存在表示失败）
+        String errorCode = root.path("error_code").asText("");
+        if (!errorCode.isBlank() && !errorCode.equals("0")) {
+            log.error("百度 OCR 返回错误: error_code={}, error_msg={}",
+                    errorCode, root.path("error_msg").asText(""));
+            return "";
+        }
+
         var wordsResult = root.path("words_result");
         if (wordsResult.isMissingNode() || !wordsResult.isArray()) {
             return "";
@@ -79,16 +88,23 @@ public class BaiduOcrProvider extends AbstractHttpOcrProvider {
 
     /**
      * 获取百度 access_token（带缓存，有效期默认 30 天）
+     *
+     * <p>检查 HTTP 状态码和百度 error 字段，拒绝缓存空/无效 token。
+     * 使用 synchronized 避免并发重复请求 token。
      */
-    private String getAccessToken() throws Exception {
+    private synchronized String getAccessToken() throws Exception {
         long now = System.currentTimeMillis();
-        if (cachedAccessToken != null && now < tokenExpireAt) {
+        if (cachedAccessToken != null && !cachedAccessToken.isBlank() && now < tokenExpireAt) {
             return cachedAccessToken;
         }
 
+        if (apiKey == null || apiKey.isBlank() || secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("百度 OCR 需要 api-key 和 secret-key 配置");
+        }
+
         String body = "grant_type=client_credentials"
-                + "&client_id=" + apiKey
-                + "&client_secret=" + secretKey;
+                + "&client_id=" + java.net.URLEncoder.encode(apiKey, "UTF-8")
+                + "&client_secret=" + java.net.URLEncoder.encode(secretKey, "UTF-8");
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(TOKEN_URL))
@@ -98,10 +114,33 @@ public class BaiduOcrProvider extends AbstractHttpOcrProvider {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            log.error("百度 OCR access_token 请求失败: status={}", response.statusCode());
+            throw new IllegalStateException("百度 OCR access_token 获取失败: HTTP " + response.statusCode());
+        }
+
         var root = objectMapper.readTree(response.body());
-        cachedAccessToken = root.path("access_token").asText("");
+
+        // 检查百度返回的 error 字段
+        String errorCode = root.path("error").asText("");
+        if (!errorCode.isBlank()) {
+            String errorDesc = root.path("error_description").asText("");
+            log.error("百度 OCR access_token 返回错误: error={}, desc={}", errorCode, errorDesc);
+            throw new IllegalStateException("百度 OCR access_token 获取失败: " + errorCode + " " + errorDesc);
+        }
+
+        String token = root.path("access_token").asText("");
+        if (token.isBlank()) {
+            throw new IllegalStateException("百度 OCR access_token 为空");
+        }
+
         long expiresIn = root.path("expires_in").asLong(2592000L);
-        tokenExpireAt = now + (expiresIn - 60) * 1000; // 提前 60 秒过期
+        if (expiresIn <= 60) {
+            expiresIn = 2592000L;
+        }
+        cachedAccessToken = token;
+        tokenExpireAt = now + (expiresIn - 60) * 1000;
 
         log.info("百度 OCR access_token 已刷新, 有效期={}s", expiresIn);
         return cachedAccessToken;

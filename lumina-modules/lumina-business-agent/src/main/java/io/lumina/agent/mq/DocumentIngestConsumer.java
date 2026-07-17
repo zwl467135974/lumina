@@ -233,17 +233,19 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
      * 将 OCR 识别出的文本转为 Document 列表（复用 TextReader 分块逻辑）
      */
     private List<Document> ocrTextToDocuments(String text, int chunkSize, int overlap) {
+        java.nio.file.Path tempFile = null;
         try {
-            // 写入临时文件让 TextReader 处理分块
-            java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
+            tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
             java.nio.file.Files.writeString(tempFile, text);
             ReaderInput input = ReaderInput.fromPath(tempFile);
-            List<Document> docs = new TextReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
-            java.nio.file.Files.deleteIfExists(tempFile);
-            return docs;
+            return new TextReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
         } catch (Exception e) {
             log.warn("OCR 文本转 Document 失败: {}", e.getMessage());
             return List.of();
+        } finally {
+            if (tempFile != null) {
+                try { java.nio.file.Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
+            }
         }
     }
 

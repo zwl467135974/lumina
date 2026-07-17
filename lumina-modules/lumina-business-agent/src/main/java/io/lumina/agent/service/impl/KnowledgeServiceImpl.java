@@ -136,8 +136,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
      */
     private String uploadSync(MultipartFile file, Long agentId, Long kbId, String filename,
                               String format, String uuid, Long tenantId) {
+        Path tempFile = null;
         try {
-            Path tempFile = Files.createTempFile("lumina_rag_", "_" + filename);
+            tempFile = Files.createTempFile("lumina_rag_", "_" + filename);
             file.transferTo(tempFile.toFile());
 
             List<Document> docs;
@@ -156,23 +157,27 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                     docs = new TextReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
             }
 
-            Files.deleteIfExists(tempFile);
-
             // 扫描件检测：PDF 解析后无任何文本内容（扫描件/图片型 PDF 无可提取文本层）
             if ((docs == null || docs.isEmpty()) && "pdf".equalsIgnoreCase(format)) {
                 log.warn("PDF 文档无可提取文本（疑似扫描件），尝试 OCR: uuid={}, file={}", uuid, filename);
 
-                // 尝试 OCR 识别
+                // 尝试 OCR 识别（tempFile 此时仍存在）
                 if (pdfOcrProcessor != null) {
                     String ocrText = pdfOcrProcessor.processPdf(tempFile);
                     if (!ocrText.isBlank()) {
                         // OCR 成功，将文本写入临时文件走 TextReader 分块
-                        java.nio.file.Path ocrTempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
-                        java.nio.file.Files.writeString(ocrTempFile, ocrText);
-                        docs = new TextReader(chunkSize, getSplitStrategy(), overlap)
-                                .read(ReaderInput.fromPath(ocrTempFile)).block();
-                        java.nio.file.Files.deleteIfExists(ocrTempFile);
-                        log.info("OCR 识别成功: file={}, textLen={}", filename, ocrText.length());
+                        java.nio.file.Path ocrTempFile = null;
+                        try {
+                            ocrTempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
+                            java.nio.file.Files.writeString(ocrTempFile, ocrText);
+                            docs = new TextReader(chunkSize, getSplitStrategy(), overlap)
+                                    .read(ReaderInput.fromPath(ocrTempFile)).block();
+                            log.info("OCR 识别成功: file={}, textLen={}", filename, ocrText.length());
+                        } finally {
+                            if (ocrTempFile != null) {
+                                try { java.nio.file.Files.deleteIfExists(ocrTempFile); } catch (Exception ignored) {}
+                            }
+                        }
                     }
                 }
 
@@ -221,6 +226,11 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         } catch (Exception e) {
             log.error("文档入库失败: {}", filename, e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文档处理失败: " + e.getMessage(), e);
+        } finally {
+            // 确保临时文件在任何路径下都被清理
+            if (tempFile != null) {
+                try { Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
+            }
         }
     }
 

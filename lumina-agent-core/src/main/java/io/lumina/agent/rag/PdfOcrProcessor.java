@@ -73,33 +73,39 @@ public class PdfOcrProcessor {
             }
 
             StringBuilder fullText = new StringBuilder();
+            int failedPages = 0;
 
             for (int i = 0; i < pagesToProcess; i++) {
                 log.debug("OCR 处理第 {}/{} 页", i + 1, pagesToProcess);
 
                 // 渲染页面为图片
                 BufferedImage image = renderer.renderImageWithDPI(i, dpi, ImageType.RGB);
+                try {
+                    // 转为 PNG 字节
+                    byte[] imageBytes;
+                    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                        boolean written = ImageIO.write(image, "png", baos);
+                        if (!written) {
+                            log.warn("PNG 编码失败，跳过第 {} 页", i + 1);
+                            failedPages++;
+                            continue;
+                        }
+                        imageBytes = baos.toByteArray();
+                    }
 
-                // 转为 PNG 字节
-                byte[] imageBytes;
-                try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                    ImageIO.write(image, "png", baos);
-                    imageBytes = baos.toByteArray();
+                    // 调用 OCR 识别
+                    String pageText = ocrProvider.recognize(imageBytes, language);
+                    if (pageText != null && !pageText.isBlank()) {
+                        fullText.append(pageText.trim()).append("\n\n");
+                    }
+                } finally {
+                    image.flush();
                 }
-
-                // 调用 OCR 识别
-                String pageText = ocrProvider.recognize(imageBytes, language);
-                if (pageText != null && !pageText.isBlank()) {
-                    fullText.append(pageText.trim()).append("\n\n");
-                }
-
-                // 释放图片内存
-                image.flush();
             }
 
             String result = fullText.toString().trim();
-            log.info("PDF OCR 完成: pages={}/{}, textLength={}",
-                    pagesToProcess, pageCount, result.length());
+            log.info("PDF OCR 完成: pages={}/{}, failed={}, textLength={}",
+                    pagesToProcess, pageCount, failedPages, result.length());
             return result;
 
         } catch (Exception e) {
