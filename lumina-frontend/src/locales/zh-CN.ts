@@ -369,6 +369,18 @@ export default {
     alert: '告警',
     deleteConfirm: '确认删除该预算规则？'
   },
+  memory: {
+    title: '长期记忆',
+    description: 'Reflective Memory 从对话中提取的关键事实和偏好',
+    content: '记忆内容',
+    type: '类型',
+    importance: '重要度',
+    source: '来源会话',
+    empty: '暂无长期记忆',
+    clearAll: '清空全部',
+    clearConfirm: '确认清空所有长期记忆？此操作不可恢复',
+    cleared: '已清空全部长期记忆'
+  },
   abTest: {
     title: 'A/B 测试',
     description: '创建实验，按权重分配流量到不同模型/Prompt 配置，对比效果',
@@ -574,6 +586,8 @@ export default {
       testFailed: '连接失败',
       create: '新建模型配置',
       edit: '编辑模型配置',
+      priority: '优先级',
+      priorityHint: '越小优先级越高（用于 Provider Failover 排序）',
       deleteConfirm: '确认删除模型配置「{name}」？'
     },
     menu: {

@@ -69,6 +69,34 @@ describe('notification store', () => {
 
       expect(store.recentList).toEqual([])
     })
+
+    it('passes pagination params to API', async () => {
+      ;(listNotifications as any).mockResolvedValue({ data: { list: [], total: 0 } })
+      const store = useNotificationStore()
+
+      await store.fetchList({ pageNum: 2, pageSize: 50, category: 'TASK', isRead: 0 })
+
+      expect(listNotifications).toHaveBeenCalledWith({ pageNum: 2, pageSize: 50, category: 'TASK', isRead: 0 })
+    })
+
+    it('uses default pagination when no params', async () => {
+      ;(listNotifications as any).mockResolvedValue({ data: { list: [], total: 0 } })
+      const store = useNotificationStore()
+
+      await store.fetchList()
+
+      expect(listNotifications).toHaveBeenCalledWith({ pageNum: 1, pageSize: 20 })
+    })
+
+    it('filters by isRead status', async () => {
+      ;(listNotifications as any).mockResolvedValue({ data: { list: [], total: 0 } })
+      const store = useNotificationStore()
+
+      await store.fetchList({ isRead: 0 })
+
+      const callArgs = (listNotifications as any).mock.calls[0][0]
+      expect(callArgs.isRead).toBe(0)
+    })
   })
 
   describe('readOne', () => {

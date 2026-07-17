@@ -38,6 +38,13 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="priority" :label="t('system.model.priority')" width="90" sortable>
+        <template #default="{ row }">
+          <el-tag :type="row.priority <= 10 ? 'danger' : row.priority <= 50 ? 'warning' : 'info'" size="small">
+            {{ row.priority ?? 100 }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column :label="t('common.actions')" width="180" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" v-permission="'model:test'" @click="handleTest(row)" :loading="row._testing">
@@ -97,6 +104,10 @@
         </el-form-item>
         <el-form-item :label="t('common.status')" prop="status">
           <el-switch v-model="formData.status" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+        <el-form-item :label="t('system.model.priority')" prop="priority">
+          <el-input-number v-model="formData.priority" :min="1" :max="999" />
+          <span class="form-tip">{{ t('system.model.priorityHint') }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -171,7 +182,7 @@ const editingId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
 const saving = ref(false)
 const formData = reactive<CreateLlmProviderDTO>({
-  name: '', provider: '', baseUrl: '', apiKey: '', defaultModel: '', defaultParams: '', status: 1
+  name: '', provider: '', baseUrl: '', apiKey: '', defaultModel: '', defaultParams: '', status: 1, priority: 100
 })
 
 const formRules: FormRules = {
@@ -183,7 +194,7 @@ const handleCreate = () => {
   dialogTitle.value = t('system.model.create')
   isEdit.value = false
   editingId.value = null
-  Object.assign(formData, { name: '', provider: '', baseUrl: '', apiKey: '', defaultModel: '', defaultParams: '', status: 1 })
+  Object.assign(formData, { name: '', provider: '', baseUrl: '', apiKey: '', defaultModel: '', defaultParams: '', status: 1, priority: 100 })
   dialogVisible.value = true
 }
 
@@ -194,7 +205,7 @@ const handleEdit = (row: LlmProviderVO) => {
   Object.assign(formData, {
     name: row.name, provider: row.provider, baseUrl: row.baseUrl || '',
     apiKey: '', defaultModel: row.defaultModel || '', defaultParams: row.defaultParams || '',
-    status: row.status
+    status: row.status, priority: row.priority ?? 100
   })
   dialogVisible.value = true
 }

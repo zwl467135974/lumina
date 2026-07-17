@@ -369,6 +369,18 @@ export default {
     alert: 'Alert',
     deleteConfirm: 'Delete this budget rule?'
   },
+  memory: {
+    title: 'Long-Term Memory',
+    description: 'Key facts and preferences extracted from conversations',
+    content: 'Content',
+    type: 'Type',
+    importance: 'Importance',
+    source: 'Source',
+    empty: 'No long-term memories yet',
+    clearAll: 'Clear All',
+    clearConfirm: 'Clear all long-term memories? This cannot be undone.',
+    cleared: 'All memories cleared'
+  },
   abTest: {
     title: 'A/B Testing',
     description: 'Create experiments to split traffic across model/prompt variants and compare performance',
@@ -574,6 +586,8 @@ export default {
       testFailed: 'Connection failed',
       create: 'New Provider',
       edit: 'Edit Provider',
+      priority: 'Priority',
+      priorityHint: 'Lower = higher priority (for Provider Failover ordering)',
       deleteConfirm: 'Delete provider "{name}"?'
     },
     menu: {

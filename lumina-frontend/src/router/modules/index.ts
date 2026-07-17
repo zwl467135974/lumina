@@ -404,6 +404,20 @@ export const abTestRoutes: AppRouteRecordRaw[] = [
   }
 ]
 
+// 长期记忆路由
+export const memoryRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/memory',
+    name: 'LongTermMemory',
+    component: () => import('@/views/memory/index.vue'),
+    meta: {
+      title: '长期记忆',
+      icon: 'Coin',
+      requiresAuth: true
+    }
+  }
+]
+
 // 通知中心路由
 export const notificationRoutes: AppRouteRecordRaw[] = [
   {

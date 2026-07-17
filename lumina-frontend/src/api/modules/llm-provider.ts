@@ -14,6 +14,7 @@ export interface LlmProviderVO {
   defaultModel: string
   defaultParams: string
   status: number
+  priority: number
   createTime: string
   updateTime: string
   _testing?: boolean
@@ -27,6 +28,7 @@ export interface CreateLlmProviderDTO {
   defaultModel?: string
   defaultParams?: string
   status?: number
+  priority?: number
 }
 
 export interface QueryLlmProviderDTO {
