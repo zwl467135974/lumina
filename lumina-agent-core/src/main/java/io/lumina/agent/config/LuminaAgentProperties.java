@@ -235,6 +235,23 @@ public class LuminaAgentProperties {
          * 是否禁止网络访问
          */
         private boolean networkDisabled = true;
+
+        /** 运行时依赖安装（pip install / npm install），执行前先安装 */
+        private boolean autoInstallDeps = false;
+
+        /** 容器池大小（常驻容器复用，0=不启用容器池每次新建） */
+        private int poolSize = 2;
+
+        /** 容器空闲超时（分钟，超过自动销毁） */
+        private int poolIdleTimeoutMinutes = 10;
+
+        /**
+         * 流式输出（预留字段，默认 false）
+         *
+         * <p>后续实现方向：在 Agent 执行层面通过 StreamChunk/SSE 推送分段输出，
+         * 工具本身仍一次性返回完整结果。
+         */
+        private boolean streamOutput = false;
     }
 
     /**

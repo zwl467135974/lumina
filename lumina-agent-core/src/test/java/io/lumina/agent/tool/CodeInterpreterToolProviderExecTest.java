@@ -38,6 +38,11 @@ class CodeInterpreterToolProviderExecTest {
         ReflectionTestUtils.setField(provider, "memoryLimitMb", 256);
         ReflectionTestUtils.setField(provider, "cpuLimit", 1.0);
         ReflectionTestUtils.setField(provider, "networkDisabled", true);
+        // 增强功能字段（测试时全部关闭，保持原有行为）
+        ReflectionTestUtils.setField(provider, "autoInstallDeps", false);
+        ReflectionTestUtils.setField(provider, "poolSize", 0);
+        ReflectionTestUtils.setField(provider, "poolIdleTimeoutMinutes", 10);
+        ReflectionTestUtils.setField(provider, "streamOutput", false);
     }
 
     @Test

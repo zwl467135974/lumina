@@ -100,6 +100,10 @@ lumina:
       memory-limit-mb: ${CODE_INTERPRETER_MEMORY:256}     # Docker 内存限制（MB）
       cpu-limit: ${CODE_INTERPRETER_CPU:1.0}              # Docker CPU 核心数限制
       network-disabled: ${CODE_INTERPRETER_NO_NETWORK:true} # Docker 是否禁止网络访问
+      auto-install-deps: ${CODE_INTERPRETER_AUTO_INSTALL:false} # 运行时依赖安装（pip/npm，需要联网）
+      pool-size: ${CODE_INTERPRETER_POOL_SIZE:2}          # 容器池大小（0=不启用容器池每次新建）
+      pool-idle-timeout-minutes: ${CODE_INTERPRETER_POOL_IDLE_TIMEOUT:10} # 容器空闲超时（分钟）
+      stream-output: ${CODE_INTERPRETER_STREAM_OUTPUT:false} # 流式输出（预留，暂未实现）
     llm:
       type: ${LLM_TYPE:dashscope}
       api-key: ${LLM_API_KEY:}
