@@ -45,7 +45,8 @@ export default {
     view: '查看',
     more: '更多',
     copy: '复制',
-    copySuccess: '复制成功'
+    copySuccess: '复制成功',
+    deleteConfirm: '确认删除该项吗？此操作不可撤销。'
   },
   menu: {
     dashboard: '仪表盘',
@@ -139,7 +140,10 @@ export default {
     submit: '登录',
     loading: '登录中…',
     success: '登录成功',
-    footerHint: 'Lumina AI Agent 平台 — 智能代理管理'
+    footerHint: 'Lumina AI Agent 平台 — 智能代理管理',
+    usernameRequired: '请输入用户名',
+    passwordRequired: '请输入密码',
+    error: '登录失败，请重试'
   },
   dashboard: {
     title: '仪表盘',
@@ -261,6 +265,7 @@ export default {
   task: {
     title: '异步任务',
     description: '所有 Agent 异步执行任务的列表与状态',
+    taskUuid: '任务 UUID',
     status: '状态',
     agentId: 'Agent',
     input: '输入',
@@ -273,6 +278,7 @@ export default {
     completed: '已完成',
     failed: '失败',
     cancelled: '已取消',
+    pending: '等待中',
     cancel: '取消',
     cancelConfirm: '确认取消该任务？',
     autoRefresh: '自动刷新',
@@ -605,6 +611,8 @@ export default {
     },
     role: {
       title: '角色管理',
+      create: '创建角色',
+      edit: '编辑角色',
       role: '角色',
       roleCode: '角色编码',
       roleCodePlaceholder: '请输入角色编码',

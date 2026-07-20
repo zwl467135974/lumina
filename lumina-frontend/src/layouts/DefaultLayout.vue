@@ -1,7 +1,7 @@
 <template>
   <div class="lumina-layout">
     <!-- Sidebar -->
-    <AppSidebar :menu-routes="menuRoutes" />
+    <AppSidebar />
 
     <!-- Main Container -->
     <div class="main-container">
@@ -25,15 +25,8 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
 import AppHeader from './components/AppHeader.vue'
-import type { RouteRecordRaw } from 'vue-router'
 
 const route = useRoute()
-
-withDefaults(defineProps<{
-  menuRoutes: RouteRecordRaw[]
-}>(), {
-  menuRoutes: () => []
-})
 
 const breadcrumbs = computed(() => {
   const matched = route.matched.filter(r => r.meta?.title)

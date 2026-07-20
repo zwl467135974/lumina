@@ -45,7 +45,8 @@ export default {
     view: 'View',
     more: 'More',
     copy: 'Copy',
-    copySuccess: 'Copied'
+    copySuccess: 'Copied',
+    deleteConfirm: 'Are you sure you want to delete this item? This action cannot be undone.'
   },
   menu: {
     dashboard: 'Dashboard',
@@ -139,7 +140,10 @@ export default {
     submit: 'Login',
     loading: 'Logging in…',
     success: 'Login successful',
-    footerHint: 'Lumina AI Agent Platform — Intelligent Agent Management'
+    footerHint: 'Lumina AI Agent Platform — Intelligent Agent Management',
+    usernameRequired: 'Please enter username',
+    passwordRequired: 'Please enter password',
+    error: 'Login failed, please try again'
   },
   dashboard: {
     title: 'Dashboard',
@@ -261,6 +265,7 @@ export default {
   task: {
     title: 'Async Tasks',
     description: 'All Agent async execution tasks and status',
+    taskUuid: 'Task UUID',
     status: 'Status',
     agentId: 'Agent',
     input: 'Input',
@@ -273,6 +278,7 @@ export default {
     completed: 'Completed',
     failed: 'Failed',
     cancelled: 'Cancelled',
+    pending: 'Pending',
     cancel: 'Cancel',
     cancelConfirm: 'Cancel this task?',
     autoRefresh: 'Auto Refresh',
@@ -605,6 +611,8 @@ export default {
     },
     role: {
       title: 'Role Management',
+      create: 'Create Role',
+      edit: 'Edit Role',
       role: 'Role',
       roleCode: 'Role Code',
       roleCodePlaceholder: 'Please enter role code',
