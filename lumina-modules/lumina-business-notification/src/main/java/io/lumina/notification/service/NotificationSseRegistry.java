@@ -78,17 +78,23 @@ public class NotificationSseRegistry {
     /**
      * 订阅指定用户的通知事件流
      *
-     * <p>若该用户已有 sink 则复用，否则新建（unicast 策略，不补放历史）。
+     * <p>每次订阅都建一个新的 unicast sink——同一用户多次连接（如刷新页面）时，
+     * 旧 sink 被替换，避免 {@code Sinks.many().unicast() sinks only allow a single Subscriber} 错误。
+     * 旧连接的 Flux 会自然终止（sink 不再被引用），客户端会重连拿到新 sink。
      *
      * @param userId 用户 ID
      * @return 通知事件流
      */
     public Flux<NotificationVO> subscribe(Long userId) {
-        Sinks.Many<NotificationVO> sink = sinks.computeIfAbsent(userId, k -> {
-            Sinks.Many<NotificationVO> s = Sinks.many().unicast().onBackpressureBuffer();
+        Sinks.Many<NotificationVO> sink = Sinks.many().unicast().onBackpressureBuffer();
+        Sinks.Many<NotificationVO> old = sinks.put(userId, sink);
+        if (old != null) {
+            log.debug("用户 SSE 流替换（新连接顶替旧连接）: userId={}", userId);
+            // 尝试 complete 旧 sink，让旧 Flux 优雅终止
+            try { old.tryEmitComplete(); } catch (Throwable ignored) {}
+        } else {
             log.debug("用户 SSE 流创建: userId={}", userId);
-            return s;
-        });
+        }
         return sink.asFlux();
     }
 

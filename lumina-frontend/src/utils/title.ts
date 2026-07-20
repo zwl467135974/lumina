@@ -34,7 +34,13 @@ const titleKeyMap: Record<string, string> = {
   '在线用户': 'menu.online',
   '审计日志': 'menu.audit',
   '监控中心': 'menu.monitorCenter',
-  '工具监控': 'menu.monitor'
+  '工具监控': 'menu.monitor',
+  '通知中心': 'menu.notification',
+  'A/B 测试': 'menu.abTest',
+  '长期记忆': 'menu.memory',
+  '定时触发器': 'menu.trigger',
+  'Webhook 订阅': 'menu.webhook',
+  'API Token': 'menu.apiToken'
 }
 
 export function localizeTitle(title: string | undefined, t: (key: string) => string): string {

@@ -89,3 +89,6 @@ temp/
 data/knowledge/
 logs_80459789065/
 logs_*/
+.playwright-mcp/
+.env.standalone
+*.png

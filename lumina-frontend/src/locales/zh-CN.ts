@@ -71,7 +71,13 @@ export default {
     dict: '字典管理',
     online: '在线用户',
     monitorCenter: '监控中心',
-    monitor: '工具监控'
+    monitor: '工具监控',
+    notification: '通知中心',
+    abTest: 'A/B 测试',
+    memory: '长期记忆',
+    trigger: '定时触发器',
+    webhook: 'Webhook 订阅',
+    apiToken: 'API Token'
   },
   header: {
     darkMode: '暗色主题',

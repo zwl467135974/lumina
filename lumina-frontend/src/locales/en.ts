@@ -71,7 +71,13 @@ export default {
     dict: 'Dictionaries',
     online: 'Online Users',
     monitorCenter: 'Monitoring',
-    monitor: 'Tool Monitor'
+    monitor: 'Tool Monitor',
+    notification: 'Notifications',
+    abTest: 'A/B Testing',
+    memory: 'Memory',
+    trigger: 'Triggers',
+    webhook: 'Webhooks',
+    apiToken: 'API Tokens'
   },
   header: {
     darkMode: 'Dark Mode',

@@ -3,6 +3,7 @@
  */
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import request from '../request'
+import { getToken } from '@/utils/auth'
 import type { R, PageResult } from '@/types/api'
 
 /** 通知 VO */
@@ -59,7 +60,7 @@ export function streamNotifications(
   }
 ): AbortController {
   const controller = new AbortController()
-  const token = localStorage.getItem('lumina-token') || ''
+  const token = getToken() || ''
 
   fetchEventSource(`${BASE_URL}/stream`, {
     method: 'GET',
