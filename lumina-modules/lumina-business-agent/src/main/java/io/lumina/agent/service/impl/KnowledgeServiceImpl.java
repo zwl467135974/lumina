@@ -440,8 +440,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
      * doSearch 再用 filter.must[].tenant_id 做下推过滤。不调用本方法会导致向量层无法区分租户，
      * 与关键词路（已用 MySQL WHERE tenant_id 过滤）形成隔离断层。
      *
-     * <p>{@link DocumentMetadata#getPayload()} 返回的是内部 HashMap 引用（非拷贝），
-     * 直接 put 即可生效。
+     * <p><b>实现说明</b>：{@link DocumentMetadata#getPayload()} 返回的是
+     * {@code Collections.unmodifiableMap} 包装的视图（直接 put 会抛 UnsupportedOperationException），
+     * 且 {@code DocumentMetadata.payload} 字段是 final——只能通过反射替换内部 Map。
+     * 这是 AgentScope SDK 1.0.7 的设计限制，升级 SDK 时需重新评估。
      */
     private void stampTenantAndKb(List<Document> docs, Long tenantId, Long kbId) {
         if (docs == null || docs.isEmpty()) {
@@ -452,14 +454,19 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             if (d.getMetadata() == null) {
                 continue;
             }
-            Map<String, Object> payload = d.getMetadata().getPayload();
-            if (payload == null) {
-                // 极少走到这里：DocumentMetadata 构造时会 new HashMap
-                payload = new java.util.HashMap<>();
-            }
-            payload.put("tenant_id", effectiveTenantId);
+            // 原有 payload 是 unmodifiableMap，复制到可变 Map 再加 tenant/kb，反射替换回 metadata
+            Map<String, Object> mutable = new java.util.HashMap<>(d.getMetadata().getPayload());
+            mutable.put("tenant_id", effectiveTenantId);
             if (kbId != null) {
-                payload.put("kb_id", kbId);
+                mutable.put("kb_id", kbId);
+            }
+            try {
+                java.lang.reflect.Field f = d.getMetadata().getClass().getDeclaredField("payload");
+                f.setAccessible(true);
+                f.set(d.getMetadata(), mutable);
+            } catch (Exception e) {
+                // 反射失败不中断——QdrantRestStore.doAdd 会 fallback 到 BaseContext.getTenantId()
+                log.warn("反射替换 DocumentMetadata.payload 失败（向量层将 fallback 到 BaseContext）: {}", e.getMessage());
             }
         }
     }

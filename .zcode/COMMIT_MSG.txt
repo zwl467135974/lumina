@@ -1,0 +1,35 @@
+fix(rag): stampTenantAndKb 用反射绕过 DocumentMetadata unmodifiable 限制
+
+端到端验证发现的 P0 bug：上传文档到知识库时 500 错误。
+
+根因：AgentScope SDK 1.0.7 的 DocumentMetadata 构造时用
+Collections.unmodifiableMap 包装了 payload 字段（之前基于"返回 HashMap
+引用"的假设是错的），且 payload 是 final 字段。
+stampTenantAndKb 直接 payload.put() 抛 UnsupportedOperationException。
+
+修复：复制原 payload 到可变 HashMap，加 tenant_id/kb_id 后用反射替换
+metadata 内部的 payload 字段。反射失败时只 warn 不中断——
+QdrantRestStore.doAdd 会 fallback 到 BaseContext.getTenantId()。
+
+同样修复 DocumentIngestConsumer 的 stampTenantAndKb（MQ 异步链路）。
+
+## 同时完成的小项
+
+- AgentTaskVO 补 triggerId 字段（端到端发现 task 列表 VO 缺该字段，
+  BeanUtils.copyProperties 现在自动 pick up DO 的 triggerId）
+- 远期规划.md 更新：Code Interpreter J 标错"完全未实现"→ 改为已完成；
+  Reflective Memory 复杂版改冻结；GraphRAG/multi-agent 改冻结；
+  补 v3.4/v3.5 已完成项
+- 市场定位分析.md 更新后续路线：划掉已完成的 Grafana/Cron，
+  标记冻结项，明确"技术层已生产就绪"
+
+## 端到端验证（I + J）
+
+I. RAG：上传文档 → embedding → Qdrant 入库 → knowledge/search 检索
+   返回结果含 tenant_id（验证 stamp 反射修复有效）
+J. Workflow：创建单 agent 节点 workflow → 发布 → 执行 →
+   status=COMPLETED，output 含 GLM 真实回复
+
+## 验证
+- mvn compile 通过
+- DocumentIngestConsumerTest 4/4 通过

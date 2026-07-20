@@ -298,13 +298,19 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
             if (d.getMetadata() == null) {
                 continue;
             }
-            Map<String, Object> payload = d.getMetadata().getPayload();
-            if (payload == null) {
-                payload = new java.util.HashMap<>();
-            }
-            payload.put("tenant_id", effectiveTenantId);
+            // 原有 payload 是 unmodifiableMap（DocumentMetadata 构造时包装过），
+            // 复制到可变 Map 再加 tenant/kb，然后反射替换回 metadata（绕过 final 限制）
+            Map<String, Object> mutable = new java.util.HashMap<>(d.getMetadata().getPayload());
+            mutable.put("tenant_id", effectiveTenantId);
             if (kbId != null) {
-                payload.put("kb_id", kbId);
+                mutable.put("kb_id", kbId);
+            }
+            try {
+                java.lang.reflect.Field f = d.getMetadata().getClass().getDeclaredField("payload");
+                f.setAccessible(true);
+                f.set(d.getMetadata(), mutable);
+            } catch (Exception e) {
+                log.warn("反射替换 DocumentMetadata.payload 失败（向量层将 fallback 到 BaseContext）: {}", e.getMessage());
             }
         }
     }

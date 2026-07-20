@@ -27,6 +27,12 @@ public class AgentTaskVO {
     private Long durationMs;
     private String modelName;
     private String provider;
+    /**
+     * 触发来源（定时 trigger 的 id），null 表示用户手动提交的任务
+     *
+     * @since 3.5.0
+     */
+    private Long triggerId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
