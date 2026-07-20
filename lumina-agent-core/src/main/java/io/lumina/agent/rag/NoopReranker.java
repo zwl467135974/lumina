@@ -2,7 +2,6 @@ package io.lumina.agent.rag;
 
 import io.agentscope.core.rag.model.Document;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -11,14 +10,20 @@ import java.util.List;
 /**
  * 空重排序器（不调模型，仅按原顺序截断）
  *
- * <p>当 lumina.rag.rerank.provider 未配置或为 none 时激活（默认 Bean）。
+ * <p>当 {@code lumina.rag.rerank.provider=none}（或缺省）时激活。
+ *
+ * <p>注册策略：和 {@link NoopOcrProvider} 一致，使用 {@code @ConditionalOnProperty(matchIfMissing=true)}
+ * 而非 {@code @ConditionalOnMissingBean}。后者在 Spring 的 bean 注册顺序不确定时会失效
+ * （{@code NoopReranker} 自己也是 {@link RerankProvider} 候选，求值时机有竞态），
+ * 导致 standalone 模式下未配 reranker 时直接启动失败。
  *
  * @author Lumina Team
  * @since 3.3.0
  */
 @Slf4j
 @Component
-@ConditionalOnMissingBean(RerankProvider.class)
+@ConditionalOnProperty(prefix = "lumina.rag.rerank", name = "provider",
+        havingValue = "none", matchIfMissing = true)
 public class NoopReranker implements RerankProvider {
 
     @Override
