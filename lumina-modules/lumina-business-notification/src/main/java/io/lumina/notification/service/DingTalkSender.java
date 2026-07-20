@@ -36,8 +36,7 @@ import java.util.Base64;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class DingTalkSender {
+public class DingTalkSender extends AbstractNotificationSender {
 
     /**
      * 钉钉群机器人限频：20 条/分钟
@@ -50,18 +49,11 @@ public class DingTalkSender {
     private static final int MAX_BODY_CHARS = 3000;
 
     /**
-     * 连续失败自动禁用阈值（与 WebhookSender 一致）
-     */
-    private static final int MAX_FAIL_COUNT = 5;
-
-    /**
      * 限频计数 key 前缀
      */
     private static final String RATE_KEY_PREFIX = "dingtalk:rate:";
 
-    private final WebhookMapper webhookMapper;
     private final ObjectMapper objectMapper;
-    private final RedisCacheManager redisCacheManager;
 
     /**
      * HTTP 客户端（package-private 便于单测注入 mock）
@@ -69,6 +61,27 @@ public class DingTalkSender {
     HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
+
+    public DingTalkSender(WebhookMapper webhookMapper, ObjectMapper objectMapper,
+                          RedisCacheManager redisCacheManager) {
+        super(webhookMapper, redisCacheManager);
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected int rateLimitPerWindow() {
+        return RATE_LIMIT_PER_MIN;
+    }
+
+    @Override
+    protected String rateKeyPrefix() {
+        return RATE_KEY_PREFIX;
+    }
+
+    @Override
+    protected String channelName() {
+        return "钉钉";
+    }
 
     /**
      * 发送钉钉 markdown 消息并更新发送状态
@@ -192,41 +205,6 @@ public class DingTalkSender {
     }
 
     /**
-     * 复用 webhook 状态字段记录结果（连续失败达阈值自动禁用）
-     */
-    private void recordResult(WebhookDO webhook, boolean success, String error) {
-        if (success) {
-            webhookMapper.updateStatus(webhook.getId(), "SUCCESS", null, 0, null);
-            return;
-        }
-        int newFailCount = (webhook.getFailCount() != null ? webhook.getFailCount() : 0) + 1;
-        boolean autoDisable = newFailCount >= MAX_FAIL_COUNT;
-        webhookMapper.updateStatus(webhook.getId(), "FAILED", error,
-                autoDisable ? 0 : newFailCount, autoDisable ? 0 : null);
-        if (autoDisable) {
-            log.warn("钉钉 webhook [{}] 连续失败 {} 次已自动禁用", webhook.getId(), MAX_FAIL_COUNT);
-        }
-    }
-
-    /**
-     * 限频：Redis 原子计数 + 60s 过期，超过 20/min 拒绝
-     */
-    private boolean acquireRateQuota(String accessToken) {
-        try {
-            String rateKey = RATE_KEY_PREFIX + accessToken;
-            long count = redisCacheManager.incrementAndGet(rateKey);
-            if (count == 1) {
-                redisCacheManager.expire(rateKey, Duration.ofSeconds(60));
-            }
-            return count <= RATE_LIMIT_PER_MIN;
-        } catch (Exception e) {
-            // Redis 异常时降级放行（软限频），避免 Redis 故障阻断通知
-            log.warn("钉钉限频计数失败，降级放行: {}", e.getMessage());
-            return true;
-        }
-    }
-
-    /**
      * severity → emoji（ERROR=🔴, WARN=🟡, 其他=🟢）
      */
     private String severityEmoji(String severity) {
@@ -276,12 +254,5 @@ public class DingTalkSender {
         }
         // param 是最后一个参数：连同前面的分隔符一起移除
         return url.substring(0, idx - 1);
-    }
-
-    private String truncate(String text, int maxLength) {
-        if (text == null) {
-            return null;
-        }
-        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
     }
 }

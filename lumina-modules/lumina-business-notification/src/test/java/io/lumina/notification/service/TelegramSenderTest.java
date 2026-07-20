@@ -1,6 +1,7 @@
 package io.lumina.notification.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.framework.cache.RedisCacheManager;
 import io.lumina.notification.event.NotificationEvent;
 import io.lumina.notification.infrastructure.entity.WebhookDO;
 import io.lumina.notification.infrastructure.mapper.WebhookMapper;
@@ -40,6 +41,9 @@ class TelegramSenderTest {
     private WebhookMapper webhookMapper;
 
     @Mock
+    private RedisCacheManager redisCacheManager;
+
+    @Mock
     private HttpClient httpClient;
 
     @Mock
@@ -49,7 +53,7 @@ class TelegramSenderTest {
 
     @BeforeEach
     void setUp() {
-        sender = new TelegramSender(webhookMapper, new ObjectMapper());
+        sender = new TelegramSender(webhookMapper, new ObjectMapper(), redisCacheManager);
         sender.httpClient = httpClient;
     }
 

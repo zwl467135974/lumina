@@ -3,10 +3,10 @@ package io.lumina.notification.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.lumina.framework.cache.RedisCacheManager;
 import io.lumina.notification.event.NotificationEvent;
 import io.lumina.notification.infrastructure.entity.WebhookDO;
 import io.lumina.notification.infrastructure.mapper.WebhookMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -29,20 +29,13 @@ import java.time.Duration;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class TelegramSender {
+public class TelegramSender extends AbstractNotificationSender {
 
     /**
      * 正文截断长度（Telegram 单条消息上限 4096 字符，留头部余量）
      */
     private static final int MAX_BODY_CHARS = 3000;
 
-    /**
-     * 连续失败自动禁用阈值（与 WebhookSender 一致）
-     */
-    private static final int MAX_FAIL_COUNT = 5;
-
-    private final WebhookMapper webhookMapper;
     private final ObjectMapper objectMapper;
 
     /**
@@ -51,6 +44,27 @@ public class TelegramSender {
     HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
+
+    public TelegramSender(WebhookMapper webhookMapper, ObjectMapper objectMapper,
+                          RedisCacheManager redisCacheManager) {
+        super(webhookMapper, redisCacheManager);
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected int rateLimitPerWindow() {
+        return Integer.MAX_VALUE;  // Telegram 官方限制较宽，不做主动限频
+    }
+
+    @Override
+    protected String rateKeyPrefix() {
+        return "telegram:rate:";
+    }
+
+    @Override
+    protected String channelName() {
+        return "Telegram";
+    }
 
     /**
      * 发送 Telegram 消息并更新发送状态
@@ -163,29 +177,5 @@ public class TelegramSender {
             log.warn("Telegram 发送异常: {}", e.getMessage());
             return false;
         }
-    }
-
-    /**
-     * 复用 webhook 状态字段记录结果（连续失败达阈值自动禁用）
-     */
-    private void recordResult(WebhookDO webhook, boolean success, String error) {
-        if (success) {
-            webhookMapper.updateStatus(webhook.getId(), "SUCCESS", null, 0, null);
-            return;
-        }
-        int newFailCount = (webhook.getFailCount() != null ? webhook.getFailCount() : 0) + 1;
-        boolean autoDisable = newFailCount >= MAX_FAIL_COUNT;
-        webhookMapper.updateStatus(webhook.getId(), "FAILED", error,
-                autoDisable ? 0 : newFailCount, autoDisable ? 0 : null);
-        if (autoDisable) {
-            log.warn("Telegram webhook [{}] 连续失败 {} 次已自动禁用", webhook.getId(), MAX_FAIL_COUNT);
-        }
-    }
-
-    private String truncate(String text, int maxLength) {
-        if (text == null) {
-            return null;
-        }
-        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
     }
 }

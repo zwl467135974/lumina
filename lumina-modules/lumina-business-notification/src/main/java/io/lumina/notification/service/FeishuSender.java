@@ -32,8 +32,7 @@ import java.time.Duration;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class FeishuSender {
+public class FeishuSender extends AbstractNotificationSender {
 
     /**
      * 飞书群机器人限频：5 条/秒
@@ -46,18 +45,11 @@ public class FeishuSender {
     private static final int MAX_BODY_CHARS = 3000;
 
     /**
-     * 连续失败自动禁用阈值（与 WebhookSender 一致）
-     */
-    private static final int MAX_FAIL_COUNT = 5;
-
-    /**
      * 限频计数 key 前缀
      */
     private static final String RATE_KEY_PREFIX = "feishu:rate:";
 
-    private final WebhookMapper webhookMapper;
     private final ObjectMapper objectMapper;
-    private final RedisCacheManager redisCacheManager;
 
     /**
      * HTTP 客户端（package-private 便于单测注入 mock）
@@ -65,6 +57,32 @@ public class FeishuSender {
     HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
+
+    public FeishuSender(WebhookMapper webhookMapper, ObjectMapper objectMapper,
+                        RedisCacheManager redisCacheManager) {
+        super(webhookMapper, redisCacheManager);
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected int rateLimitPerWindow() {
+        return RATE_LIMIT_PER_SEC;
+    }
+
+    @Override
+    protected String rateKeyPrefix() {
+        return RATE_KEY_PREFIX;
+    }
+
+    @Override
+    protected long rateWindowSeconds() {
+        return 1;  // 秒级限频
+    }
+
+    @Override
+    protected String channelName() {
+        return "飞书";
+    }
 
     /**
      * 发送飞书 text 消息并更新发送状态
@@ -144,47 +162,5 @@ public class FeishuSender {
             log.warn("飞书发送异常: {}", e.getMessage());
             return false;
         }
-    }
-
-    /**
-     * 复用 webhook 状态字段记录结果（连续失败达阈值自动禁用）
-     */
-    private void recordResult(WebhookDO webhook, boolean success, String error) {
-        if (success) {
-            webhookMapper.updateStatus(webhook.getId(), "SUCCESS", null, 0, null);
-            return;
-        }
-        int newFailCount = (webhook.getFailCount() != null ? webhook.getFailCount() : 0) + 1;
-        boolean autoDisable = newFailCount >= MAX_FAIL_COUNT;
-        webhookMapper.updateStatus(webhook.getId(), "FAILED", error,
-                autoDisable ? 0 : newFailCount, autoDisable ? 0 : null);
-        if (autoDisable) {
-            log.warn("飞书 webhook [{}] 连续失败 {} 次已自动禁用", webhook.getId(), MAX_FAIL_COUNT);
-        }
-    }
-
-    /**
-     * 限频：Redis 原子计数 + 1s 过期，超过 5/s 拒绝
-     */
-    private boolean acquireRateQuota(String url) {
-        try {
-            String rateKey = RATE_KEY_PREFIX + Integer.toHexString(url.hashCode());
-            long count = redisCacheManager.incrementAndGet(rateKey);
-            if (count == 1) {
-                redisCacheManager.expire(rateKey, Duration.ofSeconds(1));
-            }
-            return count <= RATE_LIMIT_PER_SEC;
-        } catch (Exception e) {
-            // Redis 异常时降级放行（软限频），避免 Redis 故障阻断通知
-            log.warn("飞书限频计数失败，降级放行: {}", e.getMessage());
-            return true;
-        }
-    }
-
-    private String truncate(String text, int maxLength) {
-        if (text == null) {
-            return null;
-        }
-        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
     }
 }

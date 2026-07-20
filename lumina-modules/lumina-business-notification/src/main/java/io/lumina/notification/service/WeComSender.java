@@ -7,7 +7,6 @@ import io.lumina.framework.cache.RedisCacheManager;
 import io.lumina.notification.event.NotificationEvent;
 import io.lumina.notification.infrastructure.entity.WebhookDO;
 import io.lumina.notification.infrastructure.mapper.WebhookMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +16,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,13 +24,15 @@ import java.util.List;
  * <p>将通知事件转为企微 markdown 消息发送，支持 severity 着色、超长自动分片、
  * Redis 限频（20 条/分钟，企微机器人官方限制）。errcode=0 才算成功。
  *
+ * <p>继承 {@link AbstractNotificationSender} 复用 recordResult / acquireRateQuota /
+ * truncate / chunkByBytes 等公共逻辑。
+ *
  * @author Lumina Team
  * @since 3.4.0
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class WeComSender {
+public class WeComSender extends AbstractNotificationSender {
 
     /**
      * 企业微信群机器人限频：20 条/分钟
@@ -50,22 +50,39 @@ public class WeComSender {
     private static final int MAX_BODY_CHARS = 3000;
 
     /**
-     * 连续失败自动禁用阈值（与 WebhookSender 一致）
-     */
-    private static final int MAX_FAIL_COUNT = 5;
-
-    /**
      * 限频计数 key 前缀
      */
     private static final String RATE_KEY_PREFIX = "wecom:rate:";
 
-    private final WebhookMapper webhookMapper;
     private final ObjectMapper objectMapper;
-    private final RedisCacheManager redisCacheManager;
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
+    /**
+     * HTTP 客户端（package-private 便于单测注入 mock）
+     */
+    HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
+
+    public WeComSender(WebhookMapper webhookMapper, ObjectMapper objectMapper,
+                       RedisCacheManager redisCacheManager) {
+        super(webhookMapper, redisCacheManager);
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected int rateLimitPerWindow() {
+        return RATE_LIMIT_PER_MIN;
+    }
+
+    @Override
+    protected String rateKeyPrefix() {
+        return RATE_KEY_PREFIX;
+    }
+
+    @Override
+    protected String channelName() {
+        return "企微";
+    }
 
     /**
      * 发送企微 markdown 消息并更新发送状态
@@ -103,24 +120,7 @@ public class WeComSender {
         return allOk;
     }
 
-    // ==================== 内部实现 ====================
-
-    /**
-     * 复用 webhook 状态字段记录结果（连续失败达阈值自动禁用）
-     */
-    private void recordResult(WebhookDO webhook, boolean success, String error) {
-        if (success) {
-            webhookMapper.updateStatus(webhook.getId(), "SUCCESS", null, 0, null);
-            return;
-        }
-        int newFailCount = (webhook.getFailCount() != null ? webhook.getFailCount() : 0) + 1;
-        boolean autoDisable = newFailCount >= MAX_FAIL_COUNT;
-        webhookMapper.updateStatus(webhook.getId(), "FAILED", error,
-                autoDisable ? 0 : newFailCount, autoDisable ? 0 : null);
-        if (autoDisable) {
-            log.warn("企微 webhook [{}] 连续失败 {} 次已自动禁用", webhook.getId(), MAX_FAIL_COUNT);
-        }
-    }
+    // ==================== 渠道特有实现 ====================
 
     /**
      * 从企微机器人 URL 提取 key（url 形如 https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx）
@@ -162,32 +162,6 @@ public class WeComSender {
     }
 
     /**
-     * 按 UTF-8 字节数分片（保证不截断多字节字符）
-     */
-    private List<String> chunkByBytes(String text, int maxBytes) {
-        List<String> chunks = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        int currentBytes = 0;
-        for (int i = 0; i < text.length(); ) {
-            int codePoint = text.codePointAt(i);
-            String ch = new String(Character.toChars(codePoint));
-            int chBytes = ch.getBytes(StandardCharsets.UTF_8).length;
-            if (currentBytes + chBytes > maxBytes && current.length() > 0) {
-                chunks.add(current.toString());
-                current = new StringBuilder();
-                currentBytes = 0;
-            }
-            current.append(ch);
-            currentBytes += chBytes;
-            i += Character.charCount(codePoint);
-        }
-        if (current.length() > 0) {
-            chunks.add(current.toString());
-        }
-        return chunks;
-    }
-
-    /**
      * POST markdown 消息到企微机器人（HTTP 200 且 errcode=0 才算成功）
      */
     private boolean postToWeCom(String url, String markdownContent) {
@@ -223,30 +197,5 @@ public class WeComSender {
             log.warn("企微发送异常: {}", e.getMessage());
             return false;
         }
-    }
-
-    /**
-     * 限频：Redis 原子计数 + 60s 过期，超过 20/min 拒绝
-     */
-    private boolean acquireRateQuota(String key) {
-        try {
-            String rateKey = RATE_KEY_PREFIX + key;
-            long count = redisCacheManager.incrementAndGet(rateKey);
-            if (count == 1) {
-                redisCacheManager.expire(rateKey, Duration.ofSeconds(60));
-            }
-            return count <= RATE_LIMIT_PER_MIN;
-        } catch (Exception e) {
-            // Redis 异常时降级放行（软限频），避免 Redis 故障阻断通知
-            log.warn("企微限频计数失败，降级放行: {}", e.getMessage());
-            return true;
-        }
-    }
-
-    private String truncate(String text, int maxLength) {
-        if (text == null) {
-            return null;
-        }
-        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
     }
 }
