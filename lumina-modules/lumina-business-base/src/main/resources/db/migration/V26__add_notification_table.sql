@@ -1,6 +1,7 @@
 -- 通知中心：站内通知表
 -- 收件人维度存储，支持已读/未读、分类、严重级别、关联实体跳转
-CREATE TABLE lumina_notification (
+-- 用 IF NOT EXISTS：notification 模块测试的 V900 可能在同一 MySQL 容器先建过同名表
+CREATE TABLE IF NOT EXISTS lumina_notification (
     id              BIGINT       AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT       NOT NULL                          COMMENT '收件人用户 ID',
     category        VARCHAR(30)  NOT NULL                          COMMENT '分类: BUDGET/TASK/WORKFLOW/DOCUMENT/EVALUATION/SYSTEM',
