@@ -4,13 +4,13 @@
       <h2>{{ t('monitor.title') }}</h2>
       <div class="actions">
         <el-button @click="loadAll" :loading="loading">{{ t('common.refresh') }}</el-button>
-        <el-button type="danger" plain @click="handleClear">清空记录</el-button>
+        <el-button type="danger" plain @click="handleClear">{{ t('monitor.clearRecords') }}</el-button>
       </div>
     </div>
 
     <!-- 调用统计 -->
     <el-card shadow="never" class="section-card">
-      <template #header><span>调用统计</span></template>
+      <template #header><span>{{ t('monitor.callStats') }}</span></template>
       <el-table :data="statsList" v-loading="loading" stripe size="small">
         <el-table-column prop="toolName" :label="t('monitor.toolName')" min-width="140" />
         <el-table-column prop="totalInvocations" :label="t('monitor.callCount')" width="100" sortable />
@@ -37,13 +37,13 @@
 
     <!-- 熔断状态 -->
     <el-card shadow="never" class="section-card">
-      <template #header><span>熔断器状态</span></template>
+      <template #header><span>{{ t('monitor.breakerStatus') }}</span></template>
       <el-table :data="breakerList" stripe size="small">
         <el-table-column prop="toolName" :label="t('monitor.toolName')" min-width="140" />
         <el-table-column :label="t('common.status')" width="120">
           <template #default="{ row }">
             <el-tag :type="row.open ? 'danger' : 'success'" size="small">
-              {{ row.open ? '熔断中' : '正常' }}
+              {{ row.open ? t('monitor.statusOpen') : t('monitor.statusClosed') }}
             </el-tag>
           </template>
         </el-table-column>
@@ -54,7 +54,7 @@
 
     <!-- 最近调用 -->
     <el-card shadow="never" class="section-card">
-      <template #header><span>最近调用记录（{{ invocations.length }}）</span></template>
+      <template #header><span>{{ t('monitor.recentCallsTitle', { n: invocations.length }) }}</span></template>
       <el-table :data="invocations" stripe size="small" max-height="400">
         <el-table-column :label="t('monitor.time')" width="170">
           <template #default="{ row }">{{ formatTime(row.timestamp) }}</template>
@@ -63,7 +63,7 @@
         <el-table-column :label="t('monitor.result')" width="80">
           <template #default="{ row }">
             <el-tag :type="row.success ? 'success' : 'danger'" size="small">
-              {{ row.success ? '成功' : '失败' }}
+              {{ row.success ? t('monitor.resultSuccess') : t('monitor.resultFailed') }}
             </el-tag>
           </template>
         </el-table-column>
@@ -120,7 +120,7 @@ const loadAll = async () => {
     invocations.value = i.data || []
     breakers.value = b.data || {}
   } catch (e: any) {
-    ElMessage.error(e.message || '加载失败')
+    ElMessage.error(e.message || t('monitor.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -128,9 +128,9 @@ const loadAll = async () => {
 
 const handleClear = async () => {
   try {
-    await ElMessageBox.confirm('确认清空所有调用记录与统计？', t('common.tip'), { type: 'warning' })
+    await ElMessageBox.confirm(t('monitor.clearConfirm'), t('common.tip'), { type: 'warning' })
     await clearToolInvocations()
-    ElMessage.success('已清空')
+    ElMessage.success(t('monitor.cleared'))
     loadAll()
   } catch {
     // 取消

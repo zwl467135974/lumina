@@ -36,6 +36,7 @@ const titleKeyMap: Record<string, string> = {
   '审计日志': 'menu.audit',
   '监控中心': 'menu.monitorCenter',
   '工具监控': 'menu.monitor',
+  'MCP 管理': 'menu.mcpMgmt',
   '通知中心': 'menu.notification',
   'A/B 测试': 'menu.abTest',
   '长期记忆': 'menu.memory',

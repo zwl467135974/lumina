@@ -1,8 +1,8 @@
 <template>
   <div class="mcp-monitor">
     <div class="page-header">
-      <h2>MCP 管理</h2>
-      <el-button @click="loadAll" :loading="loading">刷新</el-button>
+      <h2>{{ t('monitor.mcpManageTitle') }}</h2>
+      <el-button @click="loadAll" :loading="loading">{{ t('monitor.refresh') }}</el-button>
     </div>
 
     <!-- MCP 未启用提示 -->
@@ -13,7 +13,7 @@
       :closable="false"
       show-icon
     >
-      MCP 协议当前未启用。请在 Nacos 配置中设置 <code>lumina.mcp.enabled=true</code> 并配置 <code>lumina.mcp.servers</code>。
+      {{ t('monitor.mcpNotEnabledDesc') }}
     </el-alert>
 
     <template v-if="status && status.enabled">
@@ -34,7 +34,7 @@
           <el-table-column :label="t('monitor.connStatus')" width="120">
             <template #default="{ row }">
               <el-tag :type="row.connected ? 'success' : 'danger'" size="small">
-                {{ row.connected ? '已连接' : '未连接' }}
+                {{ row.connected ? t('monitor.connConnected') : t('monitor.connDisconnected') }}
               </el-tag>
             </template>
           </el-table-column>
@@ -51,7 +51,7 @@
       <!-- MCP 工具列表 -->
       <el-card shadow="never" class="section-card">
         <template #header>
-          <span>MCP 工具（{{ tools.length }}）</span>
+          <span>{{ t('monitor.mcpToolsTitle', { n: tools.length }) }}</span>
         </template>
         <el-table :data="tools" stripe size="small">
           <el-table-column prop="name" :label="t('monitor.toolName')" min-width="200" show-overflow-tooltip />
@@ -83,7 +83,7 @@ async function loadAll() {
     status.value = statusRes.data
     tools.value = toolsRes.data || []
   } catch (e: any) {
-    ElMessage.error(e.message || '加载失败')
+    ElMessage.error(e.message || t('monitor.loadFailed'))
   } finally {
     loading.value = false
   }
