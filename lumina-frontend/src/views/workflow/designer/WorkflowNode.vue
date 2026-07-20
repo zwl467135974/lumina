@@ -24,8 +24,8 @@ const props = defineProps<{
 const config = computed(() => NODE_TYPES[props.data.nodeType] || null)
 
 const nodeStyle = computed(() => ({
-  borderColor: config.value?.color || '#dcdfe6',
-  backgroundColor: config.value?.bgColor || '#fff'
+  borderColor: config.value?.color || 'var(--lumina-border)',
+  backgroundColor: config.value?.bgColor || 'var(--lumina-bg-card)'
 }))
 </script>
 
@@ -40,7 +40,7 @@ const nodeStyle = computed(() => ({
   transition: box-shadow 0.2s;
 }
 .wf-node:hover {
-  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  box-shadow: var(--lumina-shadow-md);
 }
 .wf-node-header {
   display: flex;
@@ -59,12 +59,12 @@ const nodeStyle = computed(() => ({
 }
 .wf-node-type {
   font-size: 11px;
-  color: #909399;
+  color: var(--lumina-text-secondary);
   margin-top: 2px;
 }
 .wf-node-meta {
   font-size: 11px;
-  color: #409eff;
+  color: var(--lumina-primary);
   margin-top: 2px;
 }
 </style>

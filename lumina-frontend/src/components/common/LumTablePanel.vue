@@ -159,4 +159,18 @@ defineOptions({ inheritAttrs: false })
   justify-content: flex-end;
   margin-top: var(--lumina-spacing-md);
 }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 767px) {
+  .lum-table-panel__toolbar {
+    flex-wrap: wrap;
+  }
+  .lum-table-panel__pagination {
+    justify-content: center;
+  }
+  .lum-table-panel__pagination :deep(.el-pagination) {
+    --el-pagination-button-width: 28px;
+    font-size: 12px;
+  }
+}
 </style>

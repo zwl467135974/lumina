@@ -198,7 +198,7 @@ onMounted(() => {
 
 <style scoped>
 /* ================================================================
-   LUMINOUS DARK THEME – Dashboard Styles
+   Studio Indigo — Dashboard Styles
    ================================================================ */
 
 /* ---- Design Tokens --------------------------------------------------- */
@@ -304,7 +304,7 @@ onMounted(() => {
 .lumina-table :deep(.el-table__body-wrapper td) {
   font-size: 13px;
   color: var(--lumina-text-secondary);
-  border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
+  border-bottom: 1px solid var(--lumina-border-light) !important;
   padding: 10px 0;
 }
 
@@ -330,22 +330,22 @@ onMounted(() => {
 }
 
 .status-tag--success {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(var(--lumina-success-rgb), 0.15);
   color: var(--lumina-success);
 }
 
 .status-tag--info {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(var(--lumina-info-rgb), 0.15);
   color: var(--lumina-info);
 }
 
 .status-tag--warning {
   background: rgba(var(--lumina-warning-rgb), 0.15);
-  color: var(--lumina-accent);
+  color: var(--lumina-warning);
 }
 
 .status-tag--danger {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(var(--lumina-danger-rgb), 0.15);
   color: var(--lumina-danger);
 }
 
@@ -404,7 +404,7 @@ onMounted(() => {
 }
 
 .action-tile__icon--success {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.08));
+  background: linear-gradient(135deg, rgba(var(--lumina-success-rgb), 0.2), rgba(var(--lumina-success-rgb), 0.08));
   color: var(--lumina-success-light);
 }
 
@@ -437,7 +437,7 @@ onMounted(() => {
 
 /* ---- Loading skeleton overrides -------------------------------------- */
 .lumina-table :deep(.el-loading-mask) {
-  background-color: rgba(15, 23, 42, 0.7);
+  background-color: var(--lumina-bg-mask);
   backdrop-filter: blur(2px);
 }
 

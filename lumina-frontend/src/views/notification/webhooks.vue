@@ -334,12 +334,18 @@ onMounted(() => loadData())
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: var(--lumina-bg-secondary, #f5f7fa);
+  background: var(--lumina-bg-elevated);
   border-radius: 6px;
 }
 .secret-text {
   flex: 1;
   word-break: break-all;
   font-size: var(--lumina-font-size-sm, 13px);
+}
+
+@media (max-width: 767px) {
+  .webhooks-page { padding: var(--lumina-spacing-md); }
+  .wecom-tip { margin-left: 0; }
+  .secret-display { flex-wrap: wrap; }
 }
 </style>

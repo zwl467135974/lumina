@@ -43,4 +43,8 @@ withDefaults(defineProps<Props>(), {
 .lum-empty-state__action {
   margin-top: var(--lumina-spacing-sm);
 }
+
+@media (max-width: 639px) {
+  .lum-empty-state { padding: var(--lumina-spacing-lg) var(--lumina-spacing-md); }
+}
 </style>

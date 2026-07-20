@@ -274,7 +274,7 @@ img {
   &.el-button--primary {
     background: var(--lumina-primary);
     border: 1px solid var(--lumina-primary);
-    color: #ffffff;
+    color: var(--lumina-text-on-brand);
 
     &:hover {
       background: var(--lumina-primary-dark);
@@ -298,7 +298,7 @@ img {
   &.el-button--success {
     background: var(--lumina-success);
     border: 1px solid var(--lumina-success);
-    color: #ffffff;
+    color: var(--lumina-text-on-brand);
 
     &:hover {
       background: var(--lumina-success-dark);
@@ -310,7 +310,7 @@ img {
   &.el-button--warning {
     background: var(--lumina-warning);
     border: 1px solid var(--lumina-warning);
-    color: #ffffff;
+    color: var(--lumina-text-on-brand);
 
     &:hover {
       background: var(--lumina-warning-dark);
@@ -322,7 +322,7 @@ img {
   &.el-button--danger {
     background: var(--lumina-danger);
     border: 1px solid var(--lumina-danger);
-    color: #ffffff;
+    color: var(--lumina-text-on-brand);
 
     &:hover {
       background: var(--lumina-danger-dark);
@@ -884,7 +884,7 @@ img {
     &.is-active {
       background: var(--lumina-primary);
       border-color: transparent;
-      color: #ffffff;
+      color: var(--lumina-text-on-brand);
       font-weight: var(--lumina-font-weight-semibold);
     }
 
@@ -1050,7 +1050,7 @@ img {
   &.is-checked .el-checkbox-button__inner {
     background-color: var(--lumina-primary);
     border-color: var(--lumina-primary);
-    color: #ffffff;
+    color: var(--lumina-text-on-brand);
     box-shadow: -1px 0 0 0 var(--lumina-primary);
   }
 
@@ -1077,7 +1077,7 @@ img {
   &.is-active .el-radio-button__inner {
     background-color: var(--lumina-primary);
     border-color: var(--lumina-primary);
-    color: #ffffff;
+    color: var(--lumina-text-on-brand);
   }
 
   &.is-disabled .el-radio-button__inner {
@@ -1411,7 +1411,7 @@ img {
   --el-datepicker-text-color: var(--lumina-text-primary);
   --el-datepicker-header-text-color: var(--lumina-text-secondary);
   --el-datepicker-hover-text-color: var(--lumina-primary-light);
-  --el-datepicker-active-text-color: #ffffff;
+  --el-datepicker-active-text-color: var(--lumina-text-on-brand);
   --el-datepicker-cell-hover-color: var(--lumina-bg-active);
 
   background-color: var(--lumina-bg-elevated);
@@ -1428,7 +1428,7 @@ img {
 
     &.current:not(.disabled) .el-date-table-cell__text {
       background-color: var(--lumina-primary);
-      color: #ffffff;
+      color: var(--lumina-text-on-brand);
       border-radius: var(--lumina-radius-sm);
     }
 

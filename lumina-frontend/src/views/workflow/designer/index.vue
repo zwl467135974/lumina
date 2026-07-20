@@ -44,7 +44,7 @@
             @pane-click="onPaneClick"
             @connect="onConnect"
           >
-            <Background pattern-color="#dcdfe6" :gap="20" />
+            <Background :pattern-color="bgPatternColor" :gap="20" />
             <Controls />
             <MiniMap />
           </VueFlow>
@@ -226,13 +226,17 @@ import WorkflowNode from './WorkflowNode.vue'
 import { NODE_TYPES, PALETTE_NODES, type NodeTypeConfig } from './node-types'
 import { graphToYaml, yamlToGraph } from './yaml-sync'
 import { getWorkflow, createWorkflow, updateWorkflow } from '@/api/modules/workflow'
+import { useAppStore } from '@/stores'
 
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+const appStore = useAppStore()
 const workflowId = computed(() => route.params.id ? Number(route.params.id) : null)
 const title = computed(() => workflowId.value ? t('workflow.edit') : t('workflow.create'))
 const description = computed(() => t('workflow.designerPageDesc'))
+// VueFlow Background pattern-color 需要字符串值，按主题切换
+const bgPatternColor = computed(() => appStore.theme === 'dark' ? '#475569' : '#cbd5e1')
 
 const mode = ref<'visual' | 'yaml'>('visual')
 const loading = ref(false)
@@ -477,5 +481,20 @@ if (workflowId.value) {
   padding: 4px 0;
   font-size: 13px;
   color: var(--el-text-color-secondary);
+}
+
+/* ---------- Responsive: 窄屏隐藏面板，推荐 YAML 模式 ---------- */
+@media (max-width: 1023px) {
+  .palette-panel,
+  .property-panel {
+    position: absolute;
+    z-index: 30;
+    box-shadow: var(--lumina-shadow-lg);
+  }
+  .palette-panel { left: 0; top: 0; height: 100%; }
+  .property-panel { right: 0; top: 0; height: 100%; }
+  .yaml-textarea :deep(textarea) {
+    rows: 16;
+  }
 }
 </style>

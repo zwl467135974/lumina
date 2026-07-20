@@ -102,7 +102,7 @@
             show-checkbox
             node-key="permissionId"
             :default-checked-keys="checkedPermissions"
-            style="border: 1px solid #dcdfe6; border-radius: 4px; padding: 10px"
+            style="border: 1px solid var(--lumina-border); border-radius: 4px; padding: 10px"
           />
         </el-form-item>
       </el-form>

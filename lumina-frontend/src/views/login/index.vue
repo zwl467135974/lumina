@@ -206,7 +206,7 @@ async function handleLogin() {
 
 .login-lang-btn.active {
   background: var(--lumina-primary);
-  color: #ffffff;
+  color: var(--lumina-text-on-brand);
 }
 
 .login-theme-btn {

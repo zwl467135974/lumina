@@ -66,6 +66,7 @@
 | `--lumina-text-regular` | `#334155` | Body text |
 | `--lumina-text-secondary` | `#64748b` | Labels |
 | `--lumina-text-muted` | `#94a3b8` | Placeholders |
+| `--lumina-text-on-brand` | `#ffffff` | 白字印在 primary/success/warning/danger 等饱和背景上（亮暗通用，**勿用 text-inverse**——暗色下变深色会丢对比度） |
 
 ### Border — 亮色
 | Token | Value | Usage |
@@ -161,6 +162,14 @@ Easing: `cubic-bezier(0.4, 0, 0.2, 1)` for all transitions.
 - 特殊控件（auto-refresh/input-number）：放 `toolbar-right` slot
 - 迁移 7 个页面：agent/prompt/workflow/task + system/tenant/role/user
 
+## Responsive
+
+- **断点**：`sm:640 / md:768 / lg:1024`（mixins.scss `$breakpoints`）
+- **scss 文件**：用 `@include respond-below('md')` / `respond-below('sm')`
+- **css 文件**（`<style scoped>` 无 lang）：直接写 `@media (max-width: 767px)`（md-1）/ `@media (max-width: 639px)`（sm-1）
+- **必断点**：任何含固定宽度面板（≥200px）或 ≥3 列 grid 的组件，必须有 `respond-below('md')` 退化方案
+- **窄屏 dialog**：el-dialog 默认 `max-width: calc(100% - 30px)` 会自动收缩，固定 px width 在窄屏不溢出，无需特殊处理
+
 ## What NOT to Do
 
 - ❌ Hardcode hex colors in `.vue` files — use `var(--lumina-*)`
@@ -173,3 +182,6 @@ Easing: `cubic-bezier(0.4, 0, 0.2, 1)` for all transitions.
 - ❌ Put 6+ buttons in a table action column — use `el-dropdown`
 - ❌ Mix font families — stick to Outfit/IBM Plex/JetBrains Mono
 - ❌ Use `z-index: 9999` — use `--lumina-z-*` scale
+- ❌ Use `var(--lumina-text-inverse)` for text on saturated brand/semantic backgrounds — use `--lumina-text-on-brand`（inverse 在暗色下变深色，丢对比度）
+- ❌ Use `var(--lumina-bg-secondary, #f5f7fa)` —— **该 token 不存在**，永远回退浅色。用 `--lumina-bg-elevated`
+- ❌ Hardcode `rgba(15,23,42,*)` / `rgba(51,65,85,*)`（slate 暗色）—— 暗色残留，用 `--lumina-bg-mask` / `--lumina-border-light`

@@ -46,4 +46,9 @@ const goHome = () => {
     margin: 0 0 30px;
   }
 }
+
+@media (max-width: 639px) {
+  .not-found-content h1 { font-size: 80px; }
+  .not-found-content p { font-size: 16px; }
+}
 </style>

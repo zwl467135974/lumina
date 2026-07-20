@@ -67,3 +67,13 @@
 - Observation: dashboard 迁移到 LumStatCard 后，28 处 stat-card CSS 成为死代码（129 行），但不影响功能。留着增加维护噪音
 - Action: 迁移组件后立即清理废弃 CSS，不要留到"以后"。用 PowerShell `[System.IO.File]::ReadAllLines` + 按行删除大范围 CSS 最可靠
 - Confidence: high
+
+## 2026-07-20 — 功能迭代期的暗色硬编码残留
+- Observation: v1→v2 主题迁移做了 variables.scss 重写，但 dashboard/workflow designer 等后期加的功能页仍残留 v1 暗色硬编码（rgba(51,65,85)、rgba(15,23,42)、#dcdfe6、#fff 节点背景），亮色主题下是突兀深色横线/黑遮罩，暗色下 designer 节点是白块
+- Action: 加功能时颜色必须 grep 确认用了 token。批量扫描：`node` 脚本扫 `.vue`/`.scss` 的 `#[0-9a-f]` 和 `rgba(15|51|224...` 即可定位残留。loading 遮罩用 `var(--lumina-bg-mask)`，表格边框用 `var(--lumina-border-light)`
+- Confidence: high
+
+## 2026-07-20 — 不存在的 token 与 CSS var 回退陷阱
+- Observation: webhooks.vue/api-tokens.vue 写了 `var(--lumina-bg-secondary, #f5f7fa)`，但 `--lumina-bg-secondary` 从未定义，永远回退 #f5f7fa 浅灰，暗色下刺眼。CSS var 带回退值会掩盖"token 不存在"的 bug
+- Action: 用 token 前先 grep variables.scss 确认存在。另外 `--lumina-text-inverse` 在暗色是 #0f172a（深色），印在饱和品牌色按钮上会丢对比度——品牌色上的白字必须用 `--lumina-text-on-brand`（亮暗同值 #fff）
+- Confidence: high

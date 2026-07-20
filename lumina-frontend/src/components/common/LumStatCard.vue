@@ -117,4 +117,8 @@ defineEmits<{ click: [] }>()
   background: rgba(var(--lumina-info-rgb), 0.1);
   color: var(--lumina-info);
 }
+
+@media (max-width: 639px) {
+  .lum-stat-card { padding: var(--lumina-spacing-md); }
+}
 </style>

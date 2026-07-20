@@ -190,12 +190,17 @@ onMounted(() => loadData())
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: var(--lumina-bg-secondary, #f5f7fa);
+  background: var(--lumina-bg-elevated);
   border-radius: 6px;
 }
 .token-text {
   flex: 1;
   word-break: break-all;
   font-size: var(--lumina-font-size-sm, 13px);
+}
+
+@media (max-width: 767px) {
+  .api-tokens-page { padding: var(--lumina-spacing-md); }
+  .token-display { flex-wrap: wrap; }
 }
 </style>

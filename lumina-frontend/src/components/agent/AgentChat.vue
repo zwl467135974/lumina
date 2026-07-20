@@ -1063,4 +1063,26 @@ defineExpose({ resetStream })
     }
   }
 }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 767px) {
+  .chat-layout {
+    flex-direction: column;
+  }
+  .conversation-sidebar {
+    width: 100%;
+    max-height: 120px;
+    border-right: none;
+    border-bottom: 1px solid var(--lumina-border);
+  }
+  .debug-sidebar {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100%;
+    max-width: 320px;
+    z-index: 20;
+    box-shadow: var(--lumina-shadow-lg);
+  }
+}
 </style>
