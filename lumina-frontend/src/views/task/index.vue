@@ -48,7 +48,7 @@
 
     <el-dialog v-model="detailVisible" :title="t('task.detail')" width="700px">
       <el-descriptions v-if="detailTask" :column="2" border>
-        <el-descriptions-item label="任务 UUID" :span="2">{{ detailTask.taskUuid }}</el-descriptions-item>
+        <el-descriptions-item :label="t('task.taskUuid')" :span="2">{{ detailTask.taskUuid }}</el-descriptions-item>
         <el-descriptions-item label="Agent ID">{{ detailTask.agentId }}</el-descriptions-item>
         <el-descriptions-item :label="t('task.status')">
           <el-tag :type="statusType(detailTask.status)" size="small">{{ statusLabel(detailTask.status) }}</el-tag>
@@ -57,7 +57,7 @@
         <el-descriptions-item :label="t('task.result')" :span="2">
           <div class="task-result">{{ detailTask.result || '-' }}</div>
         </el-descriptions-item>
-        <el-descriptions-item v-if="detailTask.errorMessage" label="错误" :span="2">
+        <el-descriptions-item v-if="detailTask.errorMessage" :label="t('task.result')" :span="2">
           <span class="error-text">{{ detailTask.errorMessage }}</span>
         </el-descriptions-item>
         <el-descriptions-item :label="t('cost.inputTokens')">{{ detailTask.promptTokens || 0 }}</el-descriptions-item>
@@ -65,7 +65,7 @@
         <el-descriptions-item :label="t('cost.totalTokens')">{{ detailTask.totalTokens || 0 }}</el-descriptions-item>
         <el-descriptions-item :label="t('task.duration')">{{ detailTask.durationMs ? (detailTask.durationMs / 1000).toFixed(2) + 's' : '-' }}</el-descriptions-item>
         <el-descriptions-item :label="t('task.createTime')">{{ detailTask.createTime || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ detailTask.updateTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('task.createTime')">{{ detailTask.updateTime || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>

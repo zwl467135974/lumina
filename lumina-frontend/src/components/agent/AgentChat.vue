@@ -15,10 +15,10 @@
             :class="['conv-item', { active: c.conversationUuid === currentConvId }]"
             @click="selectConversation(c.conversationUuid)"
           >
-            <div class="conv-title">{{ c.title || '新会话' }}</div>
-            <div class="conv-meta">{{ c.messageCount }} 条消息</div>
+            <div class="conv-title">{{ c.title || t('chat.newConv') }}</div>
+            <div class="conv-meta">{{ t('chat.msgCount', { n: c.messageCount }) }}</div>
           </div>
-          <el-empty v-if="!loadingConvs && conversations.length === 0" description="暂无会话" :image-size="40" />
+          <el-empty v-if="!loadingConvs && conversations.length === 0" :description="t('chat.noConv')" :image-size="40" />
         </div>
       </div>
 
@@ -26,15 +26,15 @@
       <div class="chat-main">
         <!-- 调试模式切换 -->
         <div class="chat-toolbar">
-          <el-switch v-model="debugMode" size="small" active-text="调试" inactive-text="" />
+          <el-switch v-model="debugMode" size="small" :active-text="t('chat.debug')" inactive-text="" />
         </div>
 
         <div ref="messagesRef" class="chat-messages">
           <!-- 历史消息 -->
           <div v-for="msg in historyMessages" :key="msg.messageId" :class="['msg-item', `msg-${msg.role}`]">
-            <div class="msg-avatar">{{ msg.role === 'user' ? '我' : 'AI' }}</div>
+            <div class="msg-avatar">{{ msg.role === 'user' ? t('chat.me') : 'AI' }}</div>
             <div class="msg-body">
-              <div class="msg-role">{{ msg.role === 'user' ? '我' : '助手' }}</div>
+              <div class="msg-role">{{ msg.role === 'user' ? t('chat.me') : t('chat.assistant') }}</div>
               <div class="msg-content">{{ msg.content }}</div>
               <div v-if="msg.images && msg.images.length > 0" class="msg-images">
                 <img v-for="(img, idx) in msg.images" :key="idx" :src="img" class="msg-image-thumb" />
@@ -54,11 +54,11 @@
           <template v-if="streaming || reasoningText || actingText || finalText || errorMsg || ragSources.length">
             <!-- RAG 检索来源 -->
             <el-collapse v-if="ragSources.length > 0" class="rag-sources-block">
-              <el-collapse-item :title="`📚 引用来源（${ragSources.length}）`" name="rag">
+              <el-collapse-item :title="t('chat.references', { n: ragSources.length })" name="rag">
                 <div v-for="(src, idx) in ragSources" :key="idx" class="rag-source-item">
                   <div class="rag-source-header">
                     <el-tag size="small" type="success">#{{ idx + 1 }}</el-tag>
-                    <span class="rag-source-score">{{ (src.score * 100).toFixed(1) }}% 匹配</span>
+                    <span class="rag-source-score">{{ t('chat.matchPercent', { pct: (src.score * 100).toFixed(1) }) }}</span>
                     <span v-if="src.docId" class="rag-source-doc">{{ src.docId }}</span>
                   </div>
                   <div class="rag-source-content">{{ src.content }}</div>
@@ -67,20 +67,20 @@
             </el-collapse>
 
             <el-collapse v-if="reasoningText" class="reasoning-block">
-              <el-collapse-item title="🧠 思考过程" name="reasoning">
+              <el-collapse-item :title="t('chat.thinking')" name="reasoning">
                 <div class="reasoning-text">{{ reasoningText }}</div>
               </el-collapse-item>
             </el-collapse>
 
             <div v-if="actingText" class="acting-block">
-              <div class="acting-title">🔧 工具调用</div>
+              <div class="acting-title">{{ t('chat.toolCalling') }}</div>
               <div class="acting-text">{{ actingText }}</div>
             </div>
 
             <div v-if="finalText || streaming" class="msg-item msg-assistant current-response">
               <div class="msg-avatar">AI</div>
               <div class="msg-body">
-                <div class="msg-role">助手</div>
+                <div class="msg-role">{{ t('chat.assistant') }}</div>
                 <div class="msg-content">{{ finalText }}<span v-if="streaming" class="cursor">▋</span></div>
               </div>
             </div>
@@ -90,83 +90,83 @@
 
           <el-empty
             v-if="historyMessages.length === 0 && !streaming && !finalText && !errorMsg"
-            description="输入任务，开始对话"
+            :description="t('chat.startChat')"
             :image-size="60"
           />
 
           <!-- 调试面板（右侧栏） -->
           <div v-if="debugMode" class="debug-sidebar">
             <div class="debug-sidebar-header">
-              <span class="debug-sidebar-title">调试面板</span>
-              <el-tag v-if="streaming" size="small" type="warning">执行中…</el-tag>
-              <el-tag v-else-if="finalText" size="small" type="success">已完成</el-tag>
+              <span class="debug-sidebar-title">{{ t('chat.debugPanel') }}</span>
+              <el-tag v-if="streaming" size="small" type="warning">{{ t('chat.running') }}</el-tag>
+              <el-tag v-else-if="finalText" size="small" type="success">{{ t('chat.done') }}</el-tag>
             </div>
 
             <div class="debug-sidebar-body">
             <!-- 统计概览 -->
             <div class="debug-section">
-              <div class="debug-section-title">执行统计</div>
+              <div class="debug-section-title">{{ t('chat.execStats') }}</div>
               <div class="debug-stats-grid">
-                <div class="stat-card"><div class="stat-value">{{ debugStats.totalMs }}</div><div class="stat-label">总耗时(ms)</div></div>
-                <div class="stat-card"><div class="stat-value">{{ debugStats.finalChars }}</div><div class="stat-label">回复字符</div></div>
-                <div class="stat-card"><div class="stat-value">{{ debugStats.estimatedTotalTokens }}</div><div class="stat-label">Token 估算</div></div>
-                <div class="stat-card"><div class="stat-value">{{ debugStats.actingEvents }}</div><div class="stat-label">工具调用</div></div>
+                <div class="stat-card"><div class="stat-value">{{ debugStats.totalMs }}</div><div class="stat-label">{{ t('chat.totalMs') }}</div></div>
+                <div class="stat-card"><div class="stat-value">{{ debugStats.finalChars }}</div><div class="stat-label">{{ t('chat.replyChars') }}</div></div>
+                <div class="stat-card"><div class="stat-value">{{ debugStats.estimatedTotalTokens }}</div><div class="stat-label">{{ t('chat.tokenEst') }}</div></div>
+                <div class="stat-card"><div class="stat-value">{{ debugStats.actingEvents }}</div><div class="stat-label">{{ t('chat.toolCalls') }}</div></div>
               </div>
             </div>
 
             <!-- Token 估算 -->
             <div v-if="debugStats.estimatedTotalTokens > 0" class="debug-section">
-              <div class="debug-section-title">Token 与费用估算</div>
+              <div class="debug-section-title">{{ t('chat.tokenCostEst') }}</div>
               <div class="debug-info-rows">
-                <div class="info-row"><span class="info-label">输入(Prompt)</span><span class="info-value">~{{ debugStats.estimatedPromptTokens }} tok</span></div>
-                <div class="info-row"><span class="info-label">输出(Completion)</span><span class="info-value">~{{ debugStats.estimatedCompletionTokens }} tok</span></div>
-                <div class="info-row"><span class="info-label">合计</span><span class="info-value">{{ debugStats.estimatedTotalTokens }} tok</span></div>
-                <div class="info-row"><span class="info-label">估算费用</span><span class="info-value">¥{{ debugStats.estimatedCost }}</span></div>
+                <div class="info-row"><span class="info-label">{{ t('chat.promptInput') }}</span><span class="info-value">~{{ debugStats.estimatedPromptTokens }} tok</span></div>
+                <div class="info-row"><span class="info-label">{{ t('chat.completionOutput') }}</span><span class="info-value">~{{ debugStats.estimatedCompletionTokens }} tok</span></div>
+                <div class="info-row"><span class="info-label">{{ t('chat.total') }}</span><span class="info-value">{{ debugStats.estimatedTotalTokens }} tok</span></div>
+                <div class="info-row"><span class="info-label">{{ t('chat.estCost') }}</span><span class="info-value">¥{{ debugStats.estimatedCost }}</span></div>
               </div>
             </div>
 
             <!-- 执行阶段 -->
             <div v-if="executionPhases.totalMs > 0" class="debug-section">
-              <div class="debug-section-title">执行阶段</div>
+              <div class="debug-section-title">{{ t('chat.execPhases') }}</div>
               <div class="debug-phase-bar">
-                <div v-if="executionPhases.firstTokenMs > 0" class="phase-segment phase-init" :style="{ width: phaseWidth('init') }" :title="`首字延迟: ${executionPhases.firstTokenMs}ms`" />
-                <div v-if="executionPhases.reasoningMs > 0" class="phase-segment phase-reasoning" :style="{ width: phaseWidth('reasoning') }" :title="`推理: ${executionPhases.reasoningMs}ms`" />
-                <div v-if="executionPhases.actingMs > 0" class="phase-segment phase-acting" :style="{ width: phaseWidth('acting') }" :title="`工具: ${executionPhases.actingMs}ms`" />
-                <div v-if="executionPhases.generationMs > 0" class="phase-segment phase-generation" :style="{ width: phaseWidth('generation') }" :title="`生成: ${executionPhases.generationMs}ms`" />
+                <div v-if="executionPhases.firstTokenMs > 0" class="phase-segment phase-init" :style="{ width: phaseWidth('init') }" :title="t('chat.firstTokenDelay', { ms: executionPhases.firstTokenMs })" />
+                <div v-if="executionPhases.reasoningMs > 0" class="phase-segment phase-reasoning" :style="{ width: phaseWidth('reasoning') }" :title="t('chat.reasoningPhase', { ms: executionPhases.reasoningMs })" />
+                <div v-if="executionPhases.actingMs > 0" class="phase-segment phase-acting" :style="{ width: phaseWidth('acting') }" :title="t('chat.toolPhase', { ms: executionPhases.actingMs })" />
+                <div v-if="executionPhases.generationMs > 0" class="phase-segment phase-generation" :style="{ width: phaseWidth('generation') }" :title="t('chat.generationPhase', { ms: executionPhases.generationMs })" />
               </div>
               <div class="debug-phase-legend">
-                <span v-if="executionPhases.firstTokenMs > 0" class="legend-item"><i class="dot dot-init"></i>首字 {{ executionPhases.firstTokenMs }}ms</span>
-                <span v-if="executionPhases.reasoningMs > 0" class="legend-item"><i class="dot dot-reasoning"></i>推理 {{ executionPhases.reasoningMs }}ms</span>
-                <span v-if="executionPhases.actingMs > 0" class="legend-item"><i class="dot dot-acting"></i>工具 {{ executionPhases.actingMs }}ms</span>
-                <span v-if="executionPhases.generationMs > 0" class="legend-item"><i class="dot dot-generation"></i>生成 {{ executionPhases.generationMs }}ms</span>
+                <span v-if="executionPhases.firstTokenMs > 0" class="legend-item"><i class="dot dot-init"></i>{{ t('chat.firstToken') }} {{ executionPhases.firstTokenMs }}ms</span>
+                <span v-if="executionPhases.reasoningMs > 0" class="legend-item"><i class="dot dot-reasoning"></i>{{ t('chat.reasoning') }} {{ executionPhases.reasoningMs }}ms</span>
+                <span v-if="executionPhases.actingMs > 0" class="legend-item"><i class="dot dot-acting"></i>{{ t('chat.tool') }} {{ executionPhases.actingMs }}ms</span>
+                <span v-if="executionPhases.generationMs > 0" class="legend-item"><i class="dot dot-generation"></i>{{ t('chat.generation') }} {{ executionPhases.generationMs }}ms</span>
               </div>
             </div>
 
             <!-- 模型信息 -->
             <div class="debug-section">
-              <div class="debug-section-title">Agent 信息</div>
+              <div class="debug-section-title">{{ t('chat.agentInfo') }}</div>
               <div class="debug-info-rows">
                 <div class="info-row"><span class="info-label">Agent ID</span><span class="info-value">{{ agentId }}</span></div>
-                <div class="info-row"><span class="info-label">事件总数</span><span class="info-value">{{ eventLog.length }}</span></div>
-                <div class="info-row"><span class="info-label">推理事件</span><span class="info-value">{{ debugStats.reasoningEvents }}</span></div>
+                <div class="info-row"><span class="info-label">{{ t('chat.eventCount') }}</span><span class="info-value">{{ eventLog.length }}</span></div>
+                <div class="info-row"><span class="info-label">{{ t('chat.reasoningEvents') }}</span><span class="info-value">{{ debugStats.reasoningEvents }}</span></div>
               </div>
             </div>
 
             <!-- 推理过程 -->
             <div v-if="reasoningText" class="debug-section">
-              <div class="debug-section-title">🧠 推理过程</div>
+              <div class="debug-section-title">{{ t('chat.reasoningProcess') }}</div>
               <div class="debug-reasoning-text">{{ reasoningText }}</div>
             </div>
 
             <!-- 工具调用 -->
             <div v-if="actingText" class="debug-section">
-              <div class="debug-section-title">🔧 工具调用</div>
+              <div class="debug-section-title">{{ t('chat.toolCalling') }}</div>
               <div class="debug-acting-text">{{ actingText }}</div>
             </div>
 
             <!-- 事件时间线 -->
             <div v-if="eventLog.length > 0" class="debug-section">
-              <div class="debug-section-title">事件时间线</div>
+              <div class="debug-section-title">{{ t('chat.executionTimeline') }}</div>
               <div class="debug-timeline">
                 <div v-for="(ev, idx) in eventLog" :key="idx" class="debug-event-row">
                   <span class="ev-time">+{{ ev.elapsed }}ms</span>
@@ -176,7 +176,7 @@
               </div>
             </div>
 
-            <el-empty v-if="!streaming && eventLog.length === 0" description="执行后显示调试数据" :image-size="40" />
+            <el-empty v-if="!streaming && eventLog.length === 0" :description="t('chat.noDebugData')" :image-size="40" />
             </div>
           </div>
         </div>
@@ -187,7 +187,7 @@
             v-model="task"
             type="textarea"
             :rows="2"
-            placeholder="输入任务描述，Enter 发送 / Shift+Enter 换行"
+            :placeholder="t('chat.inputPlaceholder')"
             :disabled="isBusy"
             @keydown.enter.exact.prevent="send"
           />
@@ -198,12 +198,12 @@
               :max-count="5"
               :max-size="10 * 1024 * 1024"
               biz-type="chat_image"
-              button-text="附件"
+              :button-text="t('chat.attachment')"
               :disabled="isBusy"
               @change="onFilesChange"
             />
-            <el-button v-if="!isBusy" type="primary" :disabled="!task.trim()" @click="send">发送</el-button>
-            <el-button v-if="streaming" type="danger" @click="abort">中断</el-button>
+            <el-button v-if="!isBusy" type="primary" :disabled="!task.trim()" @click="send">{{ t('chat.send') }}</el-button>
+            <el-button v-if="streaming" type="danger" @click="abort">{{ t('chat.abort') }}</el-button>
           </div>
         </div>
       </div>
@@ -213,6 +213,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Document } from '@element-plus/icons-vue'
 import { streamExecuteAgent, streamExecuteMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
@@ -224,6 +225,8 @@ import {
   type ConversationVO,
   type MessageVO
 } from '@/api/modules/conversation'
+
+const { t } = useI18n()
 
 const props = defineProps<{ agentId: number }>()
 

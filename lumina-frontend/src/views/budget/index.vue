@@ -9,9 +9,9 @@
 
     <!-- 预算使用概览 -->
     <el-card shadow="never" class="usage-card" v-loading="usageLoading">
-      <template #header>预算使用情况</template>
+      <template #header>{{ t('budget.usageStatus') }}</template>
       <div v-if="usageList.length === 0 && !usageLoading" class="empty-tip">
-        暂无预算规则，点击右上角"新建规则"创建
+        {{ t('budget.noRule') }}
       </div>
       <div v-for="item in usageList" :key="item.ruleId" class="usage-item">
         <div class="usage-header">
@@ -35,7 +35,7 @@
 
     <!-- 规则列表 -->
     <el-card shadow="never" class="rules-card">
-      <template #header>预算规则</template>
+      <template #header>{{ t('budget.ruleList') }}</template>
       <el-table :data="rules" stripe v-loading="rulesLoading">
         <el-table-column prop="ruleName" :label="t('budget.ruleName')" min-width="150" />
         <el-table-column prop="scopeType" :label="t('budget.scope')" width="100">
@@ -43,16 +43,16 @@
             <el-tag size="small">{{ row.scopeType }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="scopeId" label="范围 ID" width="100">
+        <el-table-column prop="scopeId" :label="t('budget.scopeId')" width="100">
           <template #default="{ row }">{{ row.scopeId ?? '-' }}</template>
         </el-table-column>
-        <el-table-column prop="periodType" label="周期" width="100">
+        <el-table-column prop="periodType" :label="t('budget.period')" width="100">
           <template #default="{ row }">{{ row.periodType === 'DAILY' ? '日' : '月' }}</template>
         </el-table-column>
-        <el-table-column prop="limitAmount" label="上限（元）" width="120">
+        <el-table-column prop="limitAmount" :label="t('budget.limitYuan')" width="120">
           <template #default="{ row }">¥ {{ row.limitAmount.toFixed(4) }}</template>
         </el-table-column>
-        <el-table-column prop="alertThreshold" label="告警阈值" width="100">
+        <el-table-column prop="alertThreshold" :label="t('budget.alertThreshold')" width="100">
           <template #default="{ row }">{{ row.alertThreshold }}%</template>
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="80" fixed="right">
@@ -67,19 +67,19 @@
     <el-dialog v-model="dialogVisible" :title="t('budget.createRule')" width="500px" :close-on-click-modal="false">
       <el-form :model="formData" label-width="100px">
         <el-form-item :label="t('budget.ruleName')" required>
-          <el-input v-model="formData.ruleName" placeholder="如：客服 Agent 日预算" />
+          <el-input v-model="formData.ruleName" :placeholder="t('budget.ruleNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="范围类型" required>
+        <el-form-item :label="t('budget.scopeType')" required>
           <el-select v-model="formData.scopeType" style="width: 100%">
-            <el-option label="租户级" value="TENANT" />
-            <el-option label="Agent 级" value="AGENT" />
-            <el-option label="用户级" value="USER" />
+            <el-option :label="t('budget.tenantLevel')" value="TENANT" />
+            <el-option :label="t('budget.agentLevel')" value="AGENT" />
+            <el-option :label="t('budget.userLevel')" value="USER" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="formData.scopeType !== 'TENANT'" label="范围 ID">
-          <el-input-number v-model="formData.scopeId" :min="1" placeholder="Agent ID 或 User ID" style="width: 100%" />
+        <el-form-item v-if="formData.scopeType !== 'TENANT'" :label="t('budget.scopeId')">
+          <el-input-number v-model="formData.scopeId" :min="1" :placeholder="t('budget.scopeIdPlaceholder')" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="周期" required>
+        <el-form-item :label="t('budget.period')" required>
           <el-radio-group v-model="formData.periodType">
             <el-radio value="DAILY">日预算</el-radio>
             <el-radio value="MONTHLY">月预算</el-radio>

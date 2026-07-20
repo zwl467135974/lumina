@@ -17,9 +17,9 @@
             </div>
           </template>
 
-          <el-input v-model="queryName" placeholder="按名称搜索" clearable class="search-input" @change="loadDatasets" />
+          <el-input v-model="queryName" :placeholder="t('evaluation.searchByName')" clearable class="search-input" @change="loadDatasets" />
           <el-table v-loading="datasetLoading" :data="datasets" stripe @row-click="selectDataset">
-            <el-table-column prop="name" label="名称" min-width="160" />
+            <el-table-column prop="name" :label="t('evaluation.name')" min-width="160" />
             <el-table-column :label="t('evaluation.caseId')" width="70">
               <template #default="{ row }">{{ row.cases?.length || 0 }}</template>
             </el-table-column>
@@ -34,12 +34,12 @@
 
       <el-col :span="14">
         <el-card shadow="never" class="panel-card">
-          <template #header>执行评估</template>
-          <el-empty v-if="!selectedDataset" description="请选择左侧数据集" />
+          <template #header>{{ t('evaluation.executeEval') }}</template>
+          <el-empty v-if="!selectedDataset" :description="t('evaluation.pleaseSelectDataset')" />
           <div v-else>
             <el-descriptions :column="2" border size="small" class="dataset-summary">
-              <el-descriptions-item label="数据集">{{ selectedDataset.name }}</el-descriptions-item>
-              <el-descriptions-item label="用例数">{{ selectedDataset.cases.length }}</el-descriptions-item>
+              <el-descriptions-item :label="t('evaluation.datasetName')">{{ selectedDataset.name }}</el-descriptions-item>
+              <el-descriptions-item :label="t('evaluation.caseCount')">{{ selectedDataset.cases.length }}</el-descriptions-item>
               <el-descriptions-item :label="t('agent.type')">{{ selectedDataset.agentType || '-' }}</el-descriptions-item>
               <el-descriptions-item :label="t('common.createTime')">{{ selectedDataset.createTime || '-' }}</el-descriptions-item>
             </el-descriptions>
@@ -84,7 +84,7 @@
         </div>
       </template>
       <el-row :gutter="16" class="metric-row">
-        <el-col :span="6"><el-statistic title="通过用例" :value="`${currentReport.passedCases}/${currentReport.totalCases}`" /></el-col>
+        <el-col :span="6"><el-statistic :title="t('evaluation.passCases')" :value="`${currentReport.passedCases}/${currentReport.totalCases}`" /></el-col>
         <el-col :span="6"><el-statistic :title="t('evaluation.avgScore')" :value="currentReport.avgScore" :precision="3" /></el-col>
         <el-col :span="6"><el-statistic :title="t('evaluation.avgLatency') + '(ms)'" :value="currentReport.avgLatencyMs" /></el-col>
         <el-col :span="6"><el-statistic :title="t('evaluation.totalTokens')" :value="currentReport.totalTokens || 0" /></el-col>
@@ -99,7 +99,7 @@
         <el-col :span="12">
           <div class="chart-title">{{ t('evaluation.trend') }}</div>
           <v-chart v-if="trendChartOption" :option="trendChartOption" autoresize style="height: 280px" />
-          <el-empty v-else description="暂无趋势数据（至少需 2 次评估）" :image-size="40" />
+          <el-empty v-else :description="t('evaluation.noTrendData')" :image-size="40" />
         </el-col>
       </el-row>
 
@@ -124,7 +124,7 @@
       <template #header>{{ t('evaluation.history') }}</template>
       <el-table v-loading="runListLoading" :data="runs" stripe>
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="datasetName" label="数据集" min-width="150" />
+        <el-table-column prop="datasetName" :label="t('evaluation.datasetName')" min-width="150" />
         <el-table-column prop="agentId" label="Agent ID" width="100" />
         <el-table-column prop="scoringMethod" :label="t('evaluation.scoringMethod')" width="160" />
         <el-table-column :label="t('common.status')" width="100">
@@ -137,7 +137,7 @@
         <el-table-column :label="t('evaluation.passRate')" width="110">
           <template #default="{ row }">{{ percent(row.passRate) }}</template>
         </el-table-column>
-        <el-table-column label="平均分" width="100">
+        <el-table-column :label="t('evaluation.avgScore')" width="100">
           <template #default="{ row }">{{ Number(row.avgScore).toFixed(3) }}</template>
         </el-table-column>
         <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
@@ -153,11 +153,11 @@
 
     <el-dialog v-model="datasetDialogVisible" :title="t('evaluation.createDataset')" width="760px">
       <el-form :model="datasetForm" label-width="110px">
-        <el-form-item label="名称" required>
-          <el-input v-model="datasetForm.name" placeholder="例如：客服 Agent 基础问答" />
+        <el-form-item :label="t('evaluation.name')" required>
+          <el-input v-model="datasetForm.name" :placeholder="t('evaluation.datasetPlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('agent.type')">
-          <el-input v-model="datasetForm.agentType" placeholder="例如：assistant" />
+          <el-input v-model="datasetForm.agentType" :placeholder="t('evaluation.agentTypePlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('common.description')">
           <el-input v-model="datasetForm.description" type="textarea" :rows="2" />
@@ -192,20 +192,20 @@
         <el-table :data="compareData.cases" stripe max-height="400">
           <el-table-column prop="caseId" :label="t('evaluation.caseId')" width="120" />
           <el-table-column prop="category" :label="t('evaluation.category')" width="100" />
-          <el-table-column label="分数A" width="80">
+          <el-table-column :label="t('evaluation.scoreA')" width="80">
             <template #default="{ row }">{{ row.scoreA.toFixed(3) }}</template>
           </el-table-column>
-          <el-table-column label="分数B" width="80">
+          <el-table-column :label="t('evaluation.scoreB')" width="80">
             <template #default="{ row }">{{ row.scoreB.toFixed(3) }}</template>
           </el-table-column>
-          <el-table-column label="变化" width="80">
+          <el-table-column :label="t('evaluation.change')" width="80">
             <template #default="{ row }">
               <span :style="{ color: row.scoreDiff > 0 ? 'var(--lumina-success)' : row.scoreDiff < 0 ? 'var(--lumina-danger)' : 'var(--lumina-text-secondary)' }">
                 {{ row.scoreDiff > 0 ? '+' : '' }}{{ row.scoreDiff.toFixed(3) }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="趋势" width="80">
+          <el-table-column :label="t('evaluation.trend')" width="80">
             <template #default="{ row }">
               <el-tag :type="row.trend === 'IMPROVED' ? 'success' : row.trend === 'REGRESSED' ? 'danger' : 'info'" size="small">
                 {{ row.trend === 'IMPROVED' ? '↑' : row.trend === 'REGRESSED' ? '↓' : '→' }}
@@ -227,13 +227,13 @@
 
       <!-- Prompt 版本对比 -->
       <el-form :inline="true" class="prompt-compare-form">
-        <el-form-item label="Prompt 名称">
-          <el-input v-model="promptCompare.name" placeholder="如 react / assistant" style="width: 150px" />
+        <el-form-item :label="t('evaluation.promptName')">
+          <el-input v-model="promptCompare.name" :placeholder="t('evaluation.promptNamePlaceholder')" style="width: 150px" />
         </el-form-item>
-        <el-form-item label="版本 A">
+        <el-form-item :label="t('evaluation.versionA')">
           <el-input-number v-model="promptCompare.vA" :min="1" controls-position="right" style="width: 90px" />
         </el-form-item>
-        <el-form-item label="版本 B">
+        <el-form-item :label="t('evaluation.versionB')">
           <el-input-number v-model="promptCompare.vB" :min="1" controls-position="right" style="width: 90px" />
         </el-form-item>
         <el-form-item>
@@ -255,27 +255,27 @@
     </el-card>
 
     <!-- 批量回归对话框 -->
-    <el-dialog v-model="regressionDialogVisible" title="批量回归测试" width="550px">
+    <el-dialog v-model="regressionDialogVisible" :title="t('evaluation.batchRegression')" width="550px">
       <el-form :model="regressionForm" label-width="110px">
-        <el-form-item label="数据集 ID">
-          <el-input v-model="regressionForm.datasetIdsStr" placeholder="逗号分隔，如 139,140" />
+        <el-form-item :label="t('evaluation.datasetIds')">
+          <el-input v-model="regressionForm.datasetIdsStr" :placeholder="t('evaluation.datasetIdsPlaceholder')" />
         </el-form-item>
         <el-form-item label="Agent ID">
           <el-input-number v-model="regressionForm.agentId" :min="1" controls-position="right" />
         </el-form-item>
-        <el-form-item label="评分方式">
+        <el-form-item :label="t('evaluation.scoringMethod')">
           <el-select v-model="regressionForm.scoringMethod" style="width: 100%">
-            <el-option label="精确匹配" value="EXACT_MATCH" />
-            <el-option label="包含匹配" value="CONTAINS" />
-            <el-option label="语义相似度" value="SEMANTIC_SIMILARITY" />
+            <el-option :label="t('evaluation.exactMatch')" value="EXACT_MATCH" />
+            <el-option :label="t('evaluation.contains')" value="CONTAINS" />
+            <el-option :label="t('evaluation.semanticSimilarity')" value="SEMANTIC_SIMILARITY" />
             <el-option label="LLM Judge" value="LLM_JUDGE" />
           </el-select>
         </el-form-item>
-        <el-form-item label="阈值">
+        <el-form-item :label="t('evaluation.threshold')">
           <el-slider v-model="regressionForm.threshold" :min="0" :max="1" :step="0.05" show-input style="width: 100%" />
         </el-form-item>
-        <el-form-item label="Prompt 名称">
-          <el-input v-model="regressionForm.promptName" placeholder="可选" />
+        <el-form-item :label="t('evaluation.promptName')">
+          <el-input v-model="regressionForm.promptName" :placeholder="t('evaluation.optional')" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -285,25 +285,25 @@
     </el-dialog>
 
     <!-- 回归结果对话框 -->
-    <el-dialog v-model="regressionResultVisible" title="回归测试报告" width="600px">
+    <el-dialog v-model="regressionResultVisible" :title="t('evaluation.regressionReport')" width="600px">
       <div v-if="regressionResult">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="数据集数">{{ regressionResult.totalDatasets }}</el-descriptions-item>
-          <el-descriptions-item label="完成数">{{ regressionResult.completedDatasets }}</el-descriptions-item>
-          <el-descriptions-item label="通过用例">{{ regressionResult.totalPassedCases }}</el-descriptions-item>
-          <el-descriptions-item label="回归用例">{{ regressionResult.totalRegressedCases }}</el-descriptions-item>
-          <el-descriptions-item label="结果">
+          <el-descriptions-item :label="t('evaluation.datasetCount')">{{ regressionResult.totalDatasets }}</el-descriptions-item>
+          <el-descriptions-item :label="t('evaluation.completedCount')">{{ regressionResult.completedDatasets }}</el-descriptions-item>
+          <el-descriptions-item :label="t('evaluation.passCases')">{{ regressionResult.totalPassedCases }}</el-descriptions-item>
+          <el-descriptions-item :label="t('evaluation.regressionCases')">{{ regressionResult.totalRegressedCases }}</el-descriptions-item>
+          <el-descriptions-item :label="t('evaluation.result')">
             <el-tag :type="regressionResult.pass ? 'success' : 'danger'">
               {{ regressionResult.pass ? '通过' : '有回归' }}
             </el-tag>
           </el-descriptions-item>
         </el-descriptions>
         <el-table v-if="regressionResult.datasetResults" :data="regressionResult.datasetResults" size="small" style="margin-top: 12px">
-          <el-table-column prop="datasetId" label="数据集" width="80" />
-          <el-table-column prop="passRate" label="通过率" width="80" />
-          <el-table-column prop="passedCases" label="通过" width="60" />
-          <el-table-column prop="regressed" label="回归" width="60" />
-          <el-table-column prop="status" label="状态" />
+          <el-table-column prop="datasetId" :label="t('evaluation.datasetName')" width="80" />
+          <el-table-column prop="passRate" :label="t('evaluation.passRate')" width="80" />
+          <el-table-column prop="passedCases" :label="t('evaluation.passed')" width="60" />
+          <el-table-column prop="regressed" :label="t('evaluation.regress')" width="60" />
+          <el-table-column prop="status" :label="t('common.status')" />
         </el-table>
       </div>
     </el-dialog>

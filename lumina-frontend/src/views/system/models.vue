@@ -74,10 +74,10 @@
             <el-option label="OpenAI" value="openai" />
             <el-option label="Anthropic (Claude)" value="anthropic" />
             <el-option label="DashScope (Qwen)" value="dashscope" />
-            <el-option label="GLM (智谱)" value="glm" />
+            <el-option :label="t('system.model.providerGlm')" value="glm" />
             <el-option label="DeepSeek" value="deepseek" />
-            <el-option label="Kimi (月之暗面)" value="kimi" />
-            <el-option label="Ollama (本地)" value="ollama" />
+            <el-option :label="t('system.model.providerKimi')" value="kimi" />
+            <el-option :label="t('system.model.providerOllama')" value="ollama" />
           </el-select>
         </el-form-item>
         <el-form-item :label="t('system.model.baseUrl')" prop="baseUrl">
@@ -92,7 +92,7 @@
           />
         </el-form-item>
         <el-form-item :label="t('system.model.defaultModel')" prop="defaultModel">
-          <el-input v-model="formData.defaultModel" placeholder="如 qwen-plus / gpt-4o / deepseek-chat" />
+          <el-input v-model="formData.defaultModel" :placeholder="t('system.model.modelPlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('system.model.defaultParams')" prop="defaultParams">
           <el-input

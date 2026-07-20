@@ -170,10 +170,10 @@
         <!-- Provider Failover 配置 -->
         <el-divider content-position="left">{{ t('agent.form.failoverConfig') }}</el-divider>
         <div v-for="(fp, i) in formData.llmConfig.fallbackProviders" :key="i" class="fallback-row">
-          <el-input v-model="fp.modelType" placeholder="类型 (glm/deepseek/qwen)" style="width: 140px" />
-          <el-input v-model="fp.modelName" placeholder="模型名" style="width: 160px" />
+          <el-input v-model="fp.modelType" :placeholder="t('system.model.providerPlaceholder')" style="width: 140px" />
+          <el-input v-model="fp.modelName" :placeholder="t('system.model.defaultModel')" style="width: 160px" />
           <el-input v-model="fp.apiKey" placeholder="API Key" style="width: 200px" type="password" show-password />
-          <el-input v-model="fp.baseUrl" placeholder="Base URL (可选)" style="flex: 1" />
+          <el-input v-model="fp.baseUrl" :placeholder="t('system.model.baseUrlPlaceholder')" style="flex: 1" />
           <el-button link type="danger" @click="formData.llmConfig.fallbackProviders.splice(i, 1)">
             <el-icon><Delete /></el-icon>
           </el-button>

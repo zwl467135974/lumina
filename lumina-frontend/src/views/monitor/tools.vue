@@ -24,15 +24,15 @@
         <el-table-column :label="t('monitor.avgDuration')" width="100">
           <template #default="{ row }">{{ row.avgDurationMs.toFixed(0) }}ms</template>
         </el-table-column>
-        <el-table-column label="最大耗时" width="100">
+        <el-table-column :label="t('monitor.maxDuration')" width="100">
           <template #default="{ row }">{{ row.maxDurationMs }}ms</template>
         </el-table-column>
-        <el-table-column label="最小耗时" width="100">
+        <el-table-column :label="t('monitor.minDuration')" width="100">
           <template #default="{ row }">{{ row.minDurationMs }}ms</template>
         </el-table-column>
-        <el-table-column prop="failureCount" label="失败数" width="80" />
+        <el-table-column prop="failureCount" :label="t('monitor.failCount')" width="80" />
       </el-table>
-      <el-empty v-if="!loading && statsList.length === 0" description="暂无工具调用记录" :image-size="60" />
+      <el-empty v-if="!loading && statsList.length === 0" :description="t('monitor.noRecords')" :image-size="60" />
     </el-card>
 
     <!-- 熔断状态 -->
@@ -47,20 +47,20 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="consecutiveFailures" label="连续失败" width="120" />
+        <el-table-column prop="consecutiveFailures" :label="t('monitor.consecutiveFails')" width="120" />
       </el-table>
-      <el-empty v-if="breakerList.length === 0" description="暂无熔断记录" :image-size="60" />
+      <el-empty v-if="breakerList.length === 0" :description="t('monitor.noBreaker')" :image-size="60" />
     </el-card>
 
     <!-- 最近调用 -->
     <el-card shadow="never" class="section-card">
       <template #header><span>最近调用记录（{{ invocations.length }}）</span></template>
       <el-table :data="invocations" stripe size="small" max-height="400">
-        <el-table-column label="时间" width="170">
+        <el-table-column :label="t('monitor.time')" width="170">
           <template #default="{ row }">{{ formatTime(row.timestamp) }}</template>
         </el-table-column>
-        <el-table-column prop="toolName" label="工具" min-width="120" />
-        <el-table-column label="结果" width="80">
+        <el-table-column prop="toolName" :label="t('monitor.tool')" min-width="120" />
+        <el-table-column :label="t('monitor.result')" width="80">
           <template #default="{ row }">
             <el-tag :type="row.success ? 'success' : 'danger'" size="small">
               {{ row.success ? '成功' : '失败' }}
@@ -70,7 +70,7 @@
         <el-table-column :label="t('monitor.duration')" width="80">
           <template #default="{ row }">{{ row.durationMs }}ms</template>
         </el-table-column>
-        <el-table-column prop="error" label="错误信息" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="error" :label="t('monitor.errorMsg')" min-width="200" show-overflow-tooltip />
       </el-table>
     </el-card>
   </div>

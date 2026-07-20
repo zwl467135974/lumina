@@ -50,7 +50,7 @@
           </VueFlow>
 
           <div v-if="nodes.length === 0" class="canvas-empty">
-            <el-empty description="拖拽左侧节点到画布开始设计" :image-size="80" />
+            <el-empty :description="t('workflow.dragTip')" :image-size="80" />
           </div>
         </div>
 
@@ -59,11 +59,11 @@
             v-model="yamlText"
             type="textarea"
             :rows="30"
-            placeholder="输入工作流 YAML..."
+            :placeholder="t('workflow.yamlPlaceholder2')"
             class="yaml-textarea"
           />
           <div class="yaml-actions">
-            <el-button size="small" @click="syncYamlToGraph">从 YAML 同步到画布</el-button>
+            <el-button size="small" @click="syncYamlToGraph">{{ t('workflow.syncFromYaml') }}</el-button>
           </div>
         </div>
       </div>
@@ -75,13 +75,13 @@
             <span>{{ NODE_TYPES[selectedNode.data.nodeType]?.icon }} {{ selectedNode.data.label }}</span>
           </div>
           <el-form label-width="80px" size="small">
-            <el-form-item label="节点 ID">
+            <el-form-item :label="t('workflow.nodeId')">
               <el-input v-model="selectedNode.id" disabled />
             </el-form-item>
-            <el-form-item label="名称">
+            <el-form-item :label="t('workflow.designerName')">
               <el-input v-model="selectedNode.data.label" />
             </el-form-item>
-            <el-form-item label="类型">
+            <el-form-item :label="t('workflow.type')">
               <el-tag size="small">{{ selectedNode.data.nodeType }}</el-tag>
             </el-form-item>
 
@@ -89,46 +89,46 @@
               <el-form-item label="Agent ID">
                 <el-input-number v-model="selectedNode.data.properties.agentId" :min="1" style="width: 100%" />
               </el-form-item>
-              <el-form-item label="输入表达式">
+              <el-form-item :label="t('workflow.inputExpr')">
                 <el-input v-model="selectedNode.data.properties.input" placeholder="#variable" />
               </el-form-item>
-              <el-form-item label="输出变量">
+              <el-form-item :label="t('workflow.outputVar')">
                 <el-input v-model="selectedNode.data.properties.outputVar" placeholder="result_var" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'condition'">
-              <el-form-item label="条件表达式">
+              <el-form-item :label="t('workflow.conditionExpr')">
                 <el-input v-model="selectedNode.data.properties.expression" type="textarea" :rows="2" placeholder="#result == 'yes'" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'transform'">
-              <el-form-item label="转换表达式">
+              <el-form-item :label="t('workflow.transitionExpr')">
                 <el-input v-model="selectedNode.data.properties.expression" type="textarea" :rows="2" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'parallel'">
-              <el-form-item label="等待全部">
+              <el-form-item :label="t('workflow.waitForAll')">
                 <el-switch v-model="selectedNode.data.properties.waitAll" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'loop'">
-              <el-form-item label="迭代次数">
+              <el-form-item :label="t('workflow.iterations')">
                 <el-input-number v-model="selectedNode.data.properties.iterations" :min="1" style="width: 100%" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'human'">
-              <el-form-item label="决策变量">
+              <el-form-item :label="t('workflow.decisionVar')">
                 <el-input v-model="selectedNode.data.properties.decisionVar" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'http'">
-              <el-form-item label="请求方法">
+              <el-form-item :label="t('workflow.httpMethod')">
                 <el-select v-model="selectedNode.data.properties.method" style="width: 100%">
                   <el-option label="GET" value="GET" />
                   <el-option label="POST" value="POST" />
@@ -144,66 +144,66 @@
                 <el-input v-model="selectedNode.data.properties.headers" type="textarea" :rows="2" placeholder='{"Content-Type": "application/json"}' />
               </el-form-item>
               <el-form-item label="Body">
-                <el-input v-model="selectedNode.data.properties.body" type="textarea" :rows="3" placeholder="请求体（POST/PUT）" />
+                <el-input v-model="selectedNode.data.properties.body" type="textarea" :rows="3" :placeholder="t('workflow.httpBody')" />
               </el-form-item>
-              <el-form-item label="响应变量">
+              <el-form-item :label="t('workflow.responseVar')">
                 <el-input v-model="selectedNode.data.properties.responseVar" placeholder="httpResult" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'delay'">
-              <el-form-item label="等待时长">
+              <el-form-item :label="t('workflow.waitDuration')">
                 <el-input-number v-model="selectedNode.data.properties.duration" :min="1" style="width: 100%" />
               </el-form-item>
-              <el-form-item label="时间单位">
+              <el-form-item :label="t('workflow.timeUnit')">
                 <el-select v-model="selectedNode.data.properties.timeUnit" style="width: 100%">
-                  <el-option label="秒" value="seconds" />
-                  <el-option label="分钟" value="minutes" />
-                  <el-option label="小时" value="hours" />
+                  <el-option :label="t('workflow.second')" value="seconds" />
+                  <el-option :label="t('workflow.minute')" value="minutes" />
+                  <el-option :label="t('workflow.hour')" value="hours" />
                 </el-select>
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'code'">
-              <el-form-item label="语言">
+              <el-form-item :label="t('workflow.language')">
                 <el-select v-model="selectedNode.data.properties.language" style="width: 100%">
                   <el-option label="JavaScript" value="javascript" />
                   <el-option label="Python" value="python" />
                 </el-select>
               </el-form-item>
-              <el-form-item label="脚本">
-                <el-input v-model="selectedNode.data.properties.script" type="textarea" :rows="6" placeholder="// 输入脚本代码" style="font-family: var(--lumina-font-mono)" />
+              <el-form-item :label="t('workflow.script')">
+                <el-input v-model="selectedNode.data.properties.script" type="textarea" :rows="6" :placeholder="t('workflow.scriptPlaceholder')" style="font-family: var(--lumina-font-mono)" />
               </el-form-item>
-              <el-form-item label="输出变量">
+              <el-form-item :label="t('workflow.outputVar')">
                 <el-input v-model="selectedNode.data.properties.outputVar" placeholder="codeResult" />
               </el-form-item>
             </template>
 
             <template v-else-if="selectedNode.data.nodeType === 'start' || selectedNode.data.nodeType === 'end'">
               <div style="color: var(--lumina-text-muted); font-size: 12px; padding: 8px 0">
-                此节点无需配置属性
+                {{ t('workflow.noNodeConfig') }}
               </div>
             </template>
           </el-form>
 
           <el-button type="danger" size="small" @click="deleteNode(selectedNode.id)" style="width: 100%">
-            删除节点
+            {{ t('workflow.deleteNode') }}
           </el-button>
         </template>
 
         <template v-else>
-          <div class="property-title">工作流属性</div>
+          <div class="property-title">{{ t('workflow.workflowProps') }}</div>
           <el-form label-width="80px" size="small">
-            <el-form-item label="名称">
+            <el-form-item :label="t('workflow.designerName')">
               <el-input v-model="workflowMeta.name" :placeholder="t('workflow.name')" />
             </el-form-item>
-            <el-form-item label="描述">
-              <el-input v-model="workflowMeta.description" placeholder="简短描述" />
+            <el-form-item :label="t('workflow.designerDesc')">
+              <el-input v-model="workflowMeta.description" :placeholder="t('workflow.designerDescPlaceholder')" />
             </el-form-item>
           </el-form>
           <div class="property-stats">
-            <div class="stat-row"><span>节点数</span><span>{{ nodes.length }}</span></div>
-            <div class="stat-row"><span>连接数</span><span>{{ edges.length }}</span></div>
+            <div class="stat-row"><span>{{ t('workflow.nodeCount') }}</span><span>{{ nodes.length }}</span></div>
+            <div class="stat-row"><span>{{ t('workflow.edgeCount') }}</span><span>{{ edges.length }}</span></div>
           </div>
         </template>
       </div>
@@ -232,7 +232,7 @@ const router = useRouter()
 const { t } = useI18n()
 const workflowId = computed(() => route.params.id ? Number(route.params.id) : null)
 const title = computed(() => workflowId.value ? t('workflow.edit') : t('workflow.create'))
-const description = computed(() => '拖拽节点设计工作流，可视化编辑或 YAML 模式')
+const description = computed(() => t('workflow.designerPageDesc'))
 
 const mode = ref<'visual' | 'yaml'>('visual')
 const loading = ref(false)

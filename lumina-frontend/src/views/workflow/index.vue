@@ -52,13 +52,13 @@
     <el-dialog v-model="dialogVisible" :title="editingId ? t('workflow.edit') : t('workflow.create')" width="800px" :close-on-click-modal="false">
       <el-form :model="formData" label-width="100px">
         <el-form-item :label="t('common.description')" required>
-          <el-input v-model="formData.name" placeholder="工作流名称" />
+          <el-input v-model="formData.name" :placeholder="t('workflow.namePlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('common.description')">
-          <el-input v-model="formData.description" placeholder="简短描述" />
+          <el-input v-model="formData.description" :placeholder="t('workflow.descriptionPlaceholder')" />
         </el-form-item>
-        <el-form-item label="YAML 定义" required>
-          <el-input v-model="formData.definitionYaml" type="textarea" :rows="18" placeholder="输入工作流 YAML..." class="yaml-editor" />
+        <el-form-item :label="t('workflow.yamlDefinition')" required>
+          <el-input v-model="formData.definitionYaml" type="textarea" :rows="18" :placeholder="t('workflow.yamlPlaceholder')" class="yaml-editor" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -68,7 +68,7 @@
     </el-dialog>
 
     <!-- 模板选择对话框 -->
-    <el-dialog v-model="templateDialogVisible" title="选择模板" width="650px">
+    <el-dialog v-model="templateDialogVisible" :title="t('workflow.selectTemplate')" width="650px">
       <div v-loading="templatesLoading">
         <el-card v-for="tpl in templates" :key="tpl.name" shadow="hover" class="template-card">
           <div class="template-header">
@@ -87,15 +87,15 @@
             </el-tag>
           </div>
         </el-card>
-        <el-empty v-if="!templatesLoading && templates.length === 0" description="暂无模板" />
+        <el-empty v-if="!templatesLoading && templates.length === 0" :description="t('workflow.noTemplate')" />
       </div>
     </el-dialog>
 
     <!-- 从模板一键创建对话框 -->
-    <el-dialog v-model="fromTemplateDialogVisible" title="从模板创建工作流" width="500px">
+    <el-dialog v-model="fromTemplateDialogVisible" :title="t('workflow.createFromTemplate')" width="500px">
       <el-form :model="fromTemplateForm" label-width="100px">
-        <el-form-item label="工作流名称">
-          <el-input v-model="fromTemplateForm.workflowName" placeholder="输入工作流名称" />
+        <el-form-item :label="t('workflow.name')">
+          <el-input v-model="fromTemplateForm.workflowName" :placeholder="t('workflow.namePlaceholder')" />
         </el-form-item>
         <el-form-item v-for="role in fromTemplateForm.roles" :key="role.placeholder" :label="role.placeholder">
           <el-input-number v-model="role.agentId" :min="1" placeholder="Agent ID" controls-position="right" />
@@ -167,7 +167,7 @@
     </el-dialog>
 
     <!-- 实例列表抽屉 -->
-    <el-drawer v-model="instanceDrawerVisible" :title="`${instanceTarget?.name} - 执行实例`" size="70%">
+    <el-drawer v-model="instanceDrawerVisible" :title="t('workflow.instanceExecTitle', { name: instanceTarget?.name })" size="70%">
       <el-table :data="instances" v-loading="instancesLoading" stripe>
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column :label="t('common.status')" width="120">
@@ -175,9 +175,9 @@
             <el-tag :type="instanceStatusType(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="currentNodeId" label="当前节点" width="120" />
-        <el-table-column prop="errorMessage" label="错误" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="createTime" label="执行时间" width="170">
+        <el-table-column prop="currentNodeId" :label="t('workflow.currentNode')" width="120" />
+        <el-table-column prop="errorMessage" :label="t('workflow.error')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="createTime" :label="t('workflow.execTime')" width="170">
           <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="100">

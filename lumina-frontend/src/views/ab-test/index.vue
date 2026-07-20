@@ -47,7 +47,7 @@
     <el-dialog v-model="showCreateDialog" :title="t('abTest.create')" width="700px">
       <el-form :model="createForm" label-width="120px">
         <el-form-item :label="t('abTest.name')">
-          <el-input v-model="createForm.name" placeholder="实验名称" />
+          <el-input v-model="createForm.name" :placeholder="t('abTest.namePlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('abTest.agentId')">
           <el-input-number v-model="createForm.agentId" :min="1" />
@@ -55,9 +55,9 @@
         <el-form-item :label="t('abTest.traffic')">
           <el-slider v-model="createForm.trafficPercent" :min="1" :max="100" show-input style="max-width: 400px" />
         </el-form-item>
-        <el-form-item v-for="(v, i) in createForm.variants" :key="i" :label="`变体 ${v.name}`">
+        <el-form-item v-for="(v, i) in createForm.variants" :key="i" :label="t('abTest.variantLabel', { name: v.name })">
           <el-input v-model="v.name" placeholder="A/B/C" style="width: 80px; margin-right: 8px" />
-          <el-input-number v-model="v.weight" :min="1" :max="100" placeholder="权重" style="width: 120px; margin-right: 8px" />
+          <el-input-number v-model="v.weight" :min="1" :max="100" :placeholder="t('abTest.weightPlaceholder')" style="width: 120px; margin-right: 8px" />
           <el-input v-model="v.llmConfig" type="textarea" :rows="2" placeholder='LLM配置 JSON, 如 {"modelType":"glm","modelName":"glm-4"}' style="flex: 1" />
           <el-button link type="danger" @click="createForm.variants.splice(i, 1)" style="margin-left: 8px">
             <el-icon><Delete /></el-icon>

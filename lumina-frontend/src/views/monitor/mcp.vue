@@ -8,7 +8,7 @@
     <!-- MCP 未启用提示 -->
     <el-alert
       v-if="!loading && status && !status.enabled"
-      title="MCP 未启用"
+      :title="t('monitor.mcpTitle')"
       type="info"
       :closable="false"
       show-icon
@@ -23,29 +23,29 @@
           <span>MCP Server（{{ status.servers.length }}）</span>
         </template>
         <el-table :data="status.servers" v-loading="loading" stripe size="small">
-          <el-table-column prop="name" label="名称" min-width="140" />
-          <el-table-column prop="transport" label="传输方式" width="120">
+          <el-table-column prop="name" :label="t('monitor.mcpName')" min-width="140" />
+          <el-table-column prop="transport" :label="t('monitor.transport')" width="120">
             <template #default="{ row }">
               <el-tag :type="row.transport === 'stdio' ? 'primary' : 'success'" size="small">
                 {{ row.transport }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="连接状态" width="120">
+          <el-table-column :label="t('monitor.connStatus')" width="120">
             <template #default="{ row }">
               <el-tag :type="row.connected ? 'success' : 'danger'" size="small">
                 {{ row.connected ? '已连接' : '未连接' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="toolCount" label="工具数" width="80" sortable />
-          <el-table-column label="命令/URL" min-width="200" show-overflow-tooltip>
+          <el-table-column prop="toolCount" :label="t('monitor.toolCount')" width="80" sortable />
+          <el-table-column :label="t('monitor.cmdUrl')" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">
               {{ row.transport === 'stdio' ? row.command : row.url }}
             </template>
           </el-table-column>
         </el-table>
-        <el-empty v-if="!loading && status.servers.length === 0" description="未配置 MCP Server" :image-size="60" />
+        <el-empty v-if="!loading && status.servers.length === 0" :description="t('monitor.mcpNotConfigured')" :image-size="60" />
       </el-card>
 
       <!-- MCP 工具列表 -->
@@ -54,11 +54,11 @@
           <span>MCP 工具（{{ tools.length }}）</span>
         </template>
         <el-table :data="tools" stripe size="small">
-          <el-table-column prop="name" label="工具名称" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="serverName" label="来源 Server" width="140" />
-          <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="name" :label="t('monitor.toolName')" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="serverName" :label="t('monitor.sourceServer')" width="140" />
+          <el-table-column prop="description" :label="t('common.description')" min-width="200" show-overflow-tooltip />
         </el-table>
-        <el-empty v-if="tools.length === 0" description="暂无已注册的 MCP 工具" :image-size="60" />
+        <el-empty v-if="tools.length === 0" :description="t('monitor.noMcpTools')" :image-size="60" />
       </el-card>
     </template>
   </div>
@@ -66,8 +66,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { getMcpServers, getMcpTools, type McpStatusVO, type McpToolVO } from '@/api/modules/mcp'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const status = ref<McpStatusVO | null>(null)

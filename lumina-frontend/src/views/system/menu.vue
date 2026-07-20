@@ -57,13 +57,13 @@
           <el-input v-model="formData.permissionName" :placeholder="t('system.menu.namePlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('system.menu.icon')" prop="icon">
-          <el-input v-model="formData.icon" placeholder="如 Odometer / Setting / User" />
+          <el-input v-model="formData.icon" :placeholder="t('system.menu.iconPlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('system.menu.path')" prop="resourcePath">
-          <el-input v-model="formData.resourcePath" placeholder="如 /system/user" />
+          <el-input v-model="formData.resourcePath" :placeholder="t('system.menu.pathPlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('system.menu.code')" prop="permissionCode" required>
-          <el-input v-model="formData.permissionCode" placeholder="如 system:user" />
+          <el-input v-model="formData.permissionCode" :placeholder="t('system.menu.permissionPlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('system.menu.sort')" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" :max="999" />

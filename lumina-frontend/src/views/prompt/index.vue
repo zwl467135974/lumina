@@ -7,8 +7,8 @@
       show-icon
       :closable="false"
       style="margin-bottom: var(--lumina-spacing-md)"
-      title="Prompt 生效规则"
-      description="Agent 执行时会将 Agent 类型转为小写匹配 Prompt 名称，例如 ReAct -> react、simple -> simple、tool -> tool。发布并激活后会立即影响后续执行；未匹配到激活版本时使用 agent-core 内置 Prompt。"
+      :title="t('prompt.ruleTitle')"
+      :description="t('prompt.ruleDesc')"
     />
 
     <LumTablePanel
@@ -39,15 +39,15 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="variables" label="变量" width="150" show-overflow-tooltip />
-        <el-table-column prop="agentType" label="Agent 类型" width="130">
+        <el-table-column prop="variables" :label="t('prompt.variables')" width="150" show-overflow-tooltip />
+        <el-table-column prop="agentType" :label="t('prompt.agentType')" width="130">
           <template #default="{ row }">
             <el-tag v-if="row.agentType" size="small" type="warning">{{ row.agentType }}</el-tag>
             <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="description" :label="t('common.description')" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="updateTime" label="更新时间" width="170">
+        <el-table-column prop="updateTime" :label="t('prompt.updateTime')" width="170">
           <template #default="{ row }">{{ formatDate(row.updateTime) }}</template>
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="180" fixed="right">
@@ -73,19 +73,19 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="800px" :close-on-click-modal="false">
       <el-form :model="formData" label-width="80px">
         <el-form-item :label="t('prompt.name')" required>
-          <el-input v-model="formData.name" :disabled="!!editingId" placeholder="如 react / customer-service" />
+          <el-input v-model="formData.name" :disabled="!!editingId" :placeholder="t('prompt.namePlaceholder')" />
         </el-form-item>
-        <el-form-item label="Agent 类型">
-          <el-input v-model="formData.agentType" placeholder="如 assistant / customer-service（用于关联 Agent）" />
+        <el-form-item :label="t('prompt.agentType')">
+          <el-input v-model="formData.agentType" :placeholder="t('prompt.agentTypePlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('common.description')">
-          <el-input v-model="formData.description" placeholder="简短描述" />
+          <el-input v-model="formData.description" :placeholder="t('prompt.descPlaceholder')" />
         </el-form-item>
-        <el-form-item label="变量">
-          <el-input v-model="formData.variables" placeholder="逗号分隔，如 task,context,language" />
+        <el-form-item :label="t('prompt.variables')">
+          <el-input v-model="formData.variables" :placeholder="t('prompt.variablesPlaceholder')" />
         </el-form-item>
         <el-form-item :label="t('prompt.content')" required>
-          <el-input v-model="formData.content" type="textarea" :rows="14" placeholder="Prompt 模板内容，支持 {变量名} 占位符" class="prompt-editor" />
+          <el-input v-model="formData.content" type="textarea" :rows="14" :placeholder="t('prompt.contentPlaceholder')" class="prompt-editor" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -108,7 +108,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updateTime" label="更新时间" width="170">
+        <el-table-column prop="updateTime" :label="t('prompt.updateTime')" width="170">
           <template #default="{ row }">{{ formatDate(row.updateTime) }}</template>
         </el-table-column>
         <el-table-column :label="t('common.actions')" width="160">

@@ -54,8 +54,8 @@
       <template #header>{{ t('cost.topAgents') }}</template>
       <el-table :data="summary?.topAgents || []" stripe>
         <el-table-column prop="agentId" label="Agent ID" width="120" />
-        <el-table-column prop="tokens" label="Token 用量" />
-        <el-table-column label="费用（元）">
+        <el-table-column prop="tokens" :label="t('cost.tokenUsage')" />
+        <el-table-column :label="t('cost.costYuan')">
           <template #default="{ row }">¥ {{ row.cost.toFixed(4) }}</template>
         </el-table-column>
       </el-table>

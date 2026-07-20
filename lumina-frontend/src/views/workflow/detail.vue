@@ -1,6 +1,6 @@
 <template>
   <div class="workflow-detail-page">
-    <PageHeader :title="t('workflow.detail')" :description="`实例 #${instanceId}`">
+    <PageHeader :title="t('workflow.detail')" :description="t('workflow.instanceDesc', { id: instanceId })">
       <template #actions>
         <el-button @click="router.back()">返回</el-button>
         <el-button @click="loadData">{{ t('common.refresh') }}</el-button>
@@ -10,21 +10,21 @@
     <!-- 实例概览 -->
     <el-card shadow="never" class="overview-card" v-loading="loading">
       <el-descriptions :column="4" border>
-        <el-descriptions-item label="工作流">{{ instance?.definitionName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="版本">v{{ instance?.definitionVersion || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('workflow.title')">{{ instance?.definitionName || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('workflow.version')">v{{ instance?.definitionVersion || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="t('common.status')">
           <el-tag :type="statusType(instance?.status)" size="small">{{ instance?.status || '-' }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="当前节点">{{ instance?.currentNodeId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="执行时间">{{ formatDate(instance?.createTime) }}</el-descriptions-item>
-        <el-descriptions-item label="更新时间">{{ formatDate(instance?.updateTime) }}</el-descriptions-item>
+        <el-descriptions-item :label="t('workflow.currentNode')">{{ instance?.currentNodeId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="t('workflow.execTime')">{{ formatDate(instance?.createTime) }}</el-descriptions-item>
+        <el-descriptions-item :label="t('workflow.updateTime')">{{ formatDate(instance?.updateTime) }}</el-descriptions-item>
         <el-descriptions-item :label="t('task.input')" :span="2">
           <pre class="json-output">{{ formatJson(instance?.input) }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item label="输出" :span="2">
+        <el-descriptions-item :label="t('workflow.output')" :span="2">
           <pre class="json-output">{{ formatJson(instance?.output) }}</pre>
         </el-descriptions-item>
-        <el-descriptions-item v-if="instance?.errorMessage" label="错误" :span="4">
+        <el-descriptions-item v-if="instance?.errorMessage" :label="t('workflow.error')" :span="4">
           <span class="error-text">{{ instance.errorMessage }}</span>
         </el-descriptions-item>
       </el-descriptions>
