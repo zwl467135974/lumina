@@ -14,8 +14,8 @@
         <el-table-column prop="name" :label="t('webhook.name')" min-width="140" show-overflow-tooltip />
         <el-table-column prop="channel" :label="t('webhook.channel')" width="110">
           <template #default="{ row }">
-            <el-tag :type="row.channel === 'WE_COM' ? 'success' : 'primary'" size="small">
-              {{ row.channel === 'WE_COM' ? t('webhook.channelWeCom') : t('webhook.channelWebhook') }}
+            <el-tag :type="channelTagType(row.channel)" size="small">
+              {{ channelLabel(row.channel) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -69,23 +69,26 @@
           <el-select v-model="formData.channel" style="width: 100%">
             <el-option :label="t('webhook.channelWebhook')" value="WEBHOOK" />
             <el-option :label="t('webhook.channelWeCom')" value="WE_COM" />
+            <el-option :label="t('webhook.channelDingTalk')" value="DINGTALK" />
+            <el-option :label="t('webhook.channelFeishu')" value="FEISHU" />
+            <el-option :label="t('webhook.channelTelegram')" value="TELEGRAM" />
           </el-select>
         </el-form-item>
         <el-form-item :label="t('webhook.url')" prop="url">
           <el-input
             v-model="formData.url"
-            :placeholder="formData.channel === 'WE_COM' ? t('webhook.weComUrlPlaceholder') : t('webhook.urlPlaceholder')"
+            :placeholder="urlPlaceholder"
             maxlength="512"
           />
         </el-form-item>
         <el-alert
-          v-if="formData.channel === 'WE_COM'"
+          v-if="channelTip"
           type="info"
           :closable="false"
           show-icon
           class="wecom-tip"
         >
-          {{ t('webhook.weComTip') }}
+          {{ channelTip }}
         </el-alert>
         <el-form-item v-if="formData.channel === 'WEBHOOK'" :label="t('webhook.secret')" prop="secret">
           <el-input v-model="formData.secret" :placeholder="t('webhook.secretPlaceholder')" maxlength="128" />
@@ -123,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, CopyDocument } from '@element-plus/icons-vue'
@@ -140,6 +143,49 @@ const testingId = ref<number | null>(null)
 
 /** 后端 NotificationCategory 枚举 */
 const categories = ['BUDGET', 'TASK', 'WORKFLOW', 'DOCUMENT', 'EVALUATION', 'SYSTEM']
+
+/** 渠道展示名（i18n key 映射） */
+const CHANNEL_LABEL_KEYS: Record<string, string> = {
+  WEBHOOK: 'webhook.channelWebhook',
+  WE_COM: 'webhook.channelWeCom',
+  DINGTALK: 'webhook.channelDingTalk',
+  FEISHU: 'webhook.channelFeishu',
+  TELEGRAM: 'webhook.channelTelegram'
+}
+
+/** 渠道标签颜色（通用 Webhook 蓝色，IM 渠道绿色） */
+const CHANNEL_TAG_TYPES: Record<string, 'primary' | 'success' | 'warning'> = {
+  WEBHOOK: 'primary',
+  WE_COM: 'success',
+  DINGTALK: 'success',
+  FEISHU: 'success',
+  TELEGRAM: 'success'
+}
+
+/** 各渠道 URL 输入提示（i18n key） */
+const CHANNEL_URL_PLACEHOLDER_KEYS: Record<string, string> = {
+  WEBHOOK: 'webhook.urlPlaceholder',
+  WE_COM: 'webhook.weComUrlPlaceholder',
+  DINGTALK: 'webhook.dingTalkUrlPlaceholder',
+  FEISHU: 'webhook.feishuUrlPlaceholder',
+  TELEGRAM: 'webhook.telegramUrlPlaceholder'
+}
+
+/** 各渠道配置说明（i18n key，WEBHOOK 无需说明） */
+const CHANNEL_TIP_KEYS: Record<string, string> = {
+  WE_COM: 'webhook.weComTip',
+  DINGTALK: 'webhook.dingTalkTip',
+  FEISHU: 'webhook.feishuTip',
+  TELEGRAM: 'webhook.telegramTip'
+}
+
+function channelLabel(channel: string) {
+  return t(CHANNEL_LABEL_KEYS[channel] || 'webhook.channelWebhook')
+}
+
+function channelTagType(channel: string) {
+  return CHANNEL_TAG_TYPES[channel] || 'primary'
+}
 
 // 创建对话框
 const createDialogVisible = ref(false)
@@ -166,6 +212,17 @@ const formRules: FormRules = {
     { pattern: /^https?:\/\/.+/, message: t('webhook.urlInvalid'), trigger: 'blur' }
   ]
 }
+
+/** 当前渠道的 URL 输入提示 */
+const urlPlaceholder = computed(() =>
+  t(CHANNEL_URL_PLACEHOLDER_KEYS[formData.channel] || 'webhook.urlPlaceholder')
+)
+
+/** 当前渠道的配置说明（WEBHOOK 渠道无） */
+const channelTip = computed(() => {
+  const key = CHANNEL_TIP_KEYS[formData.channel]
+  return key ? t(key) : ''
+})
 
 // secret 明文展示对话框
 const secretDialogVisible = ref(false)

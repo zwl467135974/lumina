@@ -119,3 +119,38 @@ A: 只要是 "disabled" / "excluded" 语义即为正常；standalone 不会连�
 
 **Q: 预算告警等站内通知还能收到吗？**
 A: 能。无 MQ 时通知自动降级为进程内事件，站内通知与 SSE 实时推送不受影响。
+
+## 方式三：操作脚本（本地开发推荐）
+
+适合反复启动/停止/调试的场景。脚本路径：`scripts/standalone.sh`。
+
+### 1. 配置环境
+
+```bash
+cp .env.standalone.example .env.standalone
+# 编辑 .env.standalone，至少填 LLM_API_KEY
+```
+
+`.env.standalone` 是本地实际配置（含 key，已 gitignore，不提交）。模板见 `.env.standalone.example`。
+
+### 2. 常用命令
+
+```bash
+./scripts/standalone.sh build     # 构建 jar（首次必跑）
+./scripts/standalone.sh start     # 后台启动（日志 → logs/standalone.log）
+./scripts/standalone.sh status    # 查状态 + health
+./scripts/standalone.sh logs      # 实时查日志（tail -f，Ctrl+C 退出）
+./scripts/standalone.sh stop      # 停止（优雅退出 + 强杀兜底）
+./scripts/standalone.sh restart   # 重启
+./scripts/standalone.sh clean     # 清理日志和临时文件
+```
+
+### 3. 前置依赖
+
+| 服务 | 端口 | 必需性 | 启动命令 |
+|---|---|---|---|
+| MySQL 8 | 3306 | 必需 | `docker run -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=lumina_dev mysql:8.0` |
+| Redis 7 | 6379 | 必需 | `docker run -d -p 6379:6379 redis:7-alpine redis-server --requirepass 123456` |
+| Qdrant | 6333 | 可选（RAG 用） | `docker run -d -p 6333:6333 qdrant/qdrant:v1.12.4` |
+
+注意：MySQL 首次启动后要建库 `lumina_dev`（standalone 首次启动 Flyway 会自动建表，但库要预先存在）。

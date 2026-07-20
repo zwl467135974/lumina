@@ -32,13 +32,14 @@ public class CreateWebhookDTO {
     private String url;
 
     /**
-     * 通知渠道（WEBHOOK/WE_COM，默认 WEBHOOK）
+     * 通知渠道（WEBHOOK/WE_COM/DINGTALK/FEISHU/TELEGRAM，默认 WEBHOOK）
      */
-    @Pattern(regexp = "^(WEBHOOK|WE_COM)$", message = "channel 仅支持 WEBHOOK 或 WE_COM")
+    @Pattern(regexp = "^(WEBHOOK|WE_COM|DINGTALK|FEISHU|TELEGRAM)$",
+            message = "channel 仅支持 WEBHOOK/WE_COM/DINGTALK/FEISHU/TELEGRAM")
     private String channel;
 
     /**
-     * HMAC 签名密钥（可选，不填则自动生成；WE_COM 渠道忽略）
+     * HMAC 签名密钥（可选，不填则自动生成；仅 WEBHOOK 渠道使用，IM 渠道忽略）
      */
     @Size(max = 128, message = "secret 不能超过 128 字符")
     private String secret;

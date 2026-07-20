@@ -5,7 +5,7 @@ import request from '../request'
 import type { R } from '@/types/api'
 
 /** 通知渠道 */
-export type WebhookChannel = 'WEBHOOK' | 'WE_COM'
+export type WebhookChannel = 'WEBHOOK' | 'WE_COM' | 'DINGTALK' | 'FEISHU' | 'TELEGRAM'
 
 /** Webhook VO（secret 明文只在创建响应中返回一次） */
 export interface WebhookVO {

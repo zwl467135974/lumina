@@ -12,6 +12,9 @@ import io.lumina.notification.domain.enums.NotificationChannel;
 import io.lumina.notification.event.NotificationEvent;
 import io.lumina.notification.infrastructure.entity.WebhookDO;
 import io.lumina.notification.infrastructure.mapper.WebhookMapper;
+import io.lumina.notification.service.DingTalkSender;
+import io.lumina.notification.service.FeishuSender;
+import io.lumina.notification.service.TelegramSender;
 import io.lumina.notification.service.WeComSender;
 import io.lumina.notification.service.WebhookSender;
 import io.lumina.notification.service.WebhookService;
@@ -60,6 +63,9 @@ public class WebhookServiceImpl implements WebhookService {
     private final RedisCacheManager redisCacheManager;
     private final WebhookSender webhookSender;
     private final WeComSender weComSender;
+    private final DingTalkSender dingTalkSender;
+    private final FeishuSender feishuSender;
+    private final TelegramSender telegramSender;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -119,10 +125,13 @@ public class WebhookServiceImpl implements WebhookService {
                 webhook.getUserId(), "TEST",
                 "Webhook 测试", "这是一条来自 Lumina 通知中心的测试消息",
                 "INFO", "webhook", String.valueOf(id), webhook.getTenantId());
-        if (NotificationChannel.fromName(webhook.getChannel()) == NotificationChannel.WE_COM) {
-            return weComSender.send(webhook, testEvent);
-        }
-        return webhookSender.send(webhook, testEvent);
+        return switch (NotificationChannel.fromName(webhook.getChannel())) {
+            case WE_COM -> weComSender.send(webhook, testEvent);
+            case DINGTALK -> dingTalkSender.send(webhook, testEvent);
+            case FEISHU -> feishuSender.send(webhook, testEvent);
+            case TELEGRAM -> telegramSender.send(webhook, testEvent);
+            case WEBHOOK -> webhookSender.send(webhook, testEvent);
+        };
     }
 
     @Override

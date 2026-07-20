@@ -6,6 +6,7 @@ import io.lumina.notification.event.NotificationEvent;
 import io.lumina.notification.infrastructure.entity.WebhookDO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,7 @@ import java.util.List;
  * Webhook 分发器
  *
  * <p>通知事件持久化 + SSE 推送后，异步分发到该用户订阅的外部 webhook，
- * 按 channel 路由到对应 Sender（WEBHOOK/WE_COM），不阻塞通知主链。
+ * 按 channel 路由到对应 Sender（WEBHOOK/WE_COM/DINGTALK/FEISHU/TELEGRAM），不阻塞通知主链。
  *
  * <p>可通过 {@code lumina.notification.webhook.enabled=false} 关闭。
  *
@@ -32,6 +33,18 @@ public class WebhookDispatcher {
     private final WebhookService webhookService;
     private final WebhookSender webhookSender;
     private final WeComSender weComSender;
+
+    /**
+     * IM 渠道 Sender 可选注入（未装配时对应渠道跳过，不阻断启动）
+     */
+    @Autowired(required = false)
+    private DingTalkSender dingTalkSender;
+
+    @Autowired(required = false)
+    private FeishuSender feishuSender;
+
+    @Autowired(required = false)
+    private TelegramSender telegramSender;
 
     /**
      * 异步分发事件到用户订阅的 webhook（广播事件 userId=null 跳过）
@@ -56,10 +69,7 @@ public class WebhookDispatcher {
             List<WebhookDO> webhooks = webhookService.findEnabledForEvent(event.getUserId(), event.getCategory());
             for (WebhookDO webhook : webhooks) {
                 try {
-                    switch (NotificationChannel.fromName(webhook.getChannel())) {
-                        case WE_COM -> weComSender.send(webhook, event);
-                        case WEBHOOK -> webhookSender.send(webhook, event);
-                    }
+                    dispatchOne(webhook, event);
                 } catch (Throwable t) {
                     log.warn("Webhook 分发异常 whId={}: {}", webhook.getId(), t.getMessage());
                 }
@@ -75,6 +85,40 @@ public class WebhookDispatcher {
             if (prevTenantId != null) {
                 BaseContext.setTenantId(prevTenantId);
             }
+        }
+    }
+
+    /**
+     * 单个 webhook 按 channel 路由到对应 Sender（IM Sender 未装配时跳过）
+     *
+     * @param webhook webhook 订阅
+     * @param event   通知事件
+     */
+    void dispatchOne(WebhookDO webhook, NotificationEvent event) {
+        switch (NotificationChannel.fromName(webhook.getChannel())) {
+            case WE_COM -> weComSender.send(webhook, event);
+            case DINGTALK -> {
+                if (dingTalkSender != null) {
+                    dingTalkSender.send(webhook, event);
+                } else {
+                    log.warn("DingTalkSender 未装配，跳过 whId={}", webhook.getId());
+                }
+            }
+            case FEISHU -> {
+                if (feishuSender != null) {
+                    feishuSender.send(webhook, event);
+                } else {
+                    log.warn("FeishuSender 未装配，跳过 whId={}", webhook.getId());
+                }
+            }
+            case TELEGRAM -> {
+                if (telegramSender != null) {
+                    telegramSender.send(webhook, event);
+                } else {
+                    log.warn("TelegramSender 未装配，跳过 whId={}", webhook.getId());
+                }
+            }
+            case WEBHOOK -> webhookSender.send(webhook, event);
         }
     }
 }

@@ -18,9 +18,30 @@ public enum NotificationChannel {
     /**
      * 企业微信群机器人（markdown 消息）
      */
-    WE_COM;
+    WE_COM,
 
-    // 未来：EMAIL, SLACK, FEISHU, DINGTALK
+    /**
+     * 钉钉群机器人（markdown 消息，支持加签安全设置）
+     *
+     * @since 3.5.0
+     */
+    DINGTALK,
+
+    /**
+     * 飞书群机器人（text 消息）
+     *
+     * @since 3.5.0
+     */
+    FEISHU,
+
+    /**
+     * Telegram Bot（sendMessage，Markdown parse_mode）
+     *
+     * @since 3.5.0
+     */
+    TELEGRAM;
+
+    // 未来：EMAIL, SLACK
 
     /**
      * 根据名称获取枚举，未知名称返回 WEBHOOK
