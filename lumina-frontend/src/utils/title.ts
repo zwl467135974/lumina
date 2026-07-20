@@ -14,6 +14,7 @@ const titleKeyMap: Record<string, string> = {
   '异步任务': 'menu.agentTasks',
   '工作流': 'menu.workflowRoot',
   '工作流管理': 'menu.workflow',
+  '工作流列表': 'menu.workflowList',
   '执行详情': 'workflow.detail',
   '可视化设计': 'workflow.designer',
   '编辑工作流': 'workflow.edit',

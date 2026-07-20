@@ -26,8 +26,12 @@ export function useTable<T>(
         pageNum: pagination.pageNum,
         pageSize: pagination.pageSize
       })
-      tableData.value = res.data.list
-      pagination.total = res.data.total
+      // 兼容两种分页响应：
+      // - Lumina PageResult: { list, total, pageNum, pageSize }
+      // - MyBatis-Plus Page: { records, total, size, current }
+      const data = res.data as any
+      tableData.value = data.list || data.records || []
+      pagination.total = data.total || 0
     } catch (error) {
       console.error('加载数据失败:', error)
       ElMessage.error('加载数据失败，请稍后重试')

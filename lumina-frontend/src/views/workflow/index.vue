@@ -234,7 +234,9 @@ const loadList = async () => {
       pageNum: 1,
       pageSize: 50
     })
-    list.value = res.data || []
+    // 后端返回 R<PageResult<...>>，数据在 data.list
+    const page = res.data as any
+    list.value = (page && Array.isArray(page.list)) ? page.list : (Array.isArray(page) ? page : [])
   } catch {
     list.value = []
   } finally {
@@ -549,7 +551,9 @@ const showInstances = async (row: WorkflowDefinitionVO) => {
   instancesLoading.value = true
   try {
     const res = await listInstances({ definitionId: row.id, pageNum: 1, pageSize: 50 })
-    instances.value = res.data || []
+    // 后端返回 R<PageResult<...>>，数据在 data.list
+    const page = res.data as any
+    instances.value = (page && Array.isArray(page.list)) ? page.list : (Array.isArray(page) ? page : [])
   } catch {
     instances.value = []
   } finally {

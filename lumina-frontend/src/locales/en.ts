@@ -54,6 +54,7 @@ export default {
     agentTasks: 'Async Tasks',
     workflowRoot: 'Workflow',
     workflow: 'Workflows',
+    workflowList: 'Workflow List',
     knowledge: 'Knowledge',
     knowledgeBase: 'Knowledge Federation',
     prompt: 'Prompts',

@@ -54,6 +54,7 @@ export default {
     agentTasks: '异步任务',
     workflowRoot: '工作流',
     workflow: '工作流管理',
+    workflowList: '工作流列表',
     knowledge: '知识库',
     knowledgeBase: '知识库联邦',
     prompt: 'Prompt 管理',
