@@ -98,7 +98,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="handleSubmit">{{ t('common.ok') }}</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit">{{ t('common.ok') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -127,6 +127,7 @@ const queryForm = reactive<QueryPermissionDTO>({
 })
 
 const loading = ref(false)
+const submitting = ref(false)
 const permissionTree = ref<PermissionVO[]>([])
 const tableRef = ref()
 
@@ -260,6 +261,7 @@ const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      submitting.value = true
       try {
         if (isEdit.value && editingPermissionId.value) {
           const updateData: UpdatePermissionDTO = {
@@ -278,6 +280,8 @@ const handleSubmit = async () => {
         loadPermissionTree()
       } catch (error) {
         console.error('操作失败:', error)
+      } finally {
+        submitting.value = false
       }
     }
   })
