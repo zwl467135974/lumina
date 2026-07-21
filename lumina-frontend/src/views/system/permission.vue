@@ -105,6 +105,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'SystemPermission' })
 import { reactive, ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'

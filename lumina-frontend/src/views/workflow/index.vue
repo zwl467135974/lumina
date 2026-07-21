@@ -191,6 +191,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'WorkflowList' })
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'

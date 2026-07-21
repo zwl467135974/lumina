@@ -22,7 +22,11 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior: () => ({ left: 0, top: 0 })
+  scrollBehavior() {
+    const el = document.querySelector('.page-content')
+    if (el) el.scrollTop = 0
+    return { top: 0 }
+  }
 })
 
 // 设置路由守卫

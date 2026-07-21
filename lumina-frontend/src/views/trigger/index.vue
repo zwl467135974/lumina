@@ -51,7 +51,9 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!loading && !list.length" :description="t('trigger.empty')" />
+      <el-empty v-if="!loading && !list.length" :description="t('trigger.empty')">
+        <el-button type="primary" @click="handleCreate">{{ t('trigger.create') }}</el-button>
+      </el-empty>
       <div v-if="pagination.total > 0" class="pagination-wrapper">
         <el-pagination
           v-model:current-page="pagination.pageNum"
@@ -99,6 +101,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'AgentTriggers' })
 import { reactive, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'

@@ -123,6 +123,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'Prompt' })
 import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'

@@ -579,7 +579,10 @@ function handleUserCommand(command: string) {
   }
 
   .header-breadcrumb {
-    display: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
   }
 
   .lang-switch {

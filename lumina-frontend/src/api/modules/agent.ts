@@ -126,6 +126,11 @@ export function streamAgentTask(
   const token = getToken()
   const url = `${baseURL}/api/v1/agents/tasks/${taskUuid}/stream`
 
+  // SSE 重连控制：默认 onerror 不 throw 让库自动重试，
+  // 超过 MAX_RETRIES 后回调 onError 并中止。
+  const MAX_RETRIES = 5
+  let retries = 0
+
   fetchEventSource(url, {
     method: 'GET',
     headers: {
@@ -138,6 +143,7 @@ export function streamAgentTask(
       if (!response.ok) {
         throw new Error(`SSE 连接失败: ${response.status} ${response.statusText}`)
       }
+      retries = 0
     },
     onmessage(ev) {
       let event: TaskProgressEvent
@@ -154,7 +160,11 @@ export function streamAgentTask(
       }
     },
     onerror(err) {
-      cb.onError?.(err instanceof Error ? err : new Error(String(err)))
+      retries += 1
+      if (retries > MAX_RETRIES) {
+        cb.onError?.(err instanceof Error ? err : new Error(String(err)))
+        throw err
+      }
     },
     onclose() {
       cb.onClose?.()
@@ -202,6 +212,11 @@ export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks
     url += `&conversationId=${encodeURIComponent(conversationId)}`
   }
 
+  // SSE 重连控制：onerror 不再 throw，让 fetch-event-source 自动重试；
+  // 超过 MAX_RETRIES 后回调 onError 并中止，避免无限重连。
+  const MAX_RETRIES = 5
+  let retries = 0
+
   fetchEventSource(url, {
     method: 'POST',
     headers: {
@@ -214,6 +229,8 @@ export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks
       if (!response.ok) {
         throw new Error(`流式连接失败: ${response.status} ${response.statusText}`)
       }
+      // 连接成功后重置重试计数
+      retries = 0
     },
     onmessage(ev) {
       let chunk: StreamChunk
@@ -225,8 +242,13 @@ export function streamExecuteAgent(id: number, task: string, cb: StreamCallbacks
       cb.onChunk(chunk)
     },
     onerror(err) {
-      cb.onError?.(err instanceof Error ? err : new Error(String(err)))
-      throw err
+      retries += 1
+      if (retries > MAX_RETRIES) {
+        // 达到重试上限：回调业务层并停止重连（throw 让库放弃重试）
+        cb.onError?.(err instanceof Error ? err : new Error(String(err)))
+        throw err
+      }
+      // 否则不 throw，由库按指数退避自动重连
     },
     onclose() {
       cb.onClose?.()
@@ -257,6 +279,11 @@ export function streamExecuteMultimodalAgent(
   const token = getToken()
   const url = `${baseURL}/api/v1/agents/${id}/execute/multimodal/stream`
 
+  // SSE 重连控制：onerror 不再 throw，让 fetch-event-source 自动重试；
+  // 超过 MAX_RETRIES 后回调 onError 并中止，避免无限重连。
+  const MAX_RETRIES = 5
+  let retries = 0
+
   fetchEventSource(url, {
     method: 'POST',
     headers: {
@@ -271,6 +298,7 @@ export function streamExecuteMultimodalAgent(
       if (!response.ok) {
         throw new Error(`流式连接失败: ${response.status} ${response.statusText}`)
       }
+      retries = 0
     },
     onmessage(ev) {
       let chunk: StreamChunk
@@ -282,8 +310,11 @@ export function streamExecuteMultimodalAgent(
       cb.onChunk(chunk)
     },
     onerror(err) {
-      cb.onError?.(err instanceof Error ? err : new Error(String(err)))
-      throw err
+      retries += 1
+      if (retries > MAX_RETRIES) {
+        cb.onError?.(err instanceof Error ? err : new Error(String(err)))
+        throw err
+      }
     },
     onclose() {
       cb.onClose?.()

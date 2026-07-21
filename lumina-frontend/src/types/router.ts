@@ -21,6 +21,8 @@ export interface RouteMeta {
   keepAlive?: boolean
   /** 链接地址 */
   link?: string
+  /** 侧边栏高亮菜单路径（隐藏路由用，指向列表页等可见菜单） */
+  activeMenu?: string
 }
 
 /**

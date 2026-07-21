@@ -8,7 +8,7 @@
       :loading="loading"
       :pagination="pagination"
       :search-fields="searchFields"
-      @search="loadData"
+      @search="search"
       @reset="handleReset"
       @page-change="handlePageChange"
       @size-change="handleSizeChange"
@@ -84,7 +84,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="handleSubmit">{{ t('common.ok') }}</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit">{{ t('common.ok') }}</el-button>
       </template>
     </el-dialog>
 
@@ -115,7 +115,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, onMounted } from 'vue'
+
+defineOptions({ name: 'SystemRole' })
+import { reactive, ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -155,7 +157,7 @@ const searchFields = computed<SearchField[]>(() => [
   }
 ])
 
-const { loading, tableData, pagination, loadData, handlePageChange, handleSizeChange } = useTable<RoleVO>(
+const { loading, tableData, pagination, loadData, search, handlePageChange, handleSizeChange } = useTable<RoleVO>(
   (params) => getRoleList({ ...queryForm, ...params })
 )
 
@@ -165,6 +167,7 @@ const dialogTitle = ref('')
 const isEdit = ref(false)
 const editingRoleId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
+const submitting = ref(false)
 const formData = reactive<CreateRoleDTO & { description?: string }>({
   roleName: '',
   roleCode: '',
@@ -207,7 +210,7 @@ const handleReset = () => {
   queryForm.roleName = ''
   queryForm.roleCode = ''
   queryForm.status = undefined
-  loadData()
+  search()
 }
 
 // 创建角色
@@ -215,6 +218,7 @@ const handleCreate = () => {
   dialogTitle.value = t('system.role.create')
   isEdit.value = false
   dialogVisible.value = true
+  nextTick(() => formRef.value?.clearValidate())
 }
 
 // 编辑角色
@@ -226,6 +230,7 @@ const handleEdit = (row: RoleVO) => {
   formData.roleCode = row.roleCode
   formData.description = row.description || ''
   dialogVisible.value = true
+  nextTick(() => formRef.value?.clearValidate())
 }
 
 // 提交表单
@@ -233,6 +238,7 @@ const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      submitting.value = true
       try {
         if (isEdit.value && editingRoleId.value) {
           const updateData: UpdateRoleDTO = {
@@ -249,6 +255,8 @@ const handleSubmit = async () => {
         loadData()
       } catch (error) {
         console.error('操作失败:', error)
+      } finally {
+        submitting.value = false
       }
     }
   })
@@ -311,12 +319,16 @@ const handleToggleStatus = async (row: RoleVO) => {
       t('common.tip'),
       { type: 'warning' }
     )
+  } catch {
+    return // 用户取消
+  }
+  try {
     const newStatus = row.status === 1 ? 0 : 1
     await updateRoleStatus(row.roleId, newStatus)
     ElMessage.success(row.status === 1 ? t('common.disableSuccess') : t('common.enableSuccess'))
     loadData()
-  } catch (error) {
-    // 用户取消
+  } catch {
+    // 拦截器已弹错
   }
 }
 
@@ -328,11 +340,15 @@ const handleDelete = async (row: RoleVO) => {
       t('common.tip'),
       { type: 'warning' }
     )
+  } catch {
+    return // 用户取消
+  }
+  try {
     await deleteRole(row.roleId)
     ElMessage.success(t('common.deleteSuccess'))
     loadData()
-  } catch (error) {
-    // 用户取消
+  } catch {
+    // 拦截器已弹错
   }
 }
 

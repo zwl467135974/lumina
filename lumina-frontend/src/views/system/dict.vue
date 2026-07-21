@@ -118,6 +118,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'SystemDict' })
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'

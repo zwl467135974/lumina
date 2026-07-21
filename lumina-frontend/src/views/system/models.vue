@@ -119,6 +119,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'SystemModels' })
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'

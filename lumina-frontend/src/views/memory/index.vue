@@ -46,6 +46,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'LongTermMemory' })
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'

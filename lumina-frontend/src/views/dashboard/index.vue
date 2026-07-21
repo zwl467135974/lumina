@@ -4,7 +4,7 @@
     <PageHeader :title="t('dashboard.title')" :description="t('dashboard.description')" class="dashboard-header" />
 
     <!-- Stat Cards Row -->
-    <div class="stat-cards-grid">
+    <div v-loading="statsLoading" class="stat-cards-grid">
       <LumStatCard
         v-for="(stat, idx) in statCards"
         :key="stat.key"
@@ -109,6 +109,7 @@ import { PageHeader, LumStatCard } from '@/components/common'
 const { t } = useI18n()
 const router = useRouter()
 const loading = ref(false)
+const statsLoading = ref(false)
 
 const stats = reactive({
   agentCount: 0,
@@ -120,42 +121,48 @@ const stats = reactive({
 const recentTasks = ref([])
 
 // Stat card definitions for template rendering
-const statCards = computed(() => [
-  {
-    key: 'agents',
-    colorKey: 'primary',
-    icon: 'Monitor',
-    label: t('dashboard.agentCount'),
-    value: stats.agentCount,
-    clickable: true,
-    route: '/agent/list',
-  },
-  {
-    key: 'tasks',
-    colorKey: 'success',
-    icon: 'List',
-    label: t('dashboard.todayTasks'),
-    value: stats.todayTasks,
-    clickable: true,
-    route: '/agent/tasks',
-  },
-  {
-    key: 'tokens',
-    colorKey: 'accent',
-    icon: 'DataLine',
-    label: t('dashboard.totalTokens'),
-    value: stats.totalTokens?.toLocaleString?.() ?? stats.totalTokens,
-    clickable: false,
-  },
-  {
-    key: 'cost',
-    colorKey: 'danger',
-    icon: 'Money',
-    label: t('dashboard.totalCost'),
-    value: `¥ ${(stats.totalCost ?? 0).toFixed(4)}`,
-    clickable: false,
-  },
-])
+const statCards = computed(() => {
+  const placeholder = '—'
+  const tokens = stats.totalTokens
+  return [
+    {
+      key: 'agents',
+      colorKey: 'primary',
+      icon: 'Monitor',
+      label: t('dashboard.agentCount'),
+      value: statsLoading.value ? placeholder : stats.agentCount,
+      clickable: true,
+      route: '/agent/list',
+    },
+    {
+      key: 'tasks',
+      colorKey: 'success',
+      icon: 'List',
+      label: t('dashboard.todayTasks'),
+      value: statsLoading.value ? placeholder : stats.todayTasks,
+      clickable: true,
+      route: '/agent/tasks',
+    },
+    {
+      key: 'tokens',
+      colorKey: 'accent',
+      icon: 'DataLine',
+      label: t('dashboard.totalTokens'),
+      value: statsLoading.value
+        ? placeholder
+        : tokens?.toLocaleString?.() ?? tokens,
+      clickable: false,
+    },
+    {
+      key: 'cost',
+      colorKey: 'danger',
+      icon: 'Money',
+      label: t('dashboard.totalCost'),
+      value: statsLoading.value ? placeholder : `¥ ${(stats.totalCost ?? 0).toFixed(4)}`,
+      clickable: false,
+    },
+  ]
+})
 
 function taskStatusLabel(status) {
   const map = {
@@ -180,6 +187,7 @@ function taskStatusType(status) {
 
 async function loadDashboard() {
   loading.value = true
+  statsLoading.value = true
   try {
     const [statsRes, tasksRes] = await Promise.all([getStats(), getRecentTasks()])
     Object.assign(stats, statsRes.data ?? statsRes)
@@ -188,6 +196,7 @@ async function loadDashboard() {
     // keep defaults; user can retry
   } finally {
     loading.value = false
+    statsLoading.value = false
   }
 }
 

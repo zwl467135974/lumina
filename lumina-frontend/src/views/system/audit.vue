@@ -59,6 +59,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'SystemAudit' })
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/common/PageHeader.vue'

@@ -8,7 +8,7 @@
       :loading="loading"
       :pagination="pagination"
       :search-fields="searchFields"
-      @search="reloadData"
+      @search="reloadSearch"
       @reset="handleReset"
       @page-change="handlePageChange"
       @size-change="handleSizeChange"
@@ -63,6 +63,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'AgentList' })
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -123,6 +125,12 @@ const reloadData = async () => {
   await loadPromptUsage()
 }
 
+// 搜索/重置：pageNum 归 1 后重新加载列表与 prompt 用量（等价于 useTable.search 再附加 prompt 刷新）
+const reloadSearch = async () => {
+  pagination.pageNum = 1
+  await reloadData()
+}
+
 const handlePageChange = async (page: number) => {
   pagination.pageNum = page
   await reloadData()
@@ -141,18 +149,22 @@ const handleEdit = (row: AgentVO) => router.push(`/agent/edit/${row.agentId}`)
 const handleDelete = async (row: AgentVO) => {
   try {
     await ElMessageBox.confirm(t('agent.deleteConfirm'), t('common.tip'), { type: 'warning' })
+  } catch {
+    return // 用户取消
+  }
+  try {
     await deleteAgent(row.agentId)
     ElMessage.success(t('common.success'))
     reloadData()
   } catch {
-    // 用户取消
+    // 拦截器已弹错
   }
 }
 
 const handleReset = () => {
   queryForm.agentName = ''
   queryForm.agentType = ''
-  reloadData()
+  reloadSearch()
 }
 
 const handleStatusToggle = async (row: any, val: boolean) => {

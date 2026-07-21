@@ -15,7 +15,7 @@
             </el-select>
           </div>
 
-          <el-upload :auto-upload="true" :show-file-list="false" :http-request="handleUpload" accept=".txt,.md,.pdf,.doc,.docx" drag class="upload-area">
+          <el-upload ref="uploadRef" :auto-upload="true" :show-file-list="false" :http-request="handleUpload" accept=".txt,.md,.pdf,.doc,.docx" drag class="upload-area">
             <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
             <div class="el-upload__text">{{ t('knowledge.dragTip') }}</div>
             <template #tip><div class="upload-tip">{{ t('knowledge.formatTip') }}</div></template>
@@ -47,7 +47,9 @@
           <div class="pagination-wrap" v-if="total > 0">
             <el-pagination v-model:current-page="pageNum" v-model:page-size="pageSize" :total="total" :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next" @size-change="loadDocuments" @current-change="loadDocuments" />
           </div>
-          <el-empty v-if="!loading && documents.length === 0" :description="t('common.noData')" :image-size="60" />
+          <el-empty v-if="!loading && documents.length === 0" :description="t('common.noData')" :image-size="60">
+            <el-button type="primary" @click="triggerUpload">{{ t('knowledge.upload') }}</el-button>
+          </el-empty>
         </el-card>
       </el-tab-pane>
 
@@ -145,9 +147,12 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'Knowledge' })
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import type { UploadInstance } from 'element-plus'
 import { UploadFilled, Loading } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { uploadDocument, listDocuments, deleteDocument, searchKnowledge, type KnowledgeDocumentVO, type SearchResult } from '@/api/modules/knowledge'
@@ -176,6 +181,14 @@ const mountAgentId = ref<number | undefined>(undefined)
 const mountKbId = ref<number | undefined>(undefined)
 const agentKbs = ref<KnowledgeBaseVO[]>([])
 const kbForm = reactive({ name: '', description: '', visibility: 'PRIVATE' })
+const uploadRef = ref<UploadInstance>()
+
+const triggerUpload = () => {
+  // 触发 el-upload 内部的 input 点击
+  const wrapper = (uploadRef.value as any)?.$el as HTMLElement | undefined
+  const input = wrapper?.querySelector('input[type="file"]') as HTMLInputElement | null
+  input?.click()
+}
 
 const statusText = (s: number) => s === 1 ? t('knowledge.ready') : s === 0 ? t('knowledge.pending') : t('knowledge.ingestFailed')
 const formatFileSize = (bytes?: number) => { if (!bytes) return '-'; if (bytes < 1024) return bytes + 'B'; if (bytes < 1048576) return (bytes / 1024).toFixed(1) + 'KB'; return (bytes / 1048576).toFixed(1) + 'MB' }

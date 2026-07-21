@@ -56,7 +56,9 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!loading && !list.length" :description="t('webhook.empty')" />
+      <el-empty v-if="!loading && !list.length" :description="t('webhook.empty')">
+        <el-button type="primary" @click="handleCreate">{{ t('webhook.create') }}</el-button>
+      </el-empty>
     </el-card>
 
     <!-- 创建对话框 -->

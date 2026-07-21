@@ -84,7 +84,8 @@ export const agentRoutes: AppRouteRecordRaw[] = [
           title: '编辑 Agent',
           requiresAuth: true,
           permissions: ['agent:update'],
-          hidden: true
+          hidden: true,
+          activeMenu: '/agent/list'
         }
       },
       {
@@ -94,7 +95,8 @@ export const agentRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: 'Agent 详情',
           requiresAuth: true,
-          hidden: true
+          hidden: true,
+          activeMenu: '/agent/list'
         }
       },
       {
@@ -149,7 +151,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '用户管理',
           requiresAuth: true,
-          permissions: ['user:view']
+          permissions: ['user:view'],
+          keepAlive: true
         }
       },
       {
@@ -159,7 +162,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '角色管理',
           requiresAuth: true,
-          permissions: ['role:view']
+          permissions: ['role:view'],
+          keepAlive: true
         }
       },
       {
@@ -169,7 +173,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '权限管理',
           requiresAuth: true,
-          permissions: ['permission:view']
+          permissions: ['permission:view'],
+          keepAlive: true
         }
       },
       {
@@ -178,7 +183,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         component: () => import('@/views/system/menu.vue'),
         meta: {
           title: '菜单管理',
-          requiresAuth: true
+          requiresAuth: true,
+          keepAlive: true
         }
       },
       {
@@ -187,7 +193,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         component: () => import('@/views/system/dict.vue'),
         meta: {
           title: '字典管理',
-          requiresAuth: true
+          requiresAuth: true,
+          keepAlive: true
         }
       },
       {
@@ -196,7 +203,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         component: () => import('@/views/system/online.vue'),
         meta: {
           title: '在线用户',
-          requiresAuth: true
+          requiresAuth: true,
+          keepAlive: true
         }
       },
       {
@@ -206,7 +214,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '租户管理',
           requiresAuth: true,
-          permissions: ['tenant:view']
+          permissions: ['tenant:view'],
+          keepAlive: true
         }
       },
       {
@@ -215,7 +224,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         component: () => import('@/views/system/audit.vue'),
         meta: {
           title: '审计日志',
-          requiresAuth: true
+          requiresAuth: true,
+          keepAlive: true
         }
       },
       {
@@ -225,7 +235,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '模型管理',
           requiresAuth: true,
-          permissions: ['model:list']
+          permissions: ['model:list'],
+          keepAlive: true
         }
       },
       {
@@ -234,7 +245,8 @@ export const systemRoutes: AppRouteRecordRaw[] = [
         component: () => import('@/views/system/api-tokens.vue'),
         meta: {
           title: 'API Token',
-          requiresAuth: true
+          requiresAuth: true,
+          keepAlive: true
         }
       }
     ]
@@ -250,7 +262,8 @@ export const knowledgeRoutes: AppRouteRecordRaw[] = [
     meta: {
       title: '知识库',
       icon: 'Document',
-      requiresAuth: true
+      requiresAuth: true,
+      keepAlive: true
     }
   }
 ]
@@ -318,7 +331,8 @@ export const workflowRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '执行详情',
           requiresAuth: true,
-          hidden: true
+          hidden: true,
+          activeMenu: '/workflow/list'
         }
       },
       {
@@ -328,7 +342,8 @@ export const workflowRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '可视化设计',
           requiresAuth: true,
-          hidden: true
+          hidden: true,
+          activeMenu: '/workflow/list'
         }
       },
       {
@@ -338,7 +353,8 @@ export const workflowRoutes: AppRouteRecordRaw[] = [
         meta: {
           title: '编辑工作流',
           requiresAuth: true,
-          hidden: true
+          hidden: true,
+          activeMenu: '/workflow/list'
         }
       }
     ]
@@ -354,7 +370,8 @@ export const promptRoutes: AppRouteRecordRaw[] = [
     meta: {
       title: 'Prompt 管理',
       icon: 'EditPen',
-      requiresAuth: true
+      requiresAuth: true,
+      keepAlive: true
     }
   }
 ]
@@ -368,7 +385,8 @@ export const costRoutes: AppRouteRecordRaw[] = [
     meta: {
       title: '成本仪表盘',
       icon: 'Money',
-      requiresAuth: true
+      requiresAuth: true,
+      keepAlive: true
     }
   }
 ]
@@ -382,7 +400,8 @@ export const budgetRoutes: AppRouteRecordRaw[] = [
     meta: {
       title: '预算管理',
       icon: 'Wallet',
-      requiresAuth: true
+      requiresAuth: true,
+      keepAlive: true
     }
   }
 ]
@@ -396,7 +415,8 @@ export const evaluationRoutes: AppRouteRecordRaw[] = [
     meta: {
       title: 'Agent 评估',
       icon: 'DataAnalysis',
-      requiresAuth: true
+      requiresAuth: true,
+      keepAlive: true
     }
   }
 ]
@@ -418,7 +438,8 @@ export const abTestRoutes: AppRouteRecordRaw[] = [
     meta: {
       title: 'A/B 测试',
       icon: 'Aim',
-      requiresAuth: true
+      requiresAuth: true,
+      keepAlive: true
     }
   }
 ]
@@ -432,7 +453,8 @@ export const memoryRoutes: AppRouteRecordRaw[] = [
     meta: {
       title: '长期记忆',
       icon: 'Coin',
-      requiresAuth: true
+      requiresAuth: true,
+      keepAlive: true
     }
   }
 ]
@@ -455,7 +477,8 @@ export const notificationRoutes: AppRouteRecordRaw[] = [
         component: () => import('@/views/notification/index.vue'),
         meta: {
           title: '通知列表',
-          requiresAuth: true
+          requiresAuth: true,
+          keepAlive: true
         }
       },
       {

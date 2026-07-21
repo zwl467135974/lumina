@@ -50,7 +50,7 @@ const route = useRoute()
 const userStore = useUserStore()
 const { t } = useI18n()
 
-const activeMenu = computed(() => route.path)
+const activeMenu = computed(() => (route.meta.activeMenu as string) || route.path)
 const isMobile = ref(window.innerWidth <= 768)
 
 const updateViewport = () => {

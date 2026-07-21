@@ -41,6 +41,9 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-empty v-if="!loading && !experiments.length" :description="t('common.noData')">
+        <el-button type="primary" @click="showCreateDialog = true">{{ t('abTest.create') }}</el-button>
+      </el-empty>
     </el-card>
 
     <!-- 创建实验对话框 -->
@@ -96,6 +99,8 @@
 </template>
 
 <script setup lang="ts">
+
+defineOptions({ name: 'AbTest' })
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'

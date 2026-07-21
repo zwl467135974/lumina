@@ -313,7 +313,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+
+defineOptions({ name: 'Evaluation' })
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -622,6 +624,13 @@ onMounted(() => {
   loadDatasets()
   loadRuns()
   listAgents({ pageNum: 1, pageSize: 100 }).then(res => { agents.value = res.data.list || [] }).catch(() => {})
+})
+
+onUnmounted(() => {
+  if (asyncPollTimer) {
+    clearInterval(asyncPollTimer)
+    asyncPollTimer = null
+  }
 })
 
 // ==================== 批量回归 & Prompt 版本对比 ====================
