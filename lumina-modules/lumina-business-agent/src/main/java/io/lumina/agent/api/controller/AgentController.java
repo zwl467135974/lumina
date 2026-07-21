@@ -242,9 +242,8 @@ public class AgentController {
 
         Agent agent = agentService.getAgentById(id);
 
-        AgentVO vo = new AgentVO();
-        BeanUtils.copyProperties(agent, vo);
-        maskApiKeyInLlmConfig(vo);
+        AgentVO vo = toVO(agent);
+        vo.setKnowledgeBaseIds(knowledgeBaseService.getAgentKnowledgeBaseIds(id));
 
         return R.success(vo);
     }
