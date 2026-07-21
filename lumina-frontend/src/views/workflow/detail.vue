@@ -2,7 +2,7 @@
   <div class="workflow-detail-page">
     <PageHeader :title="t('workflow.detail')" :description="t('workflow.instanceDesc', { id: instanceId })">
       <template #actions>
-        <el-button @click="router.back()">返回</el-button>
+        <el-button @click="router.back()">{{ t('workflow.back') }}</el-button>
         <el-button @click="loadData">{{ t('common.refresh') }}</el-button>
       </template>
     </PageHeader>
@@ -34,18 +34,18 @@
     <el-card shadow="never" class="timeline-card">
       <template #header>
         <div class="card-header-row">
-          <span class="card-title">多 Agent 执行过程（{{ agentLogs.length }} 个节点）</span>
+          <span class="card-title">{{ t('workflow.multiAgentProcess', { n: agentLogs.length }) }}</span>
         </div>
       </template>
 
-      <div v-if="agentLogs.length === 0 && !loading" class="empty-tip">暂无执行日志</div>
+      <div v-if="agentLogs.length === 0 && !loading" class="empty-tip">{{ t('workflow.noLogs') }}</div>
 
       <div v-else class="agent-conversation">
         <!-- 用户输入 -->
         <div class="conv-bubble conv-user">
           <div class="bubble-avatar">👤</div>
           <div class="bubble-body">
-            <div class="bubble-role">用户输入</div>
+            <div class="bubble-role">{{ t('workflow.userInput') }}</div>
             <div class="bubble-content-text">{{ formatJson(instance?.input) }}</div>
           </div>
         </div>
@@ -72,9 +72,9 @@
 
     <!-- 原始执行日志（折叠） -->
     <el-card shadow="never" class="timeline-card">
-      <template #header>原始执行日志</template>
+      <template #header>{{ t('workflow.rawLogs') }}</template>
 
-      <div v-if="logs.length === 0 && !loading" class="empty-tip">暂无执行日志</div>
+      <div v-if="logs.length === 0 && !loading" class="empty-tip">{{ t('workflow.noLogs') }}</div>
 
       <el-timeline v-else>
         <el-timeline-item
@@ -97,7 +97,7 @@
               <pre class="json-output">{{ formatJson(log.input) }}</pre>
             </div>
             <div v-if="log.output" class="log-io">
-              <span class="io-label">输出：</span>
+              <span class="io-label">{{ t('workflow.outputLabel') }}</span>
               <pre class="json-output">{{ formatJson(log.output) }}</pre>
             </div>
             <div v-if="log.errorMessage" class="error-text">{{ log.errorMessage }}</div>

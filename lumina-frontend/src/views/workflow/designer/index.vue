@@ -2,9 +2,9 @@
   <div class="designer-page">
     <PageHeader :title="title" :description="description">
       <template #actions>
-        <el-button @click="$router.back()">返回</el-button>
+        <el-button @click="$router.back()">{{ t('workflow.back') }}</el-button>
         <el-button-group>
-          <el-button :type="mode === 'visual' ? 'primary' : ''" @click="mode = 'visual'">可视化</el-button>
+          <el-button :type="mode === 'visual' ? 'primary' : ''" @click="mode = 'visual'">{{ t('workflow.visual') }}</el-button>
           <el-button :type="mode === 'yaml' ? 'primary' : ''" @click="switchToYaml">YAML</el-button>
         </el-button-group>
         <el-button type="success" @click="handleSave" :loading="saving">{{ t('common.save') }}</el-button>
@@ -14,7 +14,7 @@
     <div class="designer-body">
       <!-- 左侧：节点面板 -->
       <div class="palette-panel">
-        <div class="palette-title">节点类型</div>
+        <div class="palette-title">{{ t('workflow.nodeTypes') }}</div>
         <div class="palette-list">
           <div
             v-for="nt in PALETTE_NODES"
@@ -28,7 +28,7 @@
             <span class="palette-label">{{ nt.label }}</span>
           </div>
         </div>
-        <div class="palette-hint">拖拽节点到画布</div>
+        <div class="palette-hint">{{ t('workflow.dragNodeHint') }}</div>
       </div>
 
       <!-- 中间：画布 / YAML 编辑 -->
@@ -266,7 +266,7 @@ const loadWorkflow = async () => {
     nodes.value = parsedNodes as any
     edges.value = parsedEdges as any
   } catch (e: any) {
-    ElMessage.error(e.message || '加载失败')
+    ElMessage.error(e.message || t('monitor.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -344,20 +344,20 @@ const syncYamlToGraph = () => {
     workflowMeta.name = meta.name
     workflowMeta.description = meta.description || ''
     mode.value = 'visual'
-    ElMessage.success('已同步到画布')
+    ElMessage.success(t('workflow.syncedToCanvas'))
   } catch (e: any) {
-    ElMessage.error('YAML 解析失败: ' + e.message)
+    ElMessage.error(t('workflow.yamlParseFailed', { msg: e.message }))
   }
 }
 
 // 保存
 const handleSave = async () => {
   if (!workflowMeta.name.trim()) {
-    ElMessage.warning('请输入工作流名称')
+    ElMessage.warning(t('workflow.workflowNameRequired'))
     return
   }
   if (nodes.value.length === 0) {
-    ElMessage.warning('请至少添加一个节点')
+    ElMessage.warning(t('workflow.atLeastOneNode'))
     return
   }
 
@@ -375,7 +375,7 @@ const handleSave = async () => {
       router.push('/workflow/list')
     }
   } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
+    ElMessage.error(e.message || t('workflow.saveFailed'))
   } finally {
     saving.value = false
   }

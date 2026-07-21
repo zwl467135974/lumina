@@ -28,7 +28,7 @@
         <div class="usage-detail">
           ¥{{ item.currentUsage.toFixed(4) }} / ¥{{ item.limitAmount.toFixed(4) }}
           <span class="usage-percent">({{ item.usagePercent.toFixed(1) }}%)</span>
-          <span v-if="item.usagePercent >= item.alertThreshold" class="usage-alert">⚠ 告警阈值 {{ item.alertThreshold }}%</span>
+          <span v-if="item.usagePercent >= item.alertThreshold" class="usage-alert">{{ t('budget.alertTip', { threshold: item.alertThreshold }) }}</span>
         </div>
       </div>
     </el-card>
@@ -47,7 +47,7 @@
           <template #default="{ row }">{{ row.scopeId ?? '-' }}</template>
         </el-table-column>
         <el-table-column prop="periodType" :label="t('budget.period')" width="100">
-          <template #default="{ row }">{{ row.periodType === 'DAILY' ? '日' : '月' }}</template>
+          <template #default="{ row }">{{ row.periodType === 'DAILY' ? t('budget.periodDaily') : t('budget.periodMonthly') }}</template>
         </el-table-column>
         <el-table-column prop="limitAmount" :label="t('budget.limitYuan')" width="120">
           <template #default="{ row }">¥ {{ row.limitAmount.toFixed(4) }}</template>
@@ -81,17 +81,17 @@
         </el-form-item>
         <el-form-item :label="t('budget.period')" required>
           <el-radio-group v-model="formData.periodType">
-            <el-radio value="DAILY">日预算</el-radio>
-            <el-radio value="MONTHLY">月预算</el-radio>
+            <el-radio value="DAILY">{{ t('budget.dailyBudget') }}</el-radio>
+            <el-radio value="MONTHLY">{{ t('budget.monthlyBudget') }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item :label="t('budget.limit')" required>
           <el-input-number v-model="formData.limitAmount" :min="0.01" :precision="4" :step="1" style="width: 100%" />
-          <span class="form-hint">单位：元</span>
+          <span class="form-hint">{{ t('budget.unitYuan') }}</span>
         </el-form-item>
         <el-form-item :label="t('budget.alert')">
           <el-slider v-model="formData.alertThreshold" :min="10" :max="99" :step="5" show-input style="width: 100%" />
-          <span class="form-hint">达到此百分比时记录告警日志</span>
+          <span class="form-hint">{{ t('budget.alertThresholdHint') }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -166,11 +166,11 @@ const showCreateDialog = () => {
 
 const handleSave = async () => {
   if (!formData.ruleName.trim()) {
-    ElMessage.warning('请输入规则名称')
+    ElMessage.warning(t('budget.ruleNameRequired'))
     return
   }
   if (formData.scopeType !== 'TENANT' && !formData.scopeId) {
-    ElMessage.warning('请输入范围 ID')
+    ElMessage.warning(t('budget.scopeIdRequired'))
     return
   }
   saving.value = true

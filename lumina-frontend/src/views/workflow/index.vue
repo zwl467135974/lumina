@@ -77,8 +77,8 @@
               <div class="template-desc">{{ tpl.description }}</div>
             </div>
             <div class="template-actions">
-              <el-button size="small" @click="useTemplate(tpl)">编辑 YAML</el-button>
-              <el-button size="small" type="primary" @click="openFromTemplateDialog(tpl)">一键创建</el-button>
+              <el-button size="small" @click="useTemplate(tpl)">{{ t('workflow.editYaml') }}</el-button>
+              <el-button size="small" type="primary" @click="openFromTemplateDialog(tpl)">{{ t('workflow.oneClickCreate') }}</el-button>
             </div>
           </div>
           <div v-if="tpl.requiredAgents && tpl.requiredAgents.length > 0" class="template-agents">
@@ -103,8 +103,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="fromTemplateDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="fromTemplateLoading" @click="confirmFromTemplate">创建并发布</el-button>
+        <el-button @click="fromTemplateDialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="fromTemplateLoading" @click="confirmFromTemplate">{{ t('workflow.createAndPublish') }}</el-button>
       </template>
     </el-dialog>
 
@@ -115,23 +115,23 @@
           <span>{{ executeTarget?.name }}</span>
         </el-form-item>
         <el-form-item :label="t('workflow.inputParams')">
-          <el-input v-model="executeForm.inputsJson" type="textarea" :rows="4" placeholder='JSON 格式，如 {"task": "分析这段代码"}' />
+          <el-input v-model="executeForm.inputsJson" type="textarea" :rows="4" :placeholder="t('workflow.executeInputsPlaceholder')" />
         </el-form-item>
       </el-form>
 
       <!-- 多 Agent 对话过程 -->
       <div v-if="streamEvents.length > 0 || streaming" class="agent-conversation">
         <div class="conversation-header">
-          <el-tag v-if="streaming" type="warning" size="small">执行中…</el-tag>
-          <el-tag v-else type="success" size="small">已完成</el-tag>
-          <span class="conv-step-count">{{ agentBubbles.length }} 个节点</span>
+          <el-tag v-if="streaming" type="warning" size="small">{{ t('workflow.statusRunning') }}</el-tag>
+          <el-tag v-else type="success" size="small">{{ t('workflow.statusDone') }}</el-tag>
+          <span class="conv-step-count">{{ t('workflow.bubbleNodeCount', { n: agentBubbles.length }) }}</span>
         </div>
 
         <!-- 用户输入气泡 -->
         <div class="conv-bubble conv-user">
           <div class="bubble-avatar">👤</div>
           <div class="bubble-body">
-            <div class="bubble-role">用户输入</div>
+            <div class="bubble-role">{{ t('workflow.userInput') }}</div>
             <div class="bubble-content">{{ executeForm.inputsJson }}</div>
           </div>
         </div>
@@ -147,8 +147,8 @@
                 <el-tag v-if="bubble.agentId" size="small" type="primary">Agent #{{ bubble.agentId }}</el-tag>
                 <el-tag size="small" type="info">{{ bubble.nodeType || 'node' }}</el-tag>
                 <span v-if="bubble.status === 'completed'" class="bubble-status completed">✓ {{ bubble.durationMs }}ms</span>
-                <span v-else-if="bubble.status === 'running'" class="bubble-status running">⏳ 执行中…</span>
-                <span v-else-if="bubble.status === 'failed'" class="bubble-status failed">❌ 失败</span>
+                <span v-else-if="bubble.status === 'running'" class="bubble-status running">⏳ {{ t('workflow.statusRunning') }}</span>
+                <span v-else-if="bubble.status === 'failed'" class="bubble-status failed">{{ t('workflow.statusFailed') }}</span>
               </div>
               <div v-if="bubble.result && bubble.status === 'completed'" class="bubble-result">
                 {{ bubble.resultPreview }}
@@ -160,9 +160,9 @@
       </div>
 
       <template #footer>
-        <el-button @click="executeDialogVisible = false">关闭</el-button>
+        <el-button @click="executeDialogVisible = false">{{ t('workflow.close') }}</el-button>
         <el-button v-if="!streaming && streamEvents.length === 0" type="primary" @click="handleExecute" :loading="executing">{{ t('workflow.execute') }}</el-button>
-        <el-button v-if="!streaming && streamEvents.length > 0" type="primary" @click="viewResult">查看详情</el-button>
+        <el-button v-if="!streaming && streamEvents.length > 0" type="primary" @click="viewResult">{{ t('workflow.viewResult') }}</el-button>
       </template>
     </el-dialog>
 
@@ -274,7 +274,7 @@ const showEditDialog = async (row: WorkflowDefinitionVO) => {
 
 const handleSave = async () => {
   if (!formData.name.trim() || !formData.definitionYaml.trim()) {
-    ElMessage.warning('名称和 YAML 定义不能为空')
+    ElMessage.warning(t('workflow.nameAndYamlRequired'))
     return
   }
   saving.value = true
@@ -310,7 +310,7 @@ const handlePublish = async (id: number) => {
     ElMessage.success(t('workflow.published'))
     loadList()
   } catch (e: any) {
-    ElMessage.error(e.message || '发布失败')
+    ElMessage.error(e.message || t('workflow.publishFailed'))
   }
 }
 
@@ -364,20 +364,20 @@ const openFromTemplateDialog = (tpl: WorkflowTemplateVO) => {
   }))
   // 无占位符的模板（如 pipeline），直接用默认 agentId=1
   if (fromTemplateForm.roles.length === 0) {
-    fromTemplateForm.roles = [{ placeholder: 'agent1', description: '默认 Agent', agentId: 1 }]
+    fromTemplateForm.roles = [{ placeholder: 'agent1', description: t('workflow.defaultRole'), agentId: 1 }]
   }
   fromTemplateDialogVisible.value = true
 }
 
 const confirmFromTemplate = async () => {
   if (!fromTemplateForm.workflowName.trim()) {
-    ElMessage.warning('请输入工作流名称')
+    ElMessage.warning(t('workflow.workflowNameRequired'))
     return
   }
   const mapping: Record<string, number> = {}
   for (const role of fromTemplateForm.roles) {
     if (!role.agentId) {
-      ElMessage.warning(`请为 ${role.placeholder} 指定 Agent ID`)
+      ElMessage.warning(t('workflow.agentIdRequired', { role: role.placeholder }))
       return
     }
     mapping[role.placeholder] = role.agentId
@@ -390,12 +390,12 @@ const confirmFromTemplate = async () => {
       workflowName: fromTemplateForm.workflowName,
       agentMapping: mapping
     })
-    ElMessage.success('工作流创建并发布成功')
+    ElMessage.success(t('workflow.createPublishSuccess'))
     fromTemplateDialogVisible.value = false
     templateDialogVisible.value = false
     loadList()
   } catch (e: any) {
-    ElMessage.error(e.message || '创建失败')
+    ElMessage.error(e.message || t('workflow.createFailed'))
   } finally {
     fromTemplateLoading.value = false
   }
@@ -444,13 +444,13 @@ const handleExecute = async () => {
         }
       },
       onError: (err: Error) => {
-        ElMessage.error(err.message || '执行失败')
+        ElMessage.error(err.message || t('workflow.executeFailed'))
         streaming.value = false
       },
       onClose: () => {
         streaming.value = false
         if (resultInstanceId.value) {
-          ElMessage.success('执行完成')
+          ElMessage.success(t('workflow.executeDone'))
         }
       }
     }

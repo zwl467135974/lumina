@@ -62,11 +62,11 @@
                 <el-slider v-model="runForm.threshold" :min="0" :max="1" :step="0.05" show-input style="max-width: 420px" />
               </el-form-item>
               <el-form-item :label="t('evaluation.asyncMode')">
-                <el-switch v-model="asyncMode" active-text="大数据集（>20 条）建议开启" />
+                <el-switch v-model="asyncMode" :active-text="t('evaluation.asyncHint')" />
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" :loading="runLoading" @click="handleRunEvaluation">{{ t('evaluation.runEvaluation') }}</el-button>
-                <el-tag v-if="asyncRunning" type="warning" class="async-tag">评估进行中... (Run #{{ asyncRunId }})</el-tag>
+                <el-tag v-if="asyncRunning" type="warning" class="async-tag">{{ t('evaluation.asyncRunning', { id: asyncRunId }) }}</el-tag>
               </el-form-item>
             </el-form>
           </div>
@@ -114,7 +114,7 @@
         </el-table-column>
         <el-table-column :label="t('common.status')" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.passed ? 'success' : 'danger'">{{ row.passed ? '通过' : '失败' }}</el-tag>
+            <el-tag :type="row.passed ? 'success' : 'danger'">{{ row.passed ? t('evaluation.resultPass') : t('evaluation.resultFail') }}</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -222,8 +222,8 @@
     <el-card class="panel-card">
       <template #header>
         <div class="card-header">
-          <span>批量回归测试 & Prompt 版本对比</span>
-          <el-button size="small" @click="regressionDialogVisible = true">发起批量回归</el-button>
+          <span>{{ t('evaluation.batchRegressionPanel') }}</span>
+          <el-button size="small" @click="regressionDialogVisible = true">{{ t('evaluation.startBatchRegression') }}</el-button>
         </div>
       </template>
 
@@ -239,12 +239,12 @@
           <el-input-number v-model="promptCompare.vB" :min="1" controls-position="right" style="width: 90px" />
         </el-form-item>
         <el-form-item>
-          <el-button size="small" :loading="promptCompareLoading" @click="doPromptCompare">对比差异</el-button>
+          <el-button size="small" :loading="promptCompareLoading" @click="doPromptCompare">{{ t('evaluation.compareDiff') }}</el-button>
         </el-form-item>
       </el-form>
 
       <div v-if="promptDiff" class="prompt-diff-result">
-        <el-tag type="info">共 {{ promptDiff.totalChanges }} 处差异</el-tag>
+        <el-tag type="info">{{ t('evaluation.totalDiff', { n: promptDiff.totalChanges }) }}</el-tag>
         <div v-for="d in promptDiff.diffLines" :key="d.line" class="diff-line">
           <span class="diff-line-num">L{{ d.line }}</span>
           <el-tag size="small" :type="d.type === 'ADDED' ? 'success' : d.type === 'REMOVED' ? 'danger' : 'warning'">{{ d.type }}</el-tag>
@@ -281,8 +281,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="regressionDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="regressionLoading" @click="doBatchRegression">执行回归</el-button>
+        <el-button @click="regressionDialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="regressionLoading" @click="doBatchRegression">{{ t('evaluation.executeRegression') }}</el-button>
       </template>
     </el-dialog>
 
@@ -296,7 +296,7 @@
           <el-descriptions-item :label="t('evaluation.regressionCases')">{{ regressionResult.totalRegressedCases }}</el-descriptions-item>
           <el-descriptions-item :label="t('evaluation.result')">
             <el-tag :type="regressionResult.pass ? 'success' : 'danger'">
-              {{ regressionResult.pass ? '通过' : '有回归' }}
+              {{ regressionResult.pass ? t('evaluation.resultPass') : t('evaluation.hasRegression') }}
             </el-tag>
           </el-descriptions-item>
         </el-descriptions>
@@ -398,7 +398,7 @@ const categoryChartOption = computed(() => {
     tooltip: { trigger: 'axis', formatter: (params: any) => {
       const data = params[0]
       const stats = entries.find(e => e[0] === data.name)?.[1]
-      return `${data.name}<br/>通过率: ${(data.value * 100).toFixed(1)}%<br/>通过: ${stats?.passedCases}/${stats?.totalCases}`
+      return t('evaluation.chartTooltip', { name: data.name, rate: (data.value * 100).toFixed(1), passed: stats?.passedCases, total: stats?.totalCases })
     }},
     grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
     xAxis: {
@@ -430,16 +430,16 @@ const trendChartOption = computed(() => {
   const avgScores = trendData.value.map(r => Number(r.avgScore.toFixed(3)))
   return {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['通过率', '平均分'], top: 0 },
+    legend: { data: [t('evaluation.chartPassRate'), t('evaluation.chartAvgScore')], top: 0 },
     grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
     xAxis: { type: 'category', data: labels },
     yAxis: [
-      { type: 'value', name: '通过率', max: 1, axisLabel: { formatter: (v: number) => `${(v * 100).toFixed(0)}%` } },
-      { type: 'value', name: '平均分', max: 1 }
+      { type: 'value', name: t('evaluation.chartPassRate'), max: 1, axisLabel: { formatter: (v: number) => `${(v * 100).toFixed(0)}%` } },
+      { type: 'value', name: t('evaluation.chartAvgScore'), max: 1 }
     ],
     series: [
       {
-        name: '通过率',
+        name: t('evaluation.chartPassRate'),
         type: 'line',
         data: passRates,
         smooth: true,
@@ -448,7 +448,7 @@ const trendChartOption = computed(() => {
         label: { show: true, formatter: (p: any) => `${(p.value * 100).toFixed(0)}%` }
       },
       {
-        name: '平均分',
+        name: t('evaluation.chartAvgScore'),
         type: 'line',
         yAxisIndex: 1,
         data: avgScores,
@@ -510,7 +510,7 @@ const openDatasetDialog = () => {
 
 const handleCreateDataset = async () => {
   if (!datasetForm.name.trim() || !datasetForm.casesYaml.trim()) {
-    ElMessage.warning('请填写名称和用例 YAML')
+    ElMessage.warning(t('evaluation.nameAndYamlRequired'))
     return
   }
   savingDataset.value = true
@@ -544,12 +544,12 @@ const handleRunEvaluation = async () => {
       const res = await runEvaluationAsync(selectedDataset.value.id, runForm)
       asyncRunId.value = res.data
       asyncRunning.value = true
-      ElMessage.success(`异步评估已提交 (Run #${res.data})`)
+      ElMessage.success(t('evaluation.asyncSubmitted', { id: res.data }))
       startAsyncPolling(res.data)
     } else {
       const res = await runEvaluation(selectedDataset.value.id, runForm)
       currentReport.value = res.data
-      ElMessage.success('评估完成')
+      ElMessage.success(t('evaluation.evalDone'))
       await loadRuns()
       await loadTrend()
     }
@@ -570,7 +570,7 @@ const startAsyncPolling = (runId: number) => {
         asyncRunning.value = false
         const reportRes = await getEvaluationRunReport(runId)
         currentReport.value = reportRes.data
-        ElMessage.success(run.status === 'COMPLETED' ? '异步评估完成' : '异步评估失败')
+        ElMessage.success(run.status === 'COMPLETED' ? t('evaluation.asyncEvalDone') : t('evaluation.asyncEvalFailed'))
         await loadRuns()
         await loadTrend()
       }
@@ -583,7 +583,7 @@ const startAsyncPolling = (runId: number) => {
 const handleFileImport = async (file: File) => {
   try {
     await importEvaluationDataset(file)
-    ElMessage.success('数据集导入成功')
+    ElMessage.success(t('evaluation.importSuccess'))
     await loadDatasets()
   } catch {
     // error handled by interceptor
@@ -599,9 +599,9 @@ const compareFirstRun = ref<number | null>(null)
 const startCompare = async (runId: number) => {
   if (compareFirstRun.value === null) {
     compareFirstRun.value = runId
-    ElMessage.info(`已选择 Run #${runId} 作为基准，请点击另一条记录进行对比`)
+    ElMessage.info(t('evaluation.selectBaselineHint', { id: runId }))
   } else if (compareFirstRun.value === runId) {
-    ElMessage.warning('不能与自身对比')
+    ElMessage.warning(t('evaluation.cannotSelfCompare'))
   } else {
     try {
       const res = await compareEvaluationRuns(compareFirstRun.value, runId)
@@ -640,7 +640,7 @@ const regressionForm = reactive({
 const doBatchRegression = async () => {
   const ids = regressionForm.datasetIdsStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
   if (ids.length === 0) {
-    ElMessage.warning('请输入至少一个数据集 ID')
+    ElMessage.warning(t('evaluation.datasetIdsRequired'))
     return
   }
   regressionLoading.value = true
@@ -655,9 +655,9 @@ const doBatchRegression = async () => {
     regressionResult.value = res.data
     regressionResultVisible.value = true
     regressionDialogVisible.value = false
-    ElMessage.success('回归测试完成')
+    ElMessage.success(t('evaluation.regressionDone'))
   } catch (e: any) {
-    ElMessage.error(e.message || '回归测试失败')
+    ElMessage.error(e.message || t('evaluation.regressionFailed'))
   } finally {
     regressionLoading.value = false
   }
@@ -666,9 +666,9 @@ const doBatchRegression = async () => {
 // 标记基线
 const handleMarkBaseline = async (runId: number) => {
   try {
-    await ElMessageBox.confirm(`确认将 Run #${runId} 标记为基线？`, '标记基线', { type: 'warning' })
+    await ElMessageBox.confirm(t('evaluation.markBaselineConfirm', { id: runId }), t('evaluation.markBaselineTitle'), { type: 'warning' })
     await markBaseline(runId)
-    ElMessage.success('基线标记成功')
+    ElMessage.success(t('evaluation.baselineMarked'))
     loadRuns()
   } catch { /* cancelled */ }
 }
@@ -684,7 +684,7 @@ const doPromptCompare = async () => {
     const res = await comparePromptVersions(promptCompare.name, promptCompare.vA, promptCompare.vB)
     promptDiff.value = res.data
   } catch (e: any) {
-    ElMessage.error(e.message || '对比失败')
+    ElMessage.error(e.message || t('evaluation.compareFailed'))
     promptDiff.value = null
   } finally {
     promptCompareLoading.value = false
