@@ -382,6 +382,11 @@ const loadAgentDetail = async () => {
       formData.tools = agent.tools
     }
 
+    // 回填知识库挂载 / 限流 / 并发
+    selectedKbIds.value = agent.knowledgeBaseIds || []
+    formData.rateLimit = agent.rateLimit ?? 0
+    formData.maxConcurrent = agent.maxConcurrent ?? 0
+
   } catch (error) {
     console.error(t('agent.form.loadDetailFail'), error)
     ElMessage.error(t('agent.form.loadDetailFail'))
@@ -404,7 +409,10 @@ const handleSubmit = async () => {
           agentType: formData.agentType,
           description: formData.description,
           llmConfig: formData.llmConfig,
-          tools: selectedTools.value
+          tools: selectedTools.value,
+          knowledgeBaseIds: selectedKbIds.value,
+          rateLimit: formData.rateLimit,
+          maxConcurrent: formData.maxConcurrent
         }
 
         if (isEdit.value) {

@@ -52,12 +52,29 @@ public class AgentRateLimiter {
     private boolean failOpen;
 
     /**
-     * 检查当前用户对指定 Agent 的调用频率
+     * 检查当前用户对指定 Agent 的调用频率（使用全局默认限额，向后兼容）
      *
      * @param agentId Agent ID
      * @throws BusinessException 超出频率限制时抛出 {@link ErrorCode#AGENT_RATE_LIMITED}
      */
     public void checkRateLimit(Long agentId) {
+        checkRateLimit(agentId, null);
+    }
+
+    /**
+     * 检查当前用户对指定 Agent 的调用频率
+     *
+     * <p>当 {@code perAgentLimit} 不为 null 且大于 0 时，使用 Agent 专属限额替代全局默认；
+     * 否则回退到全局配置 {@code lumina.agent.rate-limit.max-requests}。
+     *
+     * @param agentId        Agent ID
+     * @param perAgentLimit  Agent 专属每分钟最大请求数（null/<=0 表示用全局默认）
+     * @throws BusinessException 超出频率限制时抛出 {@link ErrorCode#AGENT_RATE_LIMITED}
+     */
+    public void checkRateLimit(Long agentId, Integer perAgentLimit) {
+        // 解析生效限额：优先 Agent 专属配置，否则用全局默认
+        int effectiveMax = (perAgentLimit != null && perAgentLimit > 0) ? perAgentLimit : maxRequests;
+
         Long userId = BaseContext.getUserId();
         String identity = userId != null ? userId.toString() : "anonymous";
 
@@ -69,9 +86,9 @@ public class AgentRateLimiter {
                 redisCacheManager.expire(key, Duration.ofSeconds(windowSeconds));
             }
 
-            if (count > maxRequests) {
+            if (count > effectiveMax) {
                 log.warn("Agent 频率限制触发: agentId={}, userId={}, max={}, window={}s",
-                        agentId, userId, maxRequests, windowSeconds);
+                        agentId, userId, effectiveMax, windowSeconds);
                 throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED);
             }
         } catch (BusinessException e) {

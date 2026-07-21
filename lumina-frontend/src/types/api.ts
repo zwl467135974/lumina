@@ -46,6 +46,9 @@ export interface AgentVO {
   description?: string
   llmConfig?: LlmConfig
   tools?: string[]
+  knowledgeBaseIds?: number[]
+  rateLimit?: number
+  maxConcurrent?: number
   status: number
   createTime: string
   updateTime: string
@@ -57,6 +60,9 @@ export interface CreateAgentDTO {
   description?: string
   llmConfig?: LlmConfig
   tools?: string[]
+  knowledgeBaseIds?: number[]
+  rateLimit?: number
+  maxConcurrent?: number
 }
 
 export interface UpdateAgentDTO {

@@ -3,6 +3,7 @@ package io.lumina.agent.model;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -52,6 +53,11 @@ public class AgentConfig implements Serializable {
      * 提示词模板
      */
     private String promptTemplate;
+
+    /**
+     * Agent 挂载的知识库 ID 列表（执行时按 kbId 过滤 RAG 检索）
+     */
+    private List<Long> knowledgeBaseIds;
 
     /**
      * 额外参数

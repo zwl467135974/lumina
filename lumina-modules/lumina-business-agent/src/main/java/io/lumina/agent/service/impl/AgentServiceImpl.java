@@ -62,6 +62,9 @@ public class AgentServiceImpl implements AgentService {
     private PromptService promptService;
 
     @Autowired
+    private io.lumina.agent.service.KnowledgeBaseService knowledgeBaseService;
+
+    @Autowired
     private io.lumina.agent.security.PromptInjectionFilter promptInjectionFilter;
 
     @Autowired
@@ -172,6 +175,12 @@ public class AgentServiceImpl implements AgentService {
         if (agent.getStatus() != null) {
             existingAgent.setStatus(agent.getStatus());
         }
+        if (agent.getRateLimit() != null) {
+            existingAgent.setRateLimit(agent.getRateLimit());
+        }
+        if (agent.getMaxConcurrent() != null) {
+            existingAgent.setMaxConcurrent(agent.getMaxConcurrent());
+        }
 
         // 验证
         existingAgent.validateName();
@@ -257,11 +266,11 @@ public class AgentServiceImpl implements AgentService {
     public ExecuteResult executeAgentForResult(Long agentId, String task, String conversationUuid) {
         log.info("执行 Agent: id={}, task={}, conversation={}", agentId, task, conversationUuid);
 
-        agentRateLimiter.checkRateLimit(agentId);
-        budgetService.checkBudget(agentId);
-
-        // 查询 Agent
+        // 先查询 Agent（用于读取 per-agent 限流配置与状态检查）
         Agent agent = getAgentById(agentId);
+
+        agentRateLimiter.checkRateLimit(agentId, agent.getRateLimit());
+        budgetService.checkBudget(agentId);
 
         // 检查状态
         if (!agent.isActive()) {
@@ -353,15 +362,15 @@ public class AgentServiceImpl implements AgentService {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
         }
 
-        agentRateLimiter.checkRateLimit(agentId);
+        // 先查询 Agent（用于读取 per-agent 限流配置与状态检查）
+        Agent agent = getAgentById(agentId);
+
+        agentRateLimiter.checkRateLimit(agentId, agent.getRateLimit());
         budgetService.checkBudget(agentId);
 
         promptInjectionFilter.check(task);
 
         moderateContent(task);
-
-        // 查询 Agent
-        Agent agent = getAgentById(agentId);
 
         // 检查状态
         if (!agent.isActive()) {
@@ -436,13 +445,15 @@ public class AgentServiceImpl implements AgentService {
         log.info("多模态执行 Agent: id={}, task={}, fileCount={}, conversation={}",
                 agentId, task, fileUuids != null ? fileUuids.size() : 0, conversationUuid);
 
-        agentRateLimiter.checkRateLimit(agentId);
+        // 先查询 Agent（用于读取 per-agent 限流配置与状态检查）
+        Agent agent = getAgentById(agentId);
+
+        agentRateLimiter.checkRateLimit(agentId, agent.getRateLimit());
         budgetService.checkBudget(agentId);
 
         promptInjectionFilter.check(task);
         moderateContent(task);
 
-        Agent agent = getAgentById(agentId);
         if (!agent.isActive()) {
             throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
         }
@@ -736,6 +747,16 @@ public class AgentServiceImpl implements AgentService {
             } catch (Exception e) {
                 log.debug("A/B 变体分配失败（不影响执行）: {}", e.getMessage());
             }
+        }
+
+        // 注入 Agent 挂载的知识库 ID（执行时按 kbId 过滤 RAG 检索）
+        try {
+            List<Long> kbIds = knowledgeBaseService.getAgentKnowledgeBaseIds(agent.getAgentId());
+            if (kbIds != null && !kbIds.isEmpty()) {
+                config.setKnowledgeBaseIds(kbIds);
+            }
+        } catch (Exception e) {
+            log.debug("加载 Agent 知识库挂载失败（不影响执行）: {}", e.getMessage());
         }
 
         return config;

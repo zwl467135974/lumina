@@ -67,6 +67,18 @@ public class AgentDO implements Serializable {
     private Integer status;
 
     /**
+     * 每分钟最大请求数，0=用全局默认
+     */
+    @TableField("rate_limit")
+    private Integer rateLimit;
+
+    /**
+     * 最大并发执行数，0=不限制
+     */
+    @TableField("max_concurrent")
+    private Integer maxConcurrent;
+
+    /**
      * 创建时间
      */
     @TableField(value = "create_time", fill = FieldFill.INSERT)

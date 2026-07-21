@@ -11,6 +11,7 @@ import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.AgentTaskService;
+import io.lumina.agent.service.KnowledgeBaseService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.framework.audit.annotation.Audit;
 import io.lumina.common.core.PageResult;
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -69,6 +71,8 @@ public class AgentController {
 
     private final ObjectMapper objectMapper;
 
+    private final KnowledgeBaseService knowledgeBaseService;
+
     /**
      * 创建 Agent
      */
@@ -81,9 +85,19 @@ public class AgentController {
 
         Agent createdAgent = agentService.createAgent(agent);
 
-        AgentVO vo = new AgentVO();
-        BeanUtils.copyProperties(createdAgent, vo);
-        maskApiKeyInLlmConfig(vo);
+        // 挂载知识库（中间表 lumina_agent_knowledge_base）
+        if (dto.getKnowledgeBaseIds() != null && !dto.getKnowledgeBaseIds().isEmpty()) {
+            for (Long kbId : dto.getKnowledgeBaseIds()) {
+                try {
+                    knowledgeBaseService.mountKnowledgeBase(createdAgent.getAgentId(), kbId);
+                } catch (Exception e) {
+                    log.warn("挂载知识库失败 agentId={}, kbId={}: {}", createdAgent.getAgentId(), kbId, e.getMessage());
+                }
+            }
+        }
+
+        AgentVO vo = toVO(createdAgent);
+        vo.setKnowledgeBaseIds(dto.getKnowledgeBaseIds());
 
         return R.success(vo);
     }
@@ -102,11 +116,55 @@ public class AgentController {
 
         Agent updatedAgent = agentService.updateAgent(id, agent);
 
-        AgentVO vo = new AgentVO();
-        BeanUtils.copyProperties(updatedAgent, vo);
-        maskApiKeyInLlmConfig(vo);
+        // 知识库挂载 diff：新增的 mount、移除的 unmount
+        if (dto.getKnowledgeBaseIds() != null) {
+            syncKnowledgeBases(id, dto.getKnowledgeBaseIds());
+        }
+
+        AgentVO vo = toVO(updatedAgent);
+        vo.setKnowledgeBaseIds(knowledgeBaseService.getAgentKnowledgeBaseIds(id));
 
         return R.success(vo);
+    }
+
+    /**
+     * 同步 Agent 的知识库挂载（diff：新增 mount、移除 unmount）
+     */
+    private void syncKnowledgeBases(Long agentId, List<Long> desiredKbIds) {
+        List<Long> currentIds = knowledgeBaseService.getAgentKnowledgeBaseIds(agentId);
+        Set<Long> currentSet = new HashSet<>(currentIds);
+        Set<Long> desiredSet = new HashSet<>(desiredKbIds);
+
+        // 新增挂载
+        for (Long kbId : desiredSet) {
+            if (!currentSet.contains(kbId)) {
+                try {
+                    knowledgeBaseService.mountKnowledgeBase(agentId, kbId);
+                } catch (Exception e) {
+                    log.warn("挂载知识库失败 agentId={}, kbId={}: {}", agentId, kbId, e.getMessage());
+                }
+            }
+        }
+        // 移除挂载
+        for (Long kbId : currentSet) {
+            if (!desiredSet.contains(kbId)) {
+                try {
+                    knowledgeBaseService.unmountKnowledgeBase(agentId, kbId);
+                } catch (Exception e) {
+                    log.warn("卸载知识库失败 agentId={}, kbId={}: {}", agentId, kbId, e.getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Agent → AgentVO（含 apiKey 脱敏）
+     */
+    private AgentVO toVO(Agent agent) {
+        AgentVO vo = new AgentVO();
+        BeanUtils.copyProperties(agent, vo);
+        maskApiKeyInLlmConfig(vo);
+        return vo;
     }
 
     /**
@@ -134,6 +192,10 @@ public class AgentController {
                 log.warn("序列化 llmConfig 失败: {}", e.getMessage());
             }
         }
+
+        // 透传 Per-Agent 限流/并发配置
+        agent.setRateLimit(dto.getRateLimit());
+        agent.setMaxConcurrent(dto.getMaxConcurrent());
 
         return agent;
     }

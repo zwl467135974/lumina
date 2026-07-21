@@ -59,6 +59,16 @@ public class Agent implements Serializable {
     private Integer status;
 
     /**
+     * 每分钟最大请求数，0=用全局默认
+     */
+    private Integer rateLimit;
+
+    /**
+     * 最大并发执行数，0=不限制
+     */
+    private Integer maxConcurrent;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

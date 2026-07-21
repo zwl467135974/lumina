@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Agent VO
@@ -60,4 +61,19 @@ public class AgentVO implements Serializable {
      * 更新时间
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 挂载的知识库 ID 列表
+     */
+    private List<Long> knowledgeBaseIds;
+
+    /**
+     * 每分钟最大请求数（0=用全局默认）
+     */
+    private Integer rateLimit;
+
+    /**
+     * 最大并发执行数（0=不限制）
+     */
+    private Integer maxConcurrent;
 }

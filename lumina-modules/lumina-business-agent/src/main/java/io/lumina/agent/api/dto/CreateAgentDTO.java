@@ -53,6 +53,21 @@ public class CreateAgentDTO implements Serializable {
     private List<String> tools;
 
     /**
+     * 挂载的知识库 ID 列表（关联 lumina_agent_knowledge_base 中间表）
+     */
+    private List<Long> knowledgeBaseIds;
+
+    /**
+     * 每分钟最大请求数（per-agent 限流，0=用全局默认）
+     */
+    private Integer rateLimit;
+
+    /**
+     * 最大并发执行数（per-agent 并发限制，0=不限制）
+     */
+    private Integer maxConcurrent;
+
+    /**
      * LLM 配置 DTO（字段与前端 LlmConfig 对齐，同时兼容 AgentConfig.LLMConfig）
      */
     @Data
