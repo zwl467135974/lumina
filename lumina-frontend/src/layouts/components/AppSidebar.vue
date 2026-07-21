@@ -124,6 +124,7 @@ const menuList = computed<MenuVO[]>(() => {
   flex-shrink: 0;
   width: 220px;
   height: 100vh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--lumina-bg-elevated);
@@ -163,6 +164,7 @@ const menuList = computed<MenuVO[]>(() => {
 /* ---------- Menu (可滚动) ---------- */
 .sidebar-menu {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   border-right: none !important;

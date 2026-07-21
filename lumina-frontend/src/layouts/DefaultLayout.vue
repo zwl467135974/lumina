@@ -59,6 +59,7 @@ const breadcrumbs = computed(() => {
 
 .page-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: auto;
   padding: var(--lumina-spacing-lg);
