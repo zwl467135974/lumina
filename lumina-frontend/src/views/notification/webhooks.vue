@@ -12,7 +12,7 @@
     <el-card v-loading="loading">
       <el-table :data="list" stripe>
         <el-table-column prop="name" :label="t('webhook.name')" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="channel" :label="t('webhook.channel')" width="110">
+        <el-table-column prop="channel" :label="t('webhook.channel')" min-width="140">
           <template #default="{ row }">
             <el-tag :type="channelTagType(row.channel)" size="small">
               {{ channelLabel(row.channel) }}
