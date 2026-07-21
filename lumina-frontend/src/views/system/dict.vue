@@ -4,7 +4,7 @@
 
     <el-row :gutter="16">
       <!-- 左侧：字典类型 -->
-      <el-col :span="8">
+      <el-col :xs="24" :sm="10" :md="10">
         <el-card shadow="never">
           <template #header>
             <div style="display: flex; justify-content: space-between; align-items: center">
@@ -20,11 +20,13 @@
             size="small"
           >
             <el-table-column prop="dictName" :label="t('system.dict.dictLabel')" min-width="100" />
-            <el-table-column prop="dictType" label="Type" width="120" show-overflow-tooltip />
-            <el-table-column :label="t('common.actions')" width="100">
+            <el-table-column prop="dictType" :label="t('system.dict.dictType')" min-width="120" show-overflow-tooltip />
+            <el-table-column :label="t('common.actions')" width="150" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click.stop="handleEditType(row)">{{ t('common.edit') }}</el-button>
-                <el-button link type="danger" size="small" @click.stop="handleDeleteType(row)">{{ t('common.delete') }}</el-button>
+                <div class="dict-actions">
+                  <el-button link type="primary" size="small" @click.stop="handleEditType(row)">{{ t('common.edit') }}</el-button>
+                  <el-button link type="danger" size="small" @click.stop="handleDeleteType(row)">{{ t('common.delete') }}</el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -32,7 +34,7 @@
       </el-col>
 
       <!-- 右侧：字典项 -->
-      <el-col :span="16">
+      <el-col :xs="24" :sm="14" :md="14">
         <el-card shadow="never">
           <template #header>
             <div style="display: flex; justify-content: space-between; align-items: center">
@@ -52,10 +54,12 @@
               </template>
             </el-table-column>
             <el-table-column prop="remark" :label="t('system.dict.remark')" min-width="100" show-overflow-tooltip />
-            <el-table-column :label="t('common.actions')" width="120" fixed="right">
+            <el-table-column :label="t('common.actions')" width="150" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="handleEditItem(row)">{{ t('common.edit') }}</el-button>
-                <el-button link type="danger" size="small" @click="handleDeleteItem(row)">{{ t('common.delete') }}</el-button>
+                <div class="dict-actions">
+                  <el-button link type="primary" size="small" @click="handleEditItem(row)">{{ t('common.edit') }}</el-button>
+                  <el-button link type="danger" size="small" @click="handleDeleteItem(row)">{{ t('common.delete') }}</el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -265,3 +269,22 @@ const handleDeleteItem = async (row: DictItemVO) => {
 
 onMounted(() => loadTypes())
 </script>
+
+<style scoped>
+.dict-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lumina-spacing-xs);
+  white-space: nowrap;
+}
+
+.dict-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+@media (max-width: 767px) {
+  .system-dict-page :deep(.el-card) {
+    margin-bottom: var(--lumina-spacing-md);
+  }
+}
+</style>

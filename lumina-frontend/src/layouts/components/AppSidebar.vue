@@ -1,4 +1,5 @@
 ﻿<template>
+  <div v-if="isMobile && !appStore.sidebarCollapsed" class="sidebar-overlay" @click="closeMobileSidebar" />
   <aside class="app-sidebar" :class="{ collapsed: appStore.sidebarCollapsed }">
     <div class="sidebar-logo">
       <h2 v-if="!appStore.sidebarCollapsed">Lumina</h2>
@@ -10,6 +11,7 @@
       :unique-opened="true"
       router
       class="sidebar-menu"
+      @select="closeMobileSidebar"
     >
       <template v-for="menu in menuList" :key="menu.path">
         <el-sub-menu v-if="menu.children?.length" :index="menu.path">
@@ -37,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore, useUserStore } from '@/stores'
 import { useI18n } from 'vue-i18n'
@@ -49,6 +51,29 @@ const userStore = useUserStore()
 const { t } = useI18n()
 
 const activeMenu = computed(() => route.path)
+const isMobile = ref(window.innerWidth <= 768)
+
+const updateViewport = () => {
+  isMobile.value = window.innerWidth <= 768
+  if (!isMobile.value && appStore.sidebarCollapsed) {
+    appStore.toggleSidebar()
+  }
+}
+
+const closeMobileSidebar = () => {
+  if (isMobile.value && !appStore.sidebarCollapsed) {
+    appStore.toggleSidebar()
+  }
+}
+
+onMounted(() => {
+  // 移动端首次加载默认折叠（抽屉隐藏），桌面端展开
+  if (isMobile.value && !appStore.sidebarCollapsed) {
+    appStore.toggleSidebar()
+  }
+  window.addEventListener('resize', updateViewport)
+})
+onUnmounted(() => window.removeEventListener('resize', updateViewport))
 
 interface MenuVO {
   name?: string
@@ -256,13 +281,23 @@ const menuList = computed<MenuVO[]>(() => {
 }
 
 /* ---------- Responsive: 移动端抽屉 ---------- */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--lumina-z-fixed) - 1);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(1px);
+}
+
 @media (max-width: 768px) {
   .app-sidebar {
     position: fixed;
     top: 0;
     left: 0;
+    height: 100vh;
     z-index: var(--lumina-z-fixed);
     transform: translateX(0);
+    box-shadow: var(--lumina-shadow-lg);
     transition:
       transform var(--lumina-transition-base),
       width var(--lumina-transition-base);
@@ -271,6 +306,7 @@ const menuList = computed<MenuVO[]>(() => {
   .app-sidebar.collapsed {
     width: 220px;
     transform: translateX(-100%);
+    box-shadow: none;
   }
 }
 </style>
