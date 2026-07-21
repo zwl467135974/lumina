@@ -637,6 +637,7 @@ export default {
     regressed: '退步',
     unchanged: '持平',
     exportCsv: '导出 CSV',
+    markBaseline: '标记基线',
     caseId: '用例',
     category: '分类',
     input: '输入',

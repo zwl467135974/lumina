@@ -637,6 +637,7 @@ export default {
     regressed: 'Regressed',
     unchanged: 'Unchanged',
     exportCsv: 'Export CSV',
+    markBaseline: 'Mark Baseline',
     caseId: 'Case',
     category: 'Category',
     input: 'Input',

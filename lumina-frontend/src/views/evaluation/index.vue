@@ -141,11 +141,13 @@
           <template #default="{ row }">{{ Number(row.avgScore).toFixed(3) }}</template>
         </el-table-column>
         <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
-        <el-table-column :label="t('common.actions')" width="170">
+        <el-table-column :label="t('common.actions')" min-width="210">
           <template #default="{ row }">
-            <el-button link type="primary" @click="loadReport(row.id)">{{ t('common.view') }}</el-button>
-            <el-button link type="info" @click="startCompare(row.id)">{{ t('evaluation.compare') }}</el-button>
-            <el-button link type="warning" @click="handleMarkBaseline(row.id)">标记基线</el-button>
+            <div class="eval-actions">
+              <el-button link type="primary" @click="loadReport(row.id)">{{ t('common.view') }}</el-button>
+              <el-button link type="info" @click="startCompare(row.id)">{{ t('evaluation.compare') }}</el-button>
+              <el-button link type="warning" @click="handleMarkBaseline(row.id)">{{ t('evaluation.markBaseline') }}</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -692,6 +694,15 @@ const doPromptCompare = async () => {
 
 <style scoped>
 .evaluation-page { padding: 0; }
+.eval-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lumina-spacing-xs);
+  white-space: nowrap;
+}
+.eval-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
 .panel-card { margin-bottom: 16px; }
 .card-header { display: flex; align-items: center; justify-content: space-between; }
 .search-input { margin-bottom: 12px; }
