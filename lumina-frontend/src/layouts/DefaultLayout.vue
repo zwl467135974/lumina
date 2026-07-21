@@ -12,7 +12,9 @@
       <main class="page-content">
         <router-view v-slot="{ Component, route }">
           <transition name="lumina-fade" mode="out-in">
-            <component :is="Component" :key="route.path" />
+            <keep-alive :include="cachedViews">
+              <component :is="Component" :key="route.fullPath" />
+            </keep-alive>
           </transition>
         </router-view>
       </main>
@@ -22,16 +24,28 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
 import AppHeader from './components/AppHeader.vue'
 
 const route = useRoute()
+const router = useRouter()
 
+// keep-alive 缓存列表：读取路由表中 meta.keepAlive 的组件 name
+const cachedViews = computed<string[]>(() => {
+  const names: string[] = []
+  router.getRoutes().forEach(r => {
+    if (r.meta?.keepAlive && r.name) names.push(r.name as string)
+  })
+  return names
+})
+
+// 面包屑：用 route.path 实际解析路径，避免动态路由 :id 模板导致点击 404
 const breadcrumbs = computed(() => {
   const matched = route.matched.filter(r => r.meta?.title)
-  return matched.map(r => ({
-    path: r.path,
+  return matched.map((r, idx) => ({
+    // 最后一个用 route.fullPath（当前真实路径），其余用 record.path（但需替换动态段）
+    path: idx === matched.length - 1 ? route.fullPath : r.path,
     name: r.name as string | undefined,
     meta: r.meta as { title?: string } | undefined
   }))

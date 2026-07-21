@@ -2,7 +2,6 @@
  * 表格组合式函数
  */
 import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
 import type { PageResult } from '@/types/api'
 
 export function useTable<T>(
@@ -32,14 +31,21 @@ export function useTable<T>(
       const data = res.data as any
       tableData.value = data.list || data.records || []
       pagination.total = data.total || 0
-    } catch (error) {
-      console.error('加载数据失败:', error)
-      ElMessage.error('加载数据失败，请稍后重试')
+    } catch {
+      // 拦截器已统一弹错，这里不再重复提示，仅清空数据
       tableData.value = []
       pagination.total = 0
     } finally {
       loading.value = false
     }
+  }
+
+  /**
+   * 搜索/重置时调用：pageNum 归 1 后加载
+   */
+  const search = () => {
+    pagination.pageNum = 1
+    loadData()
   }
 
   /**
@@ -64,6 +70,7 @@ export function useTable<T>(
     tableData,
     pagination,
     loadData,
+    search,
     handlePageChange,
     handleSizeChange
   }
