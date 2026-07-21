@@ -54,8 +54,14 @@ const activeMenu = computed(() => route.path)
 const isMobile = ref(window.innerWidth <= 768)
 
 const updateViewport = () => {
+  const wasMobile = isMobile.value
   isMobile.value = window.innerWidth <= 768
-  if (!isMobile.value && appStore.sidebarCollapsed) {
+  // 桌面→移动：自动折叠抽屉，避免遮挡内容
+  if (!wasMobile && isMobile.value && !appStore.sidebarCollapsed) {
+    appStore.toggleSidebar()
+  }
+  // 移动→桌面：自动展开图标列
+  if (wasMobile && !isMobile.value && appStore.sidebarCollapsed) {
     appStore.toggleSidebar()
   }
 }
