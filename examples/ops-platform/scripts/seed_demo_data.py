@@ -7,7 +7,7 @@ import json
 import os
 import time
 
-HOST = "http://localhost:18080"
+HOST = os.environ.get("LUMINA_HOST", "http://localhost:8080")
 USER = "admin"
 PASS = "admin123"
 
