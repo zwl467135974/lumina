@@ -56,18 +56,17 @@ class AgentRateLimiterTest {
 
     @Test
     void withinLimitPasses() {
-        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(1L);
+        when(redisCacheManager.incrementAndGetWithExpire(anyString(), Mockito.any(Duration.class))).thenReturn(1L);
 
         assertThatCode(() -> agentRateLimiter.checkRateLimit(1L))
                 .doesNotThrowAnyException();
 
-        verify(redisCacheManager).incrementAndGet(eq("agent:rate:1:100"));
-        verify(redisCacheManager).expire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
+        verify(redisCacheManager).incrementAndGetWithExpire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
     }
 
     @Test
     void exceedingLimitThrowsBusinessException() {
-        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(6L);
+        when(redisCacheManager.incrementAndGetWithExpire(anyString(), Mockito.any(Duration.class))).thenReturn(6L);
 
         assertThatThrownBy(() -> agentRateLimiter.checkRateLimit(1L))
                 .isInstanceOf(BusinessException.class)
@@ -75,41 +74,43 @@ class AgentRateLimiterTest {
                     BusinessException be = (BusinessException) ex;
                     assert be.getErrorCode() == ErrorCode.AGENT_RATE_LIMITED;
                 });
-
-        verify(redisCacheManager, never()).expire(anyString(), Mockito.any(Duration.class));
     }
 
     @Test
     void rateLimiterKeyIncludesAgentIdAndUserId() {
-        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(1L);
+        when(redisCacheManager.incrementAndGetWithExpire(anyString(), Mockito.any(Duration.class))).thenReturn(1L);
 
         agentRateLimiter.checkRateLimit(42L);
 
-        verify(redisCacheManager).incrementAndGet(eq("agent:rate:42:100"));
+        verify(redisCacheManager).incrementAndGetWithExpire(eq("agent:rate:42:100"), eq(Duration.ofSeconds(60)));
     }
 
     @Test
     void firstRequestSetsExpiry() {
-        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(1L);
+        when(redisCacheManager.incrementAndGetWithExpire(anyString(), Mockito.any(Duration.class))).thenReturn(1L);
 
         agentRateLimiter.checkRateLimit(1L);
 
-        verify(redisCacheManager).expire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
+        verify(redisCacheManager).incrementAndGetWithExpire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
     }
 
     @Test
     void subsequentRequestDoesNotResetExpiry() {
-        when(redisCacheManager.incrementAndGet(anyString())).thenReturn(2L);
+        // 返回 2L 时不应触发 expire（由 RedisCacheManager 内部判断值=1 才 expire，
+        // 这里验证 limiter 本身不会再单独调用 expire）
+        when(redisCacheManager.incrementAndGetWithExpire(anyString(), Mockito.any(Duration.class))).thenReturn(2L);
 
         agentRateLimiter.checkRateLimit(1L);
 
+        verify(redisCacheManager).incrementAndGetWithExpire(eq("agent:rate:1:100"), eq(Duration.ofSeconds(60)));
         verify(redisCacheManager, never()).expire(anyString(), Mockito.any(Duration.class));
     }
 
     @Test
     void redisFailureFailsClosedByDefault() {
         // 默认 fail-closed：Redis 宕机时拒绝请求（安全优先）
-        when(redisCacheManager.incrementAndGet(anyString())).thenThrow(new RuntimeException("Redis down"));
+        when(redisCacheManager.incrementAndGetWithExpire(anyString(), Mockito.any(Duration.class)))
+                .thenThrow(new RuntimeException("Redis down"));
 
         assertThatThrownBy(() -> agentRateLimiter.checkRateLimit(1L))
                 .isInstanceOf(BusinessException.class)
@@ -122,7 +123,8 @@ class AgentRateLimiterTest {
     @Test
     void redisFailureFailsOpenWhenConfigured() throws Exception {
         // fail-open=true 时 Redis 宕机放行请求（可用性优先）
-        when(redisCacheManager.incrementAndGet(anyString())).thenThrow(new RuntimeException("Redis down"));
+        when(redisCacheManager.incrementAndGetWithExpire(anyString(), Mockito.any(Duration.class)))
+                .thenThrow(new RuntimeException("Redis down"));
 
         Field failOpenField = AgentRateLimiter.class.getDeclaredField("failOpen");
         failOpenField.setAccessible(true);

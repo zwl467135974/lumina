@@ -74,6 +74,9 @@ public class AgentServiceImpl implements AgentService {
     private io.lumina.agent.security.AgentRateLimiter agentRateLimiter;
 
     @Autowired
+    private io.lumina.agent.security.AgentConcurrencyLimiter concurrencyLimiter;
+
+    @Autowired
     private io.lumina.agent.service.BudgetService budgetService;
 
     @Autowired
@@ -272,86 +275,100 @@ public class AgentServiceImpl implements AgentService {
         agentRateLimiter.checkRateLimit(agentId, agent.getRateLimit());
         budgetService.checkBudget(agentId);
 
-        // 检查状态
-        if (!agent.isActive()) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
+        // 并发许可：maxConcurrent>0 时限制同时执行数
+        boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, agent.getMaxConcurrent());
+        try {
+            // 检查状态
+            if (!agent.isActive()) {
+                throw new BusinessException(ErrorCode.AGENT_NOT_ACTIVE);
+            }
+
+            // 安全检测：Prompt 注入
+            promptInjectionFilter.check(task);
+
+            moderateContent(task);
+
+            // 会话上下文校验
+            String sessionId = resolveConversation(conversationUuid, agentId);
+
+            // 构建配置（传入 sessionId 用于 A/B 变体粘滞分配）
+            AgentConfig config = buildExecutionConfig(agent, sessionId);
+
+            // 保存用户消息到数据库
+            if (sessionId != null) {
+                conversationService.saveMessage(sessionId, "user", task, 0, null);
+            }
+
+            // 执行 Agent（引擎加载历史记忆 + 保存到 Redis）
+            ExecuteResult result = agentExecutionEngine.executeSync(
+                    agent.getAgentType().toLowerCase(),
+                    task,
+                    config,
+                    sessionId
+            );
+
+            // A/B 曝光记录
+            recordAbExposure(result, sessionId);
+
+            if (!result.getSuccess()) {
+                throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
+            }
+
+            // 输出脱敏
+            String sanitizedResult = outputSanitizer.sanitize(result.getResult());
+            result.setResult(sanitizedResult);
+
+            // 保存助手回复到数据库
+            if (sessionId != null) {
+                Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
+                conversationService.saveMessage(sessionId, "assistant", sanitizedResult, tokenCount, result.getDuration());
+                conversationService.incrementMessageCount(sessionId, 2);
+            }
+
+            // Reflective Memory: 异步提取关键事实（不阻塞用户响应）
+            triggerReflectiveMemory(agentId, sessionId, task, sanitizedResult);
+
+            log.info("Agent 执行成功: id={}", agentId);
+            return result;
+        } finally {
+            if (concurrencyAcquired) {
+                concurrencyLimiter.release(agentId);
+            }
         }
-
-        // 安全检测：Prompt 注入
-        promptInjectionFilter.check(task);
-
-        moderateContent(task);
-
-        // 会话上下文校验
-        String sessionId = resolveConversation(conversationUuid, agentId);
-
-        // 构建配置（传入 sessionId 用于 A/B 变体粘滞分配）
-        AgentConfig config = buildExecutionConfig(agent, sessionId);
-
-        // 保存用户消息到数据库
-        if (sessionId != null) {
-            conversationService.saveMessage(sessionId, "user", task, 0, null);
-        }
-
-        // 执行 Agent（引擎加载历史记忆 + 保存到 Redis）
-        ExecuteResult result = agentExecutionEngine.executeSync(
-                agent.getAgentType().toLowerCase(),
-                task,
-                config,
-                sessionId
-        );
-
-        // A/B 曝光记录
-        recordAbExposure(result, sessionId);
-
-        if (!result.getSuccess()) {
-            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
-        }
-
-        // 输出脱敏
-        String sanitizedResult = outputSanitizer.sanitize(result.getResult());
-        result.setResult(sanitizedResult);
-
-        // 保存助手回复到数据库
-        if (sessionId != null) {
-            Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
-            conversationService.saveMessage(sessionId, "assistant", sanitizedResult, tokenCount, result.getDuration());
-            conversationService.incrementMessageCount(sessionId, 2);
-        }
-
-        // Reflective Memory: 异步提取关键事实（不阻塞用户响应）
-        triggerReflectiveMemory(agentId, sessionId, task, sanitizedResult);
-
-        log.info("Agent 执行成功: id={}", agentId);
-        return result;
     }
 
     @Override
     public String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
         MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
+        boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, ctx.agent().getMaxConcurrent());
+        try {
+            ExecuteResult result = agentExecutionEngine.executeMultimodalSync(
+                    ctx.agent().getAgentType().toLowerCase(),
+                    task,
+                    ctx.contents(),
+                    ctx.config(),
+                    ctx.sessionId()
+            );
 
-        ExecuteResult result = agentExecutionEngine.executeMultimodalSync(
-                ctx.agent().getAgentType().toLowerCase(),
-                task,
-                ctx.contents(),
-                ctx.config(),
-                ctx.sessionId()
-        );
+            if (!result.getSuccess()) {
+                throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
+            }
 
-        if (!result.getSuccess()) {
-            throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
+            String sanitizedResult = outputSanitizer.sanitize(result.getResult());
+
+            if (ctx.sessionId() != null) {
+                Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
+                conversationService.saveMessage(ctx.sessionId(), "assistant", sanitizedResult, tokenCount, result.getDuration());
+                conversationService.incrementMessageCount(ctx.sessionId(), 2);
+            }
+
+            log.info("多模态 Agent 执行成功: id={}", agentId);
+            return sanitizedResult;
+        } finally {
+            if (concurrencyAcquired) {
+                concurrencyLimiter.release(agentId);
+            }
         }
-
-        String sanitizedResult = outputSanitizer.sanitize(result.getResult());
-
-        if (ctx.sessionId() != null) {
-            Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
-            conversationService.saveMessage(ctx.sessionId(), "assistant", sanitizedResult, tokenCount, result.getDuration());
-            conversationService.incrementMessageCount(ctx.sessionId(), 2);
-        }
-
-        log.info("多模态 Agent 执行成功: id={}", agentId);
-        return sanitizedResult;
     }
 
     @Override
@@ -390,6 +407,7 @@ public class AgentServiceImpl implements AgentService {
 
         final String sid = sessionId;
         final StringBuffer fullResponse = new StringBuffer();
+        boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, agent.getMaxConcurrent());
 
         return agentExecutionEngine.executeStream(
                 agent.getAgentType().toLowerCase(),
@@ -409,6 +427,11 @@ public class AgentServiceImpl implements AgentService {
                 conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
                 conversationService.incrementMessageCount(sid, 2);
             }
+        })
+        .doFinally(signalType -> {
+            if (concurrencyAcquired) {
+                concurrencyLimiter.release(agentId);
+            }
         });
     }
 
@@ -418,6 +441,7 @@ public class AgentServiceImpl implements AgentService {
 
         final String sid = ctx.sessionId();
         final StringBuffer fullResponse = new StringBuffer();
+        boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, ctx.agent().getMaxConcurrent());
 
         return agentExecutionEngine.executeMultimodalStream(
                 ctx.agent().getAgentType().toLowerCase(),
@@ -437,6 +461,11 @@ public class AgentServiceImpl implements AgentService {
                 String sanitized = outputSanitizer.sanitize(fullResponse.toString());
                 conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
                 conversationService.incrementMessageCount(sid, 2);
+            }
+        })
+        .doFinally(signalType -> {
+            if (concurrencyAcquired) {
+                concurrencyLimiter.release(agentId);
             }
         });
     }

@@ -53,7 +53,9 @@ import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -275,7 +277,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 构建上下文消息（含历史记忆 + 长期记忆）
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt, Collections.emptyList(), agentConfig);
 
-            Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
+            Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task, agentConfig);
 
             // 按 agentType 分发（PlanAndExecute 走组合流，其他走 ReAct）
             Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task, conversationId);
@@ -319,7 +321,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents, agentConfig);
 
-            Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task);
+            Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task, agentConfig);
 
             // 按 agentType 分发（PlanAndExecute 走组合流，其他走 ReAct）
             Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task, conversationId);
@@ -754,7 +756,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .toolkit(toolkit)
                 .memory(new InMemoryMemory());
 
-        configureRag(agentBuilder);
+        configureRag(agentBuilder, config);
 
         return agentBuilder.build();
     }
@@ -874,8 +876,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * <p>AGENTIC 模式：Agent 自行决定是否调用知识检索工具。
      *
      * @param agentBuilder ReActAgent 构建器
+     * @param config Agent 配置
      */
-    private void configureRag(ReActAgent.Builder agentBuilder) {
+    private void configureRag(ReActAgent.Builder agentBuilder, AgentConfig config) {
         if (knowledge == null) {
             log.debug("RAG 未启用（Knowledge bean 不存在），Agent 不具备知识库检索能力");
             return;
@@ -891,11 +894,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .build();
 
         agentBuilder
-                .knowledge(knowledge)
+                .knowledge(scopedKnowledge(config.getKnowledgeBaseIds()))
                 .ragMode(ragMode)
                 .retrieveConfig(retrieveConfig);
 
-        log.info("RAG 知识库已注入 Agent: mode={}, limit={}, scoreThreshold={}", ragMode, limit, scoreThreshold);
+        log.info("RAG 知识库已注入 Agent: mode={}, limit={}, scoreThreshold={}, kbIds={}",
+                ragMode, limit, scoreThreshold, config.getKnowledgeBaseIds());
     }
 
     /**
@@ -906,9 +910,10 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * RAG 未启用或检索失败时返回空流，不影响后续 Agent 执行。
      *
      * @param task 用户任务描述
+     * @param config Agent 配置
      * @return RAG 来源事件流（0 或 1 个 chunk）
      */
-    private Flux<StreamChunk> buildRagSourcesFlux(String task) {
+    private Flux<StreamChunk> buildRagSourcesFlux(String task, AgentConfig config) {
         if (knowledge == null) {
             return Flux.empty();
         }
@@ -916,7 +921,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         int limit = ragProperties != null ? ragProperties.getRetrieve().getLimit() : 3;
         double scoreThreshold = ragProperties != null ? ragProperties.getRetrieve().getScoreThreshold() : 0.3;
 
-        return knowledge.retrieve(task, RetrieveConfig.builder()
+        return scopedKnowledge(config.getKnowledgeBaseIds()).retrieve(task, RetrieveConfig.builder()
                         .limit(limit)
                         .scoreThreshold(scoreThreshold)
                         .build())
@@ -946,6 +951,61 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     log.warn("RAG 检索来源获取失败: {}", e.getMessage());
                     return Flux.empty();
                 });
+    }
+
+    /**
+     * 创建限定当前 Agent 已挂载知识库的检索视图。
+     *
+     * <p>未挂载知识库时不返回任何检索结果，避免 Agent 读取同租户下未授权的知识库内容。
+     */
+    private Knowledge scopedKnowledge(List<Long> knowledgeBaseIds) {
+        if (knowledgeBaseIds == null || knowledgeBaseIds.isEmpty()) {
+            return new Knowledge() {
+                @Override
+                public Mono<Void> addDocuments(List<io.agentscope.core.rag.model.Document> documents) {
+                    return knowledge.addDocuments(documents);
+                }
+
+                @Override
+                public Mono<List<io.agentscope.core.rag.model.Document>> retrieve(
+                        String query, RetrieveConfig retrieveConfig) {
+                    return Mono.just(Collections.emptyList());
+                }
+            };
+        }
+
+        Set<Long> allowedKbIds = new HashSet<>(knowledgeBaseIds);
+        return new Knowledge() {
+            @Override
+            public Mono<Void> addDocuments(List<io.agentscope.core.rag.model.Document> documents) {
+                return knowledge.addDocuments(documents);
+            }
+
+            @Override
+            public Mono<List<io.agentscope.core.rag.model.Document>> retrieve(
+                    String query, RetrieveConfig retrieveConfig) {
+                return knowledge.retrieve(query, retrieveConfig)
+                        .map(documents -> documents.stream()
+                                .filter(document -> allowedKbIds.contains(resolveKnowledgeBaseId(document)))
+                                .toList());
+            }
+        };
+    }
+
+    private Long resolveKnowledgeBaseId(io.agentscope.core.rag.model.Document document) {
+        Long kbId = toLong(document.getPayloadValue("kb_id"));
+        return kbId != null ? kbId : toLong(document.getPayloadValue("kbId"));
+    }
+
+    private Long toLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return value != null ? Long.parseLong(String.valueOf(value)) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**

@@ -14,8 +14,9 @@ import java.time.Duration;
 /**
  * Agent 执行频率限制器
  *
- * <p>基于 {@link RedisCacheManager} 原子计数器实现固定窗口限流，
- * 按 用户 + Agent 维度独立计量，防止单个用户对同一 Agent 过度调用。
+ * <p>基于 Redisson 原子计数器（经 {@link RedisCacheManager#incrementAndGetWithExpire}
+ * 统一封装）实现固定窗口限流，按 用户 + Agent 维度独立计量，
+ * 防止单个用户对同一 Agent 过度调用。
  *
  * <p>可配置参数：
  * <ul>
@@ -81,14 +82,13 @@ public class AgentRateLimiter {
         String key = KEY_PREFIX + agentId + ":" + identity;
 
         try {
-            long count = redisCacheManager.incrementAndGet(key);
-            if (count == 1) {
-                redisCacheManager.expire(key, Duration.ofSeconds(windowSeconds));
-            }
+            // 使用 incrementAndGetWithExpire 保证 incrementAndGet 与 expire 作用于同一个 RAtomicLong 对象，
+            // 避免 Redisson 下 RAtomicLong/RBucket 类型不匹配导致 TTL 不生效
+            long count = redisCacheManager.incrementAndGetWithExpire(key, Duration.ofSeconds(windowSeconds));
 
             if (count > effectiveMax) {
-                log.warn("Agent 频率限制触发: agentId={}, userId={}, max={}, window={}s",
-                        agentId, userId, effectiveMax, windowSeconds);
+                log.warn("Agent 频率限制触发: agentId={}, userId={}, count={}, max={}, window={}s",
+                        agentId, userId, count, effectiveMax, windowSeconds);
                 throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED);
             }
         } catch (BusinessException e) {

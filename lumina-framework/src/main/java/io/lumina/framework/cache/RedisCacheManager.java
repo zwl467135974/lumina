@@ -321,6 +321,27 @@ public class RedisCacheManager {
         return value;
     }
 
+    /**
+     * 原子递增计数器并返回递增后的值；首次递增（值为 1）时对同一个计数器设置过期时间。
+     *
+     * <p>注意：TTL 必须设置在与 {@code incrementAndGet} 相同的 {@link RAtomicLong} 对象上，
+     * 否则 Redisson 下 {@code RBucket.expire} 与 {@code RAtomicLong} 不是同一个 key 视图，
+     * TTL 不会生效。本方法封装该一致性约束，供限流等场景使用。
+     *
+     * @param key 计数器键
+     * @param ttl 首次递增时设置的过期时间（仅对首次生效，避免重置滑动窗口）
+     * @return 递增后的值
+     */
+    public long incrementAndGetWithExpire(String key, Duration ttl) {
+        RAtomicLong counter = redissonClient.getAtomicLong(key);
+        long value = counter.incrementAndGet();
+        if (value == 1L) {
+            counter.expire(ttl);
+        }
+        log.debug("INCR+EXPIRE: key={}, value={}, ttl={}s", key, value, ttl.getSeconds());
+        return value;
+    }
+
     // ==================== 有序集合（ZSET）方法 ====================
 
     /**

@@ -86,6 +86,7 @@ public enum ErrorCode {
     AGENT_CONFIG_ERROR(500, 20004, "Agent 配置错误"),
     AGENT_TASK_EMPTY(400, 20005, "任务描述不能为空"),
     AGENT_RATE_LIMITED(429, 20006, "Agent 请求过于频繁，请稍后重试"),
+    AGENT_CONCURRENT_LIMITED(429, 20010, "Agent 并发数已达上限，请稍后重试"),
     BUDGET_EXCEEDED(403, 20007, "预算已耗尽，执行被拒绝"),
     BUDGET_RULE_NOT_FOUND(404, 20008, "预算规则不存在"),
 
