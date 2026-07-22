@@ -33,19 +33,24 @@ INSERT INTO lumina_model_pricing (provider, model_name, input_price, output_pric
 ('ollama', 'default', 0.000000, 0.000000, 'CNY', 1)
 ON DUPLICATE KEY UPDATE update_time = NOW();
 
--- 补充 model-pricing 相关权限种子（挂在 model 权限树下）
-INSERT INTO lumina_permission (name, code, type, parent_id, sort_order, status, tenant_id)
-SELECT '模型价格管理', 'model:pricing', 2,
-       (SELECT id FROM (SELECT id FROM lumina_permission WHERE code = 'model' LIMIT 1) AS t),
-       5, 1, 0
-WHERE NOT EXISTS (SELECT 1 FROM lumina_permission WHERE code = 'model:pricing');
+-- 补充 model:pricing 权限种子（挂在 system:model 权限树下）
+-- lumina_permission 列名: permission_id / parent_id / permission_code / permission_name / permission_type / sort_order / status
+INSERT INTO lumina_permission (parent_id, permission_code, permission_name, permission_type, sort_order, status)
+SELECT p.permission_id, 'model:pricing', '模型价格管理', 2, 5, 1
+FROM lumina_permission p
+WHERE p.permission_code = 'system:model'
+  AND NOT EXISTS (SELECT 1 FROM lumina_permission WHERE permission_code = 'model:pricing');
 
 -- SUPER_ADMIN 和 TENANT_ADMIN 自动获得新权限
+-- lumina_role 列名: role_id / role_code ; lumina_role_permission 列名: id / role_id / permission_id
 INSERT INTO lumina_role_permission (role_id, permission_id)
-SELECT r.id, p.id FROM lumina_role r, lumina_permission p
+SELECT r.role_id, p.permission_id
+FROM lumina_role r
+CROSS JOIN lumina_permission p
 WHERE r.role_code IN ('SUPER_ADMIN', 'TENANT_ADMIN')
-  AND p.code = 'model:pricing'
+  AND p.permission_code = 'model:pricing'
+  AND r.deleted = 0
   AND NOT EXISTS (
     SELECT 1 FROM lumina_role_permission rp
-    WHERE rp.role_id = r.id AND rp.permission_id = p.id
+    WHERE rp.role_id = r.role_id AND rp.permission_id = p.permission_id
   );
