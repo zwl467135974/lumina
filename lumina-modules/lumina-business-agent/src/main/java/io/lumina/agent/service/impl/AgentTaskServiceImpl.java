@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.lumina.agent.api.dto.AgentTaskRequestDTO;
 import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.infrastructure.entity.AgentTaskDO;
+import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.AgentTaskService;
@@ -182,15 +183,23 @@ public class AgentTaskServiceImpl implements AgentTaskService {
 
             markRunning(task);
             String result;
+            ExecuteResult.TokenUsage tokenUsage = null;
             List<String> fileUuids = parseFileUuids(task.getFileIds());
             if (fileUuids.isEmpty()) {
-                result = agentService.executeAgent(task.getAgentId(), task.getInputText(), task.getConversationUuid());
+                ExecuteResult execResult = agentService.executeAgentForResult(
+                        task.getAgentId(), task.getInputText(), task.getConversationUuid());
+                result = execResult.getResult();
+                tokenUsage = execResult.getTokenUsage();
             } else {
                 result = agentService.executeAgentMultimodal(
                         task.getAgentId(), task.getInputText(), fileUuids, task.getConversationUuid());
             }
             String[] modelInfo = resolveModelInfo(task.getAgentId());
-            markCompleted(taskUuid, result, System.currentTimeMillis() - start, modelInfo[0], modelInfo[1]);
+            int promptTokens = tokenUsage != null && tokenUsage.getPromptTokens() != null ? tokenUsage.getPromptTokens() : 0;
+            int completionTokens = tokenUsage != null && tokenUsage.getCompletionTokens() != null ? tokenUsage.getCompletionTokens() : 0;
+            int totalTokens = tokenUsage != null && tokenUsage.getTotalTokens() != null ? tokenUsage.getTotalTokens() : 0;
+            markCompleted(taskUuid, result, System.currentTimeMillis() - start, modelInfo[0], modelInfo[1],
+                    promptTokens, completionTokens, totalTokens);
         } catch (Exception e) {
             markFailed(taskUuid, e, System.currentTimeMillis() - start);
         } finally {
@@ -238,7 +247,8 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         progressRegistry.emit(task.getTaskUuid(), buildEvent(task));
     }
 
-    private void markCompleted(String taskUuid, String result, long durationMs, String modelName, String provider) {
+    private void markCompleted(String taskUuid, String result, long durationMs, String modelName, String provider,
+                               int promptTokens, int completionTokens, int totalTokens) {
         AgentTaskDO task = selectByUuid(taskUuid);
         if (task == null) return;
         if (STATUS_CANCELLED.equals(task.getStatus())) {
@@ -250,10 +260,13 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         task.setDurationMs(durationMs);
         task.setModelName(modelName);
         task.setProvider(provider);
+        task.setPromptTokens(promptTokens);
+        task.setCompletionTokens(completionTokens);
+        task.setTotalTokens(totalTokens);
         task.setUpdateTime(LocalDateTime.now());
         agentTaskMapper.updateById(task);
         progressRegistry.emit(taskUuid, buildEvent(task));
-        log.info("Agent 异步任务完成: taskUuid={}, durationMs={}", taskUuid, durationMs);
+        log.info("Agent 异步任务完成: taskUuid={}, durationMs={}, totalTokens={}", taskUuid, durationMs, totalTokens);
         try {
             notificationEventPublisher.publish(
                     new NotificationEvent(task.getCreateBy(), "TASK",

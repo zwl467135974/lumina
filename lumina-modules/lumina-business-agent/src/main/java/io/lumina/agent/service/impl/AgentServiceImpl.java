@@ -77,6 +77,9 @@ public class AgentServiceImpl implements AgentService {
     private io.lumina.agent.security.AgentConcurrencyLimiter concurrencyLimiter;
 
     @Autowired
+    private io.lumina.agent.infrastructure.mapper.AgentTaskMapper agentTaskMapper;
+
+    @Autowired
     private io.lumina.agent.service.BudgetService budgetService;
 
     @Autowired
@@ -328,6 +331,9 @@ public class AgentServiceImpl implements AgentService {
             // Reflective Memory: 异步提取关键事实（不阻塞用户响应）
             triggerReflectiveMemory(agentId, sessionId, task, sanitizedResult);
 
+            // 记录同步执行的 token 用量到 task 表（供成本/预算统计）
+            recordSyncTask(agentId, result);
+
             log.info("Agent 执行成功: id={}", agentId);
             return result;
         } finally {
@@ -424,6 +430,8 @@ public class AgentServiceImpl implements AgentService {
         .doOnComplete(() -> {
             if (sid != null && fullResponse.length() > 0) {
                 String sanitized = outputSanitizer.sanitize(fullResponse.toString());
+                // 流式执行无法从 AgentScope SDK 获取精确 token 用量（SSE 协议限制），
+                // 此处 token_count=0 是已知限制。同步/异步路径有精确统计。
                 conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
                 conversationService.incrementMessageCount(sid, 2);
             }
@@ -459,6 +467,7 @@ public class AgentServiceImpl implements AgentService {
         .doOnComplete(() -> {
             if (sid != null && fullResponse.length() > 0) {
                 String sanitized = outputSanitizer.sanitize(fullResponse.toString());
+                // 流式执行无法从 AgentScope SDK 获取精确 token 用量（SSE 协议限制）
                 conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
                 conversationService.incrementMessageCount(sid, 2);
             }
@@ -813,6 +822,37 @@ public class AgentServiceImpl implements AgentService {
             } finally {
                 abVariantHolder.remove();
             }
+        }
+    }
+
+    /**
+     * 记录同步执行的 token 用量到 lumina_agent_task 表
+     *
+     * <p>同步执行（POST /agents/{id}/execute）不经过 AgentTaskService，
+     * 但成本仪表盘和预算控制只读 task 表。此处补插一条 COMPLETED 记录，
+     * 确保 sync 执行的 token 用量也能被统计。
+     */
+    private void recordSyncTask(Long agentId, ExecuteResult result) {
+        try {
+            ExecuteResult.TokenUsage usage = result.getTokenUsage();
+            io.lumina.agent.infrastructure.entity.AgentTaskDO task = new io.lumina.agent.infrastructure.entity.AgentTaskDO();
+            task.setTaskUuid(java.util.UUID.randomUUID().toString());
+            task.setAgentId(agentId);
+            task.setInputText("(sync)");
+            task.setStatus("COMPLETED");
+            task.setResult(null);
+            task.setDurationMs(result.getDuration());
+            task.setPromptTokens(usage != null && usage.getPromptTokens() != null ? usage.getPromptTokens() : 0);
+            task.setCompletionTokens(usage != null && usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0);
+            task.setTotalTokens(usage != null && usage.getTotalTokens() != null ? usage.getTotalTokens() : 0);
+            task.setTenantId(currentTenantId());
+            task.setCreateBy(BaseContext.getUserId());
+            task.setCreateTime(java.time.LocalDateTime.now());
+            task.setUpdateTime(java.time.LocalDateTime.now());
+            task.setIsDeleted(0);
+            agentTaskMapper.insert(task);
+        } catch (Exception e) {
+            log.warn("记录同步执行 token 用量失败(不影响主流程): agentId={}, error={}", agentId, e.getMessage());
         }
     }
 
