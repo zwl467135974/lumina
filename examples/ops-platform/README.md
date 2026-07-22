@@ -51,11 +51,25 @@ python3 examples/ops-platform/scripts/gen_mock_data.py --mode critical
 bash examples/ops-platform/scripts/run_demo.sh
 ```
 
-脚本会自动完成：登录 → 创建 Agent → 上传知识库 → 执行巡检 → 触发工作流 → 查看报告。
+脚本通过 API 自动完成 14 步：登录 → 创建知识库 → 上传 SOP → 创建 Agent → 执行巡检 →
+验证限流 → 创建 Webhook → 创建预算 → 创建触发器 → 多模态上传 → 注册 MCP → 导入评估 →
+OpenAI 兼容调用 → 成本查看。
+
+> **注意**：运行前需先将 `OpsToolProvider.java` 复制到源码树并重新编译：
+> ```bash
+> cp examples/ops-platform/java/OpsToolProvider.java \
+>    lumina-agent-core/src/main/java/io/lumina/agent/tool/OpsToolProvider.java
+> mvn -pl lumina-standalone -am -DskipTests package
+> ```
 
 ### 步骤 4：逐项验证能力
 
-参考 [step-by-step.md](docs/step-by-step.md)，按 16 步逐步验证每项能力。
+有两种方式：
+
+| 方式 | 文档 | 适合场景 |
+|------|------|---------|
+| **curl 命令** | [step-by-step.md](docs/step-by-step.md) | 自动化、可复制粘贴 |
+| **前端 UI** | [frontend-guide.md](docs/frontend-guide.md) | 不想写命令，纯浏览器操作 |
 
 ---
 
@@ -85,6 +99,8 @@ examples/ops-platform/
 │   └── ab-test.json           A/B 测试配置
 └── docs/
     ├── step-by-step.md        16 步操作指南
+    ├── step-by-step.md        16 步 curl 操作指南
+    ├── frontend-guide.md      纯前端 UI 操作指南
     └── troubleshooting.md     常见问题
 ```
 
