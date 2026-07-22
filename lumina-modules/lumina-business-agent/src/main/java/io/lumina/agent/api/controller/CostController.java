@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.service.CostService;
 import io.lumina.common.core.R;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
+@RequirePermission("cost:view")
 @RequestMapping("/api/v1/cost")
 @RequiredArgsConstructor
 public class CostController {

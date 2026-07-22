@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.CreateFromTemplateDTO;
 import io.lumina.agent.api.dto.ExecuteWorkflowDTO;
 import io.lumina.agent.api.dto.WorkflowDTO;
@@ -33,6 +34,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
+@RequirePermission("workflow:list")
 @RequestMapping("/api/v1/workflows")
 @RequiredArgsConstructor
 @Validated

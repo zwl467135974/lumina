@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.manager.EnhancedToolManager;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.mcp.McpClientRegistry;
@@ -37,6 +38,7 @@ import java.util.Set;
  */
 @Slf4j
 @RestController
+@RequirePermission("monitor:mcp")
 @RequestMapping("/api/v1/mcp")
 public class McpController {
 

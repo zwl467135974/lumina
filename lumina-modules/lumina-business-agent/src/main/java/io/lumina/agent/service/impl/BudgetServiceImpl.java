@@ -50,6 +50,7 @@ public class BudgetServiceImpl implements BudgetService {
     private static final String PERIOD_DAILY = "DAILY";
     private static final String PERIOD_MONTHLY = "MONTHLY";
     private static final String TASK_COMPLETED = "COMPLETED";
+    private static final String TASK_RUNNING = "RUNNING";
 
     @Override
     public void checkBudget(Long agentId) {
@@ -174,7 +175,8 @@ public class BudgetServiceImpl implements BudgetService {
 
         LambdaQueryWrapper<AgentTaskDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AgentTaskDO::getTenantId, tenantId);
-        wrapper.eq(AgentTaskDO::getStatus, TASK_COMPLETED);
+        // 计入 COMPLETED 和 RUNNING，防止并发请求集体突破预算限额
+        wrapper.in(AgentTaskDO::getStatus, TASK_COMPLETED, TASK_RUNNING);
         wrapper.eq(AgentTaskDO::getIsDeleted, 0);
         wrapper.ge(AgentTaskDO::getCreateTime, periodStart);
 

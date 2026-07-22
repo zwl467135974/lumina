@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.CreateAgentDTO;
 import io.lumina.agent.api.dto.AgentTaskRequestDTO;
 import io.lumina.agent.api.dto.MultimodalRequestDTO;
@@ -50,6 +51,7 @@ import java.util.Set;
  */
 @Slf4j
 @RestController
+@RequirePermission("agent:list")
 @RequestMapping("/api/v1/agents")
 @Validated
 @RequiredArgsConstructor

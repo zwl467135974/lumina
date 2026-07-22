@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.EvaluationDatasetDTO;
 import io.lumina.agent.api.dto.EvaluationRunDTO;
 import io.lumina.agent.api.vo.EvaluationDatasetVO;
@@ -35,6 +36,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
+@RequirePermission("evaluation:list")
 @RequestMapping("/api/v1/evaluations")
 @RequiredArgsConstructor
 @Validated

@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.CreateAgentTriggerDTO;
 import io.lumina.agent.api.vo.AgentTriggerVO;
 import io.lumina.agent.service.AgentTriggerService;
@@ -30,6 +31,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
+@RequirePermission("agent:trigger")
 @RequestMapping("/api/v1/agents/triggers")
 @Validated
 @RequiredArgsConstructor

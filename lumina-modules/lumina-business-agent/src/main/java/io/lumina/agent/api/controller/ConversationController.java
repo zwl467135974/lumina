@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.vo.ConversationVO;
 import io.lumina.agent.api.vo.MessageVO;
 import io.lumina.agent.infrastructure.entity.ConversationDO;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
+@RequirePermission("agent:list")
 @RequestMapping("/api/v1/conversations")
 @Validated
 @RequiredArgsConstructor

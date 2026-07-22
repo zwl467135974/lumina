@@ -94,6 +94,21 @@ public interface AgentService {
     String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid);
 
     /**
+     * 执行多模态 Agent 任务并返回完整执行结果（含 Token 用量与耗时）
+     *
+     * <p>与 {@link #executeAgentMultimodal(Long, String, List, String)} 走同一执行管线，
+     * 供需要 usage 数据的调用方（如异步任务统计）使用。
+     *
+     * @param agentId          Agent ID
+     * @param task             任务描述
+     * @param fileUuids        文件 UUID 列表
+     * @param conversationUuid 会话 UUID（null 表示无会话上下文）
+     * @return 完整执行结果（result 字段为脱敏后文本）
+     */
+    io.lumina.agent.model.ExecuteResult executeAgentMultimodalForResult(
+            Long agentId, String task, List<String> fileUuids, String conversationUuid);
+
+    /**
      * 流式执行 Agent 任务（带会话上下文）
      *
      * @param conversationUuid 会话 UUID（null 表示无会话上下文）

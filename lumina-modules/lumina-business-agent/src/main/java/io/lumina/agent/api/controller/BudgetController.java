@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.BudgetRuleDTO;
 import io.lumina.agent.api.vo.BudgetRuleVO;
 import io.lumina.agent.service.BudgetService;
@@ -22,6 +23,7 @@ import org.springframework.validation.annotation.Validated;
  */
 @Slf4j
 @RestController
+@RequirePermission("budget:list")
 @RequestMapping("/api/v1/budget")
 @RequiredArgsConstructor
 @Validated

@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.PromptDTO;
 import io.lumina.agent.api.vo.PromptVO;
 import io.lumina.agent.service.PromptService;
@@ -21,6 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
+@RequirePermission("prompt:list")
 @RequestMapping("/api/v1/prompts")
 @RequiredArgsConstructor
 @Validated

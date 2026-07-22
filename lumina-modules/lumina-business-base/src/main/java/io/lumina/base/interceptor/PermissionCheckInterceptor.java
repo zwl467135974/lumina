@@ -35,8 +35,32 @@ public class PermissionCheckInterceptor implements HandlerInterceptor {
 
         HandlerMethod handlerMethod = (HandlerMethod) handler;
 
-        // 2. 获取方法上的注解
+        // 2. 获取方法/类上的注解（同时支持 common 和 base 两个包路径）
         RequirePermission requirePermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
+        if (requirePermission == null) {
+            // 尝试 common 包的注解（agent 模块使用）
+            io.lumina.common.annotation.RequirePermission commonPerm =
+                    handlerMethod.getMethodAnnotation(io.lumina.common.annotation.RequirePermission.class);
+            if (commonPerm != null) {
+                requirePermission = new RequirePermission() {
+                    @Override public String[] value() { return commonPerm.value(); }
+                    @Override public boolean requireAll() { return commonPerm.requireAll(); }
+                    @Override public Class<RequirePermission> annotationType() { return RequirePermission.class; }
+                };
+            }
+        }
+        // 类级别 common 注解
+        if (requirePermission == null) {
+            io.lumina.common.annotation.RequirePermission classPerm =
+                    handlerMethod.getBeanType().getAnnotation(io.lumina.common.annotation.RequirePermission.class);
+            if (classPerm != null) {
+                requirePermission = new RequirePermission() {
+                    @Override public String[] value() { return classPerm.value(); }
+                    @Override public boolean requireAll() { return classPerm.requireAll(); }
+                    @Override public Class<RequirePermission> annotationType() { return RequirePermission.class; }
+                };
+            }
+        }
         RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
 
         // 3. 如果没有权限或角色注解，直接放行

@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecord;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
@@ -26,6 +27,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
+@RequirePermission("monitor")
 @RequestMapping("/api/v1/tools")
 @Validated
 public class ToolMonitorController {

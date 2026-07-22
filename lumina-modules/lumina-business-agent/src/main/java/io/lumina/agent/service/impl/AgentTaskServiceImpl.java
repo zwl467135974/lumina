@@ -191,8 +191,10 @@ public class AgentTaskServiceImpl implements AgentTaskService {
                 result = execResult.getResult();
                 tokenUsage = execResult.getTokenUsage();
             } else {
-                result = agentService.executeAgentMultimodal(
+                ExecuteResult execResult = agentService.executeAgentMultimodalForResult(
                         task.getAgentId(), task.getInputText(), fileUuids, task.getConversationUuid());
+                result = execResult.getResult();
+                tokenUsage = execResult.getTokenUsage();
             }
             String[] modelInfo = resolveModelInfo(task.getAgentId());
             int promptTokens = tokenUsage != null && tokenUsage.getPromptTokens() != null ? tokenUsage.getPromptTokens() : 0;

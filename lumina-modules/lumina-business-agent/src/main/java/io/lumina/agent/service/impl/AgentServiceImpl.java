@@ -345,6 +345,11 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public String executeAgentMultimodal(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        return executeAgentMultimodalForResult(agentId, task, fileUuids, conversationUuid).getResult();
+    }
+
+    @Override
+    public ExecuteResult executeAgentMultimodalForResult(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
         MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
         boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, ctx.agent().getMaxConcurrent());
         try {
@@ -361,6 +366,7 @@ public class AgentServiceImpl implements AgentService {
             }
 
             String sanitizedResult = outputSanitizer.sanitize(result.getResult());
+            result.setResult(sanitizedResult);
 
             if (ctx.sessionId() != null) {
                 Integer tokenCount = result.getTokenUsage() != null ? result.getTokenUsage().getTotalTokens() : 0;
@@ -369,7 +375,7 @@ public class AgentServiceImpl implements AgentService {
             }
 
             log.info("多模态 Agent 执行成功: id={}", agentId);
-            return sanitizedResult;
+            return result;
         } finally {
             if (concurrencyAcquired) {
                 concurrencyLimiter.release(agentId);
@@ -835,6 +841,17 @@ public class AgentServiceImpl implements AgentService {
     private void recordSyncTask(Long agentId, ExecuteResult result) {
         try {
             ExecuteResult.TokenUsage usage = result.getTokenUsage();
+            // 从 Agent llmConfig 解析 modelName/provider，确保成本按正确价格计算
+            String modelName = "default";
+            String provider = "default";
+            io.lumina.agent.infrastructure.entity.AgentDO agentDO = agentMapper.selectById(agentId);
+            if (agentDO != null && agentDO.getLlmConfig() != null && !agentDO.getLlmConfig().isBlank()) {
+                try {
+                    var config = objectMapper.readTree(agentDO.getLlmConfig());
+                    if (config.has("modelName")) modelName = config.get("modelName").asText();
+                    if (config.has("modelType")) provider = config.get("modelType").asText();
+                } catch (Exception ignored) { }
+            }
             io.lumina.agent.infrastructure.entity.AgentTaskDO task = new io.lumina.agent.infrastructure.entity.AgentTaskDO();
             task.setTaskUuid(java.util.UUID.randomUUID().toString());
             task.setAgentId(agentId);
@@ -842,6 +859,8 @@ public class AgentServiceImpl implements AgentService {
             task.setStatus("COMPLETED");
             task.setResult(null);
             task.setDurationMs(result.getDuration());
+            task.setModelName(modelName);
+            task.setProvider(provider);
             task.setPromptTokens(usage != null && usage.getPromptTokens() != null ? usage.getPromptTokens() : 0);
             task.setCompletionTokens(usage != null && usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0);
             task.setTotalTokens(usage != null && usage.getTotalTokens() != null ? usage.getTotalTokens() : 0);

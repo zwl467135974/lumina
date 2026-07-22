@@ -117,11 +117,18 @@ public class FileService {
 
     /**
      * 按 UUID 查询文件元数据
+     *
+     * <p>除依赖 TenantLineInterceptor 的 SQL 自动改写外，
+     * 此处显式追加 tenantId 条件作为防御性校验（defense-in-depth）。
      */
     public FileDO getByUuid(String fileUuid) {
         com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<FileDO> wrapper =
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
         wrapper.eq(FileDO::getFileUuid, fileUuid);
+        Long tenantId = io.lumina.common.core.BaseContext.getTenantId();
+        if (tenantId != null) {
+            wrapper.eq(FileDO::getTenantId, tenantId);
+        }
         return fileMapper.selectOne(wrapper);
     }
 

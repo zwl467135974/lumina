@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.KnowledgeBaseDTO;
 import io.lumina.agent.api.vo.KnowledgeBaseVO;
 import io.lumina.agent.service.KnowledgeBaseService;
@@ -21,6 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
+@RequirePermission("knowledge-base:list")
 @RequestMapping("/api/v1/knowledge-bases")
 @RequiredArgsConstructor
 @Validated

@@ -1,5 +1,6 @@
 package io.lumina.agent.api.controller;
 
+import io.lumina.common.annotation.RequirePermission;
 import io.lumina.agent.api.dto.llm.CreateLlmProviderDTO;
 import io.lumina.agent.api.dto.llm.QueryLlmProviderDTO;
 import io.lumina.agent.api.dto.llm.UpdateLlmProviderDTO;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
+@RequirePermission("model:list")
 @RequestMapping("/api/v1/llm-providers")
 @Validated
 @RequiredArgsConstructor

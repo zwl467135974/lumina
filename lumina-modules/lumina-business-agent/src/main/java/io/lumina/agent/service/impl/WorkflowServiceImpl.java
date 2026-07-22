@@ -424,6 +424,13 @@ public class WorkflowServiceImpl implements WorkflowService {
                     instance.setOutput("{}");
                 }
                 sendWorkflowNotification(instance, "WORKFLOW", "工作流执行完成", "INFO");
+            } else if (ctx.getStatus() == WorkflowStatus.PAUSED) {
+                // PAUSED 状态也需持久化上下文变量，否则 resume 时丢失全部中间结果
+                try {
+                    instance.setOutput(objectMapper.writeValueAsString(ctx.getVariables()));
+                } catch (Exception e) {
+                    instance.setOutput("{}");
+                }
             } else if (ctx.getStatus() == WorkflowStatus.FAILED) {
                 instance.setErrorMessage(ctx.getErrorMessage());
                 sendWorkflowNotification(instance, "WORKFLOW", "工作流执行失败",
