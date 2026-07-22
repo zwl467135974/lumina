@@ -115,11 +115,14 @@
 - [ ] **异常用 ErrorCode**: `throw new BusinessException(ErrorCode.XXX)` 而非硬编码字符串
 - [ ] **校验注解**: DTO 用 `@NotBlank`/`@Size`/`@Min`/`@Max`，Controller 用 `@Valid`
 - [ ] **Controller 注解**: `@Slf4j` + `@Validated` + `@RequiredArgsConstructor`
+- [ ] **Controller 权限**: 写操作 Controller 必须加 `@RequirePermission`（参考 base 模块）
 - [ ] **@Audit 规范**: module 用小写（如 `"llm_provider"`），action 用标准枚举（CREATE/UPDATE/DELETE）
 - [ ] **Redis 操作**: 通过 `RedisCacheManager`，禁止直接用 `RedisTemplate`/`RedissonClient`
 - [ ] **新表检查**: 确认是否需要加入 ALWAYS_IGNORE（系统表/全局表），TenantLineHandler 会自动检测 tenant_id 列
 - [ ] **工作流**: 工作流引擎使用 Flowable (@Primary)，DefaultWorkflowEngine 保留为 fallback
-- [ ] **SQL 列名**: INSERT 语句的列名必须与已有迁移一致（先 grep 检查）
+- [ ] **SQL 列名**: INSERT/ALTER 前必须 DESCRIBE 查实际表结构（禁止凭记忆写列名）— 见 `lumina_flyway` 技能包
+- [ ] **调用链完整**: 修改 Service 方法签名后，必须 grep 所有调用方确认不 break（如 executeAgent → executeAgentForResult）
+- [ ] **数据持久化**: 新采集的数据（token/metadata/usage）必须确认写入 DB，不能只留在内存或 ExecuteResult
 - [ ] **API 路径**: RESTful 命名 + 检查 Gateway 路由是否覆盖
 - [ ] **编译验证**: `mvn compile` 通过
 

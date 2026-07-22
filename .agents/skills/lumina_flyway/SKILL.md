@@ -9,26 +9,43 @@
 - 单调递增：V1, V2, ..., V25, V26...
 - 不跳号、不复用、不修改已执行的迁移
 - 文件命名：`V{版本号}__{简洁描述}.sql`（双下划线）
-- 当前版本：V25
+- 当前版本：V44（每次写新迁移前先 `ls db/migration/ | sort | tail -3` 确认最新版本号）
 
-## 写迁移前的强制检查
+## 写迁移前的强制检查（不可跳过）
+
+### 0. 查实际表结构（最高优先级，必须执行）
+
+**写任何 INSERT/ALTER 前，必须先连数据库查 DESCRIBE，确认列名真实存在。**
+
+```bash
+# 查目标表的列名（替换表名）
+"/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe" -uroot -p123456 -h127.0.0.1 lumina_dev \
+  -e "DESCRIBE lumina_permission;"
+```
+
+或如果没有数据库连接，用 grep 从建表迁移中提取：
+
+```bash
+# 找到建表语句
+grep -A 30 "CREATE TABLE.*lumina_permission" db/migration/V*.sql
+```
+
+**绝对禁止凭记忆/猜测写列名。** 历史上多次因此导致 CI 全量失败（V44 事件）。
 
 ### 1. 检查已有列名约定
 
-写 INSERT 前，**必须**用 grep 搜索已有迁移中对该表的 INSERT 语句，确认列名：
-
-```bash
-# 检查 lumina_permission 的列名
-grep -r "INSERT INTO.*lumina_permission" db/migration/
-```
-
 ### 2. 常见列名约定（必须遵守）
 
-| 表名 | 常见易错列名 |
-|------|-------------|
-| `lumina_permission` | `permission_name`（不是 `name`）、`permission_type`（不是 `type`）、`path`（不是 `resource_path`） |
-| `lumina_user` | `user_id`（不是 `id`）、`username`、`nickname`（不是 `real_name`） |
-| 通用 | `create_time` / `update_time` / `deleted` / `tenant_id` |
+| 表名 | 常见易错列名 | 正确列名 |
+|------|-------------|---------|
+| `lumina_permission` | ❌ `name` `code` `id` `type` | ✅ `permission_name` `permission_code` `permission_id` `permission_type` |
+| `lumina_permission` | ❌ `tenant_id`（此表无租户列） | ✅ 无 tenant_id |
+| `lumina_permission` | 父权限码 ❌ `model` | ✅ `system:model`（带 system: 前缀） |
+| `lumina_role` | ❌ `id` `name` | ✅ `role_id` `role_code` `role_name` |
+| `lumina_role_permission` | ❌ `id` | ✅ `id`(自增) `role_id` `permission_id` |
+| `lumina_user` | ❌ `id` `real_name` | ✅ `user_id` `nickname` |
+| `lumina_model_pricing` | — | ✅ `provider` `model_name` `input_price` `output_price` `currency` `is_active` |
+| 通用 | — | ✅ `create_time` / `update_time` / `deleted` / `tenant_id` |
 
 ### 3. 检查权限种子格式
 
