@@ -419,6 +419,8 @@ public class AgentServiceImpl implements AgentService {
 
         final String sid = sessionId;
         final StringBuffer fullResponse = new StringBuffer();
+        final java.util.concurrent.atomic.AtomicReference<ExecuteResult.TokenUsage> streamTokenUsage =
+                new java.util.concurrent.atomic.AtomicReference<>(null);
         boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, agent.getMaxConcurrent());
 
         return agentExecutionEngine.executeStream(
@@ -431,14 +433,17 @@ public class AgentServiceImpl implements AgentService {
             String type = chunk.type();
             if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {
                 fullResponse.append(chunk.content());
+                if (chunk.tokenUsage() != null) {
+                    streamTokenUsage.set(chunk.tokenUsage());
+                }
             }
         })
         .doOnComplete(() -> {
             if (sid != null && fullResponse.length() > 0) {
                 String sanitized = outputSanitizer.sanitize(fullResponse.toString());
-                // 流式执行无法从 AgentScope SDK 获取精确 token 用量（SSE 协议限制），
-                // 此处 token_count=0 是已知限制。同步/异步路径有精确统计。
-                conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
+                ExecuteResult.TokenUsage usage = streamTokenUsage.get();
+                int tokenCount = usage != null && usage.getTotalTokens() != null ? usage.getTotalTokens() : 0;
+                conversationService.saveMessage(sid, "assistant", sanitized, tokenCount, null);
                 conversationService.incrementMessageCount(sid, 2);
             }
         })
@@ -455,6 +460,8 @@ public class AgentServiceImpl implements AgentService {
 
         final String sid = ctx.sessionId();
         final StringBuffer fullResponse = new StringBuffer();
+        final java.util.concurrent.atomic.AtomicReference<ExecuteResult.TokenUsage> streamTokenUsage =
+                new java.util.concurrent.atomic.AtomicReference<>(null);
         boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, ctx.agent().getMaxConcurrent());
 
         return agentExecutionEngine.executeMultimodalStream(
@@ -468,13 +475,17 @@ public class AgentServiceImpl implements AgentService {
             String type = chunk.type();
             if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {
                 fullResponse.append(chunk.content());
+                if (chunk.tokenUsage() != null) {
+                    streamTokenUsage.set(chunk.tokenUsage());
+                }
             }
         })
         .doOnComplete(() -> {
             if (sid != null && fullResponse.length() > 0) {
                 String sanitized = outputSanitizer.sanitize(fullResponse.toString());
-                // 流式执行无法从 AgentScope SDK 获取精确 token 用量（SSE 协议限制）
-                conversationService.saveMessage(sid, "assistant", sanitized, 0, null);
+                ExecuteResult.TokenUsage usage = streamTokenUsage.get();
+                int tokenCount = usage != null && usage.getTotalTokens() != null ? usage.getTotalTokens() : 0;
+                conversationService.saveMessage(sid, "assistant", sanitized, tokenCount, null);
                 conversationService.incrementMessageCount(sid, 2);
             }
         })

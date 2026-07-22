@@ -443,7 +443,14 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         if (event.getMessage() != null && event.getMessage().getTextContent() != null) {
             content = event.getMessage().getTextContent();
         }
-        return new StreamChunk(type, content, event.isLast());
+
+        // FINAL/AGENT_RESULT 事件提取 token 用量（供流式路径统计成本）
+        ExecuteResult.TokenUsage tokenUsage = null;
+        if (type.equals(StreamEventType.FINAL) || type.equals(StreamEventType.AGENT_RESULT)) {
+            tokenUsage = extractTokenUsage(event.getMessage());
+        }
+
+        return new StreamChunk(type, content, event.isLast(), tokenUsage);
     }
 
     /**

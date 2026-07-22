@@ -8,6 +8,7 @@ import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
 import io.lumina.agent.infrastructure.mapper.BudgetRuleMapper;
 import io.lumina.agent.service.BudgetService;
 import io.lumina.agent.service.CostService;
+import io.lumina.framework.cache.RedisCacheManager;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,6 +45,7 @@ public class BudgetServiceImpl implements BudgetService {
     private final AgentTaskMapper agentTaskMapper;
     private final CostService costService;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final RedisCacheManager redisCacheManager;
 
     private static final String SCOPE_TENANT = "TENANT";
     private static final String SCOPE_AGENT = "AGENT";
@@ -82,6 +85,12 @@ public class BudgetServiceImpl implements BudgetService {
             BigDecimal thresholdAmount = limit.multiply(BigDecimal.valueOf(threshold))
                     .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
             if (usage.compareTo(thresholdAmount) >= 0) {
+                // Redis 去重：同一规则在同一计费周期内只告警一次
+                String alertKey = "budget:alert:" + rule.getId() + ":" + getPeriodStart(rule.getPeriodType()).toLocalDate();
+                if (redisCacheManager.exists(alertKey)) {
+                    log.debug("预算告警已发送过，跳过: rule={}", rule.getRuleName());
+                    continue;
+                }
                 log.warn("预算告警: rule={}, scope={}/{}, usage={}, limit={}, threshold={}%",
                         rule.getRuleName(), rule.getScopeType(), rule.getScopeId(),
                         usage, limit, threshold);
@@ -89,8 +98,12 @@ public class BudgetServiceImpl implements BudgetService {
                     notificationEventPublisher.publish(
                             new NotificationEvent(userId, "BUDGET",
                                     "预算告警: " + rule.getRuleName(),
-                                    "预算 " + rule.getRuleName() + " 已使用 " + threshold + "%,接近上限",
+                                    "预算 " + rule.getRuleName() + " 已使用 " + threshold + "%，当前 ¥" + usage + " / 上限 ¥" + limit,
                                     "WARN", "budget_rule", String.valueOf(rule.getId()), tenantId));
+                    // 标记本周期已告警，TTL 到周期结束自动过期
+                    Duration ttl = PERIOD_MONTHLY.equals(rule.getPeriodType())
+                            ? Duration.ofDays(31) : Duration.ofHours(25);
+                    redisCacheManager.set(alertKey, "1", ttl);
                 } catch (Exception ex) {
                     log.warn("发送通知失败(不影响主流程): {}", ex.getMessage());
                 }

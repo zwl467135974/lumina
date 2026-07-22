@@ -1010,6 +1010,9 @@ export default {
     connConnected: '已连接',
     connDisconnected: '未连接',
     mcpToolsTitle: 'MCP 工具（{n}）',
+    reconnect: '重连',
+    healthCheck: '健康',
+    registerServer: '注册 MCP Server',
     mcpNotEnabledDesc: 'MCP 协议当前未启用。请在 Nacos 配置中设置 lumina.mcp.enabled=true 并配置 lumina.mcp.servers，然后重启。'
   },
   chat: {
