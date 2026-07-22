@@ -90,7 +90,7 @@ public class McpToolRegistrar {
      * @param client     已握手的 MCP 客户端
      * @return 成功注册的工具数
      */
-    private int registerToolsFromServer(String serverName, McpSyncClient client) {
+    public int registerToolsFromServer(String serverName, McpSyncClient client) {
         List<McpSchema.Tool> tools;
         try {
             McpSchema.ListToolsResult result = client.listTools();

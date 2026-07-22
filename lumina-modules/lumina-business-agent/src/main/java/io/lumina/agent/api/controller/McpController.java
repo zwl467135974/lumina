@@ -46,6 +46,9 @@ public class McpController {
     private McpClientRegistry clientRegistry;
 
     @Autowired(required = false)
+    private io.lumina.agent.tool.mcp.McpToolRegistrar toolRegistrar;
+
+    @Autowired(required = false)
     private McpServerProperties mcpProperties;
 
     @Autowired(required = false)
@@ -121,6 +124,14 @@ public class McpController {
             return R.fail("server 名称不能为空");
         }
         boolean success = clientRegistry.registerServer(config);
+        if (success && toolRegistrar != null) {
+            // 运行时注册的 server 需要手动拉取工具列表并注册到 EnhancedToolManager
+            io.modelcontextprotocol.client.McpSyncClient client = clientRegistry.getClient(config.getName());
+            if (client != null) {
+                int toolCount = toolRegistrar.registerToolsFromServer(config.getName(), client);
+                log.info("运行时注册 MCP Server [{}] 工具完成，共 {} 个", config.getName(), toolCount);
+            }
+        }
         return success ? R.success(true) : R.fail("MCP Server [" + config.getName() + "] 注册失败，详见服务端日志");
     }
 
