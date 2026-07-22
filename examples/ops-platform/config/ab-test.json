@@ -1,0 +1,51 @@
+{
+  "_comment": "Lumina 智能运维平台 — A/B 测试配置。创建两个 Prompt 变体对比巡检报告质量。",
+  "_usage": "在 Lumina 前端「A/B 测试」页面创建实验，或通过 API POST /api/v1/ab-tests 提交。需要先创建对应的 Prompt 版本。",
+
+  "experiment": {
+    "name": "巡检报告格式对比实验",
+    "agentId": 1,
+    "_agentId_note": "替换为 ops-inspector 的 agentId",
+    "trafficPercent": 100,
+    "description": "对比简洁版 vs 详细版巡检报告的响应质量"
+  },
+
+  "variants": [
+    {
+      "name": "简洁报告",
+      "weight": 50,
+      "promptName": "ops-inspector-concise",
+      "_promptName_note": "需要在 Prompt 管理中创建此 Prompt",
+      "llmConfig": {
+        "modelType": "openai",
+        "modelName": "deepseek-chat",
+        "temperature": 0.3,
+        "maxTokens": 800
+      }
+    },
+    {
+      "name": "详细报告",
+      "weight": 50,
+      "promptName": "ops-inspector-detailed",
+      "_promptName_note": "需要在 Prompt 管理中创建此 Prompt",
+      "llmConfig": {
+        "modelType": "openai",
+        "modelName": "deepseek-chat",
+        "temperature": 0.5,
+        "maxTokens": 2000
+      }
+    }
+  ],
+
+  "concise_prompt_content": "你是一名运维工程师，简洁输出巡检结果。\n\n格式（严格 3 行）：\n状态：正常/警告/严重\n异常：无/简述\n严重度：P0-P3",
+
+  "detailed_prompt_content": "你是一名资深运维工程师，输出详细巡检报告。\n\n格式：\n【系统状态】正常/警告/严重\n【指标摘要】CPU xx%, 内存 xx%, 磁盘 xx%\n【日志分析】Nginx 5xx 率 xx%，应用 ERROR xx 条\n【异常发现】逐条列出发现的异常\n【建议措施】引用知识库 SOP 给出具体操作步骤\n【严重度】P0/P1/P2/P3（附判定依据）",
+
+  "_steps": [
+    "1. 在 Prompt 管理创建两个 Prompt：ops-inspector-concise 和 ops-inspector-detailed",
+    "2. 在 A/B 测试页面创建实验，绑定 ops-inspector Agent",
+    "3. 创建 2 个变体，分别指定上面的 promptName 和 llmConfig",
+    "4. 启动实验后，每次执行 Agent 会自动分流",
+    "5. 执行 10+ 次后查看对比报告（成功率、延迟、Token）"
+  ]
+}

@@ -1,0 +1,81 @@
+# ============================================================
+# Lumina 智能运维平台 — 巡检评估数据集
+#
+# 用于评估运维巡检 Agent 的报告质量。
+# 每个用例模拟一个巡检场景，expected 为期望的分析结论关键词。
+#
+# 使用方式：
+#   POST /api/v1/evaluations/datasets/import (multipart file=eval-dataset.yaml)
+#   POST /api/v1/evaluations/datasets/{id}/runs (scoringMethod=LLM_JUDGE)
+# ============================================================
+
+cases:
+  - caseId: ops-001
+    input: "CPU 使用率 25%，内存 40%，磁盘 50%，Nginx 5xx 率 0%。分析系统状态。"
+    expected: "正常"
+    category: normal
+    tags:
+      severity: P3
+
+  - caseId: ops-002
+    input: "CPU 使用率 35%，内存 45%，Nginx 5xx 率 0.5%。分析系统状态。"
+    expected: "正常"
+    category: normal
+    tags:
+      severity: P3
+
+  - caseId: ops-003
+    input: "CPU 使用率 72%，内存 68%，磁盘 78%。Nginx 502 错误 3 条。分析系统状态。"
+    expected: "P2"
+    category: warning
+    tags:
+      severity: P2
+
+  - caseId: ops-004
+    input: "CPU 使用率 82%，内存 80%，应用日志出现 '连接池使用率告警: 18/20'。分析系统状态。"
+    expected: "P2"
+    category: warning
+    tags:
+      severity: P2
+
+  - caseId: ops-005
+    input: "CPU 使用率 91%，内存 85%，Nginx 5xx 率 8%。分析系统状态并给出建议。"
+    expected: "P1"
+    category: warning
+    tags:
+      severity: P1
+
+  - caseId: ops-006
+    input: "CPU 使用率 96%，内存 92%，应用日志出现 OutOfMemoryError。分析系统状态。"
+    expected: "P0"
+    category: critical
+    tags:
+      severity: P0
+
+  - caseId: ops-007
+    input: "Nginx 5xx 率 25%，502 Bad Gateway 大量出现。后端服务无响应。分析系统状态。"
+    expected: "P0"
+    category: critical
+    tags:
+      severity: P0
+
+  - caseId: ops-008
+    input: "磁盘使用率 96%，/var/log 目录 45GB。分析系统状态。"
+    expected: "P1"
+    category: warning
+    tags:
+      severity: P1
+
+  - caseId: ops-009
+    input: "数据库连接池耗尽，20 个连接全部占用。应用报错 Connection is not available。分析系统状态。"
+    expected: "P0"
+    category: critical
+    tags:
+      severity: P0
+
+  - caseId: ops-010
+    input: "CPU 使用率 45%，内存 50%，Nginx 499 错误率 5%，响应时间 P99 1.2s。分析系统状态。"
+    expected: "P3"
+    category: normal
+    tags:
+      severity: P3

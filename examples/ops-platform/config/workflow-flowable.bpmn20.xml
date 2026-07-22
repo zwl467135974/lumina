@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Lumina 智能运维平台 — Flowable BPMN 工作流
+
+  与 workflow-dag.yaml 等价的 BPMN 2.0 标准流程，
+  用于演示 Flowable 工作流引擎（与自研 DAG 引擎对比）。
+
+  流程：系统巡检 → 异常分析 → 严重度网关 → [P0: 人工审批 → 告警 / 其他: 自动报告]
+
+  注意：Flowable 异步执行器在 Lumina 中默认关闭（setAsyncExecutorActivate(false)），
+  所以此流程只演示同步 ServiceTask + UserTask + ExclusiveGateway。
+
+  使用方式：
+    通过 POST /api/v1/workflows 创建，definitionYaml 填下面 BPMN XML 内容。
+    Lumina 的 FlowableWorkflowEngine 会将其部署为 Flowable 流程定义。
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://lumina.io/ops">
+
+  <process id="ops-inspection-bpmn" name="运维巡检流程 (Flowable)" isExecutable="true">
+
+    <!-- 开始 -->
+    <startEvent id="start" name="开始巡检"/>
+
+    <!-- 步骤 1：采集系统数据（调用 ops-inspector Agent） -->
+    <serviceTask id="collect" name="采集系统数据"
+                 flowable:delegateExpression="${agentServiceTaskDelegate}">
+      <extensionElements>
+        <flowable:field name="agentId"><flowable:string>1</flowable:string></flowable:field>
+        <flowable:field name="input"><flowable:string>执行系统巡检，读取指标和日志</flowable:string></flowable:field>
+        <flowable:field name="outputVar"><flowable:string>inspection_result</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- 步骤 2：分析异常定级（调用 ops-reporter Agent） -->
+    <serviceTask id="analyze" name="分析异常定级"
+                 flowable:delegateExpression="${agentServiceTaskDelegate}">
+      <extensionElements>
+        <flowable:field name="agentId"><flowable:string>2</flowable:string></flowable:field>
+        <flowable:field name="input"><flowable:string>分析巡检结果并输出严重度 P0-P3</flowable:string></flowable:field>
+        <flowable:field name="outputVar"><flowable:string>analysis_result</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- 严重度判断网关 -->
+    <exclusiveGateway id="severity-gateway" name="严重度判断"/>
+
+    <!-- P0 分支：人工审批 -->
+    <userTask id="human-approval" name="P0 故障人工确认"
+              flowable:candidateGroups="ops-team"
+              flowable:formKey="ops-approval-form">
+      <documentation>检测到 P0 严重故障，请审核是否升级告警</documentation>
+    </userTask>
+
+    <!-- 审批结果网关 -->
+    <exclusiveGateway id="approval-gateway" name="审批结果"/>
+
+    <!-- 发送告警（调用 ops-alerter Agent） -->
+    <serviceTask id="send-alert" name="发送告警"
+                 flowable:delegateExpression="${agentServiceTaskDelegate}">
+      <extensionElements>
+        <flowable:field name="agentId"><flowable:string>3</flowable:string></flowable:field>
+        <flowable:field name="input"><flowable:string>格式化 P0 告警消息</flowable:string></flowable:field>
+        <flowable:field name="outputVar"><flowable:string>alert_message</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- 自动报告（P1-P3） -->
+    <serviceTask id="auto-report" name="自动生成报告"
+                 flowable:delegateExpression="${agentServiceTaskDelegate}">
+      <extensionElements>
+        <flowable:field name="agentId"><flowable:string>2</flowable:string></flowable:field>
+        <flowable:field name="input"><flowable:string>生成运维报告</flowable:string></flowable:field>
+        <flowable:field name="outputVar"><flowable:string>report</flowable:string></flowable:field>
+      </extensionElements>
+    </serviceTask>
+
+    <!-- 结束 -->
+    <endEvent id="end" name="结束"/>
+
+    <!-- 流转连线 -->
+    <sequenceFlow sourceRef="start" targetRef="collect"/>
+
+    <sequenceFlow sourceRef="collect" targetRef="analyze"/>
+
+    <sequenceFlow sourceRef="analyze" targetRef="severity-gateway"/>
+
+    <!-- P0 → 人工审批 -->
+    <sequenceFlow sourceRef="severity-gateway" targetRef="human-approval">
+      <conditionExpression>${analysis_result.contains('P0')}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 非 P0 → 自动报告 -->
+    <sequenceFlow sourceRef="severity-gateway" targetRef="auto-report">
+      <conditionExpression>${!analysis_result.contains('P0')}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 人工审批 → 审批网关 -->
+    <sequenceFlow sourceRef="human-approval" targetRef="approval-gateway"/>
+
+    <!-- 审批通过 → 发送告警 -->
+    <sequenceFlow sourceRef="approval-gateway" targetRef="send-alert">
+      <conditionExpression>${decision == 'approve'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 审批拒绝 → 结束（不告警） -->
+    <sequenceFlow sourceRef="approval-gateway" targetRef="end">
+      <conditionExpression>${decision == 'reject'}</conditionExpression>
+    </sequenceFlow>
+
+    <!-- 告警 → 结束 -->
+    <sequenceFlow sourceRef="send-alert" targetRef="end"/>
+
+    <!-- 自动报告 → 结束 -->
+    <sequenceFlow sourceRef="auto-report" targetRef="end"/>
+
+  </process>
+</definitions>

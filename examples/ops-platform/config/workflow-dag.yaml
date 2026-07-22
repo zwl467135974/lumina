@@ -1,0 +1,108 @@
+# ============================================================
+# Lumina 智能运维平台 — DAG 巡检工作流
+#
+# 流程：采集数据 → 分析异常 → 严重度判断 → [P0: 人工审批 → 告警 / P1-P3: 自动报告]
+#
+# 前置条件：
+#   - ops-inspector Agent 已创建（通过 agents.sql 或前端）
+#   - ops-reporter Agent 已创建
+#   - ops-alerter Agent 已创建
+#   - 将下面的 agentId 替换为实际值
+#
+# 使用方式：
+#   通过 POST /api/v1/workflows 创建（definitionYaml 字段填下面内容）
+#   然后 POST /api/v1/workflows/{id}/publish 发布
+#   最后 POST /api/v1/workflows/{id}/execute 执行
+# ============================================================
+
+name: "ops-inspection-pipeline"
+description: "运维巡检流水线：自动采集系统数据 → Agent 分析 → 严重度判断 → P0人工审批/自动报告"
+
+inputs:
+  - name: inspection_mode
+    type: string
+    required: false
+    defaultValue: "routine"
+
+nodes:
+  # 步骤 1：采集系统数据（巡检 Agent 读取指标和日志）
+  - id: collect
+    type: agent
+    name: "采集系统数据"
+    agentId: 1               # ← 替换为 ops-inspector 的 agentId
+    input: "'执行系统巡检，检查 CPU、内存、磁盘指标和 Nginx/应用日志。模式: ' + #inspection_mode"
+    outputVar: "inspection_result"
+
+  # 步骤 2：分析异常并定级（报告 Agent 生成摘要）
+  - id: analyze
+    type: agent
+    name: "分析异常定级"
+    agentId: 2               # ← 替换为 ops-reporter 的 agentId
+    input: "'分析以下巡检结果，输出严重度（P0/P1/P2/P3）和关键发现。只回复一行 JSON: {\"severity\":\"P1\",\"summary\":\"...\"}。巡检结果: ' + #inspection_result"
+    outputVar: "analysis_json"
+
+  # 步骤 3：严重度路由
+  - id: check-severity
+    type: condition
+    name: "严重度判断"
+    expression: "#analysis_json.contains('P0')"
+    trueBranch: human-approval
+    falseBranch: auto-report
+
+  # 步骤 4a：P0 严重故障 → 人工审批
+  - id: human-approval
+    type: human
+    name: "P0 故障人工确认"
+    prompt: "检测到 P0 级别严重故障，请审核是否升级告警并通知全员"
+    options: ["approve", "reject"]
+    defaultDecision: "reject"
+    decisionVar: "approval_decision"
+
+  # 步骤 5a：审批通过 → 告警
+  - id: check-approval
+    type: condition
+    name: "审批结果"
+    expression: "#approval_decision == 'approve'"
+    trueBranch: send-alert
+    falseBranch: log-only
+
+  # 步骤 6a：发送告警（告警 Agent 格式化消息，触发 Webhook 通知）
+  - id: send-alert
+    type: agent
+    name: "发送告警"
+    agentId: 3               # ← 替换为 ops-alerter 的 agentId
+    input: "'将以下 P0 故障格式化为告警消息。分析结果: ' + #analysis_json + '。巡检详情: ' + #inspection_result"
+    outputVar: "alert_message"
+
+  # 步骤 6b：审批拒绝 → 仅记录
+  - id: log-only
+    type: transform
+    name: "记录但不告警"
+    transformExpr: "'P0 故障审批未通过，仅记录不告警。分析: ' + #analysis_json"
+
+  # 步骤 4b：P1-P3 → 自动生成报告（无需人工审批）
+  - id: auto-report
+    type: agent
+    name: "自动生成报告"
+    agentId: 2               # ← 替换为 ops-reporter 的 agentId
+    input: "'根据巡检结果生成运维报告。分析: ' + #analysis_json + '。详情: ' + #inspection_result"
+    outputVar: "report"
+
+edges:
+  - from: collect
+    to: analyze
+  - from: analyze
+    to: check-severity
+  - from: human-approval
+    to: check-approval
+  - from: send-alert
+    to: end
+  - from: log-only
+    to: end
+  - from: auto-report
+    to: end
+
+outputs:
+  result: "#alert_message ?: (#report ?: #log_only_result)"
+  severity: "#analysis_json"
+  inspection: "#inspection_result"
