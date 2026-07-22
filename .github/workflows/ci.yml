@@ -55,6 +55,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Migration SQL Check
+        run: bash scripts/check-migration.sh
+
       - name: Maven Verify
         run: mvn verify -B
 
