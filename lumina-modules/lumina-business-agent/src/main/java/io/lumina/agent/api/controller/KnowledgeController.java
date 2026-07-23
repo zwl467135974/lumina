@@ -17,8 +17,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 @Slf4j
+@Tag(name = "知识文档", description = "知识文档上传、状态查询与向量检索")
 @RestController
 @RequirePermission("knowledge:list")
 @RequestMapping("/api/v1/knowledge")
@@ -32,6 +35,7 @@ public class KnowledgeController {
     private final KnowledgeService knowledgeService;
 
     @Audit(module = "knowledge", action = "CREATE", description = "上传知识文档")
+    @Operation(summary = "上传知识文档")
     @PostMapping("/documents")
     public R<String> upload(@RequestParam("file") MultipartFile file,
                             @RequestParam(value = "agentId", required = false) Long agentId,
@@ -51,6 +55,8 @@ public class KnowledgeController {
         return R.success(uuid);
     }
 
+    @Operation(summary = "分页查询知识文档")
+
     @GetMapping("/documents")
     public R<PageResult<KnowledgeDocumentVO>> list(
             @RequestParam(value = "agentId", required = false) Long agentId,
@@ -67,17 +73,22 @@ public class KnowledgeController {
         return R.success(new PageResult<>(voList, result.getTotal(), result.getPageNum(), result.getPageSize()));
     }
 
+    @Operation(summary = "查询文档处理状态")
+
     @GetMapping("/documents/{uuid}/status")
     public R<KnowledgeDocumentVO> status(@PathVariable("uuid") String uuid) {
         return R.success(KnowledgeDocumentVO.from(knowledgeService.getDocumentStatus(uuid)));
     }
 
     @Audit(module = "knowledge", action = "DELETE", description = "删除知识文档")
+    @Operation(summary = "删除知识文档")
     @DeleteMapping("/documents/{uuid}")
     public R<Void> delete(@PathVariable("uuid") String uuid) {
         knowledgeService.deleteDocument(uuid);
         return R.success();
     }
+
+    @Operation(summary = "向量+关键词混合检索")
 
     @PostMapping("/search")
     public R<List<Map<String, Object>>> search(

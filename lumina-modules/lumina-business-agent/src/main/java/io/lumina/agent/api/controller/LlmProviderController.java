@@ -15,8 +15,11 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 @Slf4j
+@Tag(name = "LLM 供应商", description = "LLM 供应商配置与连通性测试")
 @RestController
 @RequirePermission("model:list")
 @RequestMapping("/api/v1/llm-providers")
@@ -26,15 +29,21 @@ public class LlmProviderController {
 
     private final LlmProviderService llmProviderService;
 
+    @Operation(summary = "查询 LLM 供应商列表")
+
     @GetMapping
     public R<List<LlmProviderVO>> list(@Valid QueryLlmProviderDTO query) {
         return R.success(llmProviderService.list(query));
     }
 
+    @Operation(summary = "查询 LLM 供应商详情")
+
     @GetMapping("/{id}")
     public R<LlmProviderVO> getById(@PathVariable Long id) {
         return R.success(llmProviderService.getById(id));
     }
+
+    @Operation(summary = "创建 LLM 供应商")
 
     @PostMapping
     @Audit(module = "llm_provider", action = "CREATE")
@@ -42,11 +51,15 @@ public class LlmProviderController {
         return R.success(llmProviderService.create(dto));
     }
 
+    @Operation(summary = "更新 LLM 供应商")
+
     @PutMapping("/{id}")
     @Audit(module = "llm_provider", action = "UPDATE")
     public R<LlmProviderVO> update(@PathVariable Long id, @Valid @RequestBody UpdateLlmProviderDTO dto) {
         return R.success(llmProviderService.update(id, dto));
     }
+
+    @Operation(summary = "删除 LLM 供应商")
 
     @DeleteMapping("/{id}")
     @Audit(module = "llm_provider", action = "DELETE")
@@ -54,6 +67,8 @@ public class LlmProviderController {
         llmProviderService.delete(id);
         return R.success();
     }
+
+    @Operation(summary = "测试 LLM 供应商连通性")
 
     @PostMapping("/{id}/test")
     @Audit(module = "llm_provider", action = "TEST")

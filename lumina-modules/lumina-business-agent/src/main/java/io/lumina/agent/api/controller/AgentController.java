@@ -42,6 +42,8 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * Agent Controller
@@ -50,6 +52,7 @@ import java.util.Set;
  * @since 1.0.0
  */
 @Slf4j
+@Tag(name = "Agent 管理", description = "Agent 全生命周期：创建/更新/删除/执行（同步/异步/流式/多模态）")
 @RestController
 @RequirePermission("agent:list")
 @RequestMapping("/api/v1/agents")
@@ -79,6 +82,7 @@ public class AgentController {
      * 创建 Agent
      */
     @Audit(module = "agent", action = "CREATE", description = "创建Agent")
+    @Operation(summary = "创建 Agent")
     @PostMapping
     public R<AgentVO> createAgent(@Valid @RequestBody CreateAgentDTO dto) {
         log.info("创建 Agent: {}", dto.getAgentName());
@@ -108,6 +112,7 @@ public class AgentController {
      * 更新 Agent
      */
     @Audit(module = "agent", action = "UPDATE", description = "更新Agent")
+    @Operation(summary = "更新 Agent")
     @PutMapping("/{id}")
     public R<AgentVO> updateAgent(
             @PathVariable("id") Long id,
@@ -228,6 +233,7 @@ public class AgentController {
      * 删除 Agent
      */
     @Audit(module = "agent", action = "DELETE", description = "删除Agent")
+    @Operation(summary = "删除 Agent")
     @DeleteMapping("/{id}")
     public R<Void> deleteAgent(@PathVariable("id") Long id) {
         log.info("删除 Agent: id={}", id);
@@ -238,6 +244,7 @@ public class AgentController {
     /**
      * 获取 Agent 详情
      */
+    @Operation(summary = "获取 Agent 详情")
     @GetMapping("/{id}")
     public R<AgentVO> getAgent(@PathVariable("id") Long id) {
         log.info("查询 Agent: id={}", id);
@@ -253,6 +260,7 @@ public class AgentController {
     /**
      * 分页查询 Agent 列表
      */
+    @Operation(summary = "分页查询 Agent 列表")
     @GetMapping
     public R<PageResult<AgentVO>> pageAgents(
             @RequestParam(required = false) String agentName,
@@ -291,6 +299,7 @@ public class AgentController {
      * @param conversationId 会话 UUID（可选，传入则启用多轮上下文）
      */
     @Audit(module = "agent", action = "EXECUTE", description = "执行Agent")
+    @Operation(summary = "同步执行 Agent")
     @PostMapping("/{id}/execute")
     public R<String> executeAgent(
             @PathVariable("id") Long id,
@@ -312,6 +321,7 @@ public class AgentController {
      * 提交 Agent 异步任务
      */
     @Audit(module = "agent", action = "EXECUTE_ASYNC", description = "异步执行Agent")
+    @Operation(summary = "提交 Agent 异步任务")
     @PostMapping("/{id}/execute/async")
     public R<AgentTaskVO> submitAgentTask(
             @PathVariable("id") Long id,
@@ -324,6 +334,7 @@ public class AgentController {
     /**
      * 查询 Agent 异步任务详情
      */
+    @Operation(summary = "查询 Agent 异步任务详情")
     @GetMapping("/tasks/{taskUuid}")
     public R<AgentTaskVO> getAgentTask(@PathVariable("taskUuid") String taskUuid) {
         AgentTaskDO task = agentTaskService.getTask(taskUuid);
@@ -336,6 +347,7 @@ public class AgentController {
      * <p>连接后实时接收任务状态变更事件（QUEUED → RUNNING → COMPLETED/FAILED/CANCELLED）。
      * 若任务已结束（sink 已清理），则立即返回当前 DB 状态后关闭连接。
      */
+    @Operation(summary = "异步任务 SSE 进度推送")
     @GetMapping(value = "/tasks/{taskUuid}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Map<String, Object>>> streamAgentTask(
             @PathVariable("taskUuid") String taskUuid) {
@@ -351,6 +363,7 @@ public class AgentController {
     /**
      * 分页查询异步任务列表
      */
+    @Operation(summary = "分页查询异步任务列表")
     @GetMapping("/tasks")
     public R<PageResult<AgentTaskVO>> pageAgentTasks(
             @RequestParam(required = false) Long agentId,
@@ -377,6 +390,7 @@ public class AgentController {
      * 取消异步任务
      */
     @Audit(module = "agent", action = "UPDATE", description = "取消异步任务")
+    @Operation(summary = "取消异步任务")
     @PostMapping("/tasks/{taskUuid}/cancel")
     public R<AgentTaskVO> cancelAgentTask(@PathVariable("taskUuid") String taskUuid) {
         log.info("取消异步任务: taskUuid={}", taskUuid);
@@ -392,6 +406,7 @@ public class AgentController {
      * @param dto 请求体（task + fileUuids + conversationId）
      */
     @Audit(module = "agent", action = "EXECUTE_MULTIMODAL", description = "多模态执行Agent")
+    @Operation(summary = "多模态执行 Agent（文本+图片）")
     @PostMapping("/{id}/execute/multimodal")
     public R<String> executeAgentMultimodal(
             @PathVariable("id") Long id,
@@ -411,6 +426,7 @@ public class AgentController {
      *
      * @param conversationId 会话 UUID（可选，传入则启用多轮上下文）
      */
+    @Operation(summary = "流式执行 Agent（SSE 打字机效果）")
     @PostMapping(value = "/{id}/execute/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<StreamChunk>> executeAgentStream(
             @PathVariable("id") Long id,
@@ -438,6 +454,7 @@ public class AgentController {
      * @param dto 请求体（task + fileUuids + conversationId）
      */
     @Audit(module = "agent", action = "EXECUTE_MULTIMODAL_STREAM", description = "流式多模态执行Agent")
+    @Operation(summary = "流式多模态执行 Agent（SSE）")
     @PostMapping(value = "/{id}/execute/multimodal/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<StreamChunk>> executeAgentMultimodalStream(
             @PathVariable("id") Long id,

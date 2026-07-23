@@ -16,6 +16,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * 工具监控 Controller
@@ -26,6 +28,7 @@ import java.util.Map;
  * @since 1.1.0
  */
 @Slf4j
+@Tag(name = "工具监控", description = "工具调用统计、调用记录与熔断器状态")
 @RestController
 @RequirePermission("monitor")
 @RequestMapping("/api/v1/tools")
@@ -44,6 +47,7 @@ public class ToolMonitorController {
     /**
      * 查询已注册工具定义，供 Agent 配置页选择可用工具。
      */
+    @Operation(summary = "查询已注册工具定义")
     @GetMapping
     public R<List<ToolVO>> tools() {
         if (toolManager == null) {
@@ -58,6 +62,7 @@ public class ToolMonitorController {
     /**
      * 查询所有工具的调用统计
      */
+    @Operation(summary = "查询所有工具的调用统计")
     @GetMapping("/stats")
     public R<Map<String, Map<String, Object>>> allStats() {
         if (recorder == null) {
@@ -69,6 +74,7 @@ public class ToolMonitorController {
     /**
      * 查询指定工具的调用统计
      */
+    @Operation(summary = "查询指定工具的调用统计")
     @GetMapping("/stats/{toolName}")
     public R<Map<String, Object>> stats(@PathVariable("toolName") String toolName) {
         Map<String, Object> stats = recorder != null ? recorder.getStatsMap(toolName) : null;
@@ -80,6 +86,7 @@ public class ToolMonitorController {
      *
      * @param limit 返回条数（默认 50）
      */
+    @Operation(summary = "查询最近的工具调用记录")
     @GetMapping("/invocations")
     public R<List<ToolInvocationRecord>> invocations(
             @RequestParam(defaultValue = "50") @Min(1) int limit) {
@@ -92,6 +99,7 @@ public class ToolMonitorController {
     /**
      * 查询熔断器状态
      */
+    @Operation(summary = "查询熔断器状态")
     @GetMapping("/breakers")
     public R<Map<String, Map<String, Object>>> breakers() {
         if (circuitBreaker == null) {
@@ -112,6 +120,7 @@ public class ToolMonitorController {
     /**
      * 清空调用记录与统计
      */
+    @Operation(summary = "清空调用记录与统计")
     @DeleteMapping("/invocations")
     public R<Void> clear() {
         if (recorder != null) {

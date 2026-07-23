@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.Min;
 import java.util.stream.Collectors;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * 会话 Controller
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
  * @since 1.1.0
  */
 @Slf4j
+@Tag(name = "会话管理", description = "会话生命周期管理与历史消息查询")
 @RestController
 @RequirePermission("agent:list")
 @RequestMapping("/api/v1/conversations")
@@ -43,6 +46,7 @@ public class ConversationController {
      * @param title   会话标题（可选）
      */
     @Audit(module = "conversation", action = "CREATE", description = "创建会话")
+    @Operation(summary = "创建会话")
     @PostMapping
     public R<ConversationVO> create(
             @RequestParam Long agentId,
@@ -55,6 +59,7 @@ public class ConversationController {
     /**
      * 分页查询会话列表
      */
+    @Operation(summary = "分页查询会话列表")
     @GetMapping
     public R<PageResult<ConversationVO>> list(
             @RequestParam(required = false) Long agentId,
@@ -75,6 +80,7 @@ public class ConversationController {
     /**
      * 获取会话详情
      */
+    @Operation(summary = "获取会话详情")
     @GetMapping("/{uuid}")
     public R<ConversationVO> get(@PathVariable("uuid") String uuid) {
         ConversationDO conv = conversationService.getByUuid(uuid);
@@ -85,6 +91,7 @@ public class ConversationController {
      * 删除会话（逻辑删除 + 清空记忆）
      */
     @Audit(module = "conversation", action = "DELETE", description = "删除会话")
+    @Operation(summary = "删除会话（逻辑删除+清空记忆）")
     @DeleteMapping("/{uuid}")
     public R<Void> delete(@PathVariable("uuid") String uuid) {
         log.info("删除会话: uuid={}", uuid);
@@ -95,6 +102,7 @@ public class ConversationController {
     /**
      * 分页查询会话历史消息
      */
+    @Operation(summary = "分页查询会话历史消息")
     @GetMapping("/{uuid}/messages")
     public R<PageResult<MessageVO>> messages(
             @PathVariable("uuid") String uuid,

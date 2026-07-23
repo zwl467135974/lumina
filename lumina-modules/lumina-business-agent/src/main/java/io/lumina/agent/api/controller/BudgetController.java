@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import org.springframework.validation.annotation.Validated;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * 预算管理 Controller
@@ -22,6 +24,7 @@ import org.springframework.validation.annotation.Validated;
  * @since 2.0.0
  */
 @Slf4j
+@Tag(name = "预算管理", description = "租户/Agent 预算规则与用量查询")
 @RestController
 @RequirePermission("budget:list")
 @RequestMapping("/api/v1/budget")
@@ -34,6 +37,7 @@ public class BudgetController {
     /**
      * 查询预算规则列表
      */
+    @Operation(summary = "查询预算规则列表")
     @GetMapping("/rules")
     public R<List<BudgetRuleVO>> listRules() {
         List<BudgetRuleVO> list = budgetService.listRules().stream()
@@ -46,6 +50,7 @@ public class BudgetController {
      * 创建预算规则
      */
     @Audit(module = "budget", action = "CREATE", description = "创建预算规则")
+    @Operation(summary = "创建预算规则")
     @PostMapping("/rules")
     public R<BudgetRuleVO> createRule(@Valid @RequestBody BudgetRuleDTO dto) {
         log.info("创建预算规则: {}", dto.getRuleName());
@@ -56,6 +61,7 @@ public class BudgetController {
      * 删除预算规则
      */
     @Audit(module = "budget", action = "DELETE", description = "删除预算规则")
+    @Operation(summary = "删除预算规则")
     @DeleteMapping("/rules/{id}")
     public R<Void> deleteRule(@PathVariable Long id) {
         log.info("删除预算规则: id={}", id);
@@ -66,6 +72,7 @@ public class BudgetController {
     /**
      * 查询预算使用情况
      */
+    @Operation(summary = "查询预算使用情况")
     @GetMapping("/usage")
     public R<List<Map<String, Object>>> getUsage() {
         return R.success(budgetService.getUsage());

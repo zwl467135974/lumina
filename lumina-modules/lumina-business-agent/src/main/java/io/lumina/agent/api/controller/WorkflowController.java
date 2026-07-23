@@ -25,6 +25,8 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * 工作流管理 API
@@ -33,6 +35,7 @@ import java.util.Map;
  * @since 2.0.0
  */
 @Slf4j
+@Tag(name = "工作流", description = "工作流定义、执行与实例管理（含人工审批恢复）")
 @RestController
 @RequirePermission("workflow:list")
 @RequestMapping("/api/v1/workflows")
@@ -43,18 +46,21 @@ public class WorkflowController {
     private final WorkflowService workflowService;
 
     @Audit(module = "workflow", action = "CREATE", description = "创建工作流")
+    @Operation(summary = "创建工作流")
     @PostMapping
     public R<WorkflowDefinitionVO> create(@Valid @RequestBody WorkflowDTO dto) {
         return R.success(WorkflowDefinitionVO.from(workflowService.create(dto)));
     }
 
     @Audit(module = "workflow", action = "UPDATE", description = "更新工作流")
+    @Operation(summary = "更新工作流")
     @PutMapping("/{id}")
     public R<WorkflowDefinitionVO> update(@PathVariable Long id, @Valid @RequestBody WorkflowDTO dto) {
         return R.success(WorkflowDefinitionVO.from(workflowService.update(id, dto)));
     }
 
     @Audit(module = "workflow", action = "UPDATE", description = "发布工作流")
+    @Operation(summary = "发布工作流")
     @PostMapping("/{id}/publish")
     public R<Void> publish(@PathVariable Long id) {
         workflowService.publish(id);
@@ -62,11 +68,14 @@ public class WorkflowController {
     }
 
     @Audit(module = "workflow", action = "DELETE", description = "删除工作流")
+    @Operation(summary = "删除工作流")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id) {
         workflowService.delete(id);
         return R.success();
     }
+
+    @Operation(summary = "分页查询工作流定义")
 
     @GetMapping
     public R<PageResult<WorkflowDefinitionVO>> list(
@@ -81,12 +90,15 @@ public class WorkflowController {
         return R.success(PageResult.of(voList, page.getTotal(), page.getPageNum(), page.getPageSize()));
     }
 
+    @Operation(summary = "获取工作流定义详情")
+
     @GetMapping("/{id}")
     public R<WorkflowDefinitionVO> getById(@PathVariable Long id) {
         return R.success(WorkflowDefinitionVO.from(workflowService.getById(id)));
     }
 
     @Audit(module = "workflow", action = "EXECUTE", description = "执行工作流")
+    @Operation(summary = "执行工作流")
     @PostMapping("/{id}/execute")
     public R<WorkflowInstanceVO> execute(@PathVariable Long id, @Valid @RequestBody ExecuteWorkflowDTO dto) {
         return R.success(WorkflowInstanceVO.from(workflowService.execute(id, dto)));
@@ -96,6 +108,7 @@ public class WorkflowController {
      * 恢复暂停的工作流实例（人工审批后调用）
      */
     @Audit(module = "workflow", action = "EXECUTE", description = "恢复工作流实例")
+    @Operation(summary = "恢复暂停的工作流实例（人工审批）")
     @PostMapping("/instances/{instanceId}/resume")
     public R<WorkflowInstanceVO> resumeInstance(
             @PathVariable Long instanceId,
@@ -111,6 +124,7 @@ public class WorkflowController {
      * data 字段为事件 JSON。
      */
     @Audit(module = "workflow", action = "EXECUTE", description = "流式执行工作流")
+    @Operation(summary = "流式执行工作流（SSE）")
     @PostMapping(value = "/{id}/execute/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Map<String, Object>>> executeStream(
             @PathVariable Long id,
@@ -122,6 +136,8 @@ public class WorkflowController {
                         .data(event)
                         .build());
     }
+
+    @Operation(summary = "分页查询工作流实例")
 
     @GetMapping("/instances")
     public R<PageResult<WorkflowInstanceVO>> listInstances(
@@ -136,6 +152,8 @@ public class WorkflowController {
         return R.success(PageResult.of(voList, page.getTotal(), page.getPageNum(), page.getPageSize()));
     }
 
+    @Operation(summary = "查询工作流实例执行日志")
+
     @GetMapping("/instances/{instanceId}/logs")
     public R<List<WorkflowExecutionLogVO>> getInstanceLogs(@PathVariable Long instanceId) {
         return R.success(workflowService.getInstanceLogs(instanceId).stream()
@@ -146,6 +164,7 @@ public class WorkflowController {
     /**
      * 获取内置工作流模板列表
      */
+    @Operation(summary = "获取内置工作流模板列表")
     @GetMapping("/templates")
     public R<List<WorkflowTemplateVO>> getTemplates() {
         return R.success(workflowService.getTemplates());
@@ -159,6 +178,7 @@ public class WorkflowController {
      * @since 3.3.0
      */
     @Audit(module = "workflow", action = "CREATE", description = "从模板创建工作流")
+    @Operation(summary = "从模板一键创建工作流")
     @PostMapping("/from-template")
     public R<WorkflowDefinitionVO> createFromTemplate(@Valid @RequestBody CreateFromTemplateDTO dto) {
         return R.success(WorkflowDefinitionVO.from(

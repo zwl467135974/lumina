@@ -17,6 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * 文件管理 Controller
@@ -25,6 +27,7 @@ import java.nio.charset.StandardCharsets;
  * @since 1.3.0
  */
 @Slf4j
+@Tag(name = "文件管理", description = "文件上传/下载/删除（多模态素材）")
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
@@ -36,6 +39,7 @@ public class FileController {
      * 上传文件
      */
     @Audit(module = "file", action = "CREATE", description = "上传文件")
+    @Operation(summary = "上传文件")
     @PostMapping("/upload")
     public R<FileVO> upload(
             @RequestParam("file") MultipartFile file,
@@ -60,6 +64,7 @@ public class FileController {
     /**
      * 获取文件元数据
      */
+    @Operation(summary = "获取文件元数据")
     @GetMapping("/{fileUuid}")
     public R<FileVO> getFileInfo(@PathVariable String fileUuid) {
         FileDO fileDO = fileService.getByUuid(fileUuid);
@@ -78,6 +83,7 @@ public class FileController {
     /**
      * 下载文件
      */
+    @Operation(summary = "下载文件")
     @GetMapping("/{fileUuid}/download")
     public ResponseEntity<InputStreamResource> download(@PathVariable String fileUuid) {
         FileDO fileDO = fileService.getByUuid(fileUuid);
@@ -101,6 +107,7 @@ public class FileController {
      * 删除文件
      */
     @Audit(module = "file", action = "DELETE", description = "删除文件")
+    @Operation(summary = "删除文件")
     @DeleteMapping("/{fileUuid}")
     public R<Void> delete(@PathVariable String fileUuid) {
         fileService.delete(fileUuid);

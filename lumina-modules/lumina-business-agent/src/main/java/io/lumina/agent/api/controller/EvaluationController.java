@@ -27,6 +27,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * Agent 评估 API
@@ -35,6 +37,7 @@ import java.util.Map;
  * @since 2.0.0
  */
 @Slf4j
+@Tag(name = "Agent 评估", description = "评估数据集、运行与回归测试")
 @RestController
 @RequirePermission("evaluation:list")
 @RequestMapping("/api/v1/evaluations")
@@ -45,6 +48,7 @@ public class EvaluationController {
     private final EvaluationService evaluationService;
 
     @Audit(module = "evaluation", action = "CREATE", description = "创建评估数据集")
+    @Operation(summary = "创建评估数据集")
     @PostMapping("/datasets")
     public R<EvaluationDatasetVO> createDataset(@Valid @RequestBody EvaluationDatasetDTO dto) {
         log.info("创建评估数据集: name={}", dto.getName());
@@ -55,6 +59,7 @@ public class EvaluationController {
      * 从 YAML 文件导入数据集
      */
     @Audit(module = "evaluation", action = "CREATE", description = "导入评估数据集")
+    @Operation(summary = "从 YAML 文件导入数据集")
     @PostMapping("/datasets/import")
     public R<EvaluationDatasetVO> importDataset(
             @RequestParam("file") MultipartFile file,
@@ -65,6 +70,8 @@ public class EvaluationController {
         return R.success(EvaluationDatasetVO.from(evaluationService.importDataset(file, name, agentType, description)));
     }
 
+    @Operation(summary = "查询数据集列表")
+
     @GetMapping("/datasets")
     public R<List<EvaluationDatasetVO>> listDatasets(@RequestParam(required = false) String name) {
         List<EvaluationDatasetVO> list = evaluationService.listDatasets(name).stream()
@@ -73,12 +80,15 @@ public class EvaluationController {
         return R.success(list);
     }
 
+    @Operation(summary = "查询数据集详情")
+
     @GetMapping("/datasets/{id}")
     public R<EvaluationDatasetVO> getDataset(@PathVariable Long id) {
         return R.success(EvaluationDatasetVO.from(evaluationService.getDataset(id)));
     }
 
     @Audit(module = "evaluation", action = "DELETE", description = "删除评估数据集")
+    @Operation(summary = "删除数据集")
     @DeleteMapping("/datasets/{id}")
     public R<Void> deleteDataset(@PathVariable Long id) {
         evaluationService.deleteDataset(id);
@@ -86,6 +96,7 @@ public class EvaluationController {
     }
 
     @Audit(module = "evaluation", action = "EXECUTE", description = "执行评估")
+    @Operation(summary = "执行评估")
     @PostMapping("/datasets/{id}/runs")
     public R<RunReportVO> runEvaluation(@PathVariable Long id, @Valid @RequestBody EvaluationRunDTO dto) {
         log.info("执行 Agent 评估: datasetId={}, agentId={}", id, dto.getAgentId());
@@ -96,11 +107,14 @@ public class EvaluationController {
      * 异步执行评估（适用于大数据集），返回运行 ID 供前端轮询
      */
     @Audit(module = "evaluation", action = "EXECUTE", description = "异步执行评估")
+    @Operation(summary = "异步执行评估")
     @PostMapping("/datasets/{id}/runs/async")
     public R<Long> runEvaluationAsync(@PathVariable Long id, @Valid @RequestBody EvaluationRunDTO dto) {
         log.info("异步执行 Agent 评估: datasetId={}, agentId={}", id, dto.getAgentId());
         return R.success(evaluationService.runEvaluationAsync(id, dto));
     }
+
+    @Operation(summary = "查询评估运行列表")
 
     @GetMapping("/runs")
     public R<List<EvaluationRunVO>> listRuns(@RequestParam(required = false) Long datasetId) {
@@ -110,6 +124,8 @@ public class EvaluationController {
         return R.success(list);
     }
 
+    @Operation(summary = "查询评估报告")
+
     @GetMapping("/runs/{id}")
     public R<RunReportVO> getRunReport(@PathVariable Long id) {
         return R.success(RunReportVO.from(evaluationService.getRunReport(id)));
@@ -118,6 +134,7 @@ public class EvaluationController {
     /**
      * 查询同一数据集的历史评估趋势（按时间正序，用于折线图）
      */
+    @Operation(summary = "查询评估趋势")
     @GetMapping("/datasets/{id}/trend")
     public R<List<EvaluationRunVO>> getRunTrend(@PathVariable Long id) {
         List<EvaluationRunVO> list = evaluationService.getRunTrend(id).stream()
@@ -129,6 +146,7 @@ public class EvaluationController {
     /**
      * 对比两次评估结果（A/B 对比）
      */
+    @Operation(summary = "对比两次评估结果")
     @GetMapping("/runs/compare")
     public R<Map<String, Object>> compareRuns(
             @RequestParam("runA") Long runA,
@@ -140,6 +158,7 @@ public class EvaluationController {
     /**
      * 导出评估报告为 CSV
      */
+    @Operation(summary = "导出评估报告 CSV")
     @GetMapping("/runs/{id}/export")
     public void exportRunCsv(@PathVariable Long id, HttpServletResponse response) {
         log.info("导出评估报告 CSV: runId={}", id);
@@ -181,6 +200,7 @@ public class EvaluationController {
      * 批量回归测试
      */
     @Audit(module = "evaluation", action = "EXECUTE", description = "批量回归测试")
+    @Operation(summary = "批量回归测试")
     @PostMapping("/regression/batch")
     public R<Map<String, Object>> runBatchRegression(@Valid @RequestBody io.lumina.agent.api.dto.BatchRegressionDTO dto) {
         log.info("批量回归测试: datasets={}, agentId={}", dto.getDatasetIds(), dto.getAgentId());
@@ -191,6 +211,7 @@ public class EvaluationController {
      * 标记基线 run
      */
     @Audit(module = "evaluation", action = "UPDATE", description = "标记基线 run")
+    @Operation(summary = "标记基线 run")
     @PostMapping("/runs/{id}/baseline")
     public R<Void> markBaseline(@PathVariable Long id) {
         evaluationService.markBaseline(id);
@@ -200,6 +221,7 @@ public class EvaluationController {
     /**
      * 对比两个 Prompt 版本的内容差异
      */
+    @Operation(summary = "对比两个 Prompt 版本差异")
     @GetMapping("/prompts/compare")
     public R<Map<String, Object>> comparePromptVersions(
             @RequestParam String name,

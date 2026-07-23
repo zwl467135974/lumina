@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * MCP（Model Context Protocol）管理 Controller
@@ -37,6 +39,7 @@ import java.util.Set;
  * @since 3.2.0
  */
 @Slf4j
+@Tag(name = "MCP 管理", description = "Model Context Protocol server 运行时管理与工具查询")
 @RestController
 @RequirePermission("monitor:mcp")
 @RequestMapping("/api/v1/mcp")
@@ -59,6 +62,7 @@ public class McpController {
      *
      * @return enabled 状态 + server 列表（含连接状态和工具数）
      */
+    @Operation(summary = "查询 MCP 全局状态与 Server 列表")
     @GetMapping("/servers")
     public R<McpStatusVO> servers() {
         boolean enabled = mcpProperties != null && mcpProperties.isEnabled();
@@ -94,6 +98,7 @@ public class McpController {
      *
      * @return MCP 工具列表（category 以 "mcp." 开头的工具）
      */
+    @Operation(summary = "查询所有已注册的 MCP 工具")
     @GetMapping("/tools")
     public R<List<McpToolVO>> tools() {
         if (toolManager == null) {
@@ -115,6 +120,7 @@ public class McpController {
      * @return 注册结果
      */
     @Audit(module = "mcp", action = "CREATE")
+    @Operation(summary = "运行时注册 MCP Server")
     @PostMapping("/servers")
     public R<Boolean> registerServer(@RequestBody McpServerProperties.McpServerConfig config) {
         if (clientRegistry == null) {
@@ -142,6 +148,7 @@ public class McpController {
      * @return 注销结果
      */
     @Audit(module = "mcp", action = "DELETE")
+    @Operation(summary = "注销 MCP Server")
     @DeleteMapping("/servers/{name}")
     public R<Boolean> unregisterServer(@PathVariable String name) {
         if (clientRegistry == null) {
@@ -158,6 +165,7 @@ public class McpController {
      * @return 重连结果
      */
     @Audit(module = "mcp", action = "UPDATE")
+    @Operation(summary = "手动触发 Server 重连")
     @PostMapping("/servers/{name}/reconnect")
     public R<Boolean> reconnectServer(@PathVariable String name) {
         if (clientRegistry == null) {
@@ -173,6 +181,7 @@ public class McpController {
      * @param name server 名称
      * @return true 存活；false 不存在或探活失败
      */
+    @Operation(summary = "手动探活指定 Server")
     @GetMapping("/servers/{name}/health")
     public R<Boolean> serverHealth(@PathVariable String name) {
         if (clientRegistry == null) {

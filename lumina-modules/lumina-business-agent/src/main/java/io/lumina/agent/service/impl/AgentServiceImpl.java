@@ -16,17 +16,31 @@ import io.lumina.framework.storage.entity.FileDO;
 import io.lumina.agent.model.MultimodalContent;
 import io.lumina.agent.model.MultimodalDocument;
 import io.lumina.agent.model.MultimodalImage;
+import io.lumina.agent.rag.PdfOcrProcessor;
+import io.lumina.agent.security.AgentConcurrencyLimiter;
+import io.lumina.agent.security.AgentRateLimiter;
+import io.lumina.agent.security.ContentModerationService;
+import io.lumina.agent.security.OutputSanitizer;
+import io.lumina.agent.security.PromptInjectionFilter;
+import io.lumina.agent.service.AbTestService;
 import io.lumina.agent.service.AgentService;
+import io.lumina.agent.service.BudgetService;
 import io.lumina.agent.service.ConversationService;
+import io.lumina.agent.service.KnowledgeBaseService;
+import io.lumina.agent.service.ReflectiveMemoryService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.model.StreamEventType;
+import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
 import io.lumina.agent.service.PromptService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,6 +48,7 @@ import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
@@ -44,64 +59,53 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AgentServiceImpl implements AgentService {
 
-    @Autowired
-    private AgentExecutionEngine agentExecutionEngine;
+    private final AgentExecutionEngine agentExecutionEngine;
 
-    @Autowired
-    private AgentMapper agentMapper;
+    private final AgentMapper agentMapper;
 
-    @Autowired
-    private ConversationService conversationService;
+    private final ConversationService conversationService;
 
-    @Autowired
-    private FileService fileService;
+    private final FileService fileService;
 
-    @Autowired
-    private PromptService promptService;
+    private final PromptService promptService;
 
-    @Autowired
-    private io.lumina.agent.service.KnowledgeBaseService knowledgeBaseService;
+    private final KnowledgeBaseService knowledgeBaseService;
 
-    @Autowired
-    private io.lumina.agent.security.PromptInjectionFilter promptInjectionFilter;
+    private final PromptInjectionFilter promptInjectionFilter;
 
-    @Autowired
-    private io.lumina.agent.security.OutputSanitizer outputSanitizer;
+    private final OutputSanitizer outputSanitizer;
 
-    @Autowired
-    private io.lumina.agent.security.AgentRateLimiter agentRateLimiter;
+    private final AgentRateLimiter agentRateLimiter;
 
-    @Autowired
-    private io.lumina.agent.security.AgentConcurrencyLimiter concurrencyLimiter;
+    private final AgentConcurrencyLimiter concurrencyLimiter;
 
-    @Autowired
-    private io.lumina.agent.infrastructure.mapper.AgentTaskMapper agentTaskMapper;
+    private final AgentTaskMapper agentTaskMapper;
 
-    @Autowired
-    private io.lumina.agent.service.BudgetService budgetService;
+    private final BudgetService budgetService;
 
-    @Autowired
-    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    // 可选依赖（Bean 不一定存在），保留字段注入 + required=false
+    @Autowired(required = false)
+    private ContentModerationService contentModerationService;
 
     @Autowired(required = false)
-    private io.lumina.agent.security.ContentModerationService contentModerationService;
+    private AbTestService abTestService;
 
     @Autowired(required = false)
-    private io.lumina.agent.service.AbTestService abTestService;
+    private PdfOcrProcessor pdfOcrProcessor;
 
     @Autowired(required = false)
-    private io.lumina.agent.rag.PdfOcrProcessor pdfOcrProcessor;
-
-    @Autowired(required = false)
-    private io.lumina.agent.service.ReflectiveMemoryService reflectiveMemoryService;
+    private ReflectiveMemoryService reflectiveMemoryService;
 
     @Autowired
-    @org.springframework.beans.factory.annotation.Qualifier("agentTaskExecutor")
-    private java.util.concurrent.Executor agentTaskExecutor;
+    @Qualifier("agentTaskExecutor")
+    private Executor agentTaskExecutor;
 
-    @org.springframework.beans.factory.annotation.Value("${lumina.agent.content-moderation.strict:false}")
+    @Value("${lumina.agent.content-moderation.strict:false}")
     private boolean contentModerationStrict;
 
     private record MultimodalContext(Agent agent, AgentConfig config, String sessionId,

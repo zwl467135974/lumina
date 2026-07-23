@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * 成本管理 Controller
@@ -20,6 +22,7 @@ import java.util.Map;
  * @since 2.0.0
  */
 @Slf4j
+@Tag(name = "成本管理", description = "租户消费汇总与每日趋势")
 @RestController
 @RequirePermission("cost:view")
 @RequestMapping("/api/v1/cost")
@@ -31,6 +34,7 @@ public class CostController {
     /**
      * 查询租户消费汇总
      */
+    @Operation(summary = "查询租户消费汇总")
     @GetMapping("/summary")
     public R<Map<String, Object>> getCostSummary() {
         log.info("查询租户消费汇总");
@@ -42,6 +46,7 @@ public class CostController {
      *
      * @param days 查询天数（默认 30 天，最大 365 天）
      */
+    @Operation(summary = "查询租户每日消费趋势")
     @GetMapping("/trend")
     public R<List<Map<String, Object>>> getCostTrend(
             @RequestParam(value = "days", defaultValue = "30") int days) {

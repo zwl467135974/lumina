@@ -24,6 +24,8 @@ import reactor.core.publisher.Flux;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * OpenAI 兼容 Controller
@@ -39,6 +41,7 @@ import java.util.Map;
  * @since 3.4.0
  */
 @Slf4j
+@Tag(name = "OpenAI 兼容", description = "OpenAI SDK 兼容入口：/v1/chat/completions 与 /v1/models")
 @RestController
 @RequestMapping("/v1")
 @Validated
@@ -53,6 +56,7 @@ public class OpenAiCompatController {
      * Chat Completions（OpenAI 兼容，stream 字段区分流式/非流式）
      */
     @Audit(module = "agent", action = "EXECUTE", description = "OpenAI兼容执行Agent")
+    @Operation(summary = "Chat Completions（OpenAI 兼容）")
     @PostMapping("/chat/completions")
     public void chatCompletions(@Valid @RequestBody ChatCompletionRequest request,
                                 HttpServletResponse response) throws IOException {
@@ -70,6 +74,7 @@ public class OpenAiCompatController {
     /**
      * 模型列表（当前租户的 Agent 伪装成 OpenAI model）
      */
+    @Operation(summary = "模型列表（Agent 伪装为 OpenAI model）")
     @GetMapping("/models")
     public ModelListResponse listModels() {
         return openAiCompatService.listModels();

@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * Agent 定时触发器 Controller
@@ -30,6 +32,7 @@ import java.util.Map;
  * @since 3.5.0
  */
 @Slf4j
+@Tag(name = "Agent 触发器", description = "Agent 定时触发器：创建/暂停/恢复/手动触发")
 @RestController
 @RequirePermission("agent:trigger")
 @RequestMapping("/api/v1/agents/triggers")
@@ -42,6 +45,7 @@ public class AgentTriggerController {
     /**
      * 创建定时触发器
      */
+    @Operation(summary = "创建定时触发器")
     @PostMapping
     @Audit(module = "agent_trigger", action = "CREATE", description = "创建定时触发器")
     public R<AgentTriggerVO> createTrigger(@Valid @RequestBody CreateAgentTriggerDTO dto) {
@@ -52,6 +56,7 @@ public class AgentTriggerController {
     /**
      * 分页查询当前租户的触发器列表
      */
+    @Operation(summary = "分页查询触发器列表")
     @GetMapping
     public R<PageResult<AgentTriggerVO>> pageTriggers(
             @RequestParam(value = "pageNum", defaultValue = "1") int pageNum,
@@ -62,6 +67,7 @@ public class AgentTriggerController {
     /**
      * 查询触发器详情
      */
+    @Operation(summary = "查询触发器详情")
     @GetMapping("/{id}")
     public R<AgentTriggerVO> getTrigger(@PathVariable("id") Long id) {
         return R.success(agentTriggerService.getTrigger(id));
@@ -70,6 +76,7 @@ public class AgentTriggerController {
     /**
      * 删除触发器
      */
+    @Operation(summary = "删除触发器")
     @DeleteMapping("/{id}")
     @Audit(module = "agent_trigger", action = "DELETE", description = "删除定时触发器", targetIdParam = "id")
     public R<Void> deleteTrigger(@PathVariable("id") Long id) {
@@ -81,6 +88,7 @@ public class AgentTriggerController {
     /**
      * 暂停触发器
      */
+    @Operation(summary = "暂停触发器")
     @PutMapping("/{id}/pause")
     @Audit(module = "agent_trigger", action = "UPDATE", description = "暂停定时触发器", targetIdParam = "id")
     public R<Void> pause(@PathVariable("id") Long id) {
@@ -92,6 +100,7 @@ public class AgentTriggerController {
     /**
      * 恢复触发器（重算下次触发时间）
      */
+    @Operation(summary = "恢复触发器")
     @PutMapping("/{id}/resume")
     @Audit(module = "agent_trigger", action = "UPDATE", description = "恢复定时触发器", targetIdParam = "id")
     public R<Void> resume(@PathVariable("id") Long id) {
@@ -103,6 +112,7 @@ public class AgentTriggerController {
     /**
      * 手动立即触发一次
      */
+    @Operation(summary = "手动立即触发一次")
     @PostMapping("/{id}/trigger-now")
     @Audit(module = "agent_trigger", action = "EXECUTE", description = "手动触发定时触发器", targetIdParam = "id")
     public R<Map<String, Boolean>> triggerNow(@PathVariable("id") Long id) {

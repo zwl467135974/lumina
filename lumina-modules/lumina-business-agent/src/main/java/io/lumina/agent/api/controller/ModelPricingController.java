@@ -15,6 +15,8 @@ import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * 模型价格管理 Controller
@@ -25,6 +27,7 @@ import java.util.List;
  * @since 3.6.0
  */
 @Slf4j
+@Tag(name = "模型价格", description = "模型输入/输出价格 CRUD，供成本计算使用")
 @RestController
 @RequestMapping("/api/v1/model-pricing")
 @RequiredArgsConstructor
@@ -37,6 +40,7 @@ public class ModelPricingController {
     /**
      * 查询全部模型价格
      */
+    @Operation(summary = "查询全部模型价格")
     @GetMapping
     public R<List<ModelPricingDO>> list() {
         List<ModelPricingDO> list = modelPricingMapper.selectList(null);
@@ -46,6 +50,7 @@ public class ModelPricingController {
     /**
      * 创建模型价格
      */
+    @Operation(summary = "创建模型价格")
     @PostMapping
     @RequirePermission("model:create")
     public R<ModelPricingDO> create(@Valid @RequestBody ModelPricingDTO dto) {
@@ -67,6 +72,7 @@ public class ModelPricingController {
     /**
      * 更新模型价格
      */
+    @Operation(summary = "更新模型价格")
     @PutMapping("/{id}")
     @RequirePermission("model:update")
     public R<ModelPricingDO> update(@PathVariable Long id, @Valid @RequestBody ModelPricingDTO dto) {
@@ -84,6 +90,7 @@ public class ModelPricingController {
     /**
      * 删除模型价格
      */
+    @Operation(summary = "删除模型价格")
     @DeleteMapping("/{id}")
     @RequirePermission("model:delete")
     public R<Void> delete(@PathVariable Long id) {
