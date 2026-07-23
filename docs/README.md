@@ -37,6 +37,7 @@
 - [文件存储设计](zh/design/文件存储设计.md)
 - [Prompt 运行时规则](zh/design/Prompt运行时规则.md)
 - [Agent 评估框架设计](zh/design/E1-Agent评估框架设计方案.md)
+- [推理链可观测性实施方案](zh/design/推理链可观测性实施方案.md) — Trace 树埋点 + 步骤级成本归因
 
 ### 路线图
 - [v2.0 路线图](zh/roadmap/v2.0路线图.md)
