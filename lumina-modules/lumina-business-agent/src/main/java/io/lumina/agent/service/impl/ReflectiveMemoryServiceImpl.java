@@ -3,7 +3,6 @@ package io.lumina.agent.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.agentscope.core.ReActAgent;
-import io.agentscope.core.memory.InMemoryMemory;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.model.Model;
@@ -169,7 +168,6 @@ public class ReflectiveMemoryServiceImpl implements ReflectiveMemoryService {
                     .sysPrompt("你是一个 JSON 提取助手。只输出 JSON，不输出其他内容。")
                     .model(model)
                     .toolkit(new Toolkit())  // 空工具集
-                    .memory(new InMemoryMemory())
                     .build();
 
             Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(prompt).build();

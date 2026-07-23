@@ -13,9 +13,12 @@ import io.lumina.agent.service.PromptService;
 import io.lumina.agent.security.PromptInjectionFilter;
 import io.lumina.agent.security.OutputSanitizer;
 import io.lumina.agent.security.AgentRateLimiter;
+import io.lumina.agent.security.AgentConcurrencyLimiter;
 import io.lumina.agent.security.ContentModerationService;
 import io.lumina.agent.security.ModerationResult;
 import io.lumina.agent.service.BudgetService;
+import io.lumina.agent.service.KnowledgeBaseService;
+import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.exception.BusinessException;
 import org.junit.jupiter.api.AfterEach;
@@ -81,6 +84,18 @@ class AgentServiceImplTest {
     private BudgetService budgetService;
 
     @Mock
+    private KnowledgeBaseService knowledgeBaseService;
+
+    @Mock
+    private AgentConcurrencyLimiter concurrencyLimiter;
+
+    @Mock
+    private AgentTaskMapper agentTaskMapper;
+
+    @Mock
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @Mock
     private ContentModerationService contentModerationService;
 
     @BeforeEach
@@ -92,6 +107,8 @@ class AgentServiceImplTest {
                 .thenReturn(ModerationResult.allowed());
         org.mockito.Mockito.lenient().when(contentModerationService.moderate(any(String.class), org.mockito.ArgumentMatchers.anyBoolean()))
                 .thenReturn(ModerationResult.allowed());
+        org.mockito.Mockito.lenient().when(concurrencyLimiter.acquire(any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(true);
     }
 
     @AfterEach
@@ -266,8 +283,16 @@ class AgentServiceImplTest {
 
     @Test
     void executeAgentRateLimitedBlocksExecution() {
+        AgentDO agentDO = new AgentDO();
+        agentDO.setAgentId(1L);
+        agentDO.setAgentName("test");
+        agentDO.setAgentType("ReAct");
+        agentDO.setStatus(1);
+        agentDO.setTenantId(0L);
+        when(agentMapper.selectById(1L)).thenReturn(agentDO);
+
         doThrow(new BusinessException(io.lumina.common.core.ErrorCode.AGENT_RATE_LIMITED))
-                .when(agentRateLimiter).checkRateLimit(1L);
+                .when(agentRateLimiter).checkRateLimit(eq(1L), any());
 
         assertThatThrownBy(() -> agentService.executeAgent(1L, "task", null))
                 .isInstanceOf(BusinessException.class);
