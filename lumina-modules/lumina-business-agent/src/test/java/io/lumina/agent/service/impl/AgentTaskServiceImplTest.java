@@ -4,6 +4,7 @@ import io.lumina.agent.api.dto.AgentTaskRequestDTO;
 import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.infrastructure.entity.AgentTaskDO;
 import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
+import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.TaskProgressRegistry;
 import io.lumina.common.core.BaseContext;
@@ -120,7 +121,8 @@ class AgentTaskServiceImplTest {
         task.setFileIds(null);
 
         when(agentTaskMapper.selectOne(any())).thenReturn(task);
-        when(agentService.executeAgent(eq(100L), eq("hello"), any())).thenReturn("result-text");
+        ExecuteResult execResult = ExecuteResult.success("result-text");
+        when(agentService.executeAgentForResult(eq(100L), eq("hello"), any())).thenReturn(execResult);
 
         agentTaskService.executeTask("test-uuid", LoginContext.empty());
 
@@ -146,7 +148,7 @@ class AgentTaskServiceImplTest {
         task.setFileIds(null);
 
         when(agentTaskMapper.selectOne(any())).thenReturn(task);
-        when(agentService.executeAgent(eq(100L), eq("bad input"), any()))
+        when(agentService.executeAgentForResult(eq(100L), eq("bad input"), any()))
                 .thenThrow(new RuntimeException("LLM error"));
 
         agentTaskService.executeTask("fail-uuid", LoginContext.empty());
@@ -171,13 +173,14 @@ class AgentTaskServiceImplTest {
         task.setFileIds("uuid-1,uuid-2");
 
         when(agentTaskMapper.selectOne(any())).thenReturn(task);
-        when(agentService.executeAgentMultimodal(eq(100L), eq("describe image"), any(), any()))
-                .thenReturn("image description");
+        ExecuteResult multimodalResult = ExecuteResult.success("image description");
+        when(agentService.executeAgentMultimodalForResult(eq(100L), eq("describe image"), any(), any()))
+                .thenReturn(multimodalResult);
 
         agentTaskService.executeTask("multi-uuid", LoginContext.empty());
 
-        verify(agentService).executeAgentMultimodal(eq(100L), eq("describe image"), any(), any());
-        verify(agentService, never()).executeAgent(any(), any(), any());
+        verify(agentService).executeAgentMultimodalForResult(eq(100L), eq("describe image"), any(), any());
+        verify(agentService, never()).executeAgentForResult(any(), any(), any());
 
         ArgumentCaptor<AgentTaskDO> captor = ArgumentCaptor.forClass(AgentTaskDO.class);
         verify(agentTaskMapper, times(2)).updateById(captor.capture());
