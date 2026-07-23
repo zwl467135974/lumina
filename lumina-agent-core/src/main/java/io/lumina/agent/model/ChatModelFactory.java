@@ -1,17 +1,17 @@
 package io.lumina.agent.model;
 
-import io.agentscope.core.formatter.anthropic.AnthropicChatFormatter;
-import io.agentscope.core.formatter.dashscope.DashScopeChatFormatter;
-import io.agentscope.core.formatter.gemini.GeminiChatFormatter;
-import io.agentscope.core.formatter.ollama.OllamaChatFormatter;
-import io.agentscope.core.formatter.openai.OpenAIChatFormatter;
-import io.agentscope.core.model.AnthropicChatModel;
-import io.agentscope.core.model.DashScopeChatModel;
 import io.agentscope.core.model.GenerateOptions;
-import io.agentscope.core.model.GeminiChatModel;
 import io.agentscope.core.model.Model;
-import io.agentscope.core.model.OllamaChatModel;
-import io.agentscope.core.model.OpenAIChatModel;
+import io.agentscope.extensions.model.anthropic.AnthropicChatModel;
+import io.agentscope.extensions.model.anthropic.formatter.AnthropicChatFormatter;
+import io.agentscope.extensions.model.dashscope.DashScopeChatModel;
+import io.agentscope.extensions.model.dashscope.formatter.DashScopeChatFormatter;
+import io.agentscope.extensions.model.gemini.GeminiChatModel;
+import io.agentscope.extensions.model.gemini.formatter.GeminiChatFormatter;
+import io.agentscope.extensions.model.ollama.OllamaChatModel;
+import io.agentscope.extensions.model.ollama.formatter.OllamaChatFormatter;
+import io.agentscope.extensions.model.openai.OpenAIChatModel;
+import io.agentscope.extensions.model.openai.formatter.OpenAIChatFormatter;
 import io.lumina.agent.config.LuminaAgentProperties;
 import io.lumina.agent.model.AgentConfig.LLMConfig;
 import io.lumina.common.core.ErrorCode;

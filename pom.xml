@@ -45,7 +45,7 @@
         <redisson.version>3.24.3</redisson.version>
         <rocketmq-spring.version>2.3.0</rocketmq-spring.version>
         <!-- Agent 核心框架 -->
-        <agentscope.version>1.0.7</agentscope.version>
+        <agentscope.version>2.0.0</agentscope.version>
 
         <!-- LLM SDK -->
         <dashscope.version>2.22.5</dashscope.version>
@@ -167,6 +167,33 @@
             <dependency>
                 <groupId>io.agentscope</groupId>
                 <artifactId>agentscope</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+
+            <!-- AgentScope 2.0 模型扩展（从 core 拆分为独立模块） -->
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-dashscope</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-openai</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-anthropic</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-gemini</artifactId>
+                <version>${agentscope.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-extensions-model-ollama</artifactId>
                 <version>${agentscope.version}</version>
             </dependency>
 

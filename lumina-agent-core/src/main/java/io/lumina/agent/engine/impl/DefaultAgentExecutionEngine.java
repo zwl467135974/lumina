@@ -3,7 +3,6 @@ package io.lumina.agent.engine.impl;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.Event;
 import io.agentscope.core.agent.StreamOptions;
-import io.agentscope.core.memory.InMemoryMemory;
 import io.agentscope.core.message.Base64Source;
 import io.agentscope.core.message.ContentBlock;
 import io.agentscope.core.message.ImageBlock;
@@ -570,7 +569,6 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .sysPrompt(config.getPromptTemplate() != null ? config.getPromptTemplate() : "You are a helpful AI assistant.")
                 .model(model)
                 .toolkit(toolkit)
-                .memory(new InMemoryMemory())
                 .build();
     }
 
@@ -738,7 +736,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * 创建 AgentScope ReActAgent
      *
      * <p>ChatModel 和 Toolkit 走 Caffeine 缓存（重量级、无状态），
-     * ReActAgent 每次新建（含 InMemoryMemory，有状态）。
+     * ReActAgent 每次新建（有状态，记忆由 AgentScope 2.0 内部 AgentStateStore 管理）。
      */
     private ReActAgent createReActAgent(AgentConfig config) {
         AgentConfig.LLMConfig llmConfig = resolveLlmConfig(config);
@@ -760,8 +758,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .name(config.getAgentName() != null ? config.getAgentName() : "LuminaAgent")
                 .sysPrompt(config.getPromptTemplate() != null ? config.getPromptTemplate() : "You are a helpful AI assistant.")
                 .model(model)
-                .toolkit(toolkit)
-                .memory(new InMemoryMemory());
+                .toolkit(toolkit);
 
         configureRag(agentBuilder, config);
 

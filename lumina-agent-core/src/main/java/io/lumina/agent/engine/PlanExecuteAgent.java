@@ -190,7 +190,6 @@ public class PlanExecuteAgent {
                 .sysPrompt(EXECUTOR_PROMPT)
                 .model(model)
                 .toolkit(toolkit)
-                .memory(new io.agentscope.core.memory.InMemoryMemory())
                 .build();
 
         StringBuilder prompt = new StringBuilder();
@@ -233,7 +232,6 @@ public class PlanExecuteAgent {
                 .sysPrompt(SUMMARIZER_PROMPT + "\n\nOriginal context: " + systemPrompt)
                 .model(model)
                 .toolkit(new Toolkit())
-                .memory(new io.agentscope.core.memory.InMemoryMemory())
                 .build();
 
         StringBuilder prompt = new StringBuilder();
@@ -269,7 +267,6 @@ public class PlanExecuteAgent {
                 .sysPrompt(systemPrompt)
                 .model(model)
                 .toolkit(toolkit)
-                .memory(new io.agentscope.core.memory.InMemoryMemory())
                 .build();
 
         Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(userPrompt).build();
@@ -304,7 +301,6 @@ public class PlanExecuteAgent {
                 .sysPrompt(PLANNER_PROMPT + "\n\nContext: " + systemPrompt)
                 .model(model)
                 .toolkit(new Toolkit())  // 空工具集
-                .memory(new io.agentscope.core.memory.InMemoryMemory())
                 .build();
 
         Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(
@@ -329,7 +325,6 @@ public class PlanExecuteAgent {
                 .sysPrompt(EXECUTOR_PROMPT)
                 .model(model)
                 .toolkit(toolkit)
-                .memory(new io.agentscope.core.memory.InMemoryMemory())
                 .build();
 
         StringBuilder prompt = new StringBuilder();
@@ -361,7 +356,6 @@ public class PlanExecuteAgent {
                 .sysPrompt(SUMMARIZER_PROMPT + "\n\nOriginal context: " + systemPrompt)
                 .model(model)
                 .toolkit(new Toolkit())
-                .memory(new io.agentscope.core.memory.InMemoryMemory())
                 .build();
 
         StringBuilder prompt = new StringBuilder();
@@ -394,7 +388,6 @@ public class PlanExecuteAgent {
                 .sysPrompt(systemPrompt)
                 .model(model)
                 .toolkit(toolkit)
-                .memory(new io.agentscope.core.memory.InMemoryMemory())
                 .build();
 
         Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(userPrompt).build();
