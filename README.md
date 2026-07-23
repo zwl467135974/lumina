@@ -73,7 +73,7 @@ docker compose -f docker-compose-standalone.yml up
 - **异步任务执行** - 提交即返回 taskId，后台执行，状态查询
 - **成本管理** - 模型价格表 + Token 计费 + 消费汇总仪表盘 + 趋势图表
 - **全链路可观测** - MDC 结构化日志 + Micrometer 指标 + OpenTelemetry 分布式追踪
-- **工程化** - 统一错误码、Flyway V1-V42+、网关限流、Resilience4j 熔断器/重试
+- **工程化** - 统一错误码、Flyway V1-V44+、网关限流、Resilience4j 熔断器/重试、SpringDoc OpenAPI（Swagger UI）
 - **响应式编程** - Project Reactor + Context Propagation，跨线程租户上下文传递
 - **多 LLM 支持** - DashScope/OpenAI/DeepSeek/Claude/Gemini/Ollama + OpenAI 兼容预设（GLM/Kimi/豆包零代码扩展）
 - **A/B Testing** - 实验框架，按权重流量分发 + 同会话粘滞 + 效果报告
@@ -300,7 +300,7 @@ $env:LLM_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1–V42+），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1–V44+），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -704,13 +704,13 @@ npm install
 - ✅ Apache 2.0 License + CHANGELOG.md
 
 **测试**
-- ✅ 后端 600+ 测试（单元 + 集成，全模块 `mvn verify` 通过）
+- ✅ 后端 770+ 测试（单元 + 集成，全模块 `mvn verify` 通过）
 - ✅ 前端 103 测试（Vitest 单元测试）
 - ✅ CI/CD 双流水线（GitHub Actions：后端 mvn verify + 前端 pnpm build + pnpm test）
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V42+ + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1-V44+ + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
@@ -763,6 +763,17 @@ npm install
 - ✅ **Grafana 3 个预置仪表盘** — Agent 执行 / 工具+RAG / 工作流+Trigger，provisioning 开箱即用
 - ✅ **监控叠加文件** — `docker-compose-monitoring.yml` 任意模式一键加监控
 - ✅ 230 测试通过（v3.4 的 208 + 22 个 trigger 测试）
+
+### v3.6 企业级加固
+
+- ✅ **模型价格管理** — 模型输入/输出价格全量 CRUD（Controller + 前端页面），成本计算不再回退硬编码默认值（Flyway V44 灌入 GLM/Kimi/DashScope/Claude/Ollama 18 条价格）
+- ✅ **Controller 权限审计** — Agent 模块 18 个 Controller 全部补 `@RequirePermission`，`ControllerPermissionTest` 回归验证
+- ✅ **工作流 PAUSED 上下文修复** — 人工审批节点暂停时持久化 `instance.output`，resume 正确恢复全部变量
+- ✅ **Token 追踪修复** — 同步/多模态/流式三条执行路径均持久化 token 用量到 `agent_task` 表，成本仪表盘显示真实数据
+- ✅ **API 文档完善** — SpringDoc OpenAPI（Swagger UI）+ 全部 Controller 补 `@Tag`/`@Operation` 注解 + JWT 安全方案配置
+- ✅ **预算在途追踪** — 预算检查计入 RUNNING 状态任务（防并发超额），Redis 告警去重（防轰炸）
+- ✅ **MCP 运行时注册** — `registerServer()` 自动拉取工具并注册到 `EnhancedToolManager`
+- ✅ **限流与并发控制** — Per-Agent rate limit（Redis 滑动窗口）+ maxConcurrent 信号量（Flyway V42/V43）
 
 ---
 

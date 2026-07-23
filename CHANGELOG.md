@@ -4,6 +4,98 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.6.0] - 2026-07-23
+
+### 企业级加固
+
+#### 模型价格管理（P1）
+- **价格管理 CRUD**: 新增 `ModelPricingController`（含 `@RequirePermission`），提供输入/输出价格的查询/创建/更新/删除接口
+- **价格种子数据**: Flyway V44 灌入 18 条模型价格（GLM/Kimi/DashScope/Anthropic/Ollama），成本计算不再回退硬编码默认值
+- **前端管理页**: 模型价格管理前端页面 + 菜单/权限种子
+
+#### Token 追踪修复（P0）
+- **同步执行**: `recordSyncTask` 写入 modelName/provider，`executeAgentForResult` 返回完整 ExecuteResult（含 TokenUsage）
+- **多模态异步**: 多模态分支改调 `executeAgentMultimodalForResult`，token 不再丢失
+- **流式执行**: `StreamChunk` 新增 `tokenUsage` 字段，从 FINAL/AGENT_RESULT 事件提取 token 信息
+
+#### 工作流修复（P0）
+- **PAUSED 上下文持久化**: 人工审批节点暂停时写入 `ctx.getVariables()` 到 `instance.output`，resume 正确恢复全部上下文变量
+
+#### 预算增强（P1）
+- **在途消耗追踪**: 预算检查计入 RUNNING 状态任务（防并发超额）
+- **告警去重**: Redis `budget:alert:{ruleId}:{date}` 去重，防止告警轰炸
+
+#### 安全加固（P0/P1）
+- **Controller 权限审计**: Agent 模块 18 个 Controller 全部补 `io.lumina.common.annotation.RequirePermission`，由 `PermissionCheckInterceptor` 拦截校验
+- **`RequirePermission` 迁移**: 从 base 模块迁移至 common 模块（`io.lumina.common.annotation`），解决 agent 模块编译期不可见问题
+- **文件服务租户校验**: `FileService.getByUuid()` 增加显式 tenantId 防御性过滤
+- **ControllerPermissionTest**: 回归测试验证所有写操作 Controller 有权限注解
+
+#### MCP 运行时注册（P1）
+- **工具自动注册**: `McpToolRegistrar.registerToolsFromServer` 改为 public，`registerServer()` 成功后自动拉取并注册工具到 `EnhancedToolManager`
+
+#### Redis 修复
+- **RAtomicLong/RBucket 类型不匹配**: `RedisCacheManager.incrementAndGetWithExpire` 统一使用 RAtomicLong，修复 expire 操作的类型不匹配
+
+#### API 文档（P1）
+- **Swagger 注解补齐**: Agent 模块 16 个 Controller 补 `@Tag`/`@Operation` 注解（共 118 个 @Operation），Swagger UI 分组清晰
+
+#### 限流与并发控制（P1）
+- **Per-Agent rate limit**: Redis 滑动窗口限流（Flyway V42）
+- **Per-Agent maxConcurrent**: 信号量并发控制（Flyway V43）
+
+#### 预防措施
+- **Flyway 技能包强化**: `lumina_flyway` SKILL.md 新增 Step 0（DESCRIBE 查实际表结构再写 SQL）
+- **CI 迁移检查**: `scripts/check-migration.sh` 集成到 CI workflow，迁移 SQL 列名检查前置
+- **JaCoCo 门控提升**: 最低覆盖率从 10% 提升至 25%
+- **AGENTS.md 检查清单**: 新增 3 项（Controller 权限、调用链完整性、数据持久化）
+
+### 测试
+- **关键路径回归测试**: 覆盖本次审计修复的全部 bug（AgentExecutionChainIntegrationTest 6 个、KnowledgeBaseIsolationTest 2 个、WorkflowPausedContextTest 2 个、PermissionInterceptorIntegrationTest 1 个、BudgetServiceUnitTest 5 个、AbTestServiceUnitTest 5 个）
+- **总计 770 个测试全过**
+
+### 智能运维助手最佳实践 Demo
+- **examples/ops-platform/**: 覆盖全部 16 核心能力的真实业务场景（知识库 + DAG 工作流 + Cron 触发器 + 评估 + A/B + 预算 + 成本）
+- **Python 自动化脚本**: 纯 stdlib 实现，零外部依赖
+- **前端操作指南**: 含 16 张端到端截图
+
+## [3.5.0] - 2026-07-20
+
+### Cron 触发器
+- **定时执行**: Agent 按 Cron 表达式定时执行，复用 `executeTask` 管线（Flyway V41 `lumina_agent_trigger` 表）
+- **Redisson 分布式锁**: 防多实例重复触发，misfire 策略
+- **管理 API**: 创建/暂停/恢复/手动触发/删除 + 前端管理页
+
+### 可观测性
+- **Grafana 3 个预置仪表盘**: Agent 执行 / 工具+RAG / 工作流+Trigger，provisioning 开箱即用
+- **监控叠加文件**: `docker-compose-monitoring.yml` 任意模式一键加监控
+- **健康检查**: actuator/health 暴露 DB/Redis 连通性
+
+### 测试
+- 230 测试通过（v3.4 的 208 + 22 个 trigger 测试）
+
+## [3.4.0] - 2026-07-17
+
+### standalone 单体模式
+- **单 jar 部署**: base+agent+notification 合并为单进程，仅需 MySQL+Redis
+- **docker-compose-standalone.yml**: 一条命令到登录页
+- **StandaloneJwtFilter**: WebMVC OncePerRequestFilter 移植自 Gateway 的 JWT 过滤器
+
+### OpenAI 兼容出口
+- **/v1/chat/completions + /v1/models**: 标准 OpenAI SDK 直接调用
+- **API Token 管理**: sk-xxx 格式 token，Gateway `ApiTokenAuthGlobalFilter` 认证
+
+### 安全修复
+- **向量层租户隔离**: Qdrant payload filter 下推 + tenant_id 索引（修复安全漏洞）
+- **MCP 生产化**: streamable-http 传输 + headers 鉴权 + 重连健康检查 + 运行时动态注册
+
+### 集成出口
+- **Webhook 系统**: per-user/per-category 订阅 + HMAC-SHA256 签名 + 连续失败自动禁用
+- **企业微信机器人**: markdown 着色 + 4096 字节分片 + 限频
+
+### 定位重写
+- 竞品对比表 + 收窄到"企业私有化 Agent 中台"
+
 ## [3.3.0] - 2026-07-16
 
 ### 多模态 PDF/Word 文档理解

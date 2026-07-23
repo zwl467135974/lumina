@@ -28,6 +28,7 @@
 
 ### 部署运维
 - [部署指南](zh/deployment/部署指南.md) — Docker Compose + K8s
+- [standalone 部署](zh/deployment/standalone部署.md) — 单体模式 5 分钟启动（仅 MySQL+Redis）
 - [配置说明](zh/deployment/配置说明.md) — JWT、白名单、租户隔离等
 - [Nacos 动态路由验证](zh/deployment/Nacos动态路由验证.md)
 
@@ -41,6 +42,15 @@
 - [v2.0 路线图](zh/roadmap/v2.0路线图.md)
 - [v3.0 路线图](zh/roadmap/v3.0路线图.md)
 - [前端功能完善路线图](zh/roadmap/前端功能完善路线图.md)
+- [生产就绪加固计划](zh/roadmap/生产就绪加固计划.md) — v3.6 企业级加固
+- [远期规划](zh/roadmap/远期规划.md) — multi-agent handoff / 可观测性 dashboard
+
+### 战略与方案
+- [市场定位分析](zh/strategy/市场定位分析.md) — vs Dify/LangGraph/Spring AI Alibaba
+- [智能运维助手方案](zh/strategy/智能运维助手方案.md) — 覆盖全部 16 能力的最佳实践 demo
+
+### 最佳实践
+- [智能运维助手 Demo](../examples/ops-platform/README.md) — 端到端业务场景 + Python 脚本 + 前端操作指南
 
 ### RFC
 - [Fastjson2 与 Jackson 对比分析](zh/rfc/Fastjson2与Jackson对比分析.md)

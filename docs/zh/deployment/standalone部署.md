@@ -66,6 +66,8 @@ curl http://localhost:8080/api/v1/agents \
 | `LUMINA_JWT_SECRET` | 内置开发密钥 | **生产环境必须改**（至少 32 字符） |
 | `RAG_ENABLED` | `false` | RAG 知识库（需另行部署 Qdrant） |
 | `MCP_ENABLED` | `false` | MCP 外部工具接入 |
+| `LUMINA_TRIGGER_ENABLED` | `true` | Cron 触发器开关（v3.5+，关闭则不轮询定时任务） |
+| `LUMINA_TRIGGER_POLL_MS` | `30000` | Cron 触发器轮询间隔（毫秒） |
 
 ## 方式二：本机 jar 运行
 

@@ -35,11 +35,11 @@
 | Agent 编排 | **5** | 4 | 4 | 3 |
 | 多 Agent 协作 | **5** | 3 | 4 | 1.5 ⚠️ 暂未做 |
 | RAG 完成度 | 3 | **5** | 3.5 | 3.5 |
-| 工具生态 | **5** | **5** | 3.5 | 2（MCP 补强中） |
+| 工具生态 | **5** | **5** | 3.5 | 3.5（MCP 三传输已生产化） |
 | **企业级（多租户/RBAC）** | 2 | 3.5 | 2 | **4.5** ✅ |
 | 工作流引擎 | 4 | **5** | 3.5 | 3 |
 | 文档/社区 | **5** | **5** | 4 | 1 ⚠️ 单人项目 |
-| 开发者体验(DX) | 4 | **5** | 4 | 3（standalone 补强中） |
+| 开发者体验(DX) | 4 | **5** | 4 | 3.5（standalone 已交付） |
 
 完整维度对比见 [`市场定位分析.md`](strategy/市场定位分析.md)。
 
@@ -62,10 +62,13 @@
 
 ## 四、技术栈速览
 
-- **后端**：Java 21 + Spring Boot 3.3.5 + Spring Cloud Alibaba + MyBatis-Plus + Flowable 7.0 + Resilience4j
+- **后端**：Java 21 + Spring Boot 3.3.5 + Spring Cloud Alibaba + MyBatis-Plus + Flowable 7.0.1 + Resilience4j
 - **Agent 底座**：AgentScope Java SDK 1.0.7（ReAct/Plan-Execute/Toolkit/StreamOptions）
 - **前端**：Vue 3 + TypeScript + Element Plus + Pinia
 - **架构**：Gateway(8080) + Agent(8081) + Base(8082) 微服务；standalone 模式可单体部署
+- **API 文档**：SpringDoc OpenAPI 2.6.0（Swagger UI + JWT 安全方案）
+- **定时调度**：Cron 触发器（Redisson 分布式锁，misfire 策略）
+- **成本管控**：模型价格管理（Flyway V44，18 条预置价格）
 
 ## 五、决策树：Lumina vs 竞品
 
@@ -90,6 +93,8 @@
 ## 六、后续路线
 
 - v3.4 已补齐：standalone 单体模式 / OpenAI 兼容出口 / MCP 生产化 / Webhook+企微 / 向量层租户隔离修复
+- v3.5 已补齐：Cron 触发器（定时执行）/ Grafana 3 个预置仪表盘 / 监控叠加文件
+- v3.6 已补齐：模型价格管理 / Token 追踪修复 / Controller 权限审计 / 工作流 PAUSED 上下文修复 / API 文档完善（Swagger）/ 预算在途追踪 / 限流并发控制
 - 规划中：真 multi-agent handoff（接入 AgentScope MsgHub）/ 可观测性 dashboard / 更多渠道（钉钉/飞书/Slack）
 
 详见 [市场定位分析](strategy/市场定位分析.md) 与各 [路线图](roadmap/)。
