@@ -7,15 +7,20 @@ FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# 复制所有 pom.xml 利用缓存
+# 复制所有 pom.xml 利用缓存（含聚合器 pom，否则 Maven 找不到子模块报错）
 COPY pom.xml ./
 COPY lumina-common/pom.xml lumina-common/
 COPY lumina-framework/pom.xml lumina-framework/
 COPY lumina-agent-core/pom.xml lumina-agent-core/
 COPY lumina-gateway/pom.xml lumina-gateway/
+COPY lumina-modules/pom.xml lumina-modules/
+COPY lumina-modules/lumina-business-base/pom.xml lumina-modules/lumina-business-base/
+COPY lumina-modules/lumina-business-agent/pom.xml lumina-modules/lumina-business-agent/
+COPY lumina-modules/lumina-business-notification/pom.xml lumina-modules/lumina-business-notification/
+COPY lumina-standalone/pom.xml lumina-standalone/
 RUN mvn dependency:go-offline -B || true
 
-# 复制源码并构建
+# 复制源码并构建（只需目标模块及其依赖的源码，但聚合器 pom 目录必须存在）
 COPY lumina-common lumina-common
 COPY lumina-framework lumina-framework
 COPY lumina-agent-core lumina-agent-core
