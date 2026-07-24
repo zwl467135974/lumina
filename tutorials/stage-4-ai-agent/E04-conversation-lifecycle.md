@@ -38,13 +38,38 @@
 
 前端对话时，第一次生成一个 UUID，后续每轮都传同一个——Agent 就能"记住"前面说过什么。
 
+### conversationId 的跨线程传播
+
+conversationId 通过 `BaseContext` 的 ThreadLocal 在整个执行链中传递：
+
+```java
+// 引擎入口设置
+BaseContext.setConversationId(conversationId);
+
+// 任何地方都能读取（Agent 工具、记忆管理、Trace 等）
+String cid = BaseContext.getConversationId();
+
+// 执行结束清理（finally 块）
+BaseContext.clearConversationId();
+```
+
+在 Reactor 异步流式路径中，conversationId 还通过 `ConversationIdThreadLocalAccessor` 注册到 Spring 的 `ContextPropagation`，确保跨调度器线程可见。
+
 ---
 
 ## 存储
 
-- **Redis**：短期记忆（会话最近消息，24h 过期）
-- **MySQL** `lumina_conversation` 表：会话元数据（标题/创建时间）
-- **MySQL** `lumina_message` 表：每条消息的持久化（冷存储）
+会话生命周期涉及 5 个存储位置：
+
+| 存储 | 用途 | TTL/保留期 |
+|------|------|-----------|
+| Redis `lumina:agent:memory:{cid}` | 短期记忆（MemoryManager 管理的滑动窗口） | 24h |
+| Redis `lumina:agent:state:{uid}:{cid}:agent_state` | Agent 完整状态（AgentStateStore） | 7 天 |
+| MySQL `lumina_conversation` 表 | 会话元数据（标题/消息数/时间） | 永久 |
+| MySQL `lumina_message` 表 | 每条消息持久化（冷存储） | 永久 |
+| MySQL `lumina_agent_trace` 表 | 推理链记录（每次执行的步骤/Token/耗时） | 30 天自动清理 |
+
+> AgentStateStore 是 AgentScope 2.0 新增的跨实例状态共享机制，详见 [E05 — 跨实例状态共享](E05-agent-state-store.md)。推理链记录详见 [K01 — 推理链可观测性](K01-trace-observability.md)。
 
 ---
 
@@ -54,13 +79,14 @@
 |------|-----------|
 | 会话 | 多轮对话的容器，用 UUID 标识 |
 | conversationId=null | 单轮无状态 |
-| 三层存储 | Redis（热）+ conversation 表（元）+ message 表（冷） |
+| 五层存储 | Redis 短期 + Redis AgentState + conversation 表 + message 表 + trace 表 |
+| 跨线程传播 | BaseContext ThreadLocal + Reactor ContextPropagation |
 
 ---
 
-## 🎉 模块 E 完成
+## 🎉 模块 E 即将完成
 
-> 🚀 [F01 — 流式输出 →](F01-streaming-sse.md)
+> 🚀 [E05 — 跨实例状态共享 →](E05-agent-state-store.md)
 
 ---
 

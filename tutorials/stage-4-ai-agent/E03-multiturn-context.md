@@ -47,6 +47,27 @@
 
 ---
 
+## 两个层次的记忆管理
+
+上面的滑动窗口是 Lumina **引擎层** 的裁剪策略（MemoryManager 控制"给 LLM 看多少历史"）。但 AgentScope 2.0 还有一个更底层的机制——**AgentStateStore**：
+
+```
+┌─────────────────────────────────────────┐
+│  MemoryManager（引擎层）                  │  滑动窗口裁剪，构建 messages 数组
+│  Redis List: lumina:agent:memory:{cid}  │  控制"LLM 每次看到多少历史"
+├─────────────────────────────────────────┤
+│  AgentStateStore（SDK 层）               │  Agent 完整状态持久化
+│  Redis String: lumina:agent:state:...   │  保存"Agent 自身的记忆和状态"
+└─────────────────────────────────────────┘
+```
+
+- **MemoryManager** 决定：这轮调用 LLM 时，messages 数组放几条历史（防止超 Token 窗口）
+- **AgentStateStore** 保证：多实例部署时，Agent 在实例 B 也能读到实例 A 保存的历史
+
+两者互补：滑动窗口管"宽度"（每次看多少），AgentStateStore 管"深度"（跨实例不丢）。详见 [E05 — 跨实例状态共享](E05-agent-state-store.md)。
+
+---
+
 ## 小结
 
 | 概念 | 一句话记忆 |

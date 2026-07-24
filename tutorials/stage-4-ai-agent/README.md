@@ -1,6 +1,6 @@
 # 第四阶：AI/Agent 专项 — Lumina 的核心卖点
 
-> **这是整个教学体系最大的模块（32 篇）。** Lumina 是 AI Agent 平台，AI 是它的灵魂。
+> **这是整个教学体系最大的模块（50 篇）。** Lumina 是 AI Agent 平台，AI 是它的灵魂。
 >
 > **前置建议**：至少完成[第一阶](../stage-1-foundation/README.md)后端基础（01-10）。
 >
@@ -98,7 +98,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 
 ---
 
-### 🧠 模块 E：记忆与对话（4 篇）
+### 🧠 模块 E：记忆与对话（5 篇）
 
 | # | 标题 | 你将学会 |
 |---|------|----------|
@@ -106,6 +106,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 | E02 | [长期记忆](E02-long-term-memory.md) | Reflective Memory：LLM 提取关键事实 |
 | E03 | [多轮上下文管理](E03-multiturn-context.md) | 窗口裁剪策略、上下文注入顺序 |
 | E04 | [会话生命周期](E04-conversation-lifecycle.md) | conversationId UUID、创建/续聊/删除 |
+| E05 | [跨实例状态共享](E05-agent-state-store.md) | AgentScope 2.0 AgentStateStore + Redis 持久化 |
 
 ---
 
@@ -164,13 +165,23 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 
 ---
 
+### 🔬 模块 K：可观测性（1 篇）— "看见 Agent 的思考过程"
+
+**Agent 是黑盒？Trace 让推理链可见。** 这是 Lumina 3.7.0 新增的深度能力，涉及 Reactor 响应式编程的核心机制。
+
+| # | 标题 | 你将学会 |
+|---|------|----------|
+| K01 | [推理链可观测性](K01-trace-observability.md) | Tracer SPI 原理 + Reactor Context 跨线程传播 + Trace 可视化 |
+
+---
+
 ## 推荐学习路径
 
 ### 路径一：循序渐进（推荐）
 ```
 A（基础认知）→ B（Agent 核心）→ C（工具）→ D（RAG）
 → E（记忆）→ F（输出）→ G（成本）→ H（评估）
-→ I（编排）→ J（全景）
+→ I（编排）→ J（全景）→ K（可观测性）
 ```
 
 ### 路径二：项目驱动
