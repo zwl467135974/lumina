@@ -1,6 +1,11 @@
 # Lumina CD - Docker 镜像构建与推送
 # 触发：打 tag v* 或手动 dispatch
-# 注意：本文件为参考模板，需配置 DOCKER_REGISTRY / DOCKER_USERNAME / DOCKER_PASSWORD secrets
+#
+# 配置 Secrets 后才会推送镜像（否则只构建验证不推送）:
+#   DOCKER_REGISTRY   - 镜像仓库地址（默认 registry.cn-hangzhou.aliyuncs.com）
+#   DOCKER_NAMESPACE  - 命名空间（默认 lumina）
+#   DOCKER_USERNAME   - 仓库用户名
+#   DOCKER_PASSWORD   - 仓库密码/Token
 name: Docker Build
 
 on:
@@ -43,7 +48,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check Registry Credentials
+        id: creds
+        run: |
+          if [ -n "${{ secrets.DOCKER_USERNAME }}" ] && [ -n "${{ secrets.DOCKER_PASSWORD }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "✅ Docker 凭证已配置，将推送镜像"
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Docker 凭证未配置，只构建不推送（配置 DOCKER_USERNAME/DOCKER_PASSWORD secrets 后自动推送）"
+          fi
+
       - name: Login to Registry
+        if: steps.creds.outputs.has_creds == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -55,7 +72,7 @@ jobs:
         with:
           context: ${{ matrix.service.context }}
           file: ${{ matrix.service.file }}
-          push: true
+          push: ${{ steps.creds.outputs.has_creds == 'true' }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.service.name }}:${{ steps.tag.outputs.VERSION }}
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.service.name }}:latest
