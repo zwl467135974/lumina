@@ -49,6 +49,12 @@ public class AgentDO implements Serializable {
     private String llmConfig;
 
     /**
+     * 子 Agent 配置 JSON（MultiAgent 模式）
+     */
+    @TableField("sub_agents")
+    private String subAgents;
+
+    /**
      * 工具列表（逗号分隔）
      */
     @TableField("tools")

@@ -777,6 +777,20 @@ public class AgentServiceImpl implements AgentService {
             config.setToolConfig(toolConfig);
         }
 
+        // 解析子 Agent 配置（MultiAgent 模式）
+        if (StringUtils.hasText(agent.getSubAgents())) {
+            try {
+                List<AgentConfig.SubAgentConfig> subAgentList = objectMapper
+                        .readValue(agent.getSubAgents(),
+                                objectMapper.getTypeFactory().constructCollectionType(
+                                        List.class, AgentConfig.SubAgentConfig.class));
+                config.setSubAgents(subAgentList);
+                log.debug("加载子 Agent 配置: {} 个专家", subAgentList.size());
+            } catch (Exception e) {
+                log.warn("解析子 Agent 配置失败: {}", e.getMessage());
+            }
+        }
+
         // A/B 测试变体注入（如果有活跃实验，用变体配置覆盖 LLM/Prompt）
         if (abTestService != null) {
             try {

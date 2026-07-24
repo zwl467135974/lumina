@@ -98,6 +98,15 @@ public class AgentConfig implements Serializable {
     private String structuredOutputClass;
 
     /**
+     * 子 Agent 配置列表（仅 agentType=MultiAgent 时使用）
+     *
+     * <p>每个子 Agent 是一个"专家"，Supervisor 根据用户请求路由到合适的专家执行。
+     *
+     * @since 3.8.0
+     */
+    private List<SubAgentConfig> subAgents;
+
+    /**
      * LLM 模型配置
      */
     @Data
@@ -280,5 +289,41 @@ public class AgentConfig implements Serializable {
          * 最大记忆条数
          */
         private Integer maxMemorySize;
+    }
+
+    /**
+     * 子 Agent 配置（MultiAgent Supervisor 模式的专家 Agent）
+     *
+     * @since 3.8.0
+     */
+    @Data
+    public static class SubAgentConfig implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 专家名称（如"数据分析专家"）
+         */
+        private String name;
+
+        /**
+         * 专家能力描述（Supervisor 据此路由用户请求）
+         */
+        private String description;
+
+        /**
+         * 专家的 System Prompt（null = 继承父 Agent 的 promptTemplate）
+         */
+        private String sysPrompt;
+
+        /**
+         * 专家的 LLM 配置（null = 继承父 Agent 的 llmConfig）
+         */
+        private LLMConfig llmConfig;
+
+        /**
+         * 专家的工具配置（null = 继承父 Agent 的 toolConfig）
+         */
+        private ToolConfig toolConfig;
     }
 }

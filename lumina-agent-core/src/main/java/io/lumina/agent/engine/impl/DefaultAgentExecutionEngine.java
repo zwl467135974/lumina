@@ -614,6 +614,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             if ("PlanAndExecute".equalsIgnoreCase(agentType)) {
                 // Plan-Execute 模式：Planner → Executor → Summarizer
                 response = executePlanAndExecute(config, messages);
+            } else if ("MultiAgent".equalsIgnoreCase(agentType)) {
+                // MultiAgent 模式：Supervisor 路由 → 专家执行 → 汇总
+                response = executeMultiAgent(config, messages);
             } else {
                 // 默认 ReAct 模式 — 检查是否有 failover 链
                 List<AgentConfig.FallbackProvider> fallbacks = config.getLlmConfig() != null
@@ -779,6 +782,73 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         peAgent.setTraceCollector(traceCollector);
 
         return llmResilience.execute("agent-call", () -> peAgent.execute());
+    }
+
+    /**
+     * MultiAgent 模式执行——Supervisor 路由 + 专家协作
+     *
+     * <p>Supervisor LLM 接收用户请求，判断交给哪个专家 Agent 处理，
+     * 专家结果回传后 Supervisor 决定是否继续路由或汇总回复。
+     *
+     * @since 3.8.0
+     */
+    private Msg executeMultiAgent(AgentConfig config, List<Msg> messages) {
+        List<AgentConfig.SubAgentConfig> subAgentConfigs = config.getSubAgents();
+        if (subAgentConfigs == null || subAgentConfigs.isEmpty()) {
+            log.warn("MultiAgent 未配置子 Agent，降级为 ReAct 模式");
+            ReActAgent agent = createReActAgent(config);
+            return injectTraceContext(agent.call(messages)).block();
+        }
+
+        // 解析 Supervisor 的 Model
+        AgentConfig.LLMConfig supervisorLlmConfig = resolveLlmConfig(config);
+        String supervisorModelKey = buildModelCacheKey(supervisorLlmConfig);
+        Model supervisorModel = modelCache.get(supervisorModelKey, k -> {
+            String resolvedApiKey = (supervisorLlmConfig.getApiKey() != null && !supervisorLlmConfig.getApiKey().isEmpty())
+                    ? supervisorLlmConfig.getApiKey() : getApiKey();
+            return chatModelFactory.create(supervisorLlmConfig, agentProperties.getLlm(), resolvedApiKey);
+        });
+
+        // 解析每个子 Agent 的 Model + Toolkit
+        List<io.lumina.agent.engine.MultiAgentSupervisor.SubAgentSpec> specs = new ArrayList<>();
+        for (AgentConfig.SubAgentConfig subCfg : subAgentConfigs) {
+            // 子 Agent 的 LLM 配置：有则用自己的，无则继承父 Agent 的
+            AgentConfig.LLMConfig subLlm = subCfg.getLlmConfig() != null
+                    ? subCfg.getLlmConfig() : supervisorLlmConfig;
+            String subModelKey = buildModelCacheKey(subLlm);
+            Model subModel = modelCache.get(subModelKey, k -> {
+                String resolvedApiKey = (subLlm.getApiKey() != null && !subLlm.getApiKey().isEmpty())
+                        ? subLlm.getApiKey() : getApiKey();
+                return chatModelFactory.create(subLlm, agentProperties.getLlm(), resolvedApiKey);
+            });
+
+            // 子 Agent 的 Toolkit：有则用自己的，无则继承父 Agent 的
+            Toolkit subToolkit;
+            if (subCfg.getToolConfig() != null) {
+                AgentConfig toolConfig = new AgentConfig();
+                toolConfig.setToolConfig(subCfg.getToolConfig());
+                toolConfig.setAgentId(config.getAgentId());
+                subToolkit = resolveToolkit(toolConfig);
+            } else {
+                subToolkit = resolveToolkit(config);
+            }
+
+            String subSysPrompt = subCfg.getSysPrompt() != null
+                    ? subCfg.getSysPrompt() : config.getPromptTemplate();
+
+            specs.add(new io.lumina.agent.engine.MultiAgentSupervisor.SubAgentSpec(
+                    subCfg.getName(), subCfg.getDescription(), subSysPrompt, subModel, subToolkit));
+        }
+
+        log.info("MultiAgent 配置: {} 个专家", specs.size());
+
+        io.lumina.agent.engine.MultiAgentSupervisor supervisor =
+                new io.lumina.agent.engine.MultiAgentSupervisor(
+                        supervisorModel, specs, config.getPromptTemplate(),
+                        config.getMaxIterations() != null ? config.getMaxIterations() : 5);
+        supervisor.setTraceCollector(traceCollector);
+
+        return llmResilience.execute("agent-call", () -> supervisor.execute(messages));
     }
 
     /**
