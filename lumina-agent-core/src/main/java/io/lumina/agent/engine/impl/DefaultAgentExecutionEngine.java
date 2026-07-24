@@ -122,6 +122,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.tracing.TraceCollector traceCollector;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.memory.RedisAgentStateStore redisAgentStateStore;
+
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
@@ -769,6 +772,16 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 .sysPrompt(config.getPromptTemplate() != null ? config.getPromptTemplate() : "You are a helpful AI assistant.")
                 .model(model)
                 .toolkit(toolkit);
+
+        // 注入 Redis AgentStateStore（跨实例记忆共享）
+        if (redisAgentStateStore != null) {
+            agentBuilder.stateStore(redisAgentStateStore);
+            String sessionId = BaseContext.getConversationId();
+            if (sessionId != null) {
+                agentBuilder.defaultSessionId(sessionId);
+            }
+            log.debug("AgentStateStore 已注入: sessionId={}", sessionId);
+        }
 
         configureRag(agentBuilder, config);
 
