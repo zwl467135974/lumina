@@ -145,6 +145,8 @@ lumina:
         enabled: ${LUMINA_TRACE_CLEANUP_ENABLED:true}
         retention-days: ${LUMINA_TRACE_RETENTION_DAYS:30}
         cron: ${LUMINA_TRACE_CLEANUP_CRON:0 0 3 * * ?}
+    # ReAct 循环最大迭代次数（防止死循环，单个 Agent 可通过 AgentConfig 覆盖）
+    max-iterations: ${LUMINA_AGENT_MAX_ITERS:10}
     content-moderation:
       enabled: ${CONTENT_MODERATION_ENABLED:true}
       strict: ${CONTENT_MODERATION_STRICT:false}
@@ -154,6 +156,11 @@ lumina:
         max-facts-per-turn: ${REFLECTIVE_MAX_FACTS:5} # 每次提取最大条数
         max-context-memories: ${REFLECTIVE_MAX_CONTEXT:20} # 上下文注入最大条数
         max-fact-length: ${REFLECTIVE_MAX_LENGTH:500} # 单条最大长度
+      compression:
+        enabled: ${CONTEXT_COMPRESSION_ENABLED:false}  # 是否启用上下文压缩
+        threshold: ${CONTEXT_COMPRESSION_THRESHOLD:15}  # 触发压缩的消息条数
+        recent-keep-count: ${CONTEXT_COMPRESSION_KEEP:5} # 保留最近 N 条不压缩
+        summary-max-tokens: ${CONTEXT_COMPRESSION_MAX_TOKENS:500} # 摘要最大 Token
     code-interpreter:
       enabled: ${CODE_INTERPRETER_ENABLED:false}          # 是否启用代码解释器
       mode: ${CODE_INTERPRETER_MODE:process}              # 执行模式：process 或 docker

@@ -65,6 +65,39 @@ public class AgentConfig implements Serializable {
     private Map<String, Object> extraParams;
 
     /**
+     * ReAct 循环最大迭代次数（null 时用全局默认 lumina.agent.max-iterations）
+     *
+     * <p>每次迭代 = 一次 LLM 推理 + 一次工具调用。超过次数后 Agent 强制停止。
+     * 防止 Agent 陷入死循环无限烧 Token。
+     *
+     * @since 3.8.0
+     */
+    private Integer maxIterations;
+
+    /**
+     * 结构化输出模式（JSON_OBJECT / TEXT，null = 不启用）
+     *
+     * <p>启用后 Agent 通过 GenerateOptions.responseFormat 约束 LLM 输出格式。
+     * <ul>
+     *   <li>JSON_OBJECT：强制模型输出合法 JSON</li>
+     *   <li>TEXT：普通文本输出（默认）</li>
+     * </ul>
+     *
+     * @since 3.8.0
+     */
+    private String structuredOutputMode;
+
+    /**
+     * 结构化输出的目标 Java 类全限定名（如 io.lumina.agent.dto.WeatherResult）
+     *
+     * <p>AgentScope 会根据此类的字段定义生成 JSON Schema，约束 LLM 输出。
+     * 仅当 {@link #structuredOutputMode} 不为 null 时生效。
+     *
+     * @since 3.8.0
+     */
+    private String structuredOutputClass;
+
+    /**
      * LLM 模型配置
      */
     @Data

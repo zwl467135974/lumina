@@ -125,6 +125,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.memory.RedisAgentStateStore redisAgentStateStore;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.service.ContextSummarizer contextSummarizer;
+
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
@@ -484,16 +487,64 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
         if (conversationId != null) {
             List<MemoryManager.Memory> history = memoryManager.getRecentMemories(conversationId, CONTEXT_WINDOW);
-            for (MemoryManager.Memory m : history) {
-                MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
-                        : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
-                messages.add(Msg.builder().role(role).textContent(m.content()).build());
-            }
-            log.debug("加载历史记忆: conversationId={}, 条数={}", conversationId, history.size());
 
-            // Trace 埋点：记忆注入
-            if (traceCollector != null) {
-                traceCollector.recordMemoryStep(longTermCount, history.size());
+            // 上下文压缩：历史超过阈值时，摘要旧消息而非直接丢弃
+            LuminaAgentProperties.CompressionConfig compressionConfig =
+                    agentProperties.getMemory().getCompression();
+            if (contextSummarizer != null && compressionConfig.isEnabled()
+                    && history.size() > compressionConfig.getThreshold()) {
+                int keepCount = compressionConfig.getRecentKeepCount();
+                // 分割：[0, splitIndex) 压缩，[splitIndex, end) 保留原始
+                int splitIndex = history.size() - keepCount;
+                List<MemoryManager.Memory> toCompress = history.subList(0, splitIndex);
+                List<MemoryManager.Memory> toKeep = history.subList(splitIndex, history.size());
+
+                try {
+                    String summary = contextSummarizer.summarize(toCompress,
+                            agentConfig != null ? agentConfig.getAgentName() : "Agent");
+                    // 摘要作为 SYSTEM 消息注入（和长期记忆同一位置）
+                    messages.add(Msg.builder().role(MsgRole.SYSTEM)
+                            .textContent("[对话历史摘要] " + summary)
+                            .build());
+                    log.info("上下文压缩: 压缩 {} 条旧消息为摘要，保留 {} 条最近消息",
+                            toCompress.size(), toKeep.size());
+
+                    // 只保留最近的消息
+                    for (MemoryManager.Memory m : toKeep) {
+                        MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
+                                : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
+                        messages.add(Msg.builder().role(role).textContent(m.content()).build());
+                    }
+
+                    // Trace 埋点（压缩后：原始 history 条数，保留条数）
+                    if (traceCollector != null) {
+                        traceCollector.recordMemoryStep(longTermCount, history.size());
+                    }
+                } catch (Exception e) {
+                    log.warn("上下文压缩失败，降级为全量加载: {}", e.getMessage());
+                    // 降级：不做压缩，加载全部历史
+                    for (MemoryManager.Memory m : history) {
+                        MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
+                                : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
+                        messages.add(Msg.builder().role(role).textContent(m.content()).build());
+                    }
+                    if (traceCollector != null) {
+                        traceCollector.recordMemoryStep(longTermCount, history.size());
+                    }
+                }
+            } else {
+                // 正常路径：全量加载历史
+                for (MemoryManager.Memory m : history) {
+                    MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
+                            : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
+                    messages.add(Msg.builder().role(role).textContent(m.content()).build());
+                }
+                log.debug("加载历史记忆: conversationId={}, 条数={}", conversationId, history.size());
+
+                // Trace 埋点：记忆注入
+                if (traceCollector != null) {
+                    traceCollector.recordMemoryStep(longTermCount, history.size());
+                }
             }
         }
 
@@ -882,6 +933,35 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             log.info("AgentStateStore 已注入: sessionId={}, userId={}", sessionId, BaseContext.getUserId());
         } else {
             log.warn("RedisAgentStateStore 未注入，跨实例记忆共享不可用");
+        }
+
+        // 循环迭代限制（防止死循环烧 Token）
+        int maxIters = config.getMaxIterations() != null
+                ? config.getMaxIterations()
+                : agentProperties.getMaxIterations();
+        agentBuilder.maxIters(maxIters);
+        log.debug("ReActAgent maxIters={}", maxIters);
+
+        // 结构化输出（可选，通过 GenerateOptions.responseFormat 配置）
+        if (config.getStructuredOutputMode() != null) {
+            try {
+                io.agentscope.core.formatter.ResponseFormat format;
+                String mode = config.getStructuredOutputMode().toUpperCase();
+                if ("JSON_OBJECT".equals(mode)) {
+                    format = io.agentscope.core.formatter.ResponseFormat.jsonObject();
+                } else if ("TEXT".equals(mode)) {
+                    format = io.agentscope.core.formatter.ResponseFormat.text();
+                } else {
+                    format = io.agentscope.core.formatter.ResponseFormat.jsonObject(); // 默认 JSON
+                }
+
+                io.agentscope.core.model.GenerateOptions options =
+                        io.agentscope.core.model.GenerateOptions.builder().responseFormat(format).build();
+                agentBuilder.generateOptions(options);
+                log.info("结构化输出已启用: mode={}", config.getStructuredOutputMode());
+            } catch (Exception e) {
+                log.warn("结构化输出配置失败: {}", e.getMessage());
+            }
         }
 
         configureRag(agentBuilder, config);

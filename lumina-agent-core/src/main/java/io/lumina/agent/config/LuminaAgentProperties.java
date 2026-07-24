@@ -25,6 +25,15 @@ public class LuminaAgentProperties {
     private LLMConfig llm = new LLMConfig();
 
     /**
+     * ReAct 循环最大迭代次数（每次迭代 = 一次推理 + 一次工具调用）
+     *
+     * <p>防止 Agent 陷入死循环无限烧 Token。单个 Agent 可通过 AgentConfig.maxIterations 覆盖。
+     *
+     * @since 3.8.0
+     */
+    private Integer maxIterations = 10;
+
+    /**
      * LLM 配置
      */
     @Data
@@ -171,6 +180,32 @@ public class LuminaAgentProperties {
          * 是否启用反思记忆（对话后异步提取关键事实）
          */
         private ReflectiveConfig reflective = new ReflectiveConfig();
+
+        /**
+         * 上下文压缩配置（长对话滚动摘要）
+         *
+         * @since 3.8.0
+         */
+        private CompressionConfig compression = new CompressionConfig();
+    }
+
+    /**
+     * 上下文压缩配置
+     *
+     * <p>当对话历史超过阈值时，将较早的消息用 LLM 摘要替代，避免直接丢弃导致信息丢失。
+     *
+     * @since 3.8.0
+     */
+    @Data
+    public static class CompressionConfig {
+        /** 是否启用上下文压缩（默认 false） */
+        private boolean enabled = false;
+        /** 触发压缩的消息条数阈值（超过此值时压缩旧消息） */
+        private int threshold = 15;
+        /** 保留最近 N 条消息不压缩 */
+        private int recentKeepCount = 5;
+        /** 摘要最大 Token 数 */
+        private int summaryMaxTokens = 500;
     }
 
     /**
