@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -29,6 +30,9 @@ import java.util.List;
 public class AgentTraceServiceImpl implements AgentTraceService {
 
     private final AgentTraceMapper agentTraceMapper;
+
+    /** 单次清理最大删除行数（避免大事务） */
+    private static final int CLEANUP_BATCH_SIZE = 1000;
 
     @Override
     public PageResult<AgentTraceVO> list(Long agentId, String status, int pageNum, int pageSize) {
@@ -67,5 +71,21 @@ public class AgentTraceServiceImpl implements AgentTraceService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Trace 不存在");
         }
         return AgentTraceVO.from(trace);
+    }
+
+    @Override
+    public int cleanupExpired(int retentionDays) {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
+        int totalDeleted = 0;
+
+        // 分批删除避免大事务锁表
+        int deleted;
+        do {
+            deleted = agentTraceMapper.deleteOlderThan(cutoff, CLEANUP_BATCH_SIZE);
+            totalDeleted += deleted;
+        } while (deleted >= CLEANUP_BATCH_SIZE);
+
+        log.info("Trace 清理完成: retentionDays={}, cutoff={}, deleted={}", retentionDays, cutoff, totalDeleted);
+        return totalDeleted;
     }
 }

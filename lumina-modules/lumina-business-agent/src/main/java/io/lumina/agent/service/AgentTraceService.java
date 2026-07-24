@@ -20,4 +20,12 @@ public interface AgentTraceService {
      * 查询 Trace 详情（含完整 steps JSON）
      */
     AgentTraceVO getByUuid(String traceUuid);
+
+    /**
+     * 清理过期 Trace 记录
+     *
+     * @param retentionDays 保留天数（删除此天数之前的记录）
+     * @return 实际删除的记录数
+     */
+    int cleanupExpired(int retentionDays);
 }

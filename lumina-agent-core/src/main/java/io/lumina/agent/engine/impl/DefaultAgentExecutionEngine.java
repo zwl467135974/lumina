@@ -189,6 +189,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             traceCtx = traceCollector.startTrace(businessType);
             traceCtx.setInputText(task);
             traceCtx.setConversationUuid(conversationId);
+            traceCtx.setTaskUuid(io.lumina.common.core.BaseContext.getTaskUuid());
             if (config != null) {
                 traceCtx.setAgentName(config.getAgentName());
                 traceCtx.setAgentType(config.getAgentType());
@@ -310,6 +311,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             traceCtx = traceCollector.startTrace(businessType);
             traceCtx.setInputText(task);
             traceCtx.setConversationUuid(conversationId);
+            traceCtx.setTaskUuid(io.lumina.common.core.BaseContext.getTaskUuid());
         }
 
         try {
@@ -723,6 +725,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
         PlanExecuteAgent peAgent = new PlanExecuteAgent(model, toolkit, userPrompt,
                 config.getPromptTemplate() != null ? config.getPromptTemplate() + "\n\n" + conversationContext : conversationContext);
+        peAgent.setTraceCollector(traceCollector);
 
         return llmResilience.execute("agent-call", () -> peAgent.execute());
     }

@@ -65,6 +65,9 @@ public class PlanExecuteAgent {
     private final String systemPrompt;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** Trace 采集器（可选，由引擎层注入，用于记录 SUMMARIZE 步骤） */
+    private io.lumina.agent.tracing.TraceCollector traceCollector;
+
     private long totalInputTokens = 0;
     private long totalOutputTokens = 0;
 
@@ -78,6 +81,15 @@ public class PlanExecuteAgent {
         this.toolkit = toolkit;
         this.userPrompt = userPrompt;
         this.systemPrompt = systemPrompt != null ? systemPrompt : "You are a helpful AI assistant.";
+    }
+
+    /**
+     * 注入 Trace 采集器（引擎层调用，用于记录 SUMMARIZE 步骤）
+     *
+     * @param traceCollector Trace 采集器
+     */
+    public void setTraceCollector(io.lumina.agent.tracing.TraceCollector traceCollector) {
+        this.traceCollector = traceCollector;
     }
 
     /**
@@ -367,8 +379,21 @@ public class PlanExecuteAgent {
         }
         prompt.append("Please synthesize these results into a final answer.");
 
-        Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(prompt.toString()).build();
+        String summarizeInput = prompt.toString();
+        long startTime = System.currentTimeMillis();
+
+        Msg userMsg = Msg.builder().role(MsgRole.USER).textContent(summarizeInput).build();
         Msg response = summarizer.call(List.of(userMsg)).block();
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        // Trace 埋点：SUMMARIZE 步骤
+        if (traceCollector != null) {
+            io.lumina.agent.tracing.TraceContext ctx = traceCollector.getCurrentContext();
+            String output = response != null ? response.getTextContent() : "汇总失败";
+            traceCollector.recordSummarizeStep(ctx, summarizeInput, output, duration);
+        }
+
         if (response == null) {
             // 降级：拼接所有结果
             String fallback = String.join("\n\n", results);

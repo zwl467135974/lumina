@@ -146,6 +146,25 @@ public class TraceCollector {
     }
 
     /**
+     * 记录汇总步骤（PlanAndExecute 的 Summarizer 阶段）
+     *
+     * @param ctx        Trace 上下文（从 ThreadLocal 取）
+     * @param input      汇总输入（各子任务结果拼接）
+     * @param output     汇总输出（最终回复）
+     * @param durationMs 耗时
+     */
+    public void recordSummarizeStep(TraceContext ctx, String input, String output, long durationMs) {
+        if (ctx == null) return;
+
+        TraceStep step = ctx.newStep("SUMMARIZE", "结果汇总");
+        step.setInput(TraceStep.truncate(input, 500));
+        step.setOutput(TraceStep.truncate(output, 500));
+        step.setDurationMs(durationMs);
+        step.finish();
+        ctx.addStep(step);
+    }
+
+    /**
      * 记录记忆注入步骤（手动埋点，从 ThreadLocal 取 ctx）
      */
     public void recordMemoryStep(int longTermCount, int shortTermCount) {

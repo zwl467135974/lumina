@@ -139,6 +139,12 @@ lumina:
       bucket: ${MINIO_BUCKET:lumina-files}
 
   agent:
+    # Trace 清理（每天凌晨 3 点删除过期记录）
+    trace:
+      cleanup:
+        enabled: ${LUMINA_TRACE_CLEANUP_ENABLED:true}
+        retention-days: ${LUMINA_TRACE_RETENTION_DAYS:30}
+        cron: ${LUMINA_TRACE_CLEANUP_CRON:0 0 3 * * ?}
     content-moderation:
       enabled: ${CONTENT_MODERATION_ENABLED:true}
       strict: ${CONTENT_MODERATION_STRICT:false}

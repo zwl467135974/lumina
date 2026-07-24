@@ -50,24 +50,29 @@ public class LuminaTraceTracer implements Tracer {
     public Mono<Msg> callAgent(AgentBase agent, List<Msg> inputs, Supplier<Mono<Msg>> next) {
         // 从 Reactor Context 取引擎层注入的 TraceContext
         return Mono.deferContextual(ctxView -> {
-            TraceContext existing = ctxView.getOrDefault(TraceContext.KEY, null);
+            TraceContext fromReactor = ctxView.getOrDefault(TraceContext.KEY, null);
 
-            if (existing == null) {
-                // 兜底：引擎未注入 TraceContext（如独立 SDK 调用），Tracer 自行创建
+            // Reactor Context 没有时，先查 ThreadLocal（PlanExecuteAgent 内部 .block() 同线程场景）
+            TraceContext ctx = fromReactor != null ? fromReactor : collector.getCurrentContext();
+
+            if (ctx == null) {
+                // 兜底：引擎未启动 trace 且 ThreadLocal 也无（如独立 SDK 调用），Tracer 自行创建
                 TraceContext newCtx = collector.startTrace(agent.getName());
                 newCtx.setInputText(extractUserInput(inputs));
-                // 需要重新写入 Reactor Context 供下游使用
                 return next.get()
                         .contextWrite(context -> context.put(TraceContext.KEY, newCtx));
             }
 
             // 补充 agent 名称（如果引擎未设置）
-            if (existing.getAgentName() == null) {
-                existing.setAgentName(agent.getName());
+            if (ctx.getAgentName() == null) {
+                ctx.setAgentName(agent.getName());
             }
 
-            // 下游 callModel/callTool 通过 Reactor Context 读取（ctx 已在上游注入）
-            return next.get();
+            // 将已有 TraceContext 写入 Reactor Context，供下游 callModel/callTool 读取
+            // （覆盖 PlanExecuteAgent 内部 agent.call() 未 contextWrite 的场景）
+            final TraceContext finalCtx = ctx;
+            return next.get()
+                    .contextWrite(context -> context.put(TraceContext.KEY, finalCtx));
         });
     }
 

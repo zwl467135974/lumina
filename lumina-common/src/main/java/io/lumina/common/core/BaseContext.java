@@ -28,6 +28,11 @@ public class BaseContext {
      */
     private static final ThreadLocal<String> CONVERSATION_ID = new ThreadLocal<>();
 
+    /**
+     * 当前异步任务 UUID（用于 Trace 关联异步任务记录）
+     */
+    private static final ThreadLocal<String> TASK_UUID = new ThreadLocal<>();
+
     // ==================== 快照级操作（供 ThreadLocalAccessor / 跨线程传播使用）====================
 
     /**
@@ -192,6 +197,33 @@ public class BaseContext {
         CONVERSATION_ID.remove();
     }
 
+    // ==================== 异步任务 UUID ====================
+
+    /**
+     * 设置异步任务 UUID（异步执行入口调用，引擎层 Trace 通过此关联任务记录）
+     *
+     * @param taskUuid 任务 UUID
+     */
+    public static void setTaskUuid(String taskUuid) {
+        TASK_UUID.set(taskUuid);
+    }
+
+    /**
+     * 获取异步任务 UUID
+     *
+     * @return 当前线程绑定的任务 UUID，未设置时返回 null
+     */
+    public static String getTaskUuid() {
+        return TASK_UUID.get();
+    }
+
+    /**
+     * 清除异步任务 UUID
+     */
+    public static void clearTaskUuid() {
+        TASK_UUID.remove();
+    }
+
     // ==================== 角色与权限判定 ====================
 
     /**
@@ -277,6 +309,7 @@ public class BaseContext {
     public static void clear() {
         CONTEXT.remove();
         CONVERSATION_ID.remove();
+        TASK_UUID.remove();
         log.debug("清除 Base 上下文");
     }
 

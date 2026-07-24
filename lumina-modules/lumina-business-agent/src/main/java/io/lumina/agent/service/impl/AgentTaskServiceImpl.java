@@ -173,6 +173,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     @Override
     public void executeTask(String taskUuid, LoginContext loginContext) {
         BaseContext.setCurrent(loginContext);
+        BaseContext.setTaskUuid(taskUuid);
         long start = System.currentTimeMillis();
         try {
             AgentTaskDO task = selectByUuid(taskUuid);
