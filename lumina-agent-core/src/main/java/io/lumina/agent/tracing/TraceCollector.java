@@ -61,31 +61,44 @@ public class TraceCollector {
     }
 
     /**
-     * 记录推理步骤（通过 Reactor Context 传递的 TraceContext）
+     * 开始记录推理步骤（在 LLM 调用前调用，记录开始时间）
      *
-     * @param ctx              Trace 上下文（从 Reactor Context 取得）
-     * @param promptTokens     输入 Token 数
-     * @param completionTokens 输出 Token 数
+     * @param ctx Trace 上下文
+     * @return 创建的 TraceStep（尚未 finish，供后续 finishReasoningStep 使用）
      */
-    public void recordReasoningStep(TraceContext ctx, int promptTokens, int completionTokens) {
-        recordReasoningStep(ctx, promptTokens, completionTokens, 0);
+    public TraceStep startReasoningStep(TraceContext ctx) {
+        if (ctx == null) return null;
+        return ctx.newStep("REASONING", "LLM 推理");
     }
 
     /**
-     * 记录推理步骤（含 LLM 调用耗时）
+     * 完成推理步骤（在 LLM 返回 usage 后调用，计算实际耗时）
+     *
+     * @param ctx              Trace 上下文
+     * @param step             startReasoningStep 返回的 step
+     * @param promptTokens     输入 Token 数
+     * @param completionTokens 输出 Token 数
+     */
+    public void finishReasoningStep(TraceContext ctx, TraceStep step, int promptTokens, int completionTokens) {
+        if (ctx == null || step == null) return;
+        step.setPromptTokens(promptTokens);
+        step.setCompletionTokens(completionTokens);
+        step.finish();
+        ctx.addStep(step);
+    }
+
+    /**
+     * 记录推理步骤（一次性完成，无耗时测量——兼容旧调用方）
      *
      * @param ctx              Trace 上下文
      * @param promptTokens     输入 Token 数
      * @param completionTokens 输出 Token 数
-     * @param durationMs       LLM 调用耗时（毫秒）
      */
-    public void recordReasoningStep(TraceContext ctx, int promptTokens, int completionTokens, long durationMs) {
+    public void recordReasoningStep(TraceContext ctx, int promptTokens, int completionTokens) {
         if (ctx == null) return;
-
         TraceStep step = ctx.newStep("REASONING", "LLM 推理");
         step.setPromptTokens(promptTokens);
         step.setCompletionTokens(completionTokens);
-        step.setDurationMs(durationMs);
         step.finish();
         ctx.addStep(step);
     }
