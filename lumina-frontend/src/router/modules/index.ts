@@ -118,6 +118,17 @@ export const agentRoutes: AppRouteRecordRaw[] = [
           requiresAuth: true,
           keepAlive: true
         }
+      },
+      {
+        path: 'trace',
+        name: 'AgentTrace',
+        component: () => import('@/views/agent/trace.vue'),
+        meta: {
+          title: '推理追踪',
+          requiresAuth: true,
+          keepAlive: true,
+          permissions: ['monitor']
+        }
       }
     ]
   }
