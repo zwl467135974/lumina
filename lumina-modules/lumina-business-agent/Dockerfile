@@ -7,15 +7,17 @@ FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# 先复制所有 pom.xml 利用 Docker 缓存加速依赖下载
+# 先复制所有 pom.xml 利用 Docker 缓存加速依赖下载（含聚合器 pom）
 COPY pom.xml ./
 COPY lumina-common/pom.xml lumina-common/
 COPY lumina-framework/pom.xml lumina-framework/
 COPY lumina-agent-core/pom.xml lumina-agent-core/
 COPY lumina-gateway/pom.xml lumina-gateway/
+COPY lumina-modules/pom.xml lumina-modules/
 COPY lumina-modules/lumina-business-base/pom.xml lumina-modules/lumina-business-base/
 COPY lumina-modules/lumina-business-agent/pom.xml lumina-modules/lumina-business-agent/
 COPY lumina-modules/lumina-business-notification/pom.xml lumina-modules/lumina-business-notification/
+COPY lumina-standalone/pom.xml lumina-standalone/
 RUN mvn dependency:go-offline -B || true
 
 # 复制全部源码并构建指定模块（含依赖模块）
