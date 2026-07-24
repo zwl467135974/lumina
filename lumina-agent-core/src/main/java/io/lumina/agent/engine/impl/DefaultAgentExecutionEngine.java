@@ -183,6 +183,18 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         long startTime = System.currentTimeMillis();
         BaseContext.setConversationId(conversationId);
 
+        // 启动 Trace（引擎层管理生命周期，Tracer 通过 Reactor Context 复用）
+        io.lumina.agent.tracing.TraceContext traceCtx = null;
+        if (traceCollector != null) {
+            traceCtx = traceCollector.startTrace(businessType);
+            traceCtx.setInputText(task);
+            traceCtx.setConversationUuid(conversationId);
+            if (config != null) {
+                traceCtx.setAgentName(config.getAgentName());
+                traceCtx.setAgentType(config.getAgentType());
+            }
+        }
+
         try {
             int contentCount = contents != null ? contents.size() : 0;
             log.info("开始执行 Agent: businessType={}, task={}, contentCount={}, conversationId={}",
@@ -190,6 +202,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             // 加载配置
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
+
+            // 补充 Trace agent 信息（config 加载后）
+            if (traceCtx != null && config == null) {
+                traceCtx.setAgentName(agentConfig.getAgentName());
+                traceCtx.setAgentType(agentConfig.getAgentType());
+            }
 
             // 加载提示词
             String promptTemplate = agentConfig.getPromptTemplate();
@@ -224,6 +242,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             recordTimer("agent.execution.duration", businessType, "success", duration);
 
+            // 完成 Trace（成功）
+            if (traceCtx != null) {
+                traceCtx.markSuccess(result);
+            }
+
             ExecuteResult executeResult = ExecuteResult.success(result);
             executeResult.setDuration(duration);
             executeResult.setTokenUsage(tokenUsage);
@@ -236,10 +259,19 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             recordTimer("agent.execution.duration", businessType, "failure", duration);
 
+            // 完成 Trace（失败）
+            if (traceCtx != null) {
+                traceCtx.markFailed(e.getMessage());
+            }
+
             ExecuteResult executeResult = ExecuteResult.failure(e.getMessage());
             executeResult.setDuration(duration);
             return executeResult;
         } finally {
+            // 落库 Trace（异步）
+            if (traceCtx != null && traceCollector != null) {
+                traceCollector.finishTrace(traceCtx);
+            }
             BaseContext.clearConversationId();
         }
     }
@@ -493,8 +525,17 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     response = executeWithFailoverChain(config, messages, fallbacks);
                 } else {
                     ReActAgent agent = createReActAgent(config);
+                    // 注入 TraceContext 到 Reactor Context，供 Tracer 的 callModel/callTool 读取
+                    io.lumina.agent.tracing.TraceContext tCtx =
+                            traceCollector != null ? traceCollector.getCurrentContext() : null;
+                    Mono<Msg> callMono = agent.call(messages);
+                    if (tCtx != null) {
+                        callMono = callMono.contextWrite(ctx ->
+                                ctx.put(io.lumina.agent.tracing.TraceContext.KEY, tCtx));
+                    }
+                    final Mono<Msg> finalCallMono = callMono;
                     response = llmResilience.execute("agent-call",
-                            () -> agent.call(messages).block());
+                            () -> finalCallMono.block());
                 }
             }
 
@@ -780,7 +821,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             if (sessionId != null) {
                 agentBuilder.defaultSessionId(sessionId);
             }
-            log.debug("AgentStateStore 已注入: sessionId={}", sessionId);
+            log.info("AgentStateStore 已注入: sessionId={}, userId={}", sessionId, BaseContext.getUserId());
+        } else {
+            log.warn("RedisAgentStateStore 未注入，跨实例记忆共享不可用");
         }
 
         configureRag(agentBuilder, config);

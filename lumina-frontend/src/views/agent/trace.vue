@@ -4,7 +4,7 @@
     <el-card v-if="!selectedTrace">
       <template #header>
         <div style="display: flex; justify-content: space-between; align-items: center">
-          <span>{{ t('agent.trace.title') }}</span>
+          <span>推理追踪</span>
           <div>
             <el-select v-model="filterStatus" placeholder="状态" clearable size="small" style="width: 120px; margin-right: 8px">
               <el-option label="成功" value="SUCCESS" />
@@ -121,8 +121,6 @@ import type { AgentTraceVO } from '@/types/agent-trace'
 import { STEP_TYPE_TAG, TRACE_STATUS_TAG } from '@/types/agent-trace'
 import LumStatCard from '@/components/common/LumStatCard.vue'
 
-const { t } = useI18n()
-
 // === 列表状态 ===
 const loading = ref(false)
 const tableData = ref<AgentTraceVO[]>([])
@@ -151,7 +149,16 @@ const loadData = async () => {
 // === 查看详情 ===
 const showDetail = async (row: AgentTraceVO) => {
   const res = await getAgentTraceDetail(row.traceUuid)
-  selectedTrace.value = res.data
+  const trace = res.data
+  // steps 从后端返回的是 JSON 字符串，需要解析为数组
+  if (trace.steps && typeof trace.steps === 'string') {
+    try {
+      ;(trace as any).steps = JSON.parse(trace.steps as any)
+    } catch {
+      ;(trace as any).steps = []
+    }
+  }
+  selectedTrace.value = trace
 }
 
 // === 标签辅助 ===
@@ -159,11 +166,6 @@ const statusLabel = (status: string) => TRACE_STATUS_TAG[status]?.label || statu
 const statusTagType = (status: string) => TRACE_STATUS_TAG[status]?.color || 'info'
 const stepLabel = (type: string) => STEP_TYPE_TAG[type]?.label || type
 const stepTagType = (type: string) => STEP_TYPE_TAG[type]?.color || 'info'
-
-// i18n fallback
-function useI18n() {
-  return { t: (key: string) => key }
-}
 
 onMounted(() => loadData())
 </script>

@@ -51,10 +51,14 @@ public class RedisAgentStateStore implements AgentStateStore {
             if (state instanceof AgentState agentState) {
                 String json = agentState.toJson();
                 redisCacheManager.set(redisKey, json, TTL);
-                log.debug("AgentState 已保存: userId={}, sessionId={}, key={}", userId, sessionId, key);
+                log.info("AgentState 已保存: userId={}, sessionId={}, key={}, bytes={}",
+                        userId, sessionId, key, json.length());
+            } else {
+                log.warn("AgentState 保存跳过: state 类型不是 AgentState ({}), userId={}, sessionId={}",
+                        state.getClass().getSimpleName(), userId, sessionId);
             }
         } catch (Exception e) {
-            log.warn("AgentState 保存失败: {}", e.getMessage());
+            log.warn("AgentState 保存失败: {}", e.getMessage(), e);
         }
     }
 

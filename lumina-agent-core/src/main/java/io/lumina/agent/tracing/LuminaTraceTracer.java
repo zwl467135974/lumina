@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,16 @@ import java.util.function.Supplier;
  * <p>通过 {@code TracerRegistry.register()} 全局注册后，
  * 自动拦截 AgentScope 所有 Agent/Model/Tool 调用，采集推理链步骤。
  *
- * <p>不需要改任何 Builder 代码——一行注册全局生效。
+ * <p><b>上下文传递机制</b>：AgentScope 2.0 基于 Reactor 响应式链，
+ * callModel/callTool 可能在不同线程执行。因此 TraceContext 必须通过
+ * Reactor Context（{@code contextWrite}/{@code deferContextual}）传递，
+ * 而非 ThreadLocal。
+ *
+ * <p>流程：
+ * <ol>
+ *   <li>{@link #callAgent} 创建 TraceContext，通过 contextWrite 写入 Reactor Context</li>
+ *   <li>{@link #callModel}/{@link #callTool} 通过 deferContextual 从 Reactor Context 读取</li>
+ * </ol>
  *
  * @author Lumina Team
  * @since 3.7.0
@@ -38,27 +48,27 @@ public class LuminaTraceTracer implements Tracer {
 
     @Override
     public Mono<Msg> callAgent(AgentBase agent, List<Msg> inputs, Supplier<Mono<Msg>> next) {
-        TraceContext ctx = collector.startTrace(agent.getName());
+        // 从 Reactor Context 取引擎层注入的 TraceContext
+        return Mono.deferContextual(ctxView -> {
+            TraceContext existing = ctxView.getOrDefault(TraceContext.KEY, null);
 
-        // 提取用户最后一条消息作为 input
-        String userInput = extractUserInput(inputs);
-        ctx.setInputText(userInput);
+            if (existing == null) {
+                // 兜底：引擎未注入 TraceContext（如独立 SDK 调用），Tracer 自行创建
+                TraceContext newCtx = collector.startTrace(agent.getName());
+                newCtx.setInputText(extractUserInput(inputs));
+                // 需要重新写入 Reactor Context 供下游使用
+                return next.get()
+                        .contextWrite(context -> context.put(TraceContext.KEY, newCtx));
+            }
 
-        // 先获取 next Mono（此时 SDK 内部的 callModel/callTool 尚未执行）
-        Mono<Msg> resultMono = next.get();
+            // 补充 agent 名称（如果引擎未设置）
+            if (existing.getAgentName() == null) {
+                existing.setAgentName(agent.getName());
+            }
 
-        // 在 next.get() 返回后、但 block() 完成前，callModel/callTool 已在同线程执行完
-        // 所以 ThreadLocal 在同步 block 场景下是有效的
-        return resultMono
-                .doOnSuccess(result -> {
-                    String output = result != null ? result.getTextContent() : null;
-                    ctx.markSuccess(output);
-                    collector.finishTrace(ctx);
-                })
-                .doOnError(error -> {
-                    ctx.markFailed(error.getMessage());
-                    collector.finishTrace(ctx);
-                });
+            // 下游 callModel/callTool 通过 Reactor Context 读取（ctx 已在上游注入）
+            return next.get();
+        });
     }
 
     // ==================== LLM 调用（每轮 Reason）====================
@@ -71,13 +81,19 @@ public class LuminaTraceTracer implements Tracer {
             io.agentscope.core.model.GenerateOptions options,
             Supplier<Flux<ChatResponse>> next) {
 
-        return next.get()
-                .doOnNext(response -> {
-                    ChatUsage usage = response.getUsage();
-                    if (usage != null && usage.getTotalTokens() > 0) {
-                        collector.recordReasoningStep(usage.getInputTokens(), usage.getOutputTokens());
-                    }
-                });
+        // 从 Reactor Context 取 TraceContext（callAgent 注入的）
+        return Flux.deferContextual(ctxView -> {
+            TraceContext ctx = ctxView.getOrDefault(TraceContext.KEY, null);
+
+            return next.get()
+                    .doOnNext(response -> {
+                        if (ctx == null) return;
+                        ChatUsage usage = response.getUsage();
+                        if (usage != null && usage.getTotalTokens() > 0) {
+                            collector.recordReasoningStep(ctx, usage.getInputTokens(), usage.getOutputTokens());
+                        }
+                    });
+        });
     }
 
     // ==================== 工具调用（每轮 Act）====================
@@ -101,16 +117,22 @@ public class LuminaTraceTracer implements Tracer {
         final String finalToolName = toolName;
         final String finalInput = TraceStep.truncate(input, 500);
 
-        return next.get()
-                .doOnSuccess(result -> {
-                    long duration = System.currentTimeMillis() - start;
-                    String output = "";
-                    if (result != null && result.getOutput() != null) {
-                        output = result.getOutput().toString();
-                    }
-                    collector.recordToolStep(finalToolName, finalInput,
-                            TraceStep.truncate(output, 500), duration);
-                });
+        // 从 Reactor Context 取 TraceContext
+        return Mono.deferContextual(ctxView -> {
+            TraceContext ctx = ctxView.getOrDefault(TraceContext.KEY, null);
+
+            return next.get()
+                    .doOnSuccess(result -> {
+                        if (ctx == null) return;
+                        long duration = System.currentTimeMillis() - start;
+                        String output = "";
+                        if (result != null && result.getOutput() != null) {
+                            output = result.getOutput().toString();
+                        }
+                        collector.recordToolStep(ctx, finalToolName, finalInput,
+                                TraceStep.truncate(output, 500), duration);
+                    });
+        });
     }
 
     // ==================== 辅助方法 ====================

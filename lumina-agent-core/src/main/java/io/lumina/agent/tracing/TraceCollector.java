@@ -61,10 +61,13 @@ public class TraceCollector {
     }
 
     /**
-     * 记录推理步骤（从 Reactor Context 或 ThreadLocal 取当前 TraceContext）
+     * 记录推理步骤（通过 Reactor Context 传递的 TraceContext）
+     *
+     * @param ctx              Trace 上下文（从 Reactor Context 取得）
+     * @param promptTokens     输入 Token 数
+     * @param completionTokens 输出 Token 数
      */
-    public void recordReasoningStep(int promptTokens, int completionTokens) {
-        TraceContext ctx = getCurrentContext();
+    public void recordReasoningStep(TraceContext ctx, int promptTokens, int completionTokens) {
         if (ctx == null) return;
 
         TraceStep step = ctx.newStep("REASONING", "LLM 推理");
@@ -76,9 +79,10 @@ public class TraceCollector {
 
     /**
      * 记录工具调用步骤
+     *
+     * @param ctx        Trace 上下文（从 Reactor Context 取得）
      */
-    public void recordToolStep(String toolName, String input, String output, long durationMs) {
-        TraceContext ctx = getCurrentContext();
+    public void recordToolStep(TraceContext ctx, String toolName, String input, String output, long durationMs) {
         if (ctx == null) return;
 
         TraceStep step = ctx.newStep("TOOL_CALL", "工具: " + toolName);
@@ -89,7 +93,7 @@ public class TraceCollector {
     }
 
     /**
-     * 记录 RAG 检索步骤（手动埋点调用）
+     * 记录 RAG 检索步骤（手动埋点，从 ThreadLocal 取 ctx）
      */
     public void recordRetrievalStep(String query, int retrievedCount, double topScore, String preview) {
         TraceContext ctx = getCurrentContext();
@@ -103,10 +107,35 @@ public class TraceCollector {
     }
 
     /**
-     * 记录记忆注入步骤（手动埋点调用）
+     * 记录 RAG 检索步骤（显式传入 ctx，用于 Reactor Context 路径）
+     */
+    public void recordRetrievalStep(TraceContext ctx, String query, int retrievedCount, double topScore, String preview) {
+        if (ctx == null) return;
+
+        TraceStep step = ctx.newStep("RETRIEVAL", "RAG 检索");
+        step.setInput(TraceStep.truncate(query, 500));
+        step.setOutput(String.format("召回 %d 个片段，最高分 %.2f", retrievedCount, topScore));
+        step.finish();
+        ctx.addStep(step);
+    }
+
+    /**
+     * 记录记忆注入步骤（手动埋点，从 ThreadLocal 取 ctx）
      */
     public void recordMemoryStep(int longTermCount, int shortTermCount) {
         TraceContext ctx = getCurrentContext();
+        if (ctx == null) return;
+
+        TraceStep step = ctx.newStep("MEMORY_INJECTION", "上下文构建");
+        step.setOutput(String.format("长期记忆 %d 条 + 短期记忆 %d 条", longTermCount, shortTermCount));
+        step.finish();
+        ctx.addStep(step);
+    }
+
+    /**
+     * 记录记忆注入步骤（显式传入 ctx，用于 Reactor Context 路径）
+     */
+    public void recordMemoryStep(TraceContext ctx, int longTermCount, int shortTermCount) {
         if (ctx == null) return;
 
         TraceStep step = ctx.newStep("MEMORY_INJECTION", "上下文构建");
