@@ -68,6 +68,13 @@ public class CreateAgentDTO implements Serializable {
     private Integer maxConcurrent;
 
     /**
+     * 子 Agent 配置 JSON 字符串（MultiAgent 模式，JSON 数组）
+     *
+     * @since 3.8.0
+     */
+    private String subAgents;
+
+    /**
      * LLM 配置 DTO（字段与前端 LlmConfig 对齐，同时兼容 AgentConfig.LLMConfig）
      */
     @Data

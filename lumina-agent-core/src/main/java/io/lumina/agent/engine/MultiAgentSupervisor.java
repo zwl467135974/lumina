@@ -189,6 +189,9 @@ public class MultiAgentSupervisor {
 
     /**
      * Supervisor 生成最终汇总
+     *
+     * <p>使用独立的 Summarizer Agent（不受路由 Prompt 约束），
+     * 避免 Supervisor 的"只输出专家名"指令影响汇总质量。
      */
     private Msg generateFinalSummary(ReActAgent supervisor, List<Msg> context, String expertResults) {
         if (expertResults.isBlank()) {
@@ -197,12 +200,20 @@ public class MultiAgentSupervisor {
                     .build();
         }
 
+        // 独立的汇总 Agent（System Prompt 鼓励完整回复，不受路由约束）
+        ReActAgent summarizer = ReActAgent.builder()
+                .name("Summarizer")
+                .sysPrompt("你是一个汇总助手。根据各专家的处理结果，给出完整、连贯的最终回复。直接回复用户，不要输出路由信息。")
+                .model(supervisorModel)
+                .toolkit(new Toolkit())
+                .build();
+
         String summaryPrompt = "用户请求: " + extractUserTask(context) +
                 "\n\n以下是各专家的处理结果:\n" + expertResults +
                 "\n请基于以上结果，给出最终汇总回复。";
 
         Msg summaryMsg = Msg.builder().role(MsgRole.USER).textContent(summaryPrompt).build();
-        Msg response = supervisor.call(List.of(summaryMsg)).block();
+        Msg response = summarizer.call(List.of(summaryMsg)).block();
 
         if (response == null) {
             return Msg.builder().role(MsgRole.ASSISTANT)

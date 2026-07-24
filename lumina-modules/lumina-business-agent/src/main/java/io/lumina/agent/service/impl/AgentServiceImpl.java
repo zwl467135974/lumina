@@ -179,6 +179,9 @@ public class AgentServiceImpl implements AgentService {
         if (agent.getLlmConfig() != null) {
             existingAgent.setLlmConfig(agent.getLlmConfig());
         }
+        if (agent.getSubAgents() != null) {
+            existingAgent.setSubAgents(agent.getSubAgents());
+        }
         if (agent.getTools() != null) {
             existingAgent.setTools(agent.getTools());
         }

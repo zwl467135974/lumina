@@ -204,6 +204,11 @@ public class AgentController {
         agent.setRateLimit(dto.getRateLimit());
         agent.setMaxConcurrent(dto.getMaxConcurrent());
 
+        // 透传子 Agent 配置（MultiAgent 模式）
+        if (dto.getSubAgents() != null) {
+            agent.setSubAgents(dto.getSubAgents());
+        }
+
         return agent;
     }
 
