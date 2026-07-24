@@ -153,8 +153,13 @@ if (contents != null && !contents.isEmpty()) {
 ### 自测题
 
 1. 为什么 PDF 不直接传图片给 LLM？（提示：Token 成本）
+   <details><summary>答案</summary>一张图 ~765 Token，10 页 PDF 传图 ~7650 Token；提取文本只要 ~3000-5000 Token。文本路径成本低 2-3 倍。</details>
+
 2. sealed interface 相比普通 interface 有什么好处？
+   <details><summary>答案</summary>编译器保证只有指定的实现类，新增类型时所有 switch/pattern matching 分支会编译报错，强制处理新类型，避免遗漏。</details>
+
 3. `MultimodalDocument` 和 `MultimodalImage` 在消息构造时有什么区别？
+   <details><summary>答案</summary>Document 转为 TextBlock（提取的文字作为上下文），Image 转为 ImageBlock（Base64 图片让 LLM 视觉模型直接处理）。</details>
 
 > 🚀 [F03 — OpenAI 兼容 →](F03-openai-compat.md)
 

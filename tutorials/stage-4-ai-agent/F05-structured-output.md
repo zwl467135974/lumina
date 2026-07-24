@@ -141,8 +141,13 @@ WeatherDTO weather = objectMapper.readValue(agentResult, WeatherDTO.class);
 ### 自测题
 
 1. 为什么不能只靠 Prompt 说"返回 JSON"来保证输出格式？
+   <details><summary>答案</summary>LLM 可能加说明文字（"好的，这是 JSON: {...}"）、字段名拼错、JSON 格式不合法。responseFormat 在模型层面强制约束，比 Prompt 提醒可靠得多。</details>
+
 2. ResponseFormat.jsonObject() 和 ResponseFormat.text() 有什么区别？
+   <details><summary>答案</summary>jsonObject 强制模型返回合法 JSON 对象（API 层面约束）；text 是普通文本输出（默认）。前者调用方可以直接 JSON.parse，后者需要自己提取。</details>
+
 3. 哪些场景不适合用结构化输出？
+   <details><summary>答案</summary>创意写作（诗歌/故事）、对话聊天、需要自然语言解释的场景。结构化输出会限制表达的灵活性。</details>
 
 > 🚀 返回 [AI 专项导读](README.md)
 

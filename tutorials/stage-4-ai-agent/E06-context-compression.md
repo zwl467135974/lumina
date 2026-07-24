@@ -186,9 +186,16 @@ try {
 ### 自测题
 
 1. 为什么不把所有历史都传给 LLM？（提示：Token 限制 + 成本）
+   <details><summary>答案</summary>两个原因：① 上下文窗口有上限（如 8K Token），历史太多会超限；② Token 按量计费，历史越多成本越高。</details>
+
 2. 压缩后的摘要注入在什么位置？（SYSTEM 消息，和长期记忆同一层）
+   <details><summary>答案</summary>注入为 SYSTEM 消息，位置在 System Prompt 之后、最近历史消息之前（和长期记忆同一层）。</details>
+
 3. threshold=15 + recentKeepCount=5 时，18 条历史会怎样分割？
+   <details><summary>答案</summary>splitIndex = 18 - 5 = 13。第 [0..12] 共 13 条被 LLM 压缩为摘要，第 [13..17] 共 5 条保留原始消息。</details>
+
 4. 压缩失败时为什么不抛异常而是降级？
+   <details><summary>答案</summary>压缩是优化不是必需功能。如果 LLM 摘要调用失败（超时/限流），降级为全量加载——虽然 Token 多用了，但不影响 Agent 正常回答。</details>
 
 > 🚀 返回 [AI 专项导读](README.md)
 

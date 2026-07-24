@@ -187,9 +187,16 @@ TracerRegistry.register(luminaTraceTracer);  // 自动 enableTracingHook()
 ### 自测题
 
 1. AgentScope 2.0 为什么去掉 `.memory()` 改用 `.stateStore()`？（提示：多实例部署）
+   <details><summary>答案</summary>1.0.7 的 .memory() 在每个 Agent 实例内部存记忆（InMemoryMemory），多实例部署时记忆不共享。2.0 改为外部 AgentStateStore，可以存 Redis，任何实例都能读取。</details>
+
 2. `sysPrompt` 和 1.0.7 的 `prompt` 有什么区别？
+   <details><summary>答案</summary>只是方法名变更，功能一样——都是设置 System Prompt。2.0 统一命名为 sysPrompt。</details>
+
 3. Tracer SPI 的三个拦截方法分别拦截什么？
+   <details><summary>答案</summary>callAgent 拦截 Agent 调用（创建 trace root）、callModel 拦截 LLM 调用（记录 Token 和耗时）、callTool 拦截工具调用（记录输入/输出）。</details>
+
 4. Lumina 的 `toStreamChunk` 做了什么转换？
+   <details><summary>答案</summary>把 AgentScope 的 Event 对象转换为 Lumina 标准的 StreamChunk（提取 type、content、isLast、tokenUsage）。</details>
 
 > 🚀 [B04 — Agent 配置体系 →](B04-agent-config-system.md)
 

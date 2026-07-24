@@ -164,8 +164,13 @@ Authorization: Bearer sk-lumina-xxx
 ### 自测题
 
 1. OpenAI SDK 的 `model` 参数在 Lumina 中代表什么？
+   <details><summary>答案</summary>model="agent-{agentId}" 映射到 Lumina 的 Agent ID，Lumina 解析后执行对应 Agent。</details>
+
 2. 为什么 OpenAI 兼容端点用 API Token 而不是 JWT？
+   <details><summary>答案</summary>JWT 是给浏览器前端用的（有过期刷新机制）；API Token 是给程序对接用的（sk- 格式，长期有效，可绑定 Agent 权限范围）。</details>
+
 3. `tools` 参数为什么不支持？（提示：Lumina 有自己的工具体系）
+   <details><summary>答案</summary>Lumina 有自己的工具体系（@AgentTool 注解 + MCP），工具在 Agent 配置中绑定而非请求参数中指定。OpenAI 的 function_calling 格式和 Lumina 的工具调用机制不同。</details>
 
 > 🚀 [F04 — 安全防护 →](F04-security-defense.md)
 

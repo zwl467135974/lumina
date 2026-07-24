@@ -118,8 +118,13 @@ maxIters 是 Lumina **第三层**成本/安全控制，和已有的两层配合�
 ### 自测题
 
 1. maxIters=5 的 Agent 执行一个需要 3 轮推理的任务，会怎样？
+   <details><summary>答案</summary>正常完成。3 轮 < 5 轮上限，Agent 会在第 3 轮给出最终回答后主动停止，不会跑到 5 轮。</details>
+
 2. 为什么简单问答 Agent 应该设 maxIters=3 而不是 10？
+   <details><summary>答案</summary>省钱。每次迭代都消耗 LLM Token，简单问答 1-3 轮就该回答，设 10 轮浪费潜在成本。</details>
+
 3. maxIters 和 LlmResilienceWrapper 的重试有什么区别？
+   <details><summary>答案</summary>maxIters 管的是 Agent 的推理循环（Reason→Act→Observe 重复几次）；LlmResilienceWrapper 管的是单次 LLM HTTP 调用失败后重试几次。两者层级不同。</details>
 
 > 🚀 [B04 — Agent 配置体系 →](B04-agent-config-system.md)
 

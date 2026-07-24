@@ -231,10 +231,19 @@ Redis 中 context 从 2 条增长到 4 条（每轮 +USER +ASSISTANT）
 ### 自测题
 
 1. AgentScope 1.0.7 的 `.memory()` 和 2.0 的 `.stateStore()` 有什么本质区别？
+   <details><summary>答案</summary>.memory() 是 Agent 内部的 InMemoryMemory，实例间不共享；.stateStore() 是外部 Store 接口，可存 Redis 实现跨实例共享。</details>
+
 2. RedisAgentStateStore 的 Key 格式是什么？为什么用 `:` 分隔？
+   <details><summary>答案</summary>Key = lumina:agent:state:{userId}:{sessionId}:{stateKey}。用 : 分隔是 Redis 的命名惯例（可视化工具按 : 分层展示）。</details>
+
 3. AgentState 和 MemoryManager 管理的记忆有什么分工差异？
+   <details><summary>答案</summary>MemoryManager 管"给 LLM 看多少历史"（滑动窗口构建 messages）；AgentStateStore 管"Agent 自身状态跨实例不丢"（完整 context + usage）。</details>
+
 4. 多实例部署时，如果没有 AgentStateStore 会发生什么？
+   <details><summary>答案</summary>实例 A 执行第一轮后记忆存在 A 内存里；用户第二次请求被负载均衡到实例 B，B 没有第一轮记忆，Agent 失忆。</details>
+
 5. 为什么 TTL 设为 7 天而不是永久？
+   <details><summary>答案</summary>对话数据有时效性，7 天前的对话通常不再需要。永久存储会导致 Redis 内存无限增长。</details>
 
 > 🚀 [F01 — 流式输出 →](F01-streaming-sse.md)
 

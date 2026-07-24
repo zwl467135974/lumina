@@ -403,10 +403,19 @@ public void cleanup() {
 ### 自测题
 
 1. 为什么 ThreadLocal 在 Reactor 响应式编程中会失效？
+   <details><summary>答案</summary>Reactor 在不同调度器线程上执行操作（如 boundedElastic），ThreadLocal 是线程绑定的，切换线程后值丢失。</details>
+
 2. Reactor Context 的传播方向是什么？（提示：上游可见）
+   <details><summary>答案</summary>上游可见。contextWrite 写入的值，沿着订阅链向上传播，上游的 deferContextual 能读到。</details>
+
 3. `contextWrite` 和 `deferContextual` 分别在什么位置使用？
+   <details><summary>答案</summary>contextWrite 在 Publisher 链的下游（靠近订阅者）写入；deferContextual 在上游（靠近数据源）读取。</details>
+
 4. PlanAndExecute 路径为什么需要 ThreadLocal 兜底？
+   <details><summary>答案</summary>PlanExecuteAgent 内部用 .block() 同步调用，在同一线程执行，ThreadLocal 可见。但没走 contextWrite 注入 Reactor Context，所以需要 ThreadLocal 兜底。</details>
+
 5. REASONING 步骤的 durationMs 为什么不能在 doOnNext 中创建 step 后立即 finish()？
+   <details><summary>答案</summary>startTimestamp 在 step 创建时记录，如果创建和 finish 都在 doOnNext 中，时间差几乎为 0。应该在 LLM 调用前创建 step（记录开始时刻），在返回后 finish（计算实际耗时）。</details>
 
 > 🚀 返回 [AI 专项导读](README.md)
 

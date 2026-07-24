@@ -217,8 +217,13 @@ Run #1  Prompt v1 (简洁)  GLM-4-Flash   通过率 83%  ← 基线
 ### 自测题
 
 1. 为什么每次 EvaluationRun 都要记录 modelInfo 和 promptVersion？
+   <details><summary>答案</summary>为了历史对比。改了 Prompt 后对比通过率变化，需要知道上次用的是哪个版本。不记录就无法回答"是 Prompt 变好还是模型变好"。</details>
+
 2. 改 Prompt 后通过率从 85% 涨到 90%，但用户说"感觉变差了"——可能是什么原因？（提示：数据集覆盖率）
+   <details><summary>答案</summary>数据集覆盖率不足。如果数据集只覆盖数学/时间类问题，可能创意类回答变差了但数据集测不到。需要扩充数据集覆盖更多场景。</details>
+
 3. CI 中设置通过率阈值为 85%，但某次评估只有 84%——应该阻止部署吗？
+   <details><summary>答案</summary>不一定阻止。84% 可能是统计波动（差 1 个用例），建议查看具体哪条用例失败了——如果是边缘 case 偶发失败，可以放行；如果是核心能力退化，应该阻止。</details>
 
 > 🚀 [H02 — 四种评分器 →](H02-four-scorers.md)
 

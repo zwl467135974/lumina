@@ -239,9 +239,16 @@ public class LlmJudgeScorer implements EvaluationScorer {
 ### 自测题
 
 1. 为什么 LLMJudge 建议跑 3 次取平均？（提示：LLM 输出的随机性）
+   <details><summary>答案</summary>LLM 输出有随机性（temperature > 0），同一答案多次评分可能不同（如 4/3/4）。取平均减少方差，结果更稳定。</details>
+
 2. SemanticSimilarity 的阈值 0.75 怎么调优？
+   <details><summary>答案</summary>先用 0.75 跑一轮，人工抽查 10 条：通过的里面有明显错的→提高阈值；没通过的其实是对的→降低阈值。反复调整直到满意。</details>
+
 3. 四种评分器哪个最快？为什么？
+   <details><summary>答案</summary>ExactMatch。纯字符串比较（equals），无 LLM/Embedding 调用，纳秒级完成。</details>
+
 4. 如果评估"写一首关于秋天的诗"，用哪个评分器？为什么不用 ExactMatch？
+   <details><summary>答案</summary>LLMJudge。写诗没有标准答案，需要 AI 判断创意/意境/韵律。ExactMatch 要求逐字匹配完全不适合。</details>
 
 > 🚀 [H03 — A/B Testing →](H03-ab-testing.md)
 

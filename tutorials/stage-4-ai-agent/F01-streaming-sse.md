@@ -197,9 +197,16 @@ return Mono.fromCallable(() -> retrieve(task))
 ### 自测题
 
 1. 为什么记忆保存放在 `doOnComplete` 而不是 `doOnNext`？
+   <details><summary>答案</summary>doOnNext 在每个 chunk 触发，此时回复还没完整；doOnComplete 在流结束后触发，能拿到完整的 finalResponse 才保存。</details>
+
 2. `incremental=true` 和 `incremental=false` 有什么区别？前端处理方式有何不同？
+   <details><summary>答案</summary>true=每 chunk 只含新增文字（前端 append），false=每 chunk 含完整内容（前端覆盖）。true 更省带宽。</details>
+
 3. RAG_SOURCES 事件为什么在 FINAL 之前推送？
+   <details><summary>答案</summary>先展示引用来源让用户知道答案依据，再看 Agent 回答，体验更好（类似论文先引文后结论）。</details>
+
 4. `onErrorResume` 返回 `Flux.just(ERROR)` 有什么好处（对比直接抛异常）？
+   <details><summary>答案</summary>不中断整个流，前端收到 ERROR 事件可以优雅显示错误提示；如果直接抛异常，已发送的 chunk 会丢失，前端可能卡在等待状态。</details>
 
 > 🚀 [F02 — 多模态 →](F02-multimodal.md)
 
