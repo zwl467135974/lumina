@@ -6,6 +6,9 @@
         <div style="display: flex; justify-content: space-between; align-items: center">
           <span>推理追踪</span>
           <div>
+            <el-select v-model="filterAgentId" placeholder="Agent" clearable filterable size="small" style="width: 180px; margin-right: 8px">
+              <el-option v-for="a in agentOptions" :key="a.agentId" :label="a.agentName" :value="a.agentId" />
+            </el-select>
             <el-select v-model="filterStatus" placeholder="状态" clearable size="small" style="width: 120px; margin-right: 8px">
               <el-option label="成功" value="SUCCESS" />
               <el-option label="失败" value="FAILED" />
@@ -117,7 +120,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { listAgentTraces, getAgentTraceDetail } from '@/api/modules/agent-trace'
+import { listAgents } from '@/api/modules/agent'
 import type { AgentTraceVO } from '@/types/agent-trace'
+import type { AgentVO } from '@/types/api'
 import { STEP_TYPE_TAG, TRACE_STATUS_TAG } from '@/types/agent-trace'
 import LumStatCard from '@/components/common/LumStatCard.vue'
 
@@ -126,15 +131,28 @@ const loading = ref(false)
 const tableData = ref<AgentTraceVO[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
 const filterStatus = ref<string>('')
+const filterAgentId = ref<number | undefined>(undefined)
+const agentOptions = ref<AgentVO[]>([])
 
 // === 详情状态 ===
 const selectedTrace = ref<AgentTraceVO | null>(null)
+
+// === 加载 Agent 选项 ===
+const loadAgentOptions = async () => {
+  try {
+    const res = await listAgents({ pageNum: 1, pageSize: 200 })
+    agentOptions.value = res.data.list || []
+  } catch {
+    // 忽略加载失败
+  }
+}
 
 // === 加载列表 ===
 const loadData = async () => {
   loading.value = true
   try {
     const res = await listAgentTraces({
+      agentId: filterAgentId.value || undefined,
       status: filterStatus.value || undefined,
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize
@@ -167,7 +185,10 @@ const statusTagType = (status: string) => TRACE_STATUS_TAG[status]?.color || 'in
 const stepLabel = (type: string) => STEP_TYPE_TAG[type]?.label || type
 const stepTagType = (type: string) => STEP_TYPE_TAG[type]?.color || 'info'
 
-onMounted(() => loadData())
+onMounted(() => {
+  loadAgentOptions()
+  loadData()
+})
 </script>
 
 <style scoped>

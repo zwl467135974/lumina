@@ -192,6 +192,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             if (config != null) {
                 traceCtx.setAgentName(config.getAgentName());
                 traceCtx.setAgentType(config.getAgentType());
+                traceCtx.setAgentId(config.getAgentId());
             }
         }
 
@@ -207,6 +208,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             if (traceCtx != null && config == null) {
                 traceCtx.setAgentName(agentConfig.getAgentName());
                 traceCtx.setAgentType(agentConfig.getAgentType());
+                traceCtx.setAgentId(agentConfig.getAgentId());
             }
 
             // 加载提示词
@@ -301,8 +303,24 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId) {
         log.info("开始流式执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
         BaseContext.setConversationId(conversationId);
+
+        // 启动 Trace（同步部分设置，Flux 完成时落库）
+        io.lumina.agent.tracing.TraceContext traceCtx = null;
+        if (traceCollector != null) {
+            traceCtx = traceCollector.startTrace(businessType);
+            traceCtx.setInputText(task);
+            traceCtx.setConversationUuid(conversationId);
+        }
+
         try {
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
+
+            // 补充 Trace agent 信息
+            if (traceCtx != null) {
+                traceCtx.setAgentName(agentConfig.getAgentName());
+                traceCtx.setAgentType(agentConfig.getAgentType());
+                traceCtx.setAgentId(agentConfig.getAgentId());
+            }
 
             // 加载并填充提示词
             String promptTemplate = agentConfig.getPromptTemplate();
@@ -319,10 +337,37 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 按 agentType 分发（PlanAndExecute 走组合流，其他走 ReAct）
             Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task, conversationId);
 
-            return Flux.concat(ragSourcesFlux, agentFlux)
-                    .doFinally(signal -> BaseContext.clearConversationId());
+            // 注入 TraceContext 到 Reactor Context，供 Tracer 的 callModel/callTool 读取
+            final io.lumina.agent.tracing.TraceContext finalTraceCtx = traceCtx;
+            Flux<StreamChunk> combined = Flux.concat(ragSourcesFlux, agentFlux);
+            if (finalTraceCtx != null) {
+                combined = combined.contextWrite(ctx ->
+                        ctx.put(io.lumina.agent.tracing.TraceContext.KEY, finalTraceCtx));
+            }
+
+            return combined
+                    .doOnComplete(() -> {
+                        if (finalTraceCtx != null) {
+                            finalTraceCtx.markSuccess("流式执行完成");
+                        }
+                    })
+                    .doOnError(err -> {
+                        if (finalTraceCtx != null) {
+                            finalTraceCtx.markFailed(err.getMessage());
+                        }
+                    })
+                    .doFinally(signal -> {
+                        if (finalTraceCtx != null && traceCollector != null) {
+                            traceCollector.finishTrace(finalTraceCtx);
+                        }
+                        BaseContext.clearConversationId();
+                    });
         } catch (Exception e) {
             log.error("构建流式 Agent 失败: businessType={}", businessType, e);
+            if (traceCtx != null && traceCollector != null) {
+                traceCtx.markFailed(e.getMessage());
+                traceCollector.finishTrace(traceCtx);
+            }
             BaseContext.clearConversationId();
             return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
         }
@@ -416,6 +461,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         List<Msg> messages = new ArrayList<>();
 
         // Reflective Memory: 注入长期记忆（用户关键事实/偏好）
+        int longTermCount = 0;
         if (reflectiveMemoryService != null && conversationId != null
                 && agentProperties.getMemory().getReflective().isEnabled()) {
             try {
@@ -423,10 +469,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 Long agentId = agentConfig != null ? agentConfig.getAgentId() : null;
                 List<String> longTerm = reflectiveMemoryService.getLongTermMemories(userId, agentId);
                 if (longTerm != null && !longTerm.isEmpty()) {
+                    longTermCount = longTerm.size();
                     String memoryText = "以下是关于用户的长期记忆（供你参考，不要逐条复述）：\n"
                             + String.join("\n", longTerm);
                     messages.add(Msg.builder().role(MsgRole.SYSTEM).textContent(memoryText).build());
-                    log.debug("注入长期记忆: userId={}, 条数={}", userId, longTerm.size());
+                    log.debug("注入长期记忆: userId={}, 条数={}", userId, longTermCount);
                 }
             } catch (Exception e) {
                 log.debug("长期记忆加载失败（不影响执行）: {}", e.getMessage());
@@ -444,8 +491,6 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             // Trace 埋点：记忆注入
             if (traceCollector != null) {
-                int longTermCount = 0;
-                // 长期记忆条数从上面 try 块拿不到，这里近似用 messages 里的 SYSTEM 数
                 traceCollector.recordMemoryStep(longTermCount, history.size());
             }
         }
@@ -525,17 +570,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     response = executeWithFailoverChain(config, messages, fallbacks);
                 } else {
                     ReActAgent agent = createReActAgent(config);
-                    // 注入 TraceContext 到 Reactor Context，供 Tracer 的 callModel/callTool 读取
-                    io.lumina.agent.tracing.TraceContext tCtx =
-                            traceCollector != null ? traceCollector.getCurrentContext() : null;
-                    Mono<Msg> callMono = agent.call(messages);
-                    if (tCtx != null) {
-                        callMono = callMono.contextWrite(ctx ->
-                                ctx.put(io.lumina.agent.tracing.TraceContext.KEY, tCtx));
-                    }
-                    final Mono<Msg> finalCallMono = callMono;
                     response = llmResilience.execute("agent-call",
-                            () -> finalCallMono.block());
+                            () -> injectTraceContext(agent.call(messages)).block());
                 }
             }
 
@@ -557,6 +593,24 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     /**
+     * 注入 TraceContext 到 Reactor Context（供 Tracer 的 callModel/callTool 读取）
+     *
+     * <p>所有 agent.call() 路径统一调用此方法包裹 Mono，确保 TraceContext 可达。
+     *
+     * @param mono 原始 Mono
+     * @return 注入了 TraceContext 的 Mono（无 TraceContext 时原样返回）
+     */
+    private Mono<Msg> injectTraceContext(Mono<Msg> mono) {
+        io.lumina.agent.tracing.TraceContext tCtx =
+                traceCollector != null ? traceCollector.getCurrentContext() : null;
+        if (tCtx != null) {
+            return mono.contextWrite(ctx ->
+                    ctx.put(io.lumina.agent.tracing.TraceContext.KEY, tCtx));
+        }
+        return mono;
+    }
+
+    /**
      * 使用 Failover 链执行 ReAct Agent
      *
      * <p>主 Provider 失败时按 fallbackProviders 顺序尝试，每个 Provider 独立构建 Model + Agent。
@@ -574,7 +628,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         chain.add(() -> {
             Model model = buildModelFromConfig(primaryConfig);
             ReActAgent agent = buildReActAgent(model, toolkit, config);
-            return llmResilience.execute("agent-call", () -> agent.call(messages).block());
+            return llmResilience.execute("agent-call",
+                    () -> injectTraceContext(agent.call(messages)).block());
         });
         names.add(primaryConfig.getModelType() + "/" + primaryConfig.getModelName());
 
@@ -593,7 +648,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 log.info("Failover 尝试: {}/{}", fp.getModelType(), fp.getModelName());
                 Model model = buildModelFromConfig(fbConfig);
                 ReActAgent agent = buildReActAgent(model, toolkit, config);
-                return agent.call(messages).block();
+                return injectTraceContext(agent.call(messages)).block();
             });
             names.add(fp.getModelType() + "/" + fp.getModelName());
         }

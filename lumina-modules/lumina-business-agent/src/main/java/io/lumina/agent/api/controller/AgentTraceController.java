@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequirePermission("monitor")
+@RequirePermission("agent:trace")
 @RequestMapping("/api/v1/agent-traces")
 @RequiredArgsConstructor
 @Validated

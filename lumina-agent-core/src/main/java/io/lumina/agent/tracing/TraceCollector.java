@@ -68,11 +68,24 @@ public class TraceCollector {
      * @param completionTokens 输出 Token 数
      */
     public void recordReasoningStep(TraceContext ctx, int promptTokens, int completionTokens) {
+        recordReasoningStep(ctx, promptTokens, completionTokens, 0);
+    }
+
+    /**
+     * 记录推理步骤（含 LLM 调用耗时）
+     *
+     * @param ctx              Trace 上下文
+     * @param promptTokens     输入 Token 数
+     * @param completionTokens 输出 Token 数
+     * @param durationMs       LLM 调用耗时（毫秒）
+     */
+    public void recordReasoningStep(TraceContext ctx, int promptTokens, int completionTokens, long durationMs) {
         if (ctx == null) return;
 
         TraceStep step = ctx.newStep("REASONING", "LLM 推理");
         step.setPromptTokens(promptTokens);
         step.setCompletionTokens(completionTokens);
+        step.setDurationMs(durationMs);
         step.finish();
         ctx.addStep(step);
     }

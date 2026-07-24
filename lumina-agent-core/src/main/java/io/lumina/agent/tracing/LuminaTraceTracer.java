@@ -81,6 +81,9 @@ public class LuminaTraceTracer implements Tracer {
             io.agentscope.core.model.GenerateOptions options,
             Supplier<Flux<ChatResponse>> next) {
 
+        // 记录 LLM 调用开始时间
+        final long startTime = System.currentTimeMillis();
+
         // 从 Reactor Context 取 TraceContext（callAgent 注入的）
         return Flux.deferContextual(ctxView -> {
             TraceContext ctx = ctxView.getOrDefault(TraceContext.KEY, null);
@@ -90,7 +93,9 @@ public class LuminaTraceTracer implements Tracer {
                         if (ctx == null) return;
                         ChatUsage usage = response.getUsage();
                         if (usage != null && usage.getTotalTokens() > 0) {
-                            collector.recordReasoningStep(ctx, usage.getInputTokens(), usage.getOutputTokens());
+                            long duration = System.currentTimeMillis() - startTime;
+                            collector.recordReasoningStep(ctx, usage.getInputTokens(),
+                                    usage.getOutputTokens(), duration);
                         }
                     });
         });

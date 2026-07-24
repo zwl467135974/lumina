@@ -127,7 +127,7 @@ export const agentRoutes: AppRouteRecordRaw[] = [
           title: '推理追踪',
           requiresAuth: true,
           keepAlive: true,
-          permissions: ['monitor']
+          permissions: ['agent:trace']
         }
       }
     ]
