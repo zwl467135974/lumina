@@ -1,56 +1,154 @@
-# F03 — OpenAI 兼容出口
+# F03 — OpenAI 兼容出口：标准 SDK 直接对接
 
-> **前置要求**：已完成 [F02-多模态](F02-multimodal.md)
-> **预计阅读**：10 分钟
-> **难度**：⭐⭐☆☆☆
+> **前置要求**：已完成 [F02 多模态](F02-multimodal.md)
+> **预计阅读**：15 分钟
+> **难度**：⭐⭐⭐☆☆
 
 ---
 
 ## 这节解决什么问题
 
-Lumina 的 Agent 能力不仅前端能用——还能伪装成 **OpenAI API**，让标准 OpenAI SDK 直接调用。这样其他工具（如 Dify、LangChain）可以直接对接 Lumina。
+你的团队用 LangChain 开发了一个应用，想接入 Lumina 的 Agent。但 LangChain 只认 OpenAI API 格式。难道要重写对接代码？
+
+**不需要。** Lumina 伪装成 OpenAI API，任何支持 OpenAI 的工具都能直接调用。
 
 ---
 
-## 怎么用
+## 先建立直觉：万能充电转换器
 
-```python
-# 标准 OpenAI SDK，base_url 指向 Lumina
-from openai import OpenAI
+不同手机的充电口不一样（Type-C、Lightning、Micro-USB）。但充电宝有一个**万能转换器**——不管什么口，插上就能充。
 
-client = OpenAI(
-    api_key="sk-你的-lumina-api-token",   # Lumina 的 API Token
-    base_url="http://lumina-host/v1"       # 指向 Lumina
-)
+Lumina 的 OpenAI 兼容出口就是这个转换器：不管客户端是 OpenAI SDK、LangChain、Dify 还是 Cursor，插上 Lumina 就能用。
 
-response = client.chat.completions.create(
-    model="agent-1",     # Lumina 的 Agent ID 伪装成 model
-    messages=[{"role": "user", "content": "你好"}]
-)
+---
+
+## 架构：协议伪装
+
+```
+标准 OpenAI SDK          Lumina OpenAI 兼容层
+┌──────────────┐        ┌──────────────────────────┐
+│ client.chat   │──HTTP──│ POST /v1/chat/completions │
+│ .completions  │        │  → 解析 model=agentId     │
+│ .create()     │        │  → 调用 Lumina Agent      │
+└──────────────┘        │  → 包装成 OpenAI 响应格式  │
+                        └──────────────────────────┘
 ```
 
-**效果**：对 OpenAI SDK 来说，Lumina 就是一个"OpenAI API"——但背后执行的是 Lumina Agent。
+**核心思路**：接收 OpenAI 格式请求 → 提取 `model` 字段作为 Agent ID → 执行 Agent → 把结果包装成 OpenAI 格式返回。
 
 ---
 
 ## 两个端点
 
 ```java
-// 文件：OpenAiCompatController.java
-POST /v1/chat/completions    // 对话（stream 字段区分流式/非流式）
-GET  /v1/models              // 模型列表（Agent 伪装成 model）
+// 文件：lumina-business-agent/.../api/controller/OpenAiCompatController.java
+
+// 1. 对话端点（支持流式和非流式）
+@PostMapping(value = "/v1/chat/completions")
+public Object chatCompletions(@RequestBody OpenAiRequest request) {
+    Long agentId = parseAgentId(request.getModel());  // model="agent-243" → agentId=243
+
+    if (request.isStream()) {
+        return Flux<ServerSentEvent> ... // 流式 SSE（OpenAI 流式格式）
+    } else {
+        return OpenAiResponse ...         // 非流式 JSON
+    }
+}
+
+// 2. 模型列表端点（Agent 伪装成 model）
+@GetMapping("/v1/models")
+public OpenAiModelList listModels() {
+    // 把 Lumina 的 Agent 列表包装成 OpenAI 的 model 列表
+    // 每个 Agent → { id: "agent-{agentId}", object: "model" }
+}
+```
+
+---
+
+## 使用示例
+
+### Python OpenAI SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-your-lumina-token",    # Lumina API Token
+    base_url="http://lumina-host:8080/v1"
+)
+
+# 非流式
+response = client.chat.completions.create(
+    model="agent-243",                  # Lumina Agent ID
+    messages=[{"role": "user", "content": "你好"}]
+)
+print(response.choices[0].message.content)
+
+# 流式
+stream = client.chat.completions.create(
+    model="agent-243",
+    messages=[{"role": "user", "content": "写一首诗"}],
+    stream=True
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="")
+```
+
+### cURL
+
+```bash
+curl http://lumina-host:8080/v1/chat/completions \
+  -H "Authorization: Bearer sk-your-lumina-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "agent-243",
+    "messages": [{"role": "user", "content": "1+1=?"}]
+  }'
 ```
 
 ---
 
 ## 认证：API Token
 
-不用 JWT，用 `sk-xxx` 格式的 API Token：
+OpenAI 兼容端点不用 JWT（JWT 是给前端用的），而用 **API Token**（`sk-` 格式）：
 
 ```java
-// Gateway 的 ApiTokenAuthGlobalFilter 或 StandaloneJwtFilter 处理
-// sk- 开头的 token → 查 lumina_api_token 表验证
+// 文件：lumina_api_token 表
+// token: sk-lumina-xxx（用户在管理后台生成）
+// 权限: 绑定到特定 Agent 或全部 Agent
+// 有效期: 可设置过期时间
+
+// 请求头验证
+Authorization: Bearer sk-lumina-xxx
+// → Gateway 的 ApiTokenAuthGlobalFilter 查表验证
+// → 验证通过后注入 BaseContext（userId/tenantId）
 ```
+
+### 生成 API Token
+
+在 Lumina 管理后台 → 系统管理 → API Token → 创建：
+
+| 字段 | 说明 |
+|------|------|
+| name | Token 名称（如"LangChain 对接"） |
+| agentScope | 允许调用的 Agent（可选限定） |
+| expiresAt | 过期时间 |
+
+---
+
+## 兼容性说明
+
+| OpenAI 参数 | Lumina 支持 | 说明 |
+|-------------|------------|------|
+| `model` | ✅ | 映射为 Agent ID |
+| `messages` | ✅ | 标准对话格式 |
+| `stream` | ✅ | 流式/非流式 |
+| `temperature` | ⚠️ | 部分支持（Agent 配置优先） |
+| `max_tokens` | ⚠️ | 部分支持 |
+| `tools` / `function_calling` | ❌ | 用 Lumina 自己的工具体系 |
+| `response_format` | ❌ | 用 Agent 的 structuredOutputMode |
+
+> **注意**：Lumina 不是完整的 OpenAI 替代品——它是"Agent 即 API"。OpenAI 的裸模型调用能力通过 Lumina Agent 的配置实现（选模型、设 Prompt、配工具），而不是通过 OpenAI 参数控制。
 
 ---
 
@@ -58,9 +156,16 @@ GET  /v1/models              // 模型列表（Agent 伪装成 model）
 
 | 概念 | 一句话记忆 |
 |------|-----------|
-| OpenAI 兼容 | Lumina 伪装成 OpenAI API |
-| 价值 | 标准 SDK / 第三方工具直接对接 |
-| 认证 | sk-xxx API Token（不是 JWT） |
+| OpenAI 兼容 | Lumina 伪装成 OpenAI API，标准 SDK 直接调用 |
+| model 字段 | `agent-{agentId}` 映射到 Lumina Agent |
+| 认证 | `sk-` 格式 API Token（不是 JWT） |
+| 价值 | LangChain/Dify/Cursor 等工具零改造对接 |
+
+### 自测题
+
+1. OpenAI SDK 的 `model` 参数在 Lumina 中代表什么？
+2. 为什么 OpenAI 兼容端点用 API Token 而不是 JWT？
+3. `tools` 参数为什么不支持？（提示：Lumina 有自己的工具体系）
 
 > 🚀 [F04 — 安全防护 →](F04-security-defense.md)
 
