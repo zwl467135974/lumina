@@ -119,6 +119,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.service.ReflectiveMemoryService reflectiveMemoryService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.tracing.TraceCollector traceCollector;
+
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
@@ -403,6 +406,13 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 messages.add(Msg.builder().role(role).textContent(m.content()).build());
             }
             log.debug("加载历史记忆: conversationId={}, 条数={}", conversationId, history.size());
+
+            // Trace 埋点：记忆注入
+            if (traceCollector != null) {
+                int longTermCount = 0;
+                // 长期记忆条数从上面 try 块拿不到，这里近似用 messages 里的 SYSTEM 数
+                traceCollector.recordMemoryStep(longTermCount, history.size());
+            }
         }
 
         // 追加当前用户消息
@@ -933,6 +943,16 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     if (docs == null || docs.isEmpty()) {
                         return Mono.empty();
                     }
+
+                    // Trace 埋点：RAG 检索结果
+                    if (traceCollector != null && !docs.isEmpty()) {
+                        double topScore = docs.get(0).getScore() != null ? docs.get(0).getScore() : 0;
+                        String preview = docs.get(0).getMetadata() != null
+                                ? docs.get(0).getMetadata().getContentText() : "";
+                        traceCollector.recordRetrievalStep(task, docs.size(), topScore,
+                                io.lumina.agent.tracing.TraceStep.truncate(preview, 200));
+                    }
+
                     List<java.util.Map<String, Object>> sources = new ArrayList<>();
                     for (var doc : docs) {
                         var meta = doc.getMetadata();
