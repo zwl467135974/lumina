@@ -8,10 +8,12 @@ import io.lumina.agent.api.vo.AgentTaskVO;
 import io.lumina.agent.api.vo.AgentVO;
 import io.lumina.agent.domain.model.Agent;
 import io.lumina.agent.infrastructure.entity.AgentTaskDO;
+import io.lumina.agent.infrastructure.entity.ConversationDO;
 import io.lumina.agent.model.MultimodalImage;
 import io.lumina.agent.model.StreamChunk;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.AgentTaskService;
+import io.lumina.agent.service.ConversationService;
 import io.lumina.agent.service.KnowledgeBaseService;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.framework.audit.annotation.Audit;
@@ -73,6 +75,8 @@ public class AgentController {
     private final AgentService agentService;
 
     private final AgentTaskService agentTaskService;
+
+    private final ConversationService conversationService;
 
     private final ObjectMapper objectMapper;
 
@@ -473,6 +477,50 @@ public class AgentController {
                         .event(chunk.type())
                         .data(chunk)
                         .build());
+    }
+
+    /**
+     * 对话端点（自动会话管理）
+     *
+     * <p>前端不需要手动管理 conversationId。传入 message + 可选 conversationId：
+     * <ul>
+     *   <li>无 conversationId → 自动创建新会话，返回中带 conversationId</li>
+     *   <li>有 conversationId → 续聊，自动加载历史上下文</li>
+     * </ul>
+     *
+     * @param id    Agent ID
+     * @param body  请求体（message + 可选 conversationId）
+     * @return 对话回复 + conversationId
+     */
+    @Audit(module = "agent", action = "CHAT", description = "对话")
+    @Operation(summary = "对话（自动会话管理，无需手动管理 conversationId）")
+    @PostMapping("/{id}/chat")
+    public R<java.util.Map<String, String>> chat(
+            @PathVariable("id") Long id,
+            @RequestBody java.util.Map<String, String> body) {
+        String message = body.get("message");
+        String conversationId = body.get("conversationId");
+
+        if (message == null || message.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
+        }
+
+        // 无 conversationId → 自动创建新会话
+        if (conversationId == null || conversationId.isBlank()) {
+            ConversationDO conv = conversationService.createConversation(id, null);
+            conversationId = conv.getConversationUuid();
+            log.info("自动创建会话: agentId={}, conversationId={}", id, conversationId);
+        }
+
+        log.info("对话: agentId={}, conversationId={}, message={}", id, conversationId, message);
+
+        // 执行 Agent
+        String reply = agentService.executeAgent(id, message, conversationId);
+
+        return R.success(java.util.Map.of(
+                "conversationId", conversationId,
+                "reply", reply != null ? reply : ""
+        ));
     }
 
     private AgentTaskVO toTaskVO(AgentTaskDO task) {
