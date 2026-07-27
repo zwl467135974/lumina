@@ -82,7 +82,7 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                 if (circuitBreaker != null && !circuitBreaker.allowExecution(toolName)) {
                     String msg = "工具熔断中，暂不可用: " + toolName;
                     doRecord(toolName, paramsJson, null, msg, System.currentTimeMillis() - start, false);
-                    return ToolResultBlock.error(msg);
+                    return buildErrorResult(msg, paramsJson);
                 }
 
                 // 从 ToolCallParam 中提取参数
@@ -126,7 +126,9 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                     circuitBreaker.recordFailure(toolName);
                 }
 
-                return ToolResultBlock.error(errorMessage);
+                // 构建可操作的错误消息：包含错误原因 + 参数 schema 提示
+                // 让 LLM 在下一轮 ReAct 循环中能据此修正参数重试
+                return buildErrorResult(errorMessage, paramsJson);
             }
         })
         .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
@@ -140,8 +142,47 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
             if (circuitBreaker != null) {
                 circuitBreaker.recordFailure(toolName);
             }
-            return Mono.just(ToolResultBlock.error(msg));
+            return Mono.just(buildErrorResult(msg, "{}"));
         });
+    }
+
+    /**
+     * 构建错误结果——包含可操作的提示信息
+     *
+     * <p>错误消息格式：原始错误 + 参数 schema，让 LLM 在下一轮 ReAct 循环中
+     * 能理解失败原因并修正参数重试。
+     *
+     * <p>用 builder 正确设置 state=ERROR（ToolResultBlock.error() 不设置 state）。
+     *
+     * @param errorMsg   原始错误消息
+     * @param paramsJson 实际传入的参数 JSON
+     * @return 带 ERROR state 和提示信息的 ToolResultBlock
+     */
+    private ToolResultBlock buildErrorResult(String errorMsg, String paramsJson) {
+        StringBuilder hint = new StringBuilder();
+        hint.append("Error: ").append(errorMsg);
+
+        // 附加参数 schema 提示（帮助 LLM 修正参数）
+        if (parametersSchema != null && !parametersSchema.isEmpty()) {
+            try {
+                String schemaJson = objectMapper.writeValueAsString(parametersSchema);
+                hint.append("\n\nExpected parameters schema: ").append(schemaJson);
+            } catch (Exception ignored) {
+                // schema 序列化失败不影响错误返回
+            }
+        }
+
+        // 附加实际传入的参数（帮助 LLM 对比差异）
+        if (paramsJson != null && !paramsJson.equals("{}")) {
+            hint.append("\n\nYour input was: ").append(paramsJson);
+        }
+
+        hint.append("\n\nPlease check the parameter types and format, then retry.");
+
+        return ToolResultBlock.builder()
+                .output(io.agentscope.core.message.TextBlock.builder().text(hint.toString()).build())
+                .state(io.agentscope.core.message.ToolResultState.ERROR)
+                .build();
     }
 
     /**
