@@ -50,6 +50,7 @@ public class BudgetServiceImpl implements BudgetService {
     private static final String SCOPE_TENANT = "TENANT";
     private static final String SCOPE_AGENT = "AGENT";
     private static final String SCOPE_USER = "USER";
+    private static final String SCOPE_CONVERSATION = "CONVERSATION";
     private static final String PERIOD_DAILY = "DAILY";
     private static final String PERIOD_MONTHLY = "MONTHLY";
     private static final String TASK_COMPLETED = "COMPLETED";
@@ -57,6 +58,11 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public void checkBudget(Long agentId) {
+        checkBudget(agentId, null);
+    }
+
+    @Override
+    public void checkBudget(Long agentId, String conversationUuid) {
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
         Long userId = BaseContext.getUserId();
 
@@ -70,7 +76,12 @@ public class BudgetServiceImpl implements BudgetService {
         }
 
         for (BudgetRuleDO rule : rules) {
-            BigDecimal usage = calculateUsage(rule, tenantId, agentId, userId);
+            // CONVERSATION 范围的规则只在有 conversationUuid 时检查
+            if (SCOPE_CONVERSATION.equals(rule.getScopeType()) && conversationUuid == null) {
+                continue;
+            }
+
+            BigDecimal usage = calculateUsage(rule, tenantId, agentId, userId, conversationUuid);
             BigDecimal limit = rule.getLimitAmount();
 
             if (usage.compareTo(limit) >= 0) {
@@ -160,7 +171,7 @@ public class BudgetServiceImpl implements BudgetService {
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (BudgetRuleDO rule : rules) {
-            BigDecimal usage = calculateUsage(rule, tenantId, null, userId);
+            BigDecimal usage = calculateUsage(rule, tenantId, null, userId, null);
             BigDecimal limit = rule.getLimitAmount();
             BigDecimal percent = limit.compareTo(BigDecimal.ZERO) > 0
                     ? usage.multiply(BigDecimal.valueOf(100)).divide(limit, 2, RoundingMode.HALF_UP)
@@ -183,7 +194,8 @@ public class BudgetServiceImpl implements BudgetService {
         return result;
     }
 
-    private BigDecimal calculateUsage(BudgetRuleDO rule, Long tenantId, Long agentId, Long userId) {
+    private BigDecimal calculateUsage(BudgetRuleDO rule, Long tenantId, Long agentId,
+                                      Long userId, String conversationUuid) {
         LocalDateTime periodStart = getPeriodStart(rule.getPeriodType());
 
         LambdaQueryWrapper<AgentTaskDO> wrapper = new LambdaQueryWrapper<>();
@@ -198,6 +210,9 @@ public class BudgetServiceImpl implements BudgetService {
         }
         if (SCOPE_USER.equals(rule.getScopeType()) && rule.getScopeId() != null) {
             wrapper.eq(AgentTaskDO::getCreateBy, rule.getScopeId());
+        }
+        if (SCOPE_CONVERSATION.equals(rule.getScopeType()) && rule.getScopeIdStr() != null) {
+            wrapper.eq(AgentTaskDO::getConversationUuid, rule.getScopeIdStr());
         }
 
         List<AgentTaskDO> tasks = agentTaskMapper.selectList(wrapper);

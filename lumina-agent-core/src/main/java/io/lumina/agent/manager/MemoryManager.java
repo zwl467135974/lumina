@@ -53,6 +53,13 @@ public class MemoryManager {
     private RedisCacheManager redisCacheManager;
 
     /**
+     * 冷启记忆加载器（可选，从 DB 恢复 Redis 丢失的记忆）
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private io.lumina.agent.service.ColdStartMemoryLoader coldStartLoader;
+
+    /**
      * ObjectMapper 用于序列化/反序列化
      */
     private final ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
@@ -141,7 +148,8 @@ public class MemoryManager {
             List<?> rawList = redisCacheManager.getList(key);
 
             if (rawList == null || rawList.isEmpty()) {
-                return new ArrayList<>();
+                // Redis 为空 → 冷启回退：从 DB 加载 + 回填 Redis
+                return loadFromDbAndWarmUp(sessionId);
             }
 
             List<Memory> memories = new ArrayList<>(rawList.size());
@@ -159,6 +167,35 @@ public class MemoryManager {
             List<Memory> memories = memoryStore.getIfPresent(sessionId);
             return memories != null ? memories : new ArrayList<>();
         }
+    }
+
+    /**
+     * 冷启恢复：Redis 无记忆时从 DB 加载，并回填 Redis（warm-up）
+     *
+     * @param sessionId 会话 ID（conversationUuid）
+     * @return 从 DB 加载的记忆列表；无 DB 数据或加载器未注入时返回空列表
+     */
+    private List<Memory> loadFromDbAndWarmUp(String sessionId) {
+        if (coldStartLoader == null) {
+            return new ArrayList<>();
+        }
+
+        List<Memory> dbMemories = coldStartLoader.loadFromDb(sessionId, MAX_MEMORY_SIZE);
+        if (dbMemories.isEmpty()) {
+            return dbMemories;
+        }
+
+        // 回填 Redis（warm-up），下次直接命中
+        try {
+            for (Memory m : dbMemories) {
+                addMemoryToRedis(sessionId, m);
+            }
+            log.info("冷启记忆 warm-up 完成: sessionId={}, 回填 {} 条到 Redis", sessionId, dbMemories.size());
+        } catch (Exception e) {
+            log.warn("冷启记忆 warm-up 失败（不影响本次使用）: sessionId={}, error={}", sessionId, e.getMessage());
+        }
+
+        return dbMemories;
     }
 
     /**

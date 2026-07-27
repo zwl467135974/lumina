@@ -26,6 +26,7 @@ public class BudgetRuleDO {
     private String ruleName;
     private String scopeType;
     private Long scopeId;
+    private String scopeIdStr;
     private String periodType;
     private BigDecimal limitAmount;
     private Integer alertThreshold;

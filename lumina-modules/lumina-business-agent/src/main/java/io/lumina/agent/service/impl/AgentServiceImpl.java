@@ -286,7 +286,7 @@ public class AgentServiceImpl implements AgentService {
         Agent agent = getAgentById(agentId);
 
         agentRateLimiter.checkRateLimit(agentId, agent.getRateLimit());
-        budgetService.checkBudget(agentId);
+        budgetService.checkBudget(agentId, conversationUuid);
 
         // 并发许可：maxConcurrent>0 时限制同时执行数
         boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, agent.getMaxConcurrent());
@@ -419,7 +419,7 @@ public class AgentServiceImpl implements AgentService {
         Agent agent = getAgentById(agentId);
 
         agentRateLimiter.checkRateLimit(agentId, agent.getRateLimit());
-        budgetService.checkBudget(agentId);
+        budgetService.checkBudget(agentId, conversationUuid);
 
         promptInjectionFilter.check(task);
 
@@ -528,7 +528,7 @@ public class AgentServiceImpl implements AgentService {
         Agent agent = getAgentById(agentId);
 
         agentRateLimiter.checkRateLimit(agentId, agent.getRateLimit());
-        budgetService.checkBudget(agentId);
+        budgetService.checkBudget(agentId, conversationUuid);
 
         promptInjectionFilter.check(task);
         moderateContent(task);
