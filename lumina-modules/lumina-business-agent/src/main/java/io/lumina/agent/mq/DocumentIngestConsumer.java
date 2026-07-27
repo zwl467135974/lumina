@@ -85,7 +85,11 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
                 return;
             }
 
-            List<Document> docs = parseDocument(filePath, msg.getFormat(), msg.getChunkSize(), msg.getOverlap());
+            // 分块策略：消息中的（KB级）优先，null 回退全局配置
+            SplitStrategy strategy = msg.getSplitStrategy() != null
+                    ? SplitStrategy.valueOf(msg.getSplitStrategy()) : getSplitStrategy();
+
+            List<Document> docs = parseDocument(filePath, msg.getFormat(), msg.getChunkSize(), msg.getOverlap(), strategy);
 
             // 扫描件检测：PDF 解析后无任何文本内容（扫描件/图片型 PDF 无可提取文本层）
             if ((docs == null || docs.isEmpty()) && "pdf".equalsIgnoreCase(msg.getFormat())) {
@@ -97,7 +101,7 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
                     if (!ocrText.isBlank()) {
                         log.info("OCR 识别成功，文字长度: {}", ocrText.length());
                         // 将 OCR 结果转为 Document 走正常入库流程
-                        docs = ocrTextToDocuments(ocrText, msg.getChunkSize(), msg.getOverlap());
+                        docs = ocrTextToDocuments(ocrText, msg.getChunkSize(), msg.getOverlap(), strategy);
                     }
                 }
 
@@ -210,9 +214,9 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
         }
     }
 
-    private List<Document> parseDocument(Path filePath, String format, int chunkSize, int overlap) {
+    private List<Document> parseDocument(Path filePath, String format, int chunkSize, int overlap,
+                                         SplitStrategy splitStrategy) {
         ReaderInput input = ReaderInput.fromPath(filePath);
-        SplitStrategy splitStrategy = getSplitStrategy();
         switch (format) {
             case "pdf":
                 return new PDFReader(chunkSize, splitStrategy, overlap).read(input).block();
@@ -240,13 +244,14 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     /**
      * 将 OCR 识别出的文本转为 Document 列表（复用 TextReader 分块逻辑）
      */
-    private List<Document> ocrTextToDocuments(String text, int chunkSize, int overlap) {
+    private List<Document> ocrTextToDocuments(String text, int chunkSize, int overlap,
+                                               SplitStrategy splitStrategy) {
         java.nio.file.Path tempFile = null;
         try {
             tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
             java.nio.file.Files.writeString(tempFile, text);
             ReaderInput input = ReaderInput.fromPath(tempFile);
-            return new TextReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
+            return new TextReader(chunkSize, splitStrategy, overlap).read(input).block();
         } catch (Exception e) {
             log.warn("OCR 文本转 Document 失败: {}", e.getMessage());
             return List.of();

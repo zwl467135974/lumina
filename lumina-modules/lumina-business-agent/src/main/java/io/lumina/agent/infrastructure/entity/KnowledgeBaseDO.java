@@ -18,6 +18,12 @@ public class KnowledgeBaseDO {
     private Long id;
     private String name;
     private String description;
+    /** 分块大小（Token 数，null=全局默认） */
+    private Integer chunkSize;
+    /** 分块重叠（Token 数，null=全局默认） */
+    private Integer overlap;
+    /** 分块策略（PARAGRAPH/CHARACTER/TOKEN/SEMANTIC，null=全局默认） */
+    private String splitStrategy;
     /** 可见性：PRIVATE / TEAM / PUBLIC */
     private String visibility;
     private Long tenantId;

@@ -59,6 +59,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Autowired(required = false)
     private io.lumina.agent.rag.PdfOcrProcessor pdfOcrProcessor;
 
+    @Autowired(required = false)
+    private io.lumina.agent.infrastructure.mapper.KnowledgeBaseMapper knowledgeBaseMapper;
+
     @Value("${lumina.rag.reader.chunk-size:512}")
     private int chunkSize;
 
@@ -84,11 +87,28 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
 
+        // 从知识库配置读取分块策略（KB 配置优先，null 回退全局默认）
+        int effectiveChunkSize = chunkSize;
+        int effectiveOverlap = overlap;
+        String effectiveSplitStrategy = null; // null 让 consumer 用全局默认
+        if (knowledgeBaseMapper != null && kbId != null) {
+            io.lumina.agent.infrastructure.entity.KnowledgeBaseDO kb = knowledgeBaseMapper.selectById(kbId);
+            if (kb != null) {
+                if (kb.getChunkSize() != null) effectiveChunkSize = kb.getChunkSize();
+                if (kb.getOverlap() != null) effectiveOverlap = kb.getOverlap();
+                effectiveSplitStrategy = kb.getSplitStrategy();
+                log.info("使用知识库分块配置: kbId={}, chunkSize={}, overlap={}, strategy={}",
+                        kbId, effectiveChunkSize, effectiveOverlap, effectiveSplitStrategy);
+            }
+        }
+
         if (rocketMQTemplate != null) {
-            return uploadAsync(file, agentId, kbId, filename, format, uuid, tenantId);
+            return uploadAsync(file, agentId, kbId, filename, format, uuid, tenantId,
+                    effectiveChunkSize, effectiveOverlap, effectiveSplitStrategy);
         } else {
             log.info("RocketMQ 不可用，降级为同步处理");
-            return uploadSync(file, agentId, kbId, filename, format, uuid, tenantId);
+            return uploadSync(file, agentId, kbId, filename, format, uuid, tenantId,
+                    effectiveChunkSize, effectiveOverlap, effectiveSplitStrategy);
         }
     }
 
@@ -96,7 +116,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
      * 异步上传：保存文件 → 创建 PENDING 记录 → 发送 MQ 消息 → 立即返回
      */
     private String uploadAsync(MultipartFile file, Long agentId, Long kbId, String filename,
-                               String format, String uuid, Long tenantId) {
+                               String format, String uuid, Long tenantId,
+                               int effectiveChunkSize, int effectiveOverlap, String effectiveSplitStrategy) {
         try {
             Path storageDir = Path.of(storagePath);
             Files.createDirectories(storageDir);
@@ -118,7 +139,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
             DocumentIngestMessage msg = new DocumentIngestMessage(
                     uuid, destFile.toAbsolutePath().toString(), format,
-                    agentId, tenantId, kbId, chunkSize, overlap);
+                    agentId, tenantId, kbId, effectiveChunkSize, effectiveOverlap, effectiveSplitStrategy);
 
             rocketMQTemplate.convertAndSend(RocketMQConfig.TOPIC_KNOWLEDGE_INGEST, msg);
 
@@ -135,26 +156,32 @@ public class KnowledgeServiceImpl implements KnowledgeService {
      * 同步上传（降级模式，RocketMQ 不可用时使用）
      */
     private String uploadSync(MultipartFile file, Long agentId, Long kbId, String filename,
-                              String format, String uuid, Long tenantId) {
+                              String format, String uuid, Long tenantId,
+                              int effectiveChunkSize, int effectiveOverlap, String effectiveSplitStrategy) {
         Path tempFile = null;
         try {
             tempFile = Files.createTempFile("lumina_rag_", "_" + filename);
             file.transferTo(tempFile.toFile());
+
+            // 分块策略：KB 配置优先，null 回退全局
+            io.agentscope.core.rag.reader.SplitStrategy strategy = effectiveSplitStrategy != null
+                    ? io.agentscope.core.rag.reader.SplitStrategy.valueOf(effectiveSplitStrategy)
+                    : getSplitStrategy();
 
             List<Document> docs;
             ReaderInput input = ReaderInput.fromPath(tempFile);
 
             switch (format) {
                 case "pdf":
-                    docs = new PDFReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
+                    docs = new PDFReader(effectiveChunkSize, strategy, effectiveOverlap).read(input).block();
                     break;
                 case "doc":
                 case "docx":
-                    docs = new WordReader(chunkSize, getSplitStrategy(), overlap,
+                    docs = new WordReader(effectiveChunkSize, strategy, effectiveOverlap,
                             false, true, io.agentscope.core.rag.reader.TableFormat.MARKDOWN).read(input).block();
                     break;
                 default:
-                    docs = new TextReader(chunkSize, getSplitStrategy(), overlap).read(input).block();
+                    docs = new TextReader(effectiveChunkSize, strategy, effectiveOverlap).read(input).block();
             }
 
             // 扫描件检测：PDF 解析后无任何文本内容（扫描件/图片型 PDF 无可提取文本层）
@@ -170,7 +197,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                         try {
                             ocrTempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
                             java.nio.file.Files.writeString(ocrTempFile, ocrText);
-                            docs = new TextReader(chunkSize, getSplitStrategy(), overlap)
+                            docs = new TextReader(effectiveChunkSize, strategy, effectiveOverlap)
                                     .read(ReaderInput.fromPath(ocrTempFile)).block();
                             log.info("OCR 识别成功: file={}, textLen={}", filename, ocrText.length());
                         } finally {

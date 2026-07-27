@@ -31,17 +31,25 @@ public class DocumentIngestMessage implements Serializable {
     private Long kbId;
     private int chunkSize;
     private int overlap;
+    /** 分块策略（PARAGRAPH/CHARACTER/TOKEN/SEMANTIC，null=全局默认） */
+    private String splitStrategy;
 
     public DocumentIngestMessage() {
     }
 
     public DocumentIngestMessage(String uuid, String filePath, String format, Long agentId,
                                  Long tenantId, int chunkSize, int overlap) {
-        this(uuid, filePath, format, agentId, tenantId, null, chunkSize, overlap);
+        this(uuid, filePath, format, agentId, tenantId, null, chunkSize, overlap, null);
     }
 
     public DocumentIngestMessage(String uuid, String filePath, String format, Long agentId,
                                  Long tenantId, Long kbId, int chunkSize, int overlap) {
+        this(uuid, filePath, format, agentId, tenantId, kbId, chunkSize, overlap, null);
+    }
+
+    public DocumentIngestMessage(String uuid, String filePath, String format, Long agentId,
+                                 Long tenantId, Long kbId, int chunkSize, int overlap,
+                                 String splitStrategy) {
         this.uuid = uuid;
         this.filePath = filePath;
         this.format = format;
@@ -50,6 +58,7 @@ public class DocumentIngestMessage implements Serializable {
         this.kbId = kbId;
         this.chunkSize = chunkSize;
         this.overlap = overlap;
+        this.splitStrategy = splitStrategy;
     }
 
     public String getUuid() { return uuid; }
@@ -68,6 +77,8 @@ public class DocumentIngestMessage implements Serializable {
     public void setChunkSize(int chunkSize) { this.chunkSize = chunkSize; }
     public int getOverlap() { return overlap; }
     public void setOverlap(int overlap) { this.overlap = overlap; }
+    public String getSplitStrategy() { return splitStrategy; }
+    public void setSplitStrategy(String splitStrategy) { this.splitStrategy = splitStrategy; }
 
     @Override
     public String toString() {
