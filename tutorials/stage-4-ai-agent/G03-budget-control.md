@@ -35,18 +35,35 @@ CREATE TABLE lumina_budget_rule (
 );
 ```
 
-### 三种范围 + 两种周期
+### 四种范围 + 两种周期
 
 | 范围 | 场景 | 示例 |
 |------|------|------|
 | TENANT | 租户总预算 | A 公司每月最多花 ¥10000 |
 | AGENT | 单 Agent 预算 | 数据分析 Agent 每月最多 ¥500 |
 | USER | 单用户预算 | 张三每天最多 ¥10 |
+| **CONVERSATION** | **单会话预算** | **客服对话最多花 ¥2（v3.9.0 新增）** |
 
 | 周期 | 重置频率 | 适合 |
 |------|---------|------|
 | DAILY | 每天归零 | 防突发滥用 |
 | MONTHLY | 每月归零 | 月度预算管控 |
+
+### CONVERSATION 范围（v3.9.0 新增）
+
+会话级预算限制单个对话的花费——企业客服场景的刚需："每次客户对话最多花 ¥2"。
+
+```java
+// 文件：BudgetServiceImpl.java
+private static final String SCOPE_CONVERSATION = "CONVERSATION";
+
+// calculateUsage 中新增分支
+if (SCOPE_CONVERSATION.equals(rule.getScopeType()) && rule.getScopeIdStr() != null) {
+    wrapper.eq(AgentTaskDO::getConversationUuid, rule.getScopeIdStr());
+}
+```
+
+> **scopeIdStr 字段**：`BudgetRuleDO.scopeId` 是 `Long`，但 `conversationUuid` 是 `String`。v3.9.0 新增 `scopeIdStr` 字段（V48 迁移）存储 conversationUuid。
 
 ---
 
@@ -150,7 +167,7 @@ private Duration ttlByPeriod() {
 
 | 概念 | 一句话记忆 |
 |------|-----------|
-| 预算规则 | 三维（TENANT/AGENT/USER）× 两周期（DAILY/MONTHLY） |
+| 预算规则 | 四维（TENANT/AGENT/USER/CONVERSATION）× 两周期（DAILY/MONTHLY） |
 | 在途追踪 | COMPLETED + RUNNING 都算（防并发超额） |
 | 告警阈值 | 默认 80%，Redis 去重防轰炸 |
 | 告警 TTL | DAILY=25h，MONTHLY=31d（跨周期自动过期） |
