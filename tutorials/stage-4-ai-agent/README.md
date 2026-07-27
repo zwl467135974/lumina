@@ -53,7 +53,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 
 ---
 
-### 📕 模块 B：Agent 核心（6 篇）— "Agent 怎么工作"
+### 📕 模块 B：Agent 核心（7 篇）— "Agent 怎么工作"
 
 **适合**：想理解 Agent 内部循环的同学。
 
@@ -65,6 +65,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 | B04 | [Agent 配置体系](B04-agent-config-system.md) | AgentConfig/LLMConfig，ReAct 与 Plan-Execute 切换 |
 | B05 | [Provider Failover](B05-provider-failover.md) | 主备链容灾：主模型挂了自动切备用 |
 | B06 | [Agent 循环控制](B06-agent-loop-control.md) | maxIters 安全阀 + 三层容错体系 |
+| B07 | [动态模型路由](B07-dynamic-model-routing.md) | 复杂度判断→便宜/强力模型自动切换 |
 
 ---
 
@@ -112,7 +113,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 
 ---
 
-### 📡 模块 F：输出与交互（5 篇）
+### 📡 模块 F：输出与交互（6 篇）
 
 | # | 标题 | 你将学会 |
 |---|------|----------|
@@ -121,6 +122,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 | F03 | [OpenAI 兼容出口](F03-openai-compat.md) | /v1/chat/completions，标准 SDK 直接对接 |
 | F04 | [安全防护](F04-security-defense.md) | Prompt 注入检测 11 模式 + PII 脱敏 |
 | F05 | [结构化输出](F05-structured-output.md) | JSON Mode：ResponseFormat 约束 LLM 返回格式 |
+| F06 | [输出护栏](F06-output-guardrail.md) | 关键词拦截 + 长度截断 + 重复检测 |
 
 ---
 
