@@ -78,6 +78,9 @@ public class AgentServiceImpl implements AgentService {
 
     private final OutputSanitizer outputSanitizer;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.security.OutputGuardrail outputGuardrail;
+
     private final AgentRateLimiter agentRateLimiter;
 
     private final AgentConcurrencyLimiter concurrencyLimiter;
@@ -324,8 +327,22 @@ public class AgentServiceImpl implements AgentService {
                 throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED, "Agent 执行失败: " + result.getError());
             }
 
+            // 输出护栏检查（拦截/重写）
+            String outputToSanitize = result.getResult();
+            if (outputGuardrail != null) {
+                io.lumina.agent.security.OutputGuardrail.GuardrailResult gr =
+                        outputGuardrail.check(outputToSanitize, agentId);
+                if (gr.blocked()) {
+                    throw new BusinessException(ErrorCode.AGENT_EXECUTE_FAILED,
+                            "输出被护栏拦截: " + gr.reason());
+                }
+                if (gr.rewritten() != null) {
+                    outputToSanitize = gr.rewritten();
+                }
+            }
+
             // 输出脱敏
-            String sanitizedResult = outputSanitizer.sanitize(result.getResult());
+            String sanitizedResult = outputSanitizer.sanitize(outputToSanitize);
             result.setResult(sanitizedResult);
 
             // 保存助手回复到数据库

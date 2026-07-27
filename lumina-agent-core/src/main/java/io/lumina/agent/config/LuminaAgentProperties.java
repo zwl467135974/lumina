@@ -34,6 +34,54 @@ public class LuminaAgentProperties {
     private Integer maxIterations = 10;
 
     /**
+     * 动态模型路由配置
+     *
+     * @since 3.8.0
+     */
+    private ModelRoutingConfig modelRouting = new ModelRoutingConfig();
+
+    /**
+     * 输出护栏配置
+     *
+     * @since 3.8.0
+     */
+    private GuardrailConfig guardrail = new GuardrailConfig();
+
+    /**
+     * 动态模型路由配置
+     *
+     * <p>启用后，每次请求先用轻量 LLM 判断复杂度，简单问题用便宜模型，复杂问题用强力模型。
+     *
+     * @since 3.8.0
+     */
+    @Data
+    public static class ModelRoutingConfig {
+        /** 是否启用动态模型路由（默认 false） */
+        private boolean enabled = false;
+        /** 简单问题使用的模型名（如 glm-4-flash） */
+        private String simpleModel;
+        /** 复杂问题使用的模型名（如 glm-4） */
+        private String complexModel;
+    }
+
+    /**
+     * 输出护栏配置
+     *
+     * <p>启用后，Agent 返回结果前进行安全检查（关键词/长度/重复）。
+     *
+     * @since 3.8.0
+     */
+    @Data
+    public static class GuardrailConfig {
+        /** 是否启用输出护栏（默认 false） */
+        private boolean enabled = false;
+        /** 输出最大长度（字符数，0=不限制） */
+        private int maxOutputLength = 10000;
+        /** 敏感关键词列表（命中即拦截） */
+        private java.util.List<String> blockedKeywords;
+    }
+
+    /**
      * LLM 配置
      */
     @Data

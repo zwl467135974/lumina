@@ -128,6 +128,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.service.ContextSummarizer contextSummarizer;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.service.ModelRouter modelRouter;
+
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
@@ -207,6 +210,14 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
             // 加载配置
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
+
+            // 动态模型路由（可选）：根据复杂度选择模型
+            if (modelRouter != null) {
+                AgentConfig.LLMConfig routed = modelRouter.route(task, agentConfig);
+                if (routed != null) {
+                    agentConfig.setLlmConfig(routed);
+                }
+            }
 
             // 补充 Trace agent 信息（config 加载后）
             if (traceCtx != null && config == null) {

@@ -147,6 +147,15 @@ lumina:
         cron: ${LUMINA_TRACE_CLEANUP_CRON:0 0 3 * * ?}
     # ReAct 循环最大迭代次数（防止死循环，单个 Agent 可通过 AgentConfig 覆盖）
     max-iterations: ${LUMINA_AGENT_MAX_ITERS:10}
+    # 动态模型路由（启用后根据复杂度自动切换便宜/强力模型）
+    model-routing:
+      enabled: ${MODEL_ROUTING_ENABLED:false}
+      simple-model: ${MODEL_ROUTING_SIMPLE:glm-4-flash}
+      complex-model: ${MODEL_ROUTING_COMPLEX:glm-4}
+    # 输出护栏（启用后对 Agent 输出进行安全检查）
+    guardrail:
+      enabled: ${OUTPUT_GUARDRAIL_ENABLED:false}
+      max-output-length: ${OUTPUT_GUARDRAIL_MAX_LENGTH:10000}
     content-moderation:
       enabled: ${CONTENT_MODERATION_ENABLED:true}
       strict: ${CONTENT_MODERATION_STRICT:false}
