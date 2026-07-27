@@ -1,6 +1,6 @@
 # 第四阶：AI/Agent 专项 — Lumina 的核心卖点
 
-> **这是整个教学体系最大的模块（53 篇）。** Lumina 是 AI Agent 平台，AI 是它的灵魂。
+> **这是整个教学体系最大的模块（58 篇）。** Lumina 是 AI Agent 平台，AI 是它的灵魂。
 >
 > **前置建议**：至少完成[第一阶](../stage-1-foundation/README.md)后端基础（01-10）。
 >
@@ -69,7 +69,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 
 ---
 
-### 📦 模块 C：工具系统（5 篇）— "让 AI 能做事"
+### 📦 模块 C：工具系统（6 篇）— "让 AI 能做事"
 
 **适合**：想让 Agent 调用自定义工具的同学。
 
@@ -77,13 +77,14 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 |---|------|----------|
 | C01 | [工具调用原理](C01-tool-calling-principle.md) | Function Calling 协议：LLM 怎么决定调哪个工具 |
 | C02 | [@AgentTool 注解](C02-agenttool-annotation.md) | 一个注解把普通 Java 方法变成 Agent 工具 |
-| C03 | [内置工具系统](C03-built-in-tools.md) | HTTP 请求/当前时间/网络搜索/数学计算 |
-| C04 | [MCP 协议](C04-mcp-protocol.md) | Model Context Protocol：统一工具接入标准 |
+| C03 | [内置工具系统](C03-built-in-tools.md) | 时间/搜索/计算/HTTP 等内置工具的设计 |
+| C04 | [MCP 协议](C04-mcp-protocol.md) | Model Context Protocol：跨平台工具标准 |
 | C05 | [MCP 三种传输](C05-mcp-transports.md) | stdio/http/streamable-http 的区别和选型 |
+| C06 | [工具错误恢复](C06-tool-error-recovery.md) | 增强错误消息：让 LLM 自动修正参数重试 |
 
 ---
 
-### 📚 模块 D：RAG 知识库（8 篇）— 重点中的重点
+### 📚 模块 D：RAG 知识库（9 篇）— 重点中的重点
 
 **RAG 是 Lumina 最核心的 AI 能力之一，也是篇幅最大的子模块。**
 
@@ -97,10 +98,11 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 | D06 | [OCR 文档解析](D06-ocr-document-parsing.md) | 5 种 OCR 引擎（百度/腾讯/阿里/本地/None） |
 | D07 | [知识库联邦](D07-knowledge-base-federation.md) | 多知识库管理 + Per-Agent 挂载隔离 |
 | D08 | [向量层租户隔离](D08-rag-tenant-isolation.md) | Qdrant payload 下推 + tenant_id 索引（安全关键） |
+| D09 | [KB 级分块策略](D09-kb-chunking-strategy.md) | 每个知识库独立配 chunkSize/overlap/splitStrategy |
 
 ---
 
-### 🧠 模块 E：记忆与对话（6 篇）
+### 🧠 模块 E：记忆与对话（7 篇）
 
 | # | 标题 | 你将学会 |
 |---|------|----------|
@@ -110,10 +112,11 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 | E04 | [会话生命周期](E04-conversation-lifecycle.md) | conversationId UUID、创建/续聊/删除 |
 | E05 | [跨实例状态共享](E05-agent-state-store.md) | AgentScope 2.0 AgentStateStore + Redis 持久化 |
 | E06 | [上下文压缩](E06-context-compression.md) | 长对话滚动摘要：旧消息 LLM 压缩不丢弃 |
+| E07 | [冷启记忆恢复](E07-cold-start-memory-recovery.md) | Redis 丢了从 MySQL 恢复 + warm-up 回填 |
 
 ---
 
-### 📡 模块 F：输出与交互（6 篇）
+### 📡 模块 F：输出与交互（7 篇）
 
 | # | 标题 | 你将学会 |
 |---|------|----------|
@@ -123,6 +126,7 @@ AI 概念对小白最陌生，这阶**类比密度最高**。先记住这组类�
 | F04 | [安全防护](F04-security-defense.md) | Prompt 注入检测 11 模式 + PII 脱敏 |
 | F05 | [结构化输出](F05-structured-output.md) | JSON Mode：ResponseFormat 约束 LLM 返回格式 |
 | F06 | [输出护栏](F06-output-guardrail.md) | 关键词拦截 + 长度截断 + 重复检测 |
+| F07 | [自动会话管理](F07-auto-conversation-management.md) | /chat 端点：前端无需手动管 conversationId |
 
 ---
 
