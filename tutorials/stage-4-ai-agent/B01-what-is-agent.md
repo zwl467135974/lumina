@@ -99,14 +99,16 @@ private ReActAgent createReActAgent(AgentConfig config) {
         .name(config.getAgentName())
         .model(chatModel)              // LLM 大脑
         .toolkit(toolkit)              // 工具箱
-        .memory(memory)                // 记忆
-        .prompt(systemPrompt)          // System Prompt
-        .streamOptions(streamOptions)  // 流式选项
+        .sysPrompt(systemPrompt)       // System Prompt（AgentScope 2.0：.prompt() → .sysPrompt()）
+        .stateStore(stateStore)        // 跨实例状态存储（AgentScope 2.0：.memory() → .stateStore()）
+        .maxIters(maxIterations)       // ReAct 循环上限（防止死循环烧 Token）
         .build();
 }
 ```
 
 **一行 Builder 搞定**——AgentScope SDK 的 ReActAgent 帮你实现了循环逻辑，Lumina 只管配参数。
+
+> 💡 **AgentScope 2.0 API 迁移**：从 v3.7 起，`.memory()` 改为 `.stateStore()`、`.prompt()` 改为 `.sysPrompt()`。详见 [B03-AgentScope SDK](B03-agentscope-sdk.md)
 
 ---
 

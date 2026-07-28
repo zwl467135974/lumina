@@ -84,9 +84,11 @@ if (SCOPE_CONVERSATION.equals(rule.getScopeType()) && rule.getScopeIdStr() != nu
 
 ```java
 // 文件：lumina-business-agent/.../service/impl/BudgetServiceImpl.java
-public BudgetCheckResult checkBudget(String scopeType, Long scopeId, BigDecimal estimatedCost) {
+// 概念示意：真实签名为 checkBudget(Long agentId, String conversationUuid)
+// 内部按 agentId 查预算规则，按 scopeType(TENANT/AGENT/USER/CONVERSATION) 聚合
+public void checkBudget(Long agentId, String conversationUuid) {
     // 查当前周期内已花费（COMPLETED + RUNNING）
-    BigDecimal spent = calculateUsage(scopeType, scopeId);
+    BigDecimal spent = calculateUsage(agentId, conversationUuid);
     //                                    ↑
     //     关键：不只算 COMPLETED，也算 RUNNING 的在途消耗
     //     wrapper.in(AgentTaskDO::getStatus, "COMPLETED", "RUNNING");

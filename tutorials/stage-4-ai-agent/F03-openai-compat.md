@@ -42,22 +42,24 @@ Lumina 的 OpenAI 兼容出口就是这个转换器：不管客户端是 OpenAI 
 
 ```java
 // 文件：lumina-business-agent/.../api/controller/OpenAiCompatController.java
+// 以下为概念示意（真实 DTO 名为 ChatCompletionRequest/Response，方法通过 HttpServletResponse 写流）
 
 // 1. 对话端点（支持流式和非流式）
 @PostMapping(value = "/v1/chat/completions")
-public Object chatCompletions(@RequestBody OpenAiRequest request) {
-    Long agentId = parseAgentId(request.getModel());  // model="agent-243" → agentId=243
+public void chatCompletions(@RequestBody ChatCompletionRequest request,
+                            HttpServletResponse response) {
+    Long agentId = resolveAgentId(request.getModel());  // model="agent-243" → agentId=243
 
     if (request.isStream()) {
-        return Flux<ServerSentEvent> ... // 流式 SSE（OpenAI 流式格式）
+        writeStream(response, ...);  // 流式 SSE（OpenAI 流式格式 chunk）
     } else {
-        return OpenAiResponse ...         // 非流式 JSON
+        writeCompletion(response, ...);  // 非流式 JSON
     }
 }
 
 // 2. 模型列表端点（Agent 伪装成 model）
 @GetMapping("/v1/models")
-public OpenAiModelList listModels() {
+public ModelListResponse listModels() {
     // 把 Lumina 的 Agent 列表包装成 OpenAI 的 model 列表
     // 每个 Agent → { id: "agent-{agentId}", object: "model" }
 }

@@ -54,13 +54,16 @@ public GuardrailResult check(String output, Long agentId) {
     //    配置 lumina.agent.guardrail.blocked-keywords: ["password", "secret", "api_key"]
     //    输出 lowercase 后做 contains 匹配
 
-    // 2. 输出长度限制 → 超长则截断（rewrite）
+    // 2. 重复内容检测 → 严重重复则拦截（block）
+    //    连续 repetitionConsecutiveLines 行（默认 20）完全相同，
+    //    或去重后行数占比 < repetitionUniqueRatio（默认 0.1，即 10%）
+    //    说明 Agent 陷入了死循环
+    //    【顺序关键】必须在长度截断之前——否则 Agent 循环输出的重复内容
+    //    会被静默截断，丢失"Agent 故障"这一关键信号（v3.10.0 修复）
+
+    // 3. 输出长度限制 → 超长则截断（rewrite）
     //    默认 max-output-length=10000 字符
     //    截断后追加：[输出被护栏截断：超过最大长度 10000 字符]
-
-    // 3. 重复内容检测 → 严重重复则拦截（block）
-    //    连续 20 行完全相同，或去重后行数 < 原始的 10%
-    //    说明 Agent 陷入了死循环
 }
 ```
 
@@ -77,7 +80,56 @@ for (String keyword : config.getBlockedKeywords()) {
 
 默认关键词：`password`、`secret`、`api_key`。命中任意一个 → **直接拦截，抛异常**，不返回给用户。
 
-### 检查 2：长度截断
+### 检查 2：重复检测（死循环症状）
+
+```java
+// 两条规则，阈值均从配置读取（v3.10.0 起可配）：
+//   ① 连续 repetitionConsecutiveLines 行（默认 20）完全相同 → 判定循环
+//   ② 去重后唯一行数占比低于 repetitionUniqueRatio（默认 0.1，即 10%）→ 判定大量重复
+if (detectRepetition(output)) {
+    return GuardrailResult.block("输出包含严重重复内容，Agent 可能陷入循环");
+}
+```
+
+`detectRepetition` 的核心实现（规则 ② 之前文档未覆盖，此处补全）：
+
+```java
+private boolean detectRepetition(String output) {
+    LuminaAgentProperties.GuardrailConfig config = agentProperties.getGuardrail();
+    int consecutiveThreshold = config.getRepetitionConsecutiveLines();  // 默认 20
+    double uniqueRatio = config.getRepetitionUniqueRatio();             // 默认 0.1
+
+    String[] lines = output.split("\n");
+    Set<String> uniqueLines = new HashSet<>();
+    int consecutiveDupes = 0;
+    String prevLine = null;
+
+    for (String line : lines) {
+        String trimmed = line.trim();
+        // 规则 ①：累计连续重复行（非空），达到阈值即判定循环
+        if (trimmed.equals(prevLine) && !trimmed.isEmpty()) {
+            if (++consecutiveDupes >= consecutiveThreshold) {
+                return true;
+            }
+        } else {
+            consecutiveDupes = 0;
+        }
+        prevLine = trimmed;
+        uniqueLines.add(trimmed);   // 顺手收集唯一行
+    }
+
+    // 规则 ②：去重后唯一行占比低于阈值 → 大量重复（哪怕不连续）
+    return lines.length > 0
+            && (double) uniqueLines.size() / lines.length < uniqueRatio;
+}
+```
+
+这是**死循环 Agent** 的典型症状：模型卡在某段文本里反复输出同一行。这种输出对用户毫无价值，直接拦截比返回 500 行重复字符友好得多。
+
+> **为什么重复检测排在长度截断之前？**（v3.10.0 修复点）
+> 如果先做长度截断，Agent 卡死循环输出的几万行重复内容会被**静默截断到 10000 字符**——表面上"输出正常"，但 `Agent 故障` 这一关键信号被掩盖，运维根本看不到。把重复检测前置，死循环会直接 `block` 并抛异常，便于监控告警和定位故障 Agent。
+
+### 检查 3：长度截断
 
 ```java
 int maxLen = config.getMaxOutputLength();  // 默认 10000
@@ -88,19 +140,7 @@ if (maxLen > 0 && output.length() > maxLen) {
 }
 ```
 
-**注意**：超长不拦截，而是**重写**——截断到 10000 字符并加说明。因为长输出不一定是攻击，可能是 Agent 啰嗦，截断后用户还能看到前半部分。
-
-### 检查 3：重复检测（死循环症状）
-
-```java
-// 连续 20 行完全相同 → 拦截
-// 或去重后行数 < 原始的 10% → 拦截
-if (detectRepetition(output)) {
-    return GuardrailResult.block("输出包含严重重复内容，Agent 可能陷入循环");
-}
-```
-
-这是**死循环 Agent** 的典型症状：模型卡在某段文本里反复输出同一行。这种输出对用户毫无价值，直接拦截比返回 500 行重复字符友好得多。
+**注意**：超长不拦截，而是**重写**——截断到 10000 字符并加说明。因为长输出不一定是攻击，可能是 Agent 啰嗦，截断后用户还能看到前半部分。这也是它被排在三项检查最后的原因——长度只是**展示优化**，优先级最低。
 
 ---
 
@@ -167,6 +207,8 @@ lumina:
         - password
         - secret
         - api_key
+      repetition-consecutive-lines: 20  # 连续重复行阈值，达到即判定死循环（v3.10.0）
+      repetition-unique-ratio: 0.1      # 去重后唯一行占比下限，低于则判定大量重复（v3.10.0）
 ```
 
 ```java
@@ -177,6 +219,8 @@ public static class GuardrailConfig {
     private boolean enabled = false;                        // 默认关
     private int maxOutputLength = 10000;                    // 默认 1 万字符
     private java.util.List<String> blockedKeywords;         // 默认空
+    private int repetitionConsecutiveLines = 20;            // 连续重复行阈值（v3.10.0）
+    private double repetitionUniqueRatio = 0.1;             // 唯一行占比下限（v3.10.0）
 }
 ```
 
@@ -224,7 +268,7 @@ Agent 原始输出:
   我正在思考...
   我正在思考...
   （重复 30 行）
-护栏检查:       连续 20 行相同 → block
+护栏检查:       连续重复行数达到 repetition-consecutive-lines（默认 20）→ block
 用户看到:       错误提示 "输出包含严重重复内容，Agent 可能陷入循环"
 ```
 
@@ -238,7 +282,7 @@ Agent 原始输出:
 | vs OutputSanitizer | Sanitizer 修改（打码），Guardrail 检查（拦截/重写） |
 | GuardrailResult | `pass` / `block` / `rewrite` 三态，互斥 |
 | 执行顺序 | Guardrail 先 → Sanitizer 后 |
-| 三项检查 | 关键词拦截 / 长度截断 / 重复检测 |
+| 三项检查 | 关键词拦截 / 重复检测 / 长度截断（v3.10.0 调整顺序） |
 | 默认开关 | `enabled=false`（误拦正常输出代价大，可选开启） |
 
 ### 自测题
@@ -249,8 +293,8 @@ Agent 原始输出:
 2. 什么情况下 Guardrail 会选择 REWRITE 而不是 BLOCK？
    <details><summary>答案</summary>当输出"有问题但仍有价值"时重写。典型是<b>长度超限</b>：输出只是太啰嗦，前半部分对用户有用，所以截断到 max-output-length 并加说明，而不是整个丢弃。相比之下，命中敏感关键词或死循环的输出对用户毫无价值，直接 block。</details>
 
-3. 重复检测（连续 20 行相同）为什么有用？
-   <details><summary>答案</summary>这是 <b>Agent 陷入死循环</b>的典型症状——模型卡在某段文本里反复输出同一行。这种输出对用户毫无价值（甚至误导），而且会浪费大量 Token。直接拦截比返回 50 行重复字符更友好，也方便运维发现问题 Agent。</details>
+3. 重复检测（连续 `repetition-consecutive-lines` 行相同，默认 20）为什么有用？为什么它必须排在长度截断之前？
+   <details><summary>答案</summary><b>① 作用</b>：这是 <b>Agent 陷入死循环</b>的典型症状——模型卡在某段文本里反复输出同一行。这种输出对用户毫无价值（甚至误导），而且会浪费大量 Token。直接拦截比返回 50 行重复字符更友好，也方便运维发现问题 Agent。<br><br><b>② 必须排在长度截断之前</b>：若先截断，死循环输出的几万行重复内容会被<b>静默截断到 10000 字符</b>，表面上"输出正常"，但"Agent 故障"这一关键信号被掩盖，运维看不到。前置重复检测能让死循环直接 <code>block</code> 抛异常，便于监控告警。这是 v3.10.0 的修复点。</details>
 
 4. 为什么 OutputGuardrail 默认是关闭的（enabled=false）？
    <details><summary>答案</summary>因为护栏有<b>误拦风险</b>。比如关键词 "secret" 可能误伤正常业务（"这是 secret sauce 配方"）；长度限制可能截断合理的长报告；重复检测可能误判诗歌/列表。对大多数应用，OutputSanitizer 的无侵入打码已经够用。护栏是给<b>高风险场景</b>（含凭证的内部工具、对成本敏感的部署）的可选增强，由用户按需开启。</details>
@@ -261,4 +305,4 @@ Agent 原始输出:
 
 ---
 
-📝 **本篇撰写期间修正的代码**：无（输出护栏为 v3.8.0 已有能力，本节仅做解读）。
+📝 **本篇撰写期间修正的代码**：v3.10.0 调整三项检查的执行顺序（关键词 → 重复 → 长度），并让重复检测的两条阈值（`repetitionConsecutiveLines` / `repetitionUniqueRatio`）可配置。本节据此更新了检查顺序说明、`detectRepetition` 代码示例与配置示例。

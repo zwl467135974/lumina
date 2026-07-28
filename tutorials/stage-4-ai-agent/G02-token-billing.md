@@ -51,8 +51,9 @@ Agent 执行
 ## 成本归集：按租户聚合
 
 ```java
-// 文件：CostServiceImpl.java:60-80
-public TenantCostSummary getTenantCostSummary(Long tenantId) {
+// 文件：CostServiceImpl.java（概念示意：真实签名无参，内部从 BaseContext 取 tenantId，返回 Map）
+public TenantCostSummary getTenantCostSummary() {
+    Long tenantId = BaseContext.getTenantId();
     // 查当前租户所有 COMPLETED 的任务记录
     List<AgentTaskDO> tasks = taskMapper.selectCompletedByTenant(tenantId);
 

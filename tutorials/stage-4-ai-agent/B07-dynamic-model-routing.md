@@ -89,6 +89,55 @@ private static final String COMPLEXITY_PROMPT = """
 
 这行 prompt 就是"分诊台护士的判断手册"——明确列出什么算 SIMPLE、什么算 COMPLEX，并**强制模型只输出一个词**（SIMPLE 或 COMPLEX）。这样返回结果不用解析，直接字符串比较就行，避免幻觉输出干扰。
 
+### 第 1.5 步：分诊台自己用什么模型？—— buildClassifierLlmConfig
+
+这里有个**容易被忽略、但决定了路由能不能省钱的关键细节**：分诊台（判复杂度的那次 LLM 调用）自己也要选一个模型。选错了，整个路由就是亏的。
+
+回到本节开头的成本直觉——路由的意义是"简单请求走便宜模型来省钱"。但如果**判断复杂度这一步本身就用了强力模型**（比如 glm-4 / GPT-4），会发生什么？
+
+> 每次请求先烧一次 glm-4 的调用费（~$0.03），就为了判断该不该走便宜的 Flash——**钱还没开始省，先花掉一笔大的**。简单请求占比再高也补不回来，路由净亏。
+
+这正是 v3.10.0 之前老版本踩过的坑：旧版用 `buildDefaultLlmConfig()`，返回的是**空配置**——空配置在引擎里会被当成"沿用默认 LLM 配置"，而默认配置通常就是用户配的强力模型。结果分类器偷偷拿强力模型跑，路由算下来反而比不开还贵。
+
+v3.10.0 的修复引入了 `buildClassifierLlmConfig()`，**强制让分类器优先用最便宜的 simpleModel**：
+
+```java
+// 文件：ComplexityModelRouter.java:126-139
+/**
+ * 构建分类器 LLM 配置——优先用 simpleModel（最便宜），
+ * 未配置时才退回默认配置。
+ */
+private AgentConfig.LLMConfig buildClassifierLlmConfig() {
+    LuminaAgentProperties.ModelRoutingConfig routing = agentProperties.getModelRouting();
+    if (routing.getSimpleModel() != null && !routing.getSimpleModel().isBlank()) {
+        AgentConfig.LLMConfig cfg = new AgentConfig.LLMConfig();
+        cfg.setModelName(routing.getSimpleModel());    // ← 优先用 Flash 这类便宜模型
+        return cfg;
+    }
+    // simpleModel 未配置才用默认（此时路由本身价值有限，仅做日志）
+    return new AgentConfig.LLMConfig();
+}
+```
+
+判复杂度的 `judgeComplexity()` 就是拿这个配置去建模型——注意它**不再**用 `config.getLlmConfig()`（用户配的、可能是强力模型的那个），而是用 `buildClassifierLlmConfig()`：
+
+```java
+// 文件：ComplexityModelRouter.java:105-108
+private String judgeComplexity(String task) {
+    AgentConfig.LLMConfig llmConfig = buildClassifierLlmConfig();   // ← 便宜模型，不是默认模型
+    String apiKey = resolveApiKey();
+    Model model = chatModelFactory.create(llmConfig, agentProperties.getLlm(), apiKey);
+    // ... 用这个 model 跑一次 ReAct 调用，拿到 SIMPLE / COMPLEX
+}
+```
+
+选模型的优先级清清楚楚：
+
+1. **配了 simpleModel（推荐）** → 分类器走 Flash，单次 ~$0.0001，路由才真正划算（这也是下面成本表里"$0.0001 用 Flash 判断"成立的前提）。
+2. **没配 simpleModel** → 退回空配置（= 默认强力模型），此时分类器本身就要花 ~$0.03，路由基本没意义，只留个日志。
+
+一句话总结：**分诊台护士永远是最便宜的那个**——绝不会出现"为了省钱反而先烧一次贵的"这种倒挂。
+
 ### 第 2 步：按复杂度选模型
 
 ```java
@@ -186,7 +235,7 @@ lumina:
 
 | 项 | 数值 |
 |----|------|
-| 分类调用成本（约 50 Token） | ~$0.0001（用 Flash 判断） |
+| 分类调用成本（约 50 Token） | ~$0.0001（分类器走 simpleModel = Flash，见上方 `buildClassifierLlmConfig`） |
 | 简单问题走 Flash | $0.001/次 |
 | 简单问题走 GPT-4 | $0.03/次 |
 | **单个简单请求省下** | **$0.029** |
@@ -223,7 +272,7 @@ lumina:
 | 概念 | 一句话记忆 |
 |------|-----------|
 | ModelRouter 接口 | `route(task, config)` 返回新配置或 null（null = 不干预） |
-| ComplexityModelRouter | 一次 LLM 调用判断 SIMPLE/COMPLEX，再选模型 |
+| ComplexityModelRouter | 一次 LLM 调用判断 SIMPLE/COMPLEX，再选模型；分类调用本身用 simpleModel（最便宜），见 `buildClassifierLlmConfig` |
 | 接入点 | `DefaultAgentExecutionEngine` 第 215 行，`createReActAgent` 之前 |
 | 配置开关 | `lumina.agent.model-routing.enabled`（默认 false，Bean 才创建） |
 | 容错 | 任何异常都 `return null`，降级到默认模型 |
@@ -245,8 +294,11 @@ lumina:
 4. **什么场景下**不**应该启用模型路由？**
    <details><summary>答案</summary>流量同质化的场景：(a) 全是简单请求（如纯闲聊机器人）——直接配 Flash，开路由反而每次白付分类费；(b) 全是复杂请求（如代码审查 Agent）——每次都判 COMPLEX，分类费白花，直接配 GLM-4。路由最适合"两极分化"的混合流量。</details>
 
+5. **判断复杂度的那次 LLM 调用自己用哪个模型？为什么不用默认强力模型？**
+   <details><summary>答案</summary>用 `buildClassifierLlmConfig()` 选出来的模型——优先 simpleModel（如 glm-4-flash，~$0.0001/次），simpleModel 没配才退回默认空配置。绝不能用默认强力模型：如果分类这一步先花 ~$0.03 调用一次 GPT-4，就为了决定后面该不该走便宜的 Flash，那"省钱"还没开始就先烧了一笔大的，路由净亏。这是 v3.10.0 修复点——旧版 `buildDefaultLlmConfig()` 返回空配置（= 默认强力模型），正是这个坑。</details>
+
 > 🚀 [B08 — 输出护栏 →](B08-output-guardrail.md)
 
 ---
 
-📝 **本篇撰写期间修正的代码**：无（动态模型路由为 v3.8.0 新增功能）。
+📝 **本篇撰写期间修正的代码**：`ComplexityModelRouter` 的分类器选模型逻辑（v3.10.0）。旧版用 `buildDefaultLlmConfig()` 返回空配置，实际走默认强力模型，导致分类调用本身就要花 ~$0.03，路由净亏。修复为 `buildClassifierLlmConfig()`，优先用 simpleModel（Flash）做分类，未配置才退回默认——成本表里的"$0.0001 用 Flash 判断"正是修复后才成立。

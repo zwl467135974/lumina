@@ -53,7 +53,7 @@ public void checkRateLimit(Long agentId, Integer perAgentLimit) {
     long count = redisCacheManager.incrementAndGetWithExpire(key, Duration.ofSeconds(60));
 
     if (count > limit) {
-        throw new BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED,
+        throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED,
                 "请求过于频繁，请稍后重试");
     }
 }
@@ -75,9 +75,9 @@ if (failOpen) {
     // 放行（不影响用户体验，但限流失效）
     log.warn("频率限制检查失败（Redis 不可用），fail-open 模式放行");
 } else {
-    // 拒绝（安全优先，避免限流被绕过）
+    // 拒绝（安全优先，避免限流被绕过）—— fail-closed 与超频复用同一错误码
     log.error("fail-closed 模式拒绝请求");
-    throw new BusinessException(ErrorCode.RATE_LIMIT_CHECK_FAILED);
+    throw new BusinessException(ErrorCode.AGENT_RATE_LIMITED);
 }
 ```
 

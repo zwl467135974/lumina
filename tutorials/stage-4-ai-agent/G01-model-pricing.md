@@ -107,12 +107,14 @@ private ModelPricingDO findPricing(String provider, String modelName) {
 ## 管理 API
 
 ```java
-// 文件：ModelPricingController.java
-GET    /api/v1/model-pricing       // 查全部价格
-POST   /api/v1/model-pricing       // 创建新模型价格
-PUT    /api/v1/model-pricing/{id}  // 更新价格（厂商调价时）
-DELETE /api/v1/model-pricing/{id}  // 删除过时模型
+// 文件：ModelPricingController.java（v3.10：已抽 Service 层，Controller 不再直连 Mapper）
+GET    /api/v1/model-pricing       // 查全部价格 → 返回 List<ModelPricingVO>
+POST   /api/v1/model-pricing       // 创建 → ModelPricingService.create(dto)，返回 ModelPricingVO
+PUT    /api/v1/model-pricing/{id}  // 更新 → ModelPricingService.update(id, dto)
+DELETE /api/v1/model-pricing/{id}  // 删除 → ModelPricingService.delete(id)
 ```
+
+> 💡 **v3.10 架构合规**：Controller 现在只调 `ModelPricingService`，业务逻辑（默认值 currency=CNY/isActive=1、时间戳）下沉到 `ModelPricingServiceImpl`，返回 `ModelPricingVO`（非 DO），DO 不出 API 边界。
 
 前端有管理页面，厂商调价后直接在 UI 改，不需要重启服务。
 

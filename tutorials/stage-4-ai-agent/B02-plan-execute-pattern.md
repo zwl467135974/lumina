@@ -112,13 +112,13 @@ agentType: ReAct          # 默认，推理-行动循环
 agentType: PlanAndExecute # Plan-Execute 模式
 ```
 
-代码里的分发：
+代码里的分发（概念示意，真实方法名为 `executeAgentWithAgentScope` 内部分支）：
 ```java
 // DefaultAgentExecutionEngine.java
 if ("PlanAndExecute".equalsIgnoreCase(agentType)) {
-    return executeWithPlanExecute(task, config);
+    return executePlanAndExecute(task, config);  // 走 Plan-Execute
 } else {
-    return executeWithReAct(task, config);
+    return executeReAct(task, config);           // 默认 ReAct
 }
 ```
 
