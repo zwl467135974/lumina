@@ -4,6 +4,66 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.10.0] - 2026-07-28
+
+### 全面代码审查修复（Release 质量加固）
+
+本次为代码质量加固版本，基于四维度系统审查（CI 技术债 / 分层架构 / 异常处理 / 新功能质量），
+修复 6 个 release 阻塞项 + 规范统一，无破坏性 API 变更。
+
+#### 安全修复
+- **LongTermMemoryController 鉴权漏洞修复**：`delete`/`deleteAll` 缺 `userId==null` 校验，
+  匿名请求触发 `eq(userId, null)` 被 MyBatis-Plus 渲染为 `IS NULL`，存在全表删除风险。
+  修复：抽取 `LongTermMemoryService`，所有方法强制 `requireAuthenticated(userId)`。
+
+#### 架构合规
+- **Controller 直接注入 Mapper 违规修复**：`LongTermMemoryController` / `ModelPricingController`
+  CRUD 全直连 Mapper + 业务逻辑写在 Controller 层。修复：抽取 Service 层 + 新增 VO，
+  DO 不再出 API 边界，Controller 只调 Service。
+
+#### 功能 Bug 修复
+- **DB 冷启记忆取"最早 100 条"而非"最近 100 条"**：`listMessages` 按 `createTime ASC`，
+  `pageNum=1` 取 `[0, limit)` 即最早的。用户隔多日回来恢复的是最早对话，最近上下文全丢。
+  修复：`DbColdStartMemoryLoader` 改用 `MessageMapper` DESC 取最近 N 条再反转。
+- **模型路由判复杂度用"默认强力模型"**：`buildDefaultLlmConfig()` 返回空配置走默认（glm-4 之类），
+  为了省 simpleModel 差价反而每次先烧一次复杂模型成本，路由净亏。
+  修复：判复杂度改用 `simpleModel`（最便宜），未配置才 fallback 默认。
+- **MultiAgentSupervisor 路由双向 contains 误匹配**：反向 `spec.name().contains(decision)`
+  几乎必中（专家名单字就命中），多专家时路由不可预测。修复：改为严格匹配（相等或 decision
+  以专家名开头）。附带修复 FINISH 判定（行首锚定，避免解释文本偶现 finish 误判）+ expert
+  调用异常捕获（单专家失败不中断整个流程）。
+
+#### 性能修复
+- **MemoryManager 冷启动 warm-up 300 次 Redis 往返**：100 条消息逐条 `addMemoryToRedis`，
+  每条 RPUSH+LTRIM+EXPIRE=3 次调用，共 300 次。修复：改用 `pushAllToList` 批量 + 单次
+  trim/expire（3 次往返）。
+
+#### 可观测性增强
+- **RedisAgentStateStore.save 静默失败**：状态保存失败只 warn 不记指标，跨实例状态漂移
+  无感知。修复：加 `agent.state.save.errors` counter。
+- **ConfigLoader 热更新静默失败**：配置漂移直到下次缓存 TTL，期间实例行为不一致。
+  修复：加 `agent.config.reload.errors` counter。
+- **MultiAgentSupervisor traceCollector 死代码**：`setTraceCollector` 存了字段但 execute()
+  从未调用。修复：`generateFinalSummary` 末尾记录 SUMMARIZE 步骤，MultiAgent 汇总过程
+  在 Trace 中可见。
+
+#### 规范统一
+- **输出护栏重复检测阈值可配**：连续行数（默认 20）/ 唯一率（默认 0.1）从硬编码提为配置项
+  `repetitionConsecutiveLines` / `repetitionUniqueRatio`，适配不同业务场景。
+- **错误码语义修正**：`OpenAiCompatServiceImpl` 错用 `AGENT_NOT_FOUND` 表达 unknown model
+  （前端会按 Agent 缺失处理），新增 `MODEL_NOT_FOUND(22005)`；补齐缺失业务域段：Tool/Prompt/
+  Trace/OCR/Workflow 模板/MCP 配置（共 11 个新错误码）。
+- **Jackson 实例统一**：8 处 `new ObjectMapper()` 绕过全局 `JacksonConfig`（PlanExecuteAgent +
+  4 Reranker + 4 SearchProvider），统一改用 `JsonUtils.OBJECT_MAPPER`（已配 JavaTimeModule）；
+  gateway `GlobalErrorHandler` 改构造注入容器内 ObjectMapper。
+- **依赖注入规范化**：8 个文件的必需依赖从字段 `@Autowired` 改为构造器注入
+  （`@RequiredArgsConstructor` 或并入现有构造器），字段 `@Autowired` 仅保留用于
+  `required=false` 可选场景。
+
+#### 输出护栏检查顺序修正（CI 修复延续）
+- **重复检测必须在长度截断之前**：Agent 循环输出（重复 25 次）也超长，先被长度截断静默吞掉，
+  丢失"Agent 故障"信号。修复：调整优先级 关键词 → 重复检测 → 长度截断。
+
 ## [3.9.0] - 2026-07-27
 
 ### AI Agent 深度能力补全

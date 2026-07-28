@@ -800,6 +800,17 @@ npm install
 - ✅ **知识库级分块策略** — 每个 KB 独立配 chunkSize/overlap/splitStrategy
 - ✅ **教学文档 58 篇** — 从 47 篇扩到 58 篇，含自测题答案，全部新功能配套教学
 
+### v3.10 全面审查修复（Release 质量加固）
+
+基于四维度系统审查（CI 技术债 / 分层架构 / 异常处理 / 新功能质量），修复 6 个 release 阻塞项 + 规范统一：
+
+- 🔒 **安全修复** — LongTermMemoryController 鉴权漏洞（delete/deleteAll 缺 userId 校验 → 全表删除风险）
+- 🏗 **架构合规** — 2 个 Controller 抽 Service 层 + VO，DO 不再出 API 边界
+- 🐛 **功能 bug ×3** — 冷启动取最近而非最早消息；模型路由用便宜模型判复杂度；MultiAgent 路由严格匹配
+- ⚡ **性能** — 冷启动 warm-up 从 300 次 Redis 往返降到 3 次
+- 📊 **可观测** — 状态保存/配置热更新失败加监控 counter；MultiAgent 汇总过程接入 Trace
+- 📐 **规范** — 错误码语义修正（MODEL_NOT_FOUND）；Jackson 实例统一；依赖注入全部构造器化；guardrail 阈值可配
+
 ---
 
 **Lumina Framework** - 让 AI Agent 开发更简单 🚀
