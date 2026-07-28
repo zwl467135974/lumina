@@ -16,6 +16,7 @@ import io.lumina.agent.infrastructure.mapper.KnowledgeDocumentMapper;
 import io.lumina.framework.config.RocketMQConfig;
 import io.lumina.notification.event.NotificationEvent;
 import io.lumina.notification.event.NotificationEventPublisher;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
@@ -46,7 +47,12 @@ import java.util.Map;
         consumerGroup = RocketMQConfig.GROUP_KNOWLEDGE_INGEST,
         topic = RocketMQConfig.TOPIC_KNOWLEDGE_INGEST
 )
+@RequiredArgsConstructor
 public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMessage> {
+
+    private final KnowledgeDocumentMapper documentMapper;
+    private final ObjectMapper objectMapper;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Autowired(required = false)
     private Knowledge knowledge;
@@ -54,20 +60,11 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
     @Autowired(required = false)
     private VDBStoreBase embeddingStore;
 
-    @Autowired
-    private KnowledgeDocumentMapper documentMapper;
-
     @Autowired(required = false)
     private io.lumina.agent.infrastructure.mapper.KnowledgeChunkMapper chunkMapper;
 
     @Autowired(required = false)
     private RagProperties ragProperties;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private NotificationEventPublisher notificationEventPublisher;
 
     @Autowired(required = false)
     private io.lumina.agent.rag.PdfOcrProcessor pdfOcrProcessor;

@@ -13,6 +13,7 @@ import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,13 +31,11 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConversationServiceImpl implements ConversationService {
 
-    @Autowired
-    private ConversationMapper conversationMapper;
-
-    @Autowired
-    private MessageMapper messageMapper;
+    private final ConversationMapper conversationMapper;
+    private final MessageMapper messageMapper;
 
     @Autowired(required = false)
     private MemoryManager memoryManager;

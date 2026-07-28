@@ -22,6 +22,7 @@ import io.lumina.common.core.ErrorCode;
 import io.lumina.common.core.PageResult;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.framework.config.RocketMQConfig;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,16 +37,17 @@ import java.util.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class KnowledgeServiceImpl implements KnowledgeService {
+
+    private final KnowledgeDocumentMapper documentMapper;
+    private final ObjectMapper objectMapper;
 
     @Autowired(required = false)
     private Knowledge knowledge;
 
     @Autowired(required = false)
     private VDBStoreBase embeddingStore;
-
-    @Autowired
-    private KnowledgeDocumentMapper documentMapper;
 
     @Autowired(required = false)
     private io.lumina.agent.infrastructure.mapper.KnowledgeChunkMapper chunkMapper;
@@ -73,9 +75,6 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
     @Value("${lumina.rag.storage-path:./data/knowledge}")
     private String storagePath;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Override
     public String uploadDocument(MultipartFile file, Long agentId, Long kbId) {

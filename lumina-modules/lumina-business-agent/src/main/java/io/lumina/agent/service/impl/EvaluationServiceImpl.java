@@ -74,15 +74,9 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final Executor evaluationExecutor;
 
     private final io.lumina.agent.security.OutputSanitizer outputSanitizer;
-
-    @Autowired
-    private NotificationEventPublisher notificationEventPublisher;
-
-    @Autowired
-    private io.lumina.agent.infrastructure.mapper.PromptMapper promptMapper;
-
-    @Autowired
-    private io.lumina.agent.infrastructure.mapper.EvaluationRegressionRuleMapper regressionRuleMapper;
+    private final NotificationEventPublisher notificationEventPublisher;
+    private final io.lumina.agent.infrastructure.mapper.PromptMapper promptMapper;
+    private final io.lumina.agent.infrastructure.mapper.EvaluationRegressionRuleMapper regressionRuleMapper;
 
     /**
      * 回归告警 webhook 发送器（notification 模块提供，直连 alert_webhook 统一出口）
@@ -97,7 +91,10 @@ public class EvaluationServiceImpl implements EvaluationService {
                                  List<EvaluationScorer> scorers,
                                  @org.springframework.beans.factory.annotation.Qualifier("agentTaskExecutor") Executor evaluationExecutor,
                                  io.lumina.agent.security.OutputSanitizer outputSanitizer,
-                                 ObjectMapper jsonMapper) {
+                                 ObjectMapper jsonMapper,
+                                 NotificationEventPublisher notificationEventPublisher,
+                                 io.lumina.agent.infrastructure.mapper.PromptMapper promptMapper,
+                                 io.lumina.agent.infrastructure.mapper.EvaluationRegressionRuleMapper regressionRuleMapper) {
         this.datasetMapper = datasetMapper;
         this.runMapper = runMapper;
         this.agentMapper = agentMapper;
@@ -106,6 +103,9 @@ public class EvaluationServiceImpl implements EvaluationService {
         this.evaluationExecutor = evaluationExecutor;
         this.outputSanitizer = outputSanitizer;
         this.jsonMapper = jsonMapper;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.promptMapper = promptMapper;
+        this.regressionRuleMapper = regressionRuleMapper;
     }
 
     @Override

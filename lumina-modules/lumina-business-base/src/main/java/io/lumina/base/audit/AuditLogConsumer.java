@@ -3,10 +3,10 @@ package io.lumina.base.audit;
 import io.lumina.base.infrastructure.mapper.AuditLogMapper;
 import io.lumina.framework.audit.event.AuditEvent;
 import io.lumina.framework.config.RocketMQConfig;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -28,10 +28,10 @@ import org.springframework.stereotype.Component;
 @RocketMQMessageListener(
         consumerGroup = RocketMQConfig.GROUP_AUDIT_LOG,
         topic = RocketMQConfig.TOPIC_AUDIT_LOG)
+@RequiredArgsConstructor
 public class AuditLogConsumer implements RocketMQListener<AuditEvent> {
 
-    @Autowired
-    private AuditLogMapper auditLogMapper;
+    private final AuditLogMapper auditLogMapper;
 
     @Override
     public void onMessage(AuditEvent event) {

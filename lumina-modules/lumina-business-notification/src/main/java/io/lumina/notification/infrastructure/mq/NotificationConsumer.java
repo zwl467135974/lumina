@@ -3,10 +3,10 @@ package io.lumina.notification.infrastructure.mq;
 import io.lumina.framework.config.RocketMQConfig;
 import io.lumina.notification.event.NotificationEvent;
 import io.lumina.notification.service.NotificationService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -26,10 +26,10 @@ import org.springframework.stereotype.Component;
         consumerGroup = RocketMQConfig.GROUP_NOTIFICATION,
         topic = RocketMQConfig.TOPIC_NOTIFICATION
 )
+@RequiredArgsConstructor
 public class NotificationConsumer implements RocketMQListener<NotificationEvent> {
 
-    @Autowired
-    private NotificationService notificationService;
+    private final NotificationService notificationService;
 
     @Override
     public void onMessage(NotificationEvent event) {

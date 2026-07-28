@@ -5,8 +5,8 @@ import io.agentscope.core.rag.model.Document;
 import io.agentscope.core.rag.model.DocumentMetadata;
 import io.lumina.agent.infrastructure.entity.KnowledgeChunkDO;
 import io.lumina.agent.infrastructure.mapper.KnowledgeChunkMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -25,10 +25,10 @@ import java.util.List;
 @Slf4j
 @Component
 @ConditionalOnProperty(prefix = "lumina.rag.hybrid", name = "enabled", havingValue = "true")
+@RequiredArgsConstructor
 public class MysqlKeywordSearcher implements KeywordSearcher {
 
-    @Autowired
-    private KnowledgeChunkMapper chunkMapper;
+    private final KnowledgeChunkMapper chunkMapper;
 
     @Override
     public List<Document> search(String query, Long tenantId, int limit) {

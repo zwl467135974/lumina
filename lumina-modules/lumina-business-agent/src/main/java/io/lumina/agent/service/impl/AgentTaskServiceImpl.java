@@ -61,20 +61,13 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     private final AgentService agentService;
     private final Executor agentTaskExecutor;
     private final TaskProgressRegistry progressRegistry;
+    private final NotificationEventPublisher notificationEventPublisher;
+    private final io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper;
+    private final io.lumina.agent.config.LuminaAgentProperties agentProperties;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
-
-    @Autowired
-    private NotificationEventPublisher notificationEventPublisher;
-
-    @Autowired
-    private io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper;
-
-    @Autowired
-    private io.lumina.agent.config.LuminaAgentProperties agentProperties;
-
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     @org.springframework.beans.factory.annotation.Value("${rocketmq.consumer.agent-task.enabled:false}")
     private boolean mqTaskEnabled;
@@ -82,11 +75,19 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     public AgentTaskServiceImpl(AgentTaskMapper agentTaskMapper,
                                 AgentService agentService,
                                 @Qualifier("agentTaskExecutor") Executor agentTaskExecutor,
-                                TaskProgressRegistry progressRegistry) {
+                                TaskProgressRegistry progressRegistry,
+                                NotificationEventPublisher notificationEventPublisher,
+                                io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper,
+                                io.lumina.agent.config.LuminaAgentProperties agentProperties,
+                                com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.agentTaskMapper = agentTaskMapper;
         this.agentService = agentService;
         this.agentTaskExecutor = agentTaskExecutor;
         this.progressRegistry = progressRegistry;
+        this.notificationEventPublisher = notificationEventPublisher;
+        this.agentMapper = agentMapper;
+        this.agentProperties = agentProperties;
+        this.objectMapper = objectMapper;
     }
 
     @Override
