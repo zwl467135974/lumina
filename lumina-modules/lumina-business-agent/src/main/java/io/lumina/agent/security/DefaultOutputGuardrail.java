@@ -39,7 +39,7 @@ public class DefaultOutputGuardrail implements OutputGuardrail {
             return GuardrailResult.pass();
         }
 
-        // 1. 敏感关键词检测
+        // 1. 敏感关键词检测（安全优先级最高）
         io.lumina.agent.config.LuminaAgentProperties.GuardrailConfig config = agentProperties.getGuardrail();
         if (config.getBlockedKeywords() != null && !config.getBlockedKeywords().isEmpty()) {
             String lowerOutput = output.toLowerCase();
@@ -51,18 +51,19 @@ public class DefaultOutputGuardrail implements OutputGuardrail {
             }
         }
 
-        // 2. 输出长度限制
+        // 2. 重复内容检测（必须在长度截断之前——否则 Agent 循环输出的重复内容
+        //    会被静默截断，丢失"Agent 故障"这一关键信号）
+        if (detectRepetition(output)) {
+            log.warn("输出护栏拦截: agentId={}, 检测到严重重复内容", agentId);
+            return GuardrailResult.block("输出包含严重重复内容，Agent 可能陷入循环");
+        }
+
+        // 3. 输出长度限制（最低优先级——纯粹的展示优化）
         int maxLen = config.getMaxOutputLength();
         if (maxLen > 0 && output.length() > maxLen) {
             String truncated = output.substring(0, maxLen) + "\n\n[输出被护栏截断：超过最大长度 " + maxLen + " 字符]";
             log.warn("输出护栏截断: agentId={}, 原长度={}, 截断到={}", agentId, output.length(), maxLen);
             return GuardrailResult.rewrite(truncated, "输出超长，已截断");
-        }
-
-        // 3. 重复内容检测（同一短语重复 >20 次可能 Agent 陷入了循环）
-        if (detectRepetition(output)) {
-            log.warn("输出护栏拦截: agentId={}, 检测到严重重复内容", agentId);
-            return GuardrailResult.block("输出包含严重重复内容，Agent 可能陷入循环");
         }
 
         return GuardrailResult.pass();
