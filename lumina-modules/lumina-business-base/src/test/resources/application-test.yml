@@ -3,10 +3,6 @@ spring:
   main:
     allow-bean-definition-overriding: true
 
-  # 覆盖主配置的 nacos: import（测试环境无 Nacos，必须覆盖为空）
-  config:
-    import: "optional:file:./nonexistent.yml"
-
   # 禁用 RocketMQ autoconfiguration（测试环境无 MQ，避免 NotificationConsumer 触发连接）
   autoconfigure:
     exclude:
