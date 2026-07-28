@@ -8,7 +8,7 @@
 
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen)](https://spring.io/projects/spring-boot)
-[![AgentScope](https://img.shields.io/badge/AgentScope-1.0.7-blue)](https://github.com/modelscope/agentscope-java)
+[![AgentScope](https://img.shields.io/badge/AgentScope-2.0.0-blue)](https://github.com/modelscope/agentscope-java)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 [![CI](https://github.com/zwl467135974/lumina/actions/workflows/ci.yml/badge.svg)](https://github.com/zwl467135974/lumina/actions/workflows/ci.yml)
@@ -59,7 +59,7 @@ docker compose -f docker-compose-standalone.yml up
 ### 五条主线能力
 
 - **🏢 企业级特性** - 行级多租户隔离（fail-closed）、五表 RBAC、审计日志、预算管控、JWT fail-fast、Prompt 注入检测 + PII 脱敏——全仓库最扎实、有集成测试
-- **🤖 Agent 执行引擎** - AgentScope 1.0.7 ReAct/Plan-Execute、SSE 流式（REASONING/ACTING/RAG_SOURCES）、多模态、Provider Failover 主备链
+- **🤖 Agent 执行引擎** - AgentScope 2.0.0 ReAct/Plan-Execute、SSE 流式（REASONING/ACTING/RAG_SOURCES）、多模态、Provider Failover 主备链
 - **🔧 工具与集成** - MCP 协议接入（stdio/SSE/streamable-http 三传输 + headers 鉴权 + 重连健康检查）、OpenAI 兼容 `/v1/chat/completions` 出口、Webhook、企业微信机器人、Code Interpreter（Docker 容器池）
 - **📚 知识与编排** - RAG 混合检索（RRF + reranker + 5 OCR）、Flowable 7.0 DAG 工作流（6 节点 + 7 模板）、Prompt 版本管理、Agent 评估回归（4 评分器 + A/B 对比）
 - **🎨 工程化前端** - Vue 3 + Element Plus 32 视图、暗色主题、i18n、Agent 调试面板、动态菜单（权限下发）
@@ -73,7 +73,7 @@ docker compose -f docker-compose-standalone.yml up
 - **异步任务执行** - 提交即返回 taskId，后台执行，状态查询
 - **成本管理** - 模型价格表 + Token 计费 + 消费汇总仪表盘 + 趋势图表
 - **全链路可观测** - MDC 结构化日志 + Micrometer 指标 + OpenTelemetry 分布式追踪
-- **工程化** - 统一错误码、Flyway V1-V44+、网关限流、Resilience4j 熔断器/重试、SpringDoc OpenAPI（Swagger UI）
+- **工程化** - 统一错误码、Flyway V1–V49+、网关限流、Resilience4j 熔断器/重试、SpringDoc OpenAPI（Swagger UI）
 - **响应式编程** - Project Reactor + Context Propagation，跨线程租户上下文传递
 - **多 LLM 支持** - DashScope/OpenAI/DeepSeek/Claude/Gemini/Ollama + OpenAI 兼容预设（GLM/Kimi/豆包零代码扩展）
 - **A/B Testing** - 实验框架，按权重流量分发 + 同会话粘滞 + 效果报告
@@ -300,7 +300,7 @@ $env:LLM_API_KEY="your_api_key_here"
 
 #### 4. 初始化数据库（Flyway 自动迁移）
 
-启动 base 服务时 Flyway 自动执行建表与初始化数据（V1–V44+），**无需手动执行 SQL**：
+启动 base 服务时 Flyway 自动执行建表与初始化数据（V1–V49+），**无需手动执行 SQL**：
 
 ```bash
 cd lumina-modules/lumina-business-base
@@ -526,7 +526,7 @@ public String executeAgent(String task) {
 | **框架** | Spring Boot | 3.3.5 | 微服务基础框架 |
 | | Spring Cloud | 2023.0.3 | 微服务组件 |
 | | Spring Cloud Alibaba | 2023.0.1.2 | 阿里微服务组件 |
-| **Agent 框架** | AgentScope Java | 1.0.7 | Agent 开发框架 |
+| **Agent 框架** | AgentScope Java | 2.0.0 | Agent 开发框架 |
 | | Project Reactor | 2025.0.2 | 响应式编程 |
 | **数据持久** | MyBatis | 3.0.3 | ORM 框架 |
 | | MyBatis-Plus | 3.5.7 | MyBatis 增强工具 |
@@ -710,7 +710,7 @@ npm install
 
 **继承 v1.3.0 核心能力**
 - ✅ 响应式上下文传递 + 敏感配置环境变量化
-- ✅ 统一错误码 + Flyway V1-V44+ + 网关限流 + API 版本策略
+- ✅ 统一错误码 + Flyway V1–V49+ + 网关限流 + API 版本策略
 - ✅ 流式输出（SSE）+ 多轮对话/记忆管理 + Token 用量统计
 - ✅ 多模型适配（DashScope/OpenAI/DeepSeek/Claude/Ollama + 硅基流动/智谱/Kimi/豆包/Minimax）
 - ✅ RAG 知识库（多 Embedding + Qdrant 向量存储 + 文档管线）
@@ -774,6 +774,31 @@ npm install
 - ✅ **预算在途追踪** — 预算检查计入 RUNNING 状态任务（防并发超额），Redis 告警去重（防轰炸）
 - ✅ **MCP 运行时注册** — `registerServer()` 自动拉取工具并注册到 `EnhancedToolManager`
 - ✅ **限流与并发控制** — Per-Agent rate limit（Redis 滑动窗口）+ maxConcurrent 信号量（Flyway V42/V43）
+
+### v3.7 AgentScope 2.0 升级 + Trace 可观测性
+
+- ✅ **AgentScope 2.0.0 升级** — 从 1.0.7 升级，模型扩展包路径迁移，`.memory()` → `.stateStore()`
+- ✅ **RedisAgentStateStore** — 跨实例记忆共享，AgentState Redis 持久化（7 天 TTL）
+- ✅ **推理链 Trace 系统** — LuminaTraceTracer 全链路拦截 + Reactor Context 传播 + 前端可视化 + 数据清理
+- ✅ **全路径覆盖** — 同步/流式/PlanAndExecute/FailoverChain 四条执行路径全覆盖
+
+### v3.8 AI 核心能力补全
+
+- ✅ **Agent 循环限制** — maxIters 安全阀，防止死循环烧 Token
+- ✅ **结构化输出** — JSON Mode，约束 LLM 返回合法 JSON
+- ✅ **上下文压缩** — LLM 滚动摘要旧消息，不直接丢弃
+- ✅ **多 Agent 协作** — Supervisor 模式，LLM 路由器自动选专家
+- ✅ **动态模型路由** — 复杂度判断→便宜/强力模型自动切换
+- ✅ **输出护栏** — 关键词拦截 + 长度截断 + 重复检测
+
+### v3.9 生产级完善
+
+- ✅ **DB 冷启记忆恢复** — Redis 过期后从 MySQL 恢复 + warm-up 回填
+- ✅ **会话级 Token 预算** — CONVERSATION scope，单会话花费限制
+- ✅ **工具错误恢复** — 增强错误消息，LLM 自动修正参数重试
+- ✅ **自动会话管理** — `/chat` 端点，前端无需手动管 conversationId
+- ✅ **知识库级分块策略** — 每个 KB 独立配 chunkSize/overlap/splitStrategy
+- ✅ **教学文档 58 篇** — 从 47 篇扩到 58 篇，含自测题答案，全部新功能配套教学
 
 ---
 

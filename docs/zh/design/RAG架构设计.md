@@ -14,7 +14,7 @@
 
 ## 二、技术选型（AgentScope 原生 RAG）
 
-基于 AgentScope 1.0.7 内置 RAG 模块（`io.agentscope.core.rag`），**不引入 Spring AI**。
+基于 AgentScope 2.0.0 内置 RAG 模块（`io.agentscope.core.rag`），**不引入 Spring AI**。
 
 | 组件 | 选型 | 说明 |
 |------|------|------|
@@ -26,7 +26,7 @@
 
 ### 为什么用 AgentScope 原生而非 Spring AI
 
-- AgentScope 1.0.7 已内置完整 RAG 管线（Reader + Embedding + Store + Knowledge + Agent 集成）
+- AgentScope 2.0.0 已内置完整 RAG 管线（Reader + Embedding + Store + Knowledge + Agent 集成）
 - ReActAgent 原生支持 `.knowledge().ragMode()`，无需手动注入 Prompt
 - 复用已有 AgentScope 生态，不引入额外框架
 - 工作量减少 ~2 天（切分/向量化/检索/注入全部内置）

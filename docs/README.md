@@ -44,7 +44,7 @@
 - [v3.0 路线图](zh/roadmap/v3.0路线图.md)
 - [前端功能完善路线图](zh/roadmap/前端功能完善路线图.md)
 - [生产就绪加固计划](zh/roadmap/生产就绪加固计划.md) — v3.6 企业级加固
-- [远期规划](zh/roadmap/远期规划.md) — multi-agent handoff / 可观测性 dashboard
+- [远期规划](zh/roadmap/远期规划.md) — ~~multi-agent handoff~~（已实现 v3.8 Supervisor）/ 可观测性 dashboard
 - [技术演进路线图](zh/roadmap/技术演进路线图.md) — 各维度成熟度评估 + AI 深入方向（三梯队）
 
 ### 战略与方案

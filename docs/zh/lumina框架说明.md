@@ -33,7 +33,7 @@
 | 维度 | LangGraph | Dify | Spring AI Alibaba | **Lumina** |
 |---|---|---|---|---|
 | Agent 编排 | **5** | 4 | 4 | 3 |
-| 多 Agent 协作 | **5** | 3 | 4 | 1.5 ⚠️ 暂未做 |
+| 多 Agent 协作 | **5** | 3 | 4 | **4.0** ✅ Supervisor 模式 + DAG 工作流 |
 | RAG 完成度 | 3 | **5** | 3.5 | 3.5 |
 | 工具生态 | **5** | **5** | 3.5 | 3.5（MCP 三传输已生产化） |
 | **企业级（多租户/RBAC）** | 2 | 3.5 | 2 | **4.5** ✅ |
@@ -63,7 +63,7 @@
 ## 四、技术栈速览
 
 - **后端**：Java 21 + Spring Boot 3.3.5 + Spring Cloud Alibaba + MyBatis-Plus + Flowable 7.0.1 + Resilience4j
-- **Agent 底座**：AgentScope Java SDK 1.0.7（ReAct/Plan-Execute/Toolkit/StreamOptions）
+- **Agent 底座**：AgentScope Java SDK 2.0.0（ReAct/Plan-Execute/Toolkit/StreamOptions）
 - **前端**：Vue 3 + TypeScript + Element Plus + Pinia
 - **架构**：Gateway(8080) + Agent(8081) + Base(8082) 微服务；standalone 模式可单体部署
 - **API 文档**：SpringDoc OpenAPI 2.6.0（Swagger UI + JWT 安全方案）

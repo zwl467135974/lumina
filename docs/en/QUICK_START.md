@@ -14,7 +14,7 @@
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS lumina_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 ```
 
-Flyway auto-migrates on first startup (V1–V12).
+Flyway auto-migrates on first startup (V1–V49).
 
 ## 2. Set API Key
 

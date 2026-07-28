@@ -79,7 +79,7 @@
 
 | 技术 | 版本 | 选型理由 | 参考来源 |
 |------|------|---------|---------|
-| **AgentScope Java** | **1.0.7** | 专业的 Agent 开发框架，支持 ReAct、工具调用、多智能体协作 | agentscope-java |
+| **AgentScope Java** | **2.0.0** | 专业的 Agent 开发框架，支持 ReAct、工具调用、多智能体协作 | agentscope-java |
 | **Project Reactor** | **2025.0.2** | 响应式编程，AgentScope 核心依赖 | agentscope-java |
 | **Spring AI** | **1.0.3** | Spring 官方 AI 框架，可选择性集成 | lumina-ref |
 
@@ -294,7 +294,7 @@
 ✅ Spring Boot 3.3.5
 ✅ Spring Cloud 2023.0.3
 ✅ Spring Cloud Alibaba 2023.0.1.2
-✅ AgentScope Java 1.0.7 (Agent 核心)
+✅ AgentScope Java 2.0.0 (Agent 核心)
 ✅ MyBatis 3.0.3 + MyBatis-Plus 3.5.7
 ✅ Redis + Redisson 3.24.3
 ✅ Kafka 3.6+

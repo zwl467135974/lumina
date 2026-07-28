@@ -4,6 +4,95 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.9.0] - 2026-07-27
+
+### AI Agent 深度能力补全
+
+#### DB 冷启记忆恢复
+- **修复隐性数据丢失 bug**：Redis 过期/重启后 Agent 失忆（数据在 MySQL 但不读）
+- **ColdStartMemoryLoader 端口接口**：core 定义接口，business 实现（避免循环依赖）
+- **@Lazy 注入 + Warm-up 回填**：冷启后从 DB 加载历史 + 回填 Redis
+
+#### 会话级 Token 预算
+- **CONVERSATION scope**：新增第四种预算范围（TENANT/AGENT/USER/CONVERSATION）
+- **BudgetRuleDO.scopeIdStr**：V48 迁移，存储 conversationUuid
+- **checkBudget(agentId, conversationUuid)**：接口签名扩展
+
+#### 工具调用错误恢复
+- **增强错误消息**：buildErrorResult() 附加参数 schema + 实际输入 + 重试引导
+- **正确设置 ERROR state**：ToolResultBlock.builder().state(ERROR) 替代 error()（后者不设 state）
+- **AgentScope ReAct 已内置自动重试**：工具错误自动反馈给 LLM 修正参数
+
+#### 自动会话管理 API
+- **POST /api/v1/agents/{id}/chat**：前端无需手动管理 conversationId
+- 无 conversationId → 自动创建，返回 {conversationId, reply}
+
+#### 知识库级分块策略
+- **V49 迁移**：lumina_knowledge_base 新增 chunk_size/overlap/split_strategy 列
+- **三级配置优先级**：KB 配置 → 全局 RagProperties → 硬编码默认
+- **DocumentIngestMessage 新增 splitStrategy**：上传时从 KB 读取配置透传到 Consumer
+
+#### 教学文档（58 篇）
+- 新增 E07/C06/F07/D09 四篇教学
+- 全部骨架教学扩写完成（G/I/J/H 模块共 10 篇）
+- 自测题答案全部补齐
+
+## [3.8.0] - 2026-07-24
+
+### AI 核心能力三大补全
+
+#### Agent 循环迭代限制（maxIters）
+- **AgentConfig.maxIterations**：per-Agent 配置 ReAct 循环上限
+- **LuminaAgentProperties.maxIterations**：全局默认值 10
+- 防止 Agent 陷入死循环无限烧 Token
+
+#### 结构化输出（JSON Mode）
+- **AgentConfig.structuredOutputMode**：JSON_OBJECT / TEXT
+- **GenerateOptions.responseFormat**：通过 AgentScope 2.0 API 约束 LLM 输出格式
+
+#### 上下文压缩（Context Compression）
+- **ContextSummarizer 接口 + ContextSummarizerImpl**：LLM 对旧消息生成摘要
+- **CompressionConfig**：threshold=15 / recentKeepCount=5 / summaryMaxTokens=500
+- 旧消息压缩为摘要注入，不直接丢弃
+
+#### 多 Agent 协作（Supervisor 模式）
+- **MultiAgentSupervisor**：LLM 路由器自动选择专家 Agent 执行
+- **AgentConfig.SubAgentConfig**：专家配置（name/description/sysPrompt/llmConfig/toolConfig）
+- **V47 迁移**：lumina_agent 新增 sub_agents 列
+- 子 Agent 配置可继承父 Agent（null = 继承）
+
+#### 动态模型路由
+- **ModelRouter 接口 + ComplexityModelRouter**：LLM 判断 SIMPLE/COMPLEX → 选便宜/强力模型
+- 成本优化：简单问题用 Flash（免费），复杂问题用 GLM-4
+
+#### 输出护栏
+- **OutputGuardrail 接口 + DefaultOutputGuardrail**：关键词拦截 + 长度截断 + 重复检测
+- **GuardrailResult**：pass / block / rewrite 三种结果
+
+## [3.7.0] - 2026-07-24
+
+### AgentScope 2.0 升级 + Trace 可观测性
+
+#### AgentScope 1.0.7 → 2.0.0 升级
+- ChatModelFactory 10 个 import 路径迁移到 extensions 包
+- `.memory()` → `.stateStore()`（RedisAgentStateStore 跨实例记忆共享）
+- PlanExecuteAgent 移除 9 处 `.memory()` 调用
+
+#### RedisAgentStateStore（跨实例记忆共享）
+- 实现 AgentScope 2.0 AgentStateStore 接口
+- Key: `lumina:agent:state:{userId}:{sessionId}:{stateKey}`，TTL 7 天
+- AgentState.toJson()/fromJsonString() 序列化
+
+#### 推理链 Trace 系统
+- **LuminaTraceTracer**：实现 AgentScope Tracer SPI，全局拦截 Agent/Model/Tool 调用
+- **Reactor Context 传播**：TraceContext 通过 contextWrite/deferContextual 跨线程传递
+- **V45 迁移**：lumina_agent_trace 表（steps JSON 列）
+- **前端可视化**：trace.vue 列表页 + 详情页 timeline（el-timeline）
+- **V46 迁移**：推理追踪菜单 + 权限种子
+- **数据清理**：AgentTraceCleanupJob 定时清理（默认保留 30 天）
+- **全路径覆盖**：同步/流式/PlanAndExecute/FailoverChain 全覆盖
+- **数据质量**：agentId 填充、REASONING durationMs、SUMMARIZE 步骤、taskUuid 关联
+
 ## [3.6.0] - 2026-07-23
 
 ### 企业级加固

@@ -63,7 +63,7 @@ Rate Limit (Redis) → Budget Check → Content Moderation → Prompt Injection 
 |----------|-----------|
 | Runtime | Java 21 (LTS) |
 | Framework | Spring Boot 3.3.5, Spring Cloud 2023.0.3 |
-| AI Engine | AgentScope Java 1.0.7 |
+| AI Engine | AgentScope Java 2.0.0 |
 | Database | MySQL 8.0, Flyway V1-V12 |
 | ORM | MyBatis-Plus 3.5.7 |
 | Cache | Redis 7 + Redisson 3.24.3 |
