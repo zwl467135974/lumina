@@ -2,6 +2,7 @@ package io.lumina.agent.tool.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.agent.util.JsonUtils;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +43,7 @@ public class SerpApiSearchProvider implements SearchProvider {
     @Value("${lumina.agent.search.base-url:}")
     private String baseUrl;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))

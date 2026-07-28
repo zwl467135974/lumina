@@ -2,6 +2,7 @@ package io.lumina.agent.engine;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.agent.util.JsonUtils;
 import io.agentscope.core.ReActAgent;
 import io.agentscope.core.agent.Event;
 import io.agentscope.core.agent.StreamOptions;
@@ -63,7 +64,7 @@ public class PlanExecuteAgent {
     private final Toolkit toolkit;
     private final String userPrompt;
     private final String systemPrompt;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
     /** Trace 采集器（可选，由引擎层注入，用于记录 SUMMARIZE 步骤） */
     private io.lumina.agent.tracing.TraceCollector traceCollector;

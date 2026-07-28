@@ -149,7 +149,7 @@ public class OpenAiCompatServiceImpl implements OpenAiCompatService {
                 .eq(AgentDO::getTenantId, tenantId)
                 .last("LIMIT 1"));
         if (agentDO == null) {
-            throw new BusinessException(ErrorCode.AGENT_NOT_FOUND, "unknown model: " + model);
+            throw new BusinessException(ErrorCode.MODEL_NOT_FOUND, "unknown model: " + model);
         }
         return agentDO.getAgentId();
     }

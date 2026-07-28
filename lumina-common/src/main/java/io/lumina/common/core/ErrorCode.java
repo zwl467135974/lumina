@@ -17,6 +17,14 @@ import lombok.Getter;
  *   <li>Agent：20000-20999</li>
  * </ul>
  *
+ * <p>Agent 体系扩展段（v3.10+ 补充）：
+ * <ul>
+ *   <li>Agent 扩展：20000-20999（Agent/Tool/Prompt/Trace）</li>
+ *   <li>LLM Provider：22000-22999（含 Model）</li>
+ *   <li>RAG：31000-31999（含 OCR）</li>
+ *   <li>MCP：34000-34999（含配置）</li>
+ * </ul>
+ *
  * <p>每个错误码包含：{@link #httpStatus}（HTTP 状态码，用于响应 R.code）、
  * {@link #code}（业务错误码，用于前端精确处理，对应 R.errCode）、{@link #message}（默认消息）。
  *
@@ -90,6 +98,19 @@ public enum ErrorCode {
     BUDGET_EXCEEDED(403, 20007, "预算已耗尽，执行被拒绝"),
     BUDGET_RULE_NOT_FOUND(404, 20008, "预算规则不存在"),
 
+    // -- Tool 20050-20099 --
+    TOOL_NOT_FOUND(404, 20050, "工具不存在"),
+    TOOL_NOT_ACTIVE(400, 20051, "工具未启用"),
+    TOOL_PARAM_INVALID(400, 20052, "工具参数无效"),
+
+    // -- Prompt 20100-20149 --
+    PROMPT_NOT_FOUND(404, 20100, "Prompt 不存在"),
+    PROMPT_NAME_CONFLICT(409, 20101, "Prompt 名称冲突"),
+    PROMPT_VERSION_LOCKED(409, 20102, "已发布的 Prompt 版本不可修改"),
+
+    // -- Trace 20150-20179 --
+    TRACE_NOT_FOUND(404, 20150, "Trace 不存在"),
+
     // ==================== 会话 21000-21999 ====================
     CONVERSATION_NOT_FOUND(404, 21001, "会话不存在"),
     CONVERSATION_AGENT_MISMATCH(400, 21002, "会话与 Agent 不匹配"),
@@ -99,6 +120,7 @@ public enum ErrorCode {
     LLM_PROVIDER_ALREADY_EXISTS(409, 22002, "LLM Provider 已存在"),
     LLM_PROVIDER_TEST_FAILED(500, 22003, "LLM Provider 连通性测试失败"),
     LLM_PROVIDER_API_KEY_MISSING(400, 22004, "该 Provider 未配置 API Key"),
+    MODEL_NOT_FOUND(404, 22005, "模型不存在"),
 
     // ==================== 文件 30000-30999 ====================
     FILE_READ_FAILED(400, 30001, "读取文件失败"),
@@ -112,16 +134,19 @@ public enum ErrorCode {
     RAG_STORE_ERROR(500, 31001, "向量存储操作失败"),
     RAG_EMBEDDING_FAILED(500, 31002, "文本向量化失败"),
     RAG_RETRIEVE_FAILED(500, 31003, "知识检索失败"),
+    OCR_FAILED(500, 31100, "OCR 识别失败"),
 
     // ==================== 工作流 32000-32999 ====================
     WORKFLOW_EXECUTE_FAILED(500, 32001, "工作流执行失败"),
     WORKFLOW_PARSE_FAILED(400, 32002, "工作流定义解析失败"),
+    WORKFLOW_TEMPLATE_NOT_FOUND(404, 32003, "工作流模板不存在"),
 
     // ==================== 搜索 33000-33999 ====================
     SEARCH_FAILED(500, 33001, "网络搜索失败"),
 
     // ==================== MCP 34000-34999 ====================
     MCP_TOOL_CALL_FAILED(500, 34001, "MCP 工具调用失败"),
+    MCP_CONFIG_ERROR(400, 34002, "MCP 配置错误"),
 
     // ==================== 加解密 35000-35999 ====================
     CRYPTO_FAILED(500, 35001, "加解密操作失败"),

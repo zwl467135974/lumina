@@ -2,6 +2,7 @@ package io.lumina.agent.rag;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lumina.agent.util.JsonUtils;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.agentscope.core.rag.model.Document;
@@ -40,7 +41,7 @@ public class JinaReranker implements RerankProvider {
     private final String baseUrl;
     private final String model;
     private final HttpClient httpClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = JsonUtils.OBJECT_MAPPER;
 
     public JinaReranker(
             @Value("${lumina.rag.rerank.api-key:}") String apiKey,
