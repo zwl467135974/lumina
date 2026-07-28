@@ -19,6 +19,7 @@ import javax.sql.DataSource;
  */
 @Configuration
 @ConditionalOnBean(DataSource.class)
+@org.springframework.boot.autoconfigure.condition.ConditionalOnClass(name = "org.flowable.spring.boot.EngineConfigurationConfigurer")
 public class FlowableConfig {
 
     @Bean

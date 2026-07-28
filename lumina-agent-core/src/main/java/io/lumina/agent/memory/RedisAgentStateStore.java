@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@org.springframework.boot.autoconfigure.condition.ConditionalOnClass(name = "io.agentscope.core.state.AgentStateStore")
 public class RedisAgentStateStore implements AgentStateStore {
 
     private final RedisCacheManager redisCacheManager;

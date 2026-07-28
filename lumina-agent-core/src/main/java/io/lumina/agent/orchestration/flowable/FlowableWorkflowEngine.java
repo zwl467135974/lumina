@@ -74,6 +74,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Slf4j
 @Component
 @Primary
+@org.springframework.boot.autoconfigure.condition.ConditionalOnClass(name = "org.flowable.engine.RepositoryService")
 @ConditionalOnBean(RepositoryService.class)
 public class FlowableWorkflowEngine implements WorkflowEngine {
 

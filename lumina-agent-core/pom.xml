@@ -47,26 +47,31 @@
             <artifactId>agentscope</artifactId>
         </dependency>
 
-        <!-- AgentScope 2.0 模型扩展 -->
+        <!-- AgentScope 2.0 模型扩展（显式版本号，install 后 pom 不继承 parent properties） -->
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope-extensions-model-dashscope</artifactId>
+            <version>2.0.0</version>
         </dependency>
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope-extensions-model-openai</artifactId>
+            <version>2.0.0</version>
         </dependency>
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope-extensions-model-anthropic</artifactId>
+            <version>2.0.0</version>
         </dependency>
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope-extensions-model-gemini</artifactId>
+            <version>2.0.0</version>
         </dependency>
         <dependency>
             <groupId>io.agentscope</groupId>
             <artifactId>agentscope-extensions-model-ollama</artifactId>
+            <version>2.0.0</version>
         </dependency>
 
         <!-- Project Reactor -->
