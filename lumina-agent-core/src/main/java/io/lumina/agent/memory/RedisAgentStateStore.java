@@ -33,6 +33,9 @@ public class RedisAgentStateStore implements AgentStateStore {
 
     private final RedisCacheManager redisCacheManager;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
     private static final String KEY_PREFIX = "lumina:agent:state:";
     private static final Duration TTL = Duration.ofDays(7);
     private static final String DEFAULT_STATE_KEY = "agent_state";
@@ -60,6 +63,12 @@ public class RedisAgentStateStore implements AgentStateStore {
             }
         } catch (Exception e) {
             log.warn("AgentState 保存失败: {}", e.getMessage(), e);
+            // 记录失败指标——状态保存静默丢失会导致跨实例状态漂移，
+            // 必须可观测以便运维及时介入
+            if (meterRegistry != null) {
+                meterRegistry.counter("agent.state.save.errors",
+                        "userId", userId).increment();
+            }
         }
     }
 

@@ -71,12 +71,20 @@ public class DefaultOutputGuardrail implements OutputGuardrail {
 
     /**
      * 检测输出是否有严重的重复模式
+     *
+     * <p>两条规则（阈值均可配）：
+     * <ol>
+     *   <li>连续 {@code repetitionConsecutiveLines}（默认 20）行完全相同 → 判定循环</li>
+     *   <li>去重后唯一行数占比低于 {@code repetitionUniqueRatio}（默认 0.1，即 10%）→ 判定大量重复</li>
+     * </ol>
      */
     private boolean detectRepetition(String output) {
-        // 检查是否有连续 20 行以上的完全相同内容
-        String[] lines = output.split("\n");
-        if (lines.length < 20) return false;
+        io.lumina.agent.config.LuminaAgentProperties.GuardrailConfig config = agentProperties.getGuardrail();
+        int consecutiveThreshold = config.getRepetitionConsecutiveLines();
+        double uniqueRatio = config.getRepetitionUniqueRatio();
 
+        String[] lines = output.split("\n");
+        // 行数不足时跳过连续判定，但仍可能命中唯一率判定
         Set<String> uniqueLines = new HashSet<>();
         int consecutiveDupes = 0;
         String prevLine = null;
@@ -85,7 +93,7 @@ public class DefaultOutputGuardrail implements OutputGuardrail {
             String trimmed = line.trim();
             if (trimmed.equals(prevLine) && !trimmed.isEmpty()) {
                 consecutiveDupes++;
-                if (consecutiveDupes >= 20) {
+                if (consecutiveDupes >= consecutiveThreshold) {
                     return true;
                 }
             } else {
@@ -95,7 +103,8 @@ public class DefaultOutputGuardrail implements OutputGuardrail {
             uniqueLines.add(trimmed);
         }
 
-        // 如果去重后行数 < 原始的 10%，说明大量重复
-        return uniqueLines.size() < lines.length * 0.1;
+        // 如果去重后行数占比低于阈值，说明大量重复
+        return lines.length > 0
+                && (double) uniqueLines.size() / lines.length < uniqueRatio;
     }
 }

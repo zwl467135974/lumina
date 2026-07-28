@@ -41,6 +41,9 @@ public class ConfigLoader {
     @Autowired(required = false)
     private ConfigService nacosConfigService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.micrometer.core.instrument.MeterRegistry meterRegistry;
+
     @Value("${lumina.agent.config.nacos.enabled:true}")
     private boolean nacosEnabled;
 
@@ -186,8 +189,20 @@ public class ConfigLoader {
             }
         } catch (IOException e) {
             log.error("解析更新的配置失败", e);
+            recordReloadFailure();
         } catch (Exception e) {
             log.error("配置热更新失败", e);
+            recordReloadFailure();
+        }
+    }
+
+    /**
+     * 记录配置热更新失败指标——热更新静默失败会导致配置漂移，
+     * 下次缓存 TTL 过期才纠正，期间实例行为不一致
+     */
+    private void recordReloadFailure() {
+        if (meterRegistry != null) {
+            meterRegistry.counter("agent.config.reload.errors").increment();
         }
     }
 

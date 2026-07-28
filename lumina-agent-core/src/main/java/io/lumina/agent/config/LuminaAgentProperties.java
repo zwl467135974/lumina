@@ -79,6 +79,10 @@ public class LuminaAgentProperties {
         private int maxOutputLength = 10000;
         /** 敏感关键词列表（命中即拦截） */
         private java.util.List<String> blockedKeywords;
+        /** 判定为"循环输出"的连续重复行数阈值（默认 20） */
+        private int repetitionConsecutiveLines = 20;
+        /** 判定为"大量重复"的唯一行占比阈值（0-1，去重后行数/总行数 低于此值则拦截，默认 0.1） */
+        private double repetitionUniqueRatio = 0.1;
     }
 
     /**

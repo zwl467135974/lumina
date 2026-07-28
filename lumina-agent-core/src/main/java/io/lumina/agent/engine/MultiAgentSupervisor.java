@@ -224,7 +224,9 @@ public class MultiAgentSupervisor {
                 "\n请基于以上结果，给出最终汇总回复。";
 
         Msg summaryMsg = Msg.builder().role(MsgRole.USER).textContent(summaryPrompt).build();
+        long startMs = System.currentTimeMillis();
         Msg response = summarizer.call(List.of(summaryMsg)).block();
+        long duration = System.currentTimeMillis() - startMs;
 
         if (response == null) {
             return Msg.builder().role(MsgRole.ASSISTANT)
@@ -232,6 +234,15 @@ public class MultiAgentSupervisor {
                     .build();
         }
         accumulateTokens(response.getChatUsage());
+
+        // 记录 SUMMARIZE 步骤——让 MultiAgent 的汇总过程在 Trace 中可见
+        if (traceCollector != null) {
+            io.lumina.agent.tracing.TraceContext ctx = traceCollector.getCurrentContext();
+            if (ctx != null) {
+                String output = response.getTextContent() != null ? response.getTextContent() : "";
+                traceCollector.recordSummarizeStep(ctx, summaryPrompt, output, duration);
+            }
+        }
         return response;
     }
 
