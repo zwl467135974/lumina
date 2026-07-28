@@ -246,6 +246,42 @@ helm install lumina deploy/helm/lumina \
 
 ## Project Status
 
+### v3.10 — Full Audit Fixes (Release Quality Hardening)
+
+Based on a four-dimensional systematic audit (CI tech debt / layered architecture / exception handling / new feature quality), fixed 6 release-blocking issues + standardized conventions, no breaking API changes.
+
+- 🔒 **Security Fix** — LongTermMemoryController auth vulnerability (delete/deleteAll missing userId check → full-table deletion risk)
+- 🏗 **Architecture Compliance** — 2 Controllers extracted to Service layer + VO, DO no longer crosses API boundary
+- 🐛 **Feature Bugs ×3** — Cold-start loads recent (not earliest) messages; model routing uses cheap model for complexity judging; MultiAgent routing strict matching
+- ⚡ **Performance** — Cold-start warm-up reduced from 300 Redis round-trips to 3
+- 📊 **Observability** — State save / config hot-reload failures now emit monitoring counters; MultiAgent summarization integrated into Trace
+- 📐 **Conventions** — Error code semantics fixed (MODEL_NOT_FOUND); Jackson instances unified; dependency injection fully constructor-based; guardrail thresholds configurable
+
+### v3.9 — Production-Grade Refinement
+
+- ✅ **DB Cold-Start Memory Recovery** — Restore from MySQL after Redis expiry + warm-up backfill
+- ✅ **Conversation-Level Token Budget** — CONVERSATION scope, per-session spend limit
+- ✅ **Tool Error Recovery** — Enhanced error messages, LLM auto-corrects parameters and retries
+- ✅ **Auto Conversation Management** — `/chat` endpoint, frontend no longer manages conversationId
+- ✅ **Per-KB Chunking Strategy** — Each KB configures its own chunkSize/overlap/splitStrategy
+- ✅ **58 Tutorial Articles** — Expanded from 47, with self-test answers, all new features documented
+
+### v3.8 — AI Core Capabilities
+
+- ✅ **Agent Loop Limit** — maxIters safety valve, prevents infinite loops burning tokens
+- ✅ **Structured Output** — JSON Mode, constrains LLM to return valid JSON
+- ✅ **Context Compression** — LLM rolling summary of old messages, no direct discarding
+- ✅ **Multi-Agent Collaboration** — Supervisor pattern, LLM router auto-selects experts
+- ✅ **Dynamic Model Routing** — Complexity judgment → auto-switch cheap/powerful model
+- ✅ **Output Guardrails** — Keyword blocking + length truncation + repetition detection
+
+### v3.7 — AgentScope 2.0 Upgrade + Trace Observability
+
+- ✅ **AgentScope 2.0.0 Upgrade** — From 1.0.7, model extension package path migration, `.memory()` → `.stateStore()`
+- ✅ **RedisAgentStateStore** — Cross-instance memory sharing, AgentState Redis persistence (7-day TTL)
+- ✅ **Reasoning Trace System** — LuminaTraceTracer full-chain interception + Reactor Context propagation + frontend visualization + data cleanup
+- ✅ **Full Path Coverage** — Sync/streaming/PlanAndExecute/FailoverChain all four execution paths covered
+
 ### v3.6 — Enterprise Hardening
 
 - ✅ **Model Pricing Management** — Full CRUD UI + API for model input/output pricing (Flyway V44), cost calculation no longer falls back to hardcoded defaults
@@ -281,7 +317,7 @@ helm install lumina deploy/helm/lumina \
 
 ### Test Baseline
 
-- Backend: **770+ tests** (unit + integration, all modules `mvn verify` pass)
+- Backend: **787 tests** (unit + integration, all modules `mvn verify` pass)
 - Frontend: 103 tests (Vitest)
 - CI/CD: GitHub Actions dual pipeline (backend mvn verify + frontend pnpm build + test)
 
