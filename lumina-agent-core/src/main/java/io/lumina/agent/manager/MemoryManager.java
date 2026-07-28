@@ -186,10 +186,13 @@ public class MemoryManager {
         }
 
         // 回填 Redis（warm-up），下次直接命中
+        // 批量写入：一次 RPUSH 全部 + 一次 LTRIM + 一次 EXPIRE（共 3 次往返），
+        // 而非逐条 addMemoryToRedis（100 条会打 300 次 Redis 调用，其中 200 次 trim/expire 完全冗余）
         try {
-            for (Memory m : dbMemories) {
-                addMemoryToRedis(sessionId, m);
-            }
+            String key = getRedisKey(sessionId);
+            redisCacheManager.pushAllToList(key, dbMemories);
+            redisCacheManager.trimList(key, -MAX_MEMORY_SIZE, -1);
+            redisCacheManager.expire(key, Duration.ofSeconds(memoryTtl));
             log.info("冷启记忆 warm-up 完成: sessionId={}, 回填 {} 条到 Redis", sessionId, dbMemories.size());
         } catch (Exception e) {
             log.warn("冷启记忆 warm-up 失败（不影响本次使用）: sessionId={}, error={}", sessionId, e.getMessage());

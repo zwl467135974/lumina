@@ -131,8 +131,9 @@ public class MultiAgentSupervisor {
             log.info("Supervisor 第 {} 轮决策: {}", round + 1, decision);
 
             // 2. 判断是否完成
-            if ("FINISH".equalsIgnoreCase(decision) || decision.toUpperCase().contains("FINISH")) {
-                // Supervisor 给出最终汇总
+            // 严格匹配：必须整行等于 FINISH，或行首锚定的 "FINISH" 前缀，
+            // 避免 LLM 解释里出现 "finish" 一词就误判结束
+            if (isFinishDecision(decision)) {
                 return generateFinalSummary(supervisor, context, expertResults.toString());
             }
 
@@ -156,7 +157,17 @@ public class MultiAgentSupervisor {
                     .textContent(extractUserTask(context))
                     .build();
 
-            Msg expertResponse = expertAgent.call(List.of(expertTask)).block();
+            Msg expertResponse = null;
+            try {
+                expertResponse = expertAgent.call(List.of(expertTask)).block();
+            } catch (Exception e) {
+                // 专家调用失败不应中断整个 MultiAgent 流程——记录错误作为该专家的"结果"，
+                // 让 Supervisor 在下一轮决定是否换专家或直接汇总
+                log.error("专家 {} 调用异常: {}", selected.name(), e.getMessage(), e);
+                expertResults.append("【").append(selected.name()).append("的结果】\n")
+                        .append("[专家调用失败: ").append(e.getMessage()).append("]\n\n");
+                continue;
+            }
             if (expertResponse != null) {
                 accumulateTokens(expertResponse.getChatUsage());
                 String result = expertResponse.getTextContent() != null
@@ -226,14 +237,36 @@ public class MultiAgentSupervisor {
 
     /**
      * 根据决策文本查找匹配的专家
+     *
+     * <p>严格匹配：专家名出现在 decision **开头**（忽略大小写），或整行相等。
+     * 此前的反向 {@code spec.name().contains(decision)} 几乎必中（专家名里的单字
+     * 都会匹配），导致多专家时路由不可预测。
      */
     private SubAgentSpec findAgent(String decision) {
+        String normalized = decision.trim();
         for (SubAgentSpec spec : subAgents) {
-            if (decision.contains(spec.name()) || spec.name().contains(decision)) {
+            String name = spec.name();
+            if (normalized.equalsIgnoreCase(name)
+                    || normalized.toLowerCase().startsWith(name.toLowerCase())) {
                 return spec;
             }
         }
         return null;
+    }
+
+    /**
+     * 判断 Supervisor 的决策是否为 FINISH
+     *
+     * <p>严格匹配：整行等于 FINISH，或行首以 FINISH 打头（忽略大小写、忽略首尾空白）。
+     * 避免 LLM 解释文本中偶然出现 "finish" 一词就误判结束。
+     */
+    private boolean isFinishDecision(String decision) {
+        String normalized = decision.trim();
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        return normalized.equalsIgnoreCase("FINISH")
+                || normalized.toLowerCase().startsWith("finish");
     }
 
     /**

@@ -76,7 +76,7 @@ public class ComplexityModelRouter implements ModelRouter {
 
             // 构建路由后的 LLM 配置（继承原配置，只改模型名）
             AgentConfig.LLMConfig original = config.getLlmConfig() != null
-                    ? config.getLlmConfig() : buildDefaultLlmConfig();
+                    ? config.getLlmConfig() : buildClassifierLlmConfig();
             AgentConfig.LLMConfig routed = new AgentConfig.LLMConfig();
             routed.setModelType(original.getModelType());
             routed.setModelName(targetModel);
@@ -97,9 +97,13 @@ public class ComplexityModelRouter implements ModelRouter {
 
     /**
      * 用轻量 LLM 调用判断复杂度
+     *
+     * <p>关键：判复杂度本身必须用**最便宜的模型**（simpleModel），
+     * 而非默认（强力）模型——否则为了省 simpleModel 的差价反而先烧一次复杂模型的成本，
+     * 路由净亏。当 simpleModel 未配置时才 fallback 到默认配置。
      */
     private String judgeComplexity(String task) {
-        AgentConfig.LLMConfig llmConfig = buildDefaultLlmConfig();
+        AgentConfig.LLMConfig llmConfig = buildClassifierLlmConfig();
         String apiKey = resolveApiKey();
         Model model = chatModelFactory.create(llmConfig, agentProperties.getLlm(), apiKey);
 
@@ -119,7 +123,18 @@ public class ComplexityModelRouter implements ModelRouter {
                 ? response.getTextContent().trim().toUpperCase() : "SIMPLE";
     }
 
-    private AgentConfig.LLMConfig buildDefaultLlmConfig() {
+    /**
+     * 构建分类器 LLM 配置——优先用 simpleModel（最便宜），
+     * 未配置时才退回默认配置。
+     */
+    private AgentConfig.LLMConfig buildClassifierLlmConfig() {
+        LuminaAgentProperties.ModelRoutingConfig routing = agentProperties.getModelRouting();
+        if (routing.getSimpleModel() != null && !routing.getSimpleModel().isBlank()) {
+            AgentConfig.LLMConfig cfg = new AgentConfig.LLMConfig();
+            cfg.setModelName(routing.getSimpleModel());
+            return cfg;
+        }
+        // simpleModel 未配置才用默认（此时路由本身价值有限，仅做日志）
         return new AgentConfig.LLMConfig();
     }
 

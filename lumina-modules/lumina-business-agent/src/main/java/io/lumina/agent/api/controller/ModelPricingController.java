@@ -1,27 +1,25 @@
 package io.lumina.agent.api.controller;
 
 import io.lumina.agent.api.dto.ModelPricingDTO;
-import io.lumina.agent.infrastructure.entity.ModelPricingDO;
-import io.lumina.agent.infrastructure.mapper.ModelPricingMapper;
+import io.lumina.agent.api.vo.ModelPricingVO;
+import io.lumina.agent.service.ModelPricingService;
 import io.lumina.common.annotation.RequirePermission;
 import io.lumina.common.core.R;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
+import java.util.List;
 
 /**
  * 模型价格管理 Controller
  *
  * <p>提供模型输入/输出价格的 CRUD 接口，供成本计算使用。
+ * 仅承担请求接收与响应，业务逻辑（含默认值、事务）下沉到 {@link ModelPricingService}。
  *
  * @author Lumina Team
  * @since 3.6.0
@@ -35,16 +33,15 @@ import io.swagger.v3.oas.annotations.Operation;
 @RequirePermission("cost:view")
 public class ModelPricingController {
 
-    private final ModelPricingMapper modelPricingMapper;
+    private final ModelPricingService modelPricingService;
 
     /**
      * 查询全部模型价格
      */
     @Operation(summary = "查询全部模型价格")
     @GetMapping
-    public R<List<ModelPricingDO>> list() {
-        List<ModelPricingDO> list = modelPricingMapper.selectList(null);
-        return R.success(list);
+    public R<List<ModelPricingVO>> list() {
+        return R.success(modelPricingService.list());
     }
 
     /**
@@ -53,20 +50,8 @@ public class ModelPricingController {
     @Operation(summary = "创建模型价格")
     @PostMapping
     @RequirePermission("model:create")
-    public R<ModelPricingDO> create(@Valid @RequestBody ModelPricingDTO dto) {
-        log.info("创建模型价格: provider={}, model={}", dto.getProvider(), dto.getModelName());
-        ModelPricingDO pricing = new ModelPricingDO();
-        BeanUtils.copyProperties(dto, pricing);
-        if (pricing.getCurrency() == null || pricing.getCurrency().isBlank()) {
-            pricing.setCurrency("CNY");
-        }
-        if (pricing.getIsActive() == null) {
-            pricing.setIsActive(1);
-        }
-        pricing.setCreateTime(LocalDateTime.now());
-        pricing.setUpdateTime(LocalDateTime.now());
-        modelPricingMapper.insert(pricing);
-        return R.success(pricing);
+    public R<ModelPricingVO> create(@Valid @RequestBody ModelPricingDTO dto) {
+        return R.success(modelPricingService.create(dto));
     }
 
     /**
@@ -75,16 +60,8 @@ public class ModelPricingController {
     @Operation(summary = "更新模型价格")
     @PutMapping("/{id}")
     @RequirePermission("model:update")
-    public R<ModelPricingDO> update(@PathVariable Long id, @Valid @RequestBody ModelPricingDTO dto) {
-        log.info("更新模型价格: id={}", id);
-        ModelPricingDO existing = modelPricingMapper.selectById(id);
-        if (existing == null) {
-            return R.fail(404, "模型价格不存在");
-        }
-        BeanUtils.copyProperties(dto, existing, "id", "createTime");
-        existing.setUpdateTime(LocalDateTime.now());
-        modelPricingMapper.updateById(existing);
-        return R.success(existing);
+    public R<ModelPricingVO> update(@PathVariable Long id, @Valid @RequestBody ModelPricingDTO dto) {
+        return R.success(modelPricingService.update(id, dto));
     }
 
     /**
@@ -94,8 +71,7 @@ public class ModelPricingController {
     @DeleteMapping("/{id}")
     @RequirePermission("model:delete")
     public R<Void> delete(@PathVariable Long id) {
-        log.info("删除模型价格: id={}", id);
-        modelPricingMapper.deleteById(id);
+        modelPricingService.delete(id);
         return R.success();
     }
 }
