@@ -20,5 +20,7 @@ data:
   RAG_EMBEDDING_MODEL: {{ .Values.config.ragEmbeddingModel | quote }}
   RAG_EMBEDDING_DIMENSIONS: {{ .Values.config.ragEmbeddingDimensions | quote }}
   OTEL_SAMPLING_PROBABILITY: {{ .Values.config.otelSamplingProbability | quote }}
-  LUMINA_STORAGE_TYPE: "local"
-  LUMINA_STORAGE_LOCAL_PATH: "/app/data/files"
+  # 环境变量名必须与应用读取的 lumina.storage.* 占位符一致：
+  # StorageProperties 读取 ${STORAGE_TYPE} / ${STORAGE_LOCAL_PATH}（非 LUMINA_ 前缀）
+  STORAGE_TYPE: "local"
+  STORAGE_LOCAL_PATH: "/app/data/files"

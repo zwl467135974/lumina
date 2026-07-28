@@ -223,6 +223,8 @@ services:
       JAVA_OPTS: -Xms512m -Xmx512m
     volumes:
       - ./logs/agent-service:/app/logs
+      # 上传文件持久化（FileController 写入 /app/data/files，命名卷随容器重建保留）
+      - agent_data:/app/data/files
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
       interval: 30s
@@ -368,6 +370,8 @@ volumes:
   rocketmq-data:
     driver: local
   minio-data:
+    driver: local
+  agent_data:
     driver: local
 
 # 网络定义

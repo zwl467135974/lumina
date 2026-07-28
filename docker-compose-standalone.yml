@@ -65,7 +65,11 @@ services:
       LUMINA_JWT_SECRET: ${LUMINA_JWT_SECRET:-dev-only-secret-please-change-for-production-use-at-least-32-chars-standalone}
     ports:
       - "8080:8080"
+    volumes:
+      # 上传文件持久化（FileController 写入 /app/data/files，命名卷随容器重建保留）
+      - lumina_data:/app/data/files
 
 volumes:
   mysql_data:
   redis_data:
+  lumina_data:

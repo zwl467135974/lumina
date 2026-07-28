@@ -122,6 +122,14 @@ A: 只要是 "disabled" / "excluded" 语义即为正常；standalone 不会连�
 **Q: 预算告警等站内通知还能收到吗？**
 A: 能。无 MQ 时通知自动降级为进程内事件，站内通知与 SSE 实时推送不受影响。
 
+**Q: 上传的文件存到哪里？容器重建会丢吗？**
+A: 本地存储模式下，`FileController` 上传的文件写入容器内 `/app/data/files`
+（对应配置项 `STORAGE_LOCAL_PATH`，默认 `./data/files`）。compose 部署已通过命名卷
+`lumina_data:/app/data/files` 持久化，`docker compose down`（不含 `-v`）不丢文件。
+若改用外部 MinIO，设 `STORAGE_TYPE=minio` 并配置 `MINIO_*` 即可。
+进程以非 root 用户 `spring` 运行，Dockerfile 在 `USER spring` 切换前已 `mkdir -p` 并
+`chown` 该目录，因此不会再出现 `AccessDeniedException: /app/data`。
+
 ## 方式三：操作脚本（本地开发推荐）
 
 适合反复启动/停止/调试的场景。脚本路径：`scripts/standalone.sh`。

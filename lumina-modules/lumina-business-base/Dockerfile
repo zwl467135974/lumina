@@ -33,7 +33,10 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-RUN addgroup -S spring && adduser -S spring -G spring
+# 创建非 root 用户并预创建/授权工作目录（必须在 USER 切换前完成，否则 spring 无权写 /app）
+RUN addgroup -S spring && adduser -S spring -G spring \
+    && mkdir -p /app/data/files /app/logs \
+    && chown -R spring:spring /app
 USER spring:spring
 
 COPY --from=builder /app/lumina-modules/lumina-business-base/target/*-exec.jar app.jar
