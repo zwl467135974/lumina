@@ -23,11 +23,16 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class TraceCollector {
 
     private final ObjectMapper objectMapper;
-    private final TraceSink traceSink;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TraceSink traceSink;
+
+    public TraceCollector(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     /** ThreadLocal 存储当前 TraceContext（同步执行路径） */
     private static final ThreadLocal<TraceContext> CURRENT = new ThreadLocal<>();
@@ -49,6 +54,9 @@ public class TraceCollector {
     public void finishTrace(TraceContext ctx) {
         if (ctx == null) return;
         CURRENT.remove();  // 清理 ThreadLocal
+
+        // traceSink 可能为 null（如 base 模块测试无 AgentTraceSink），跳过落库
+        if (traceSink == null) return;
 
         CompletableFuture.runAsync(() -> {
             try {
