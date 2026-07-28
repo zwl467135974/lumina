@@ -66,9 +66,6 @@ importers:
         specifier: ^4.3.0
         version: 4.6.4(vue@3.5.39(typescript@5.9.3))
     devDependencies:
-      '@pinia/testing':
-        specifier: ^1.0.3
-        version: 1.0.3(pinia@2.3.1(typescript@5.9.3)(vue@3.5.39(typescript@5.9.3)))
       '@types/node':
         specifier: ^20.12.7
         version: 20.19.43
@@ -566,11 +563,6 @@ packages:
   '@parcel/watcher@2.5.6':
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
-
-  '@pinia/testing@1.0.3':
-    resolution: {integrity: sha512-g+qR49GNdI1Z8rZxKrQC3GN+LfnGTNf5Kk8Nz5Cz6mIGva5WRS+ffPXQfzhA0nu6TveWzPNYTjGl4nJqd3Cu9Q==}
-    peerDependencies:
-      pinia: '>=3.0.4'
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -2676,10 +2668,6 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
-
-  '@pinia/testing@1.0.3(pinia@2.3.1(typescript@5.9.3)(vue@3.5.39(typescript@5.9.3)))':
-    dependencies:
-      pinia: 2.3.1(typescript@5.9.3)(vue@3.5.39(typescript@5.9.3))
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
