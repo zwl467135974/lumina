@@ -10,11 +10,13 @@ import io.lumina.agent.infrastructure.entity.EvaluationRunDO;
 import io.lumina.agent.infrastructure.entity.PromptDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.infrastructure.mapper.EvaluationDatasetMapper;
+import io.lumina.agent.infrastructure.mapper.EvaluationRegressionRuleMapper;
 import io.lumina.agent.infrastructure.mapper.EvaluationRunMapper;
 import io.lumina.agent.infrastructure.mapper.PromptMapper;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.exception.BusinessException;
+import io.lumina.notification.event.NotificationEventPublisher;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +54,10 @@ class EvaluationRegressionTest {
     private AgentExecutionEngine agentExecutionEngine;
     @Mock
     private PromptMapper promptMapper;
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
+    @Mock
+    private EvaluationRegressionRuleMapper regressionRuleMapper;
 
     private EvaluationServiceImpl service;
 
@@ -61,9 +67,8 @@ class EvaluationRegressionTest {
         BaseContext.setUserId(10L);
         java.util.concurrent.Executor directExecutor = Runnable::run;
         service = new EvaluationServiceImpl(datasetMapper, runMapper, agentMapper, agentExecutionEngine,
-                List.of(new ExactMatchScorer(), new ContainsScorer()), directExecutor, null, new ObjectMapper());
-        // 注入 promptMapper（@Autowired 字段）
-        org.springframework.test.util.ReflectionTestUtils.setField(service, "promptMapper", promptMapper);
+                List.of(new ExactMatchScorer(), new ContainsScorer()), directExecutor, null, new ObjectMapper(),
+                notificationEventPublisher, promptMapper, regressionRuleMapper);
     }
 
     @AfterEach

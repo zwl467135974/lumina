@@ -83,9 +83,8 @@ class DocumentIngestConsumerTest {
 
     @Test
     void objectMapperNullDoesNotCrash() {
-        // 即使 objectMapper 为 null（@Autowired required=false），consumer 不应 NPE
-        DocumentIngestConsumer rawConsumer = new DocumentIngestConsumer();
-        ReflectionTestUtils.setField(rawConsumer, "documentMapper", documentMapper);
+        // 即使 objectMapper 为 null（构造器必需依赖），consumer 不应 NPE
+        DocumentIngestConsumer rawConsumer = new DocumentIngestConsumer(documentMapper, null, null);
 
         DocumentIngestMessage msg = new DocumentIngestMessage(
                 "doc-uuid-4", "/nonexistent/file.txt", "txt", 1L, 100L, 512, 50);

@@ -12,9 +12,12 @@ import io.lumina.agent.infrastructure.entity.AgentDO;
 import io.lumina.agent.infrastructure.entity.EvaluationDatasetDO;
 import io.lumina.agent.infrastructure.mapper.AgentMapper;
 import io.lumina.agent.infrastructure.mapper.EvaluationDatasetMapper;
+import io.lumina.agent.infrastructure.mapper.EvaluationRegressionRuleMapper;
 import io.lumina.agent.infrastructure.mapper.EvaluationRunMapper;
+import io.lumina.agent.infrastructure.mapper.PromptMapper;
 import io.lumina.agent.model.ExecuteResult;
 import io.lumina.common.core.BaseContext;
+import io.lumina.notification.event.NotificationEventPublisher;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +54,12 @@ class EvaluationServiceImplTest {
 
     @Mock
     private AgentExecutionEngine agentExecutionEngine;
+    @Mock
+    private NotificationEventPublisher notificationEventPublisher;
+    @Mock
+    private PromptMapper promptMapper;
+    @Mock
+    private EvaluationRegressionRuleMapper regressionRuleMapper;
 
     private EvaluationServiceImpl evaluationService;
 
@@ -60,7 +69,8 @@ class EvaluationServiceImplTest {
         BaseContext.setUserId(10L);
         java.util.concurrent.Executor directExecutor = Runnable::run;
         evaluationService = new EvaluationServiceImpl(datasetMapper, runMapper, agentMapper, agentExecutionEngine,
-                List.of(new ExactMatchScorer(), new ContainsScorer()), directExecutor, null, new com.fasterxml.jackson.databind.ObjectMapper());
+                List.of(new ExactMatchScorer(), new ContainsScorer()), directExecutor, null, new com.fasterxml.jackson.databind.ObjectMapper(),
+                notificationEventPublisher, promptMapper, regressionRuleMapper);
     }
 
     @AfterEach
