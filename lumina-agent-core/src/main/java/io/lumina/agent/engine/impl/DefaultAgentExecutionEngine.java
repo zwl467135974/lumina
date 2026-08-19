@@ -21,6 +21,7 @@ import io.lumina.agent.config.RagProperties;
 import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.engine.PlanExecuteAgent;
 import io.lumina.agent.engine.ProviderFailover;
+import io.lumina.agent.event.AgentTurnEvent;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.loader.ConfigLoader;
@@ -137,6 +138,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.tool.spill.ToolResultSpiller toolResultSpiller;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
@@ -217,6 +221,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 加载配置
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
 
+            publishTurn(AgentTurnEvent.started(businessType, agentConfig.getAgentId(),
+                    agentConfig.getAgentName(), conversationId, false));
+
             // 动态模型路由（可选）：根据复杂度选择模型
             if (modelRouter != null) {
                 AgentConfig.LLMConfig routed = modelRouter.route(task, agentConfig);
@@ -270,6 +277,10 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 traceCtx.markSuccess(result);
             }
 
+            publishTurn(AgentTurnEvent.completed(businessType,
+                    agentConfig.getAgentId(), agentConfig.getAgentName(), conversationId,
+                    false, duration, tokenUsage));
+
             ExecuteResult executeResult = ExecuteResult.success(result);
             executeResult.setDuration(duration);
             executeResult.setTokenUsage(tokenUsage);
@@ -287,6 +298,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 traceCtx.markFailed(e.getMessage());
             }
 
+            publishTurn(AgentTurnEvent.failed(businessType,
+                    config != null ? config.getAgentId() : null,
+                    config != null ? config.getAgentName() : null, conversationId,
+                    false, duration, e.getMessage()));
+
             ExecuteResult executeResult = ExecuteResult.failure(e.getMessage());
             executeResult.setDuration(duration);
             return executeResult;
@@ -302,6 +318,23 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @Override
     public String getEngineName() {
         return "DefaultAgentExecutionEngine";
+    }
+
+    /**
+     * 发布轮次事件（观测事件总线，发布失败不影响执行）
+     *
+     * @since 3.11.0
+     */
+    private void publishTurn(io.lumina.agent.event.AgentTurnEvent event) {
+        if (eventPublisher == null) {
+            return;
+        }
+        try {
+            eventPublisher.publishEvent(event);
+        } catch (Exception e) {
+            log.debug("轮次事件发布失败（不影响执行）: phase={}, error={}",
+                    event.phase(), e.getMessage());
+        }
     }
 
     /**
@@ -1030,12 +1063,44 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             });
 
             // 子 Agent 的 Toolkit：有则用自己的，无则继承父 Agent 的
+            // 权限冻结：委派只能收紧不能扩大——子工具白名单收敛为父白名单的子集
             Toolkit subToolkit;
             if (subCfg.getToolConfig() != null) {
+                AgentConfig.ToolConfig subToolConfig = subCfg.getToolConfig();
+                List<String> parentTools = config.getToolConfig() != null
+                        ? config.getToolConfig().getTools() : null;
+                if (parentTools != null && !parentTools.isEmpty()) {
+                    List<String> requested = subToolConfig.getTools() != null
+                            ? new ArrayList<>(subToolConfig.getTools()) : new ArrayList<>();
+                    // 子配置声明"全部工具"或未列工具时，按父白名单执行（不允许扩大）
+                    if (Boolean.TRUE.equals(subToolConfig.getEnableAll()) || requested.isEmpty()) {
+                        requested = new ArrayList<>(parentTools);
+                    } else {
+                        requested.retainAll(parentTools);
+                    }
+                    if (requested.isEmpty()) {
+                        // 交集为空 → 冻结为空工具集（注意：不能走 resolveToolkit，
+                        // 空白名单的既有语义是注册全部工具）
+                        log.warn("子 Agent {} 工具白名单与父白名单交集为空，委派工具集冻结为空集",
+                                subCfg.getName());
+                        subToolkit = new Toolkit();
+                        specs.add(new io.lumina.agent.engine.MultiAgentSupervisor.SubAgentSpec(
+                                subCfg.getName(), subCfg.getDescription(),
+                                subCfg.getSysPrompt() != null ? subCfg.getSysPrompt() : config.getPromptTemplate(),
+                                subModel, subToolkit));
+                        continue;
+                    }
+                    AgentConfig.ToolConfig frozen = new AgentConfig.ToolConfig();
+                    frozen.setTools(requested);
+                    frozen.setEnableAll(false);
+                    subToolConfig = frozen;
+                    log.info("子 Agent {} 委派权限冻结: 工具集收敛为与父白名单交集（{} 个）",
+                            subCfg.getName(), requested.size());
+                }
                 AgentConfig toolConfig = new AgentConfig();
-                toolConfig.setToolConfig(subCfg.getToolConfig());
-                toolConfig.setAgentId(config.getAgentId());
-                subToolkit = resolveToolkit(toolConfig);
+                toolConfig.setToolConfig(subToolConfig);
+                toolConfig.setAgentId(null);
+                subToolkit = buildToolkit(toolConfig.getToolConfig());
             } else {
                 subToolkit = resolveToolkit(config);
             }
@@ -1110,11 +1175,24 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                         finalResponse.append(chunk.content());
                     }
                 })
-                .doOnComplete(() -> saveStreamMemory(conversationId, task, finalResponse.toString(), false))
-                .doOnCancel(() -> saveStreamMemory(conversationId, task, finalResponse.toString(), true))
+                .doOnComplete(() -> {
+                    saveStreamMemory(conversationId, task, finalResponse.toString(), false);
+                    publishTurn(io.lumina.agent.event.AgentTurnEvent.completed(
+                            agentConfig.getAgentType(), agentConfig.getAgentId(),
+                            agentConfig.getAgentName(), conversationId, true, 0, null));
+                })
+                .doOnCancel(() -> {
+                    saveStreamMemory(conversationId, task, finalResponse.toString(), true);
+                    publishTurn(io.lumina.agent.event.AgentTurnEvent.interrupted(
+                            agentConfig.getAgentType(), agentConfig.getAgentId(),
+                            agentConfig.getAgentName(), conversationId, true, "客户端断开，流式取消"));
+                })
                 .onErrorResume(e -> {
                     log.error("流式执行失败: agentType={}", agentType, e);
                     saveStreamMemory(conversationId, task, finalResponse.toString(), true);
+                    publishTurn(io.lumina.agent.event.AgentTurnEvent.failed(
+                            agentConfig.getAgentType(), agentConfig.getAgentId(),
+                            agentConfig.getAgentName(), conversationId, true, 0, e.getMessage()));
                     return Flux.just(new StreamChunk(StreamEventType.ERROR,
                             e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
                 });

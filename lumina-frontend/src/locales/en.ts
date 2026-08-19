@@ -278,6 +278,7 @@ export default {
     running: 'Running',
     completed: 'Completed',
     failed: 'Failed',
+    interrupted: 'Interrupted (unknown)',
     cancelled: 'Cancelled',
     pending: 'Pending',
     cancel: 'Cancel',

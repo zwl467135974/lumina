@@ -66,6 +66,17 @@ public class MultiAgentSupervisor {
     public record SubAgentSpec(String name, String description, String sysPrompt,
                                 Model model, Toolkit toolkit) {}
 
+    /**
+     * 专家执行结果（结构化回传）
+     *
+     * <p>替代此前"字符串拼接累积专家结果"的做法：路由/汇总渲染、token 归集、
+     * 审计观测消费同一份结构化记录，专家失败也是一等公民（success=false）。
+     *
+     * @since 3.11.0
+     */
+    public record ExpertResult(String agentName, boolean success, String output,
+                               long inputTokens, long outputTokens, long durationMs) {}
+
     public MultiAgentSupervisor(Model supervisorModel, List<SubAgentSpec> subAgents,
                                  String supervisorPrompt, int maxRounds) {
         this.supervisorModel = supervisorModel;
@@ -77,6 +88,17 @@ public class MultiAgentSupervisor {
     public void setTraceCollector(io.lumina.agent.tracing.TraceCollector traceCollector) {
         this.traceCollector = traceCollector;
     }
+
+    /**
+     * 各专家的结构化执行结果（本次 execute 调用累计）
+     *
+     * @since 3.11.0
+     */
+    public List<ExpertResult> getExpertResults() {
+        return List.copyOf(expertResults);
+    }
+
+    private final List<ExpertResult> expertResults = new ArrayList<>();
 
     /**
      * 执行多 Agent 协作
@@ -108,14 +130,13 @@ public class MultiAgentSupervisor {
 
         // 对话上下文（包含用户请求 + 专家结果历史）
         List<Msg> context = new ArrayList<>(messages);
-        StringBuilder expertResults = new StringBuilder();
 
         log.info("MultiAgent Supervisor 启动: {} 个专家, maxRounds={}", subAgents.size(), maxRounds);
 
         for (int round = 0; round < maxRounds; round++) {
             // 1. Supervisor 判断下一步
             Msg routeMsg = Msg.builder().role(MsgRole.USER)
-                    .textContent(buildRoutePrompt(context, expertResults.toString(), round))
+                    .textContent(buildRoutePrompt(context, round))
                     .build();
 
             Msg routeResponse = supervisor.call(List.of(routeMsg)).block();
@@ -134,17 +155,17 @@ public class MultiAgentSupervisor {
             // 严格匹配：必须整行等于 FINISH，或行首锚定的 "FINISH" 前缀，
             // 避免 LLM 解释里出现 "finish" 一词就误判结束
             if (isFinishDecision(decision)) {
-                return generateFinalSummary(supervisor, context, expertResults.toString());
+                return generateFinalSummary(supervisor, context);
             }
 
             // 3. 查找匹配的专家
             SubAgentSpec selected = findAgent(decision);
             if (selected == null) {
                 log.warn("未找到匹配的专家: {}，直接汇总", decision);
-                return generateFinalSummary(supervisor, context, expertResults.toString());
+                return generateFinalSummary(supervisor, context);
             }
 
-            // 4. 执行专家
+            // 4. 执行专家（结果结构化记录，失败也是一等公民）
             log.info("调用专家: {}", selected.name());
             ReActAgent expertAgent = ReActAgent.builder()
                     .name(selected.name())
@@ -157,45 +178,64 @@ public class MultiAgentSupervisor {
                     .textContent(extractUserTask(context))
                     .build();
 
+            long expertStart = System.currentTimeMillis();
             Msg expertResponse = null;
             try {
                 expertResponse = expertAgent.call(List.of(expertTask)).block();
             } catch (Exception e) {
-                // 专家调用失败不应中断整个 MultiAgent 流程——记录错误作为该专家的"结果"，
+                // 专家调用失败不应中断整个 MultiAgent 流程——结构化记录失败，
                 // 让 Supervisor 在下一轮决定是否换专家或直接汇总
                 log.error("专家 {} 调用异常: {}", selected.name(), e.getMessage(), e);
-                expertResults.append("【").append(selected.name()).append("的结果】\n")
-                        .append("[专家调用失败: ").append(e.getMessage()).append("]\n\n");
+                expertResults.add(new ExpertResult(selected.name(), false,
+                        "[专家调用失败: " + e.getMessage() + "]",
+                        0, 0, System.currentTimeMillis() - expertStart));
                 continue;
             }
             if (expertResponse != null) {
                 accumulateTokens(expertResponse.getChatUsage());
+                long expertInput = expertResponse.getChatUsage() != null
+                        ? expertResponse.getChatUsage().getInputTokens() : 0;
+                long expertOutput = expertResponse.getChatUsage() != null
+                        ? expertResponse.getChatUsage().getOutputTokens() : 0;
                 String result = expertResponse.getTextContent() != null
                         ? expertResponse.getTextContent() : "";
-                expertResults.append("【").append(selected.name()).append("的结果】\n")
-                        .append(result).append("\n\n");
-                log.info("专家 {} 完成, 结果长度: {}", selected.name(), result.length());
+                expertResults.add(new ExpertResult(selected.name(), true, result,
+                        expertInput, expertOutput, System.currentTimeMillis() - expertStart));
+                log.info("专家 {} 完成, 结果长度: {}, tokens={}/{}", selected.name(),
+                        result.length(), expertInput, expertOutput);
             }
         }
 
         // 超过最大轮次，强制汇总
         log.warn("Supervisor 达到最大轮次 {}, 强制汇总", maxRounds);
-        return generateFinalSummary(supervisor, context, expertResults.toString());
+        return generateFinalSummary(supervisor, context);
     }
 
     /**
-     * 构建路由判断 Prompt
+     * 构建路由判断 Prompt（从结构化专家结果渲染）
      */
-    private String buildRoutePrompt(List<Msg> context, String expertResults, int round) {
+    private String buildRoutePrompt(List<Msg> context, int round) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("用户原始请求: ").append(extractUserTask(context)).append("\n\n");
 
-        if (!expertResults.isBlank()) {
-            prompt.append("已完成的专家结果:\n").append(expertResults).append("\n");
+        if (!expertResults.isEmpty()) {
+            prompt.append("已完成的专家结果:\n").append(renderExpertResults()).append("\n");
         }
 
         prompt.append("请判断下一步交给哪个专家，或输出 FINISH。");
         return prompt.toString();
+    }
+
+    /**
+     * 渲染结构化专家结果（路由与汇总共用同一渲染，保证一致性）
+     */
+    private String renderExpertResults() {
+        StringBuilder sb = new StringBuilder();
+        for (ExpertResult r : expertResults) {
+            sb.append("【").append(r.agentName()).append("的结果】\n")
+                    .append(r.output()).append("\n\n");
+        }
+        return sb.toString();
     }
 
     /**
@@ -204,8 +244,8 @@ public class MultiAgentSupervisor {
      * <p>使用独立的 Summarizer Agent（不受路由 Prompt 约束），
      * 避免 Supervisor 的"只输出专家名"指令影响汇总质量。
      */
-    private Msg generateFinalSummary(ReActAgent supervisor, List<Msg> context, String expertResults) {
-        if (expertResults.isBlank()) {
+    private Msg generateFinalSummary(ReActAgent supervisor, List<Msg> context) {
+        if (expertResults.isEmpty()) {
             return Msg.builder().role(MsgRole.ASSISTANT)
                     .textContent("没有专家被调用，无法处理请求。")
                     .build();
@@ -220,7 +260,7 @@ public class MultiAgentSupervisor {
                 .build();
 
         String summaryPrompt = "用户请求: " + extractUserTask(context) +
-                "\n\n以下是各专家的处理结果:\n" + expertResults +
+                "\n\n以下是各专家的处理结果:\n" + renderExpertResults() +
                 "\n请基于以上结果，给出最终汇总回复。";
 
         Msg summaryMsg = Msg.builder().role(MsgRole.USER).textContent(summaryPrompt).build();
@@ -230,7 +270,7 @@ public class MultiAgentSupervisor {
 
         if (response == null) {
             return Msg.builder().role(MsgRole.ASSISTANT)
-                    .textContent(expertResults)
+                    .textContent(renderExpertResults())
                     .build();
         }
         accumulateTokens(response.getChatUsage());

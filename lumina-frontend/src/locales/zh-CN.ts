@@ -278,6 +278,7 @@ export default {
     running: '执行中',
     completed: '已完成',
     failed: '失败',
+    interrupted: '已中断（结果未知）',
     cancelled: '已取消',
     pending: '等待中',
     cancel: '取消',

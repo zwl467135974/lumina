@@ -102,7 +102,8 @@ const searchFields = computed<SearchField[]>(() => [
       { label: t('task.running'), value: 'RUNNING' },
       { label: t('task.completed'), value: 'COMPLETED' },
       { label: t('task.failed'), value: 'FAILED' },
-      { label: t('task.cancelled'), value: 'CANCELLED' }
+      { label: t('task.cancelled'), value: 'CANCELLED' },
+      { label: t('task.interrupted'), value: 'INTERRUPTED' }
     ]
   },
   { prop: 'agentId', label: 'Agent ID', type: 'input', placeholder: t('common.pleaseInput') }
@@ -114,7 +115,8 @@ const statusType = (status: string) => {
     RUNNING: 'warning',
     COMPLETED: 'success',
     FAILED: 'danger',
-    CANCELLED: 'info'
+    CANCELLED: 'info',
+    INTERRUPTED: 'warning'
   }
   return map[status] || 'info'
 }
@@ -125,7 +127,8 @@ const statusLabel = (status: string) => {
     RUNNING: t('task.running'),
     COMPLETED: t('task.completed'),
     FAILED: t('task.failed'),
-    CANCELLED: t('task.cancelled')
+    CANCELLED: t('task.cancelled'),
+    INTERRUPTED: t('task.interrupted')
   }
   return map[status] || status
 }
