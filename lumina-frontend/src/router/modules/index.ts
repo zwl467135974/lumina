@@ -387,6 +387,21 @@ export const promptRoutes: AppRouteRecordRaw[] = [
   }
 ]
 
+// 技能管理路由（渐进披露）
+export const skillRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/skill',
+    name: 'Skill',
+    component: () => import('@/views/skill/index.vue'),
+    meta: {
+      title: '技能管理',
+      icon: 'MagicStick',
+      requiresAuth: true,
+      keepAlive: true
+    }
+  }
+]
+
 // 成本仪表盘路由
 export const costRoutes: AppRouteRecordRaw[] = [
   {

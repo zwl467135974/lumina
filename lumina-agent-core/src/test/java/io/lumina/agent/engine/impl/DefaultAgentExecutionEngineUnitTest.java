@@ -320,6 +320,40 @@ class DefaultAgentExecutionEngineUnitTest {
         assertThat(compacted.get(3).getTextContent()).isEqualTo("问题3");
     }
 
+    // ==================== 技能目录渐进披露 ====================
+
+    @Test
+    void buildContextMessagesInjectsSkillCatalogWhenEnabled() throws Exception {
+        agentProperties.getSkill().setEnabled(true);
+        io.lumina.agent.service.SkillCatalogProvider provider =
+                Mockito.mock(io.lumina.agent.service.SkillCatalogProvider.class);
+        Mockito.when(provider.listSkills()).thenReturn(List.of(
+                new io.lumina.agent.service.SkillCatalogProvider.SkillCatalogEntry(
+                        "refund-policy", "客服退款政策问答规范", "用户咨询退款时")));
+        injectField("skillCatalogProvider", provider);
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "当前问题");
+
+        // 第一条 = 技能目录 SYSTEM 块
+        assertThat(messages.get(0).getTextContent())
+                .contains("<available_skills>")
+                .contains("refund-policy")
+                .contains("util.loadSkill")
+                .doesNotContain("七天无理由");
+    }
+
+    @Test
+    void buildContextMessagesSkipsSkillCatalogWhenDisabled() throws Exception {
+        io.lumina.agent.service.SkillCatalogProvider provider =
+                Mockito.mock(io.lumina.agent.service.SkillCatalogProvider.class);
+        injectField("skillCatalogProvider", provider);
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "当前问题");
+
+        assertThat(messages.get(0).getTextContent()).isEqualTo("当前问题");
+        Mockito.verifyNoInteractions(provider);
+    }
+
     private void injectField(String name, Object value) throws Exception {
         java.lang.reflect.Field field = DefaultAgentExecutionEngine.class.getDeclaredField(name);
         field.setAccessible(true);

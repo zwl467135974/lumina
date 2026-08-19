@@ -57,6 +57,41 @@ public class GeneralToolProvider {
     @Autowired(required = false)
     private io.lumina.agent.tool.spill.ToolArtifactStore artifactStore;
 
+    /**
+     * 技能目录（可选，渐进披露启用时由业务模块注入）
+     */
+    @Autowired(required = false)
+    private io.lumina.agent.service.SkillCatalogProvider skillCatalogProvider;
+
+    // ==================== 技能加载（渐进披露第二段） ====================
+
+    /**
+     * 按名加载技能全文
+     *
+     * <p>配合 {@code <available_skills>} 目录：目录只给名称和描述，
+     * 判断需要完整说明时调用此工具。每次重读不缓存——技能更新下一次调用即生效。
+     *
+     * @since 3.11.0
+     */
+    @AgentTool(
+        name = "util.loadSkill",
+        description = "按名称加载技能的完整说明。系统提示的 <available_skills> 目录中列出了可用技能；判断当前任务适用某个技能时，用其名称调用本工具获取全文。",
+        category = "util.skill"
+    )
+    public String loadSkill(String name) {
+        log.info("Agent 调用技能加载工具: name={}", name);
+        if (name == null || name.isBlank()) {
+            return "Error: 技能名称不能为空";
+        }
+        if (skillCatalogProvider == null) {
+            return "Error: 技能服务不可用（未配置 SkillCatalogProvider）";
+        }
+        String content = skillCatalogProvider.loadContent(name.trim());
+        return content != null
+                ? "<skill_content name=\"" + name.trim() + "\">\n" + content + "\n</skill_content>"
+                : "Error: 技能不存在、已禁用或无权访问: " + name;
+    }
+
     // ==================== 工具结果存档取回 ====================
 
     /**

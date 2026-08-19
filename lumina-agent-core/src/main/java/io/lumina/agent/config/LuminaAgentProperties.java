@@ -217,6 +217,13 @@ public class LuminaAgentProperties {
     private CodeInterpreterConfig codeInterpreter = new CodeInterpreterConfig();
 
     /**
+     * 技能系统配置（渐进披露：目录进上下文，全文按需加载）
+     *
+     * @since 3.11.0
+     */
+    private SkillConfig skill = new SkillConfig();
+
+    /**
      * 工具配置
      */
     private ToolConfig tool = new ToolConfig();
@@ -321,6 +328,24 @@ public class LuminaAgentProperties {
         private int maxContextMemories = 20;
         /** 事实内容最大长度（字符） */
         private int maxFactLength = 500;
+    }
+
+    /**
+     * 技能系统配置（渐进披露）
+     *
+     * <p>启用后系统提示注入 {@code <available_skills>} 目录（仅名称+截断描述），
+     * 模型按需调用 util.loadSkill 取全文。
+     *
+     * @since 3.11.0
+     */
+    @Data
+    public static class SkillConfig {
+        /** 是否启用技能目录注入（默认 false，需业务模块提供 SkillCatalogProvider） */
+        private boolean enabled = false;
+        /** 目录最多条目数（超出截断，防目录本身撑爆上下文） */
+        private int maxCatalogEntries = 50;
+        /** 目录中描述的截断长度（字符） */
+        private int descriptionMaxLength = 200;
     }
 
     /**

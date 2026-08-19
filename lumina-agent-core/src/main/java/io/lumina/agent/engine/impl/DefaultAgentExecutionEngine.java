@@ -139,6 +139,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private io.lumina.agent.tool.spill.ToolResultSpiller toolResultSpiller;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.service.SkillCatalogProvider skillCatalogProvider;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public DefaultAgentExecutionEngine(
@@ -535,6 +538,15 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             }
         }
 
+        // Skill 目录渐进披露：只注入目录（名称+截断描述），全文由模型按需 loadSkill
+        if (skillCatalogProvider != null && agentProperties.getSkill().isEnabled()) {
+            try {
+                messages.add(buildSkillCatalogMessage());
+            } catch (Exception e) {
+                log.debug("技能目录加载失败（不影响执行）: {}", e.getMessage());
+            }
+        }
+
         if (conversationId != null) {
             HistorySelection selection = loadHistoryWithinBudget(conversationId, currentPrompt,
                     contents, agentConfig, messages);
@@ -617,6 +629,40 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
 
     /** 历史装填结果（预算内保留 + 被裁掉的部分，内容均为确定性修剪后的视图） */
     private record HistorySelection(List<MemoryManager.Memory> selected, List<MemoryManager.Memory> dropped) {
+    }
+
+    /**
+     * 构建技能目录消息（渐进披露第一段：仅目录，不含全文）
+     *
+     * <p>注入位置在历史消息之前，目录成本自然计入 Token 预算。
+     *
+     * @since 3.11.0
+     */
+    private Msg buildSkillCatalogMessage() {
+        LuminaAgentProperties.SkillConfig skillConfig = agentProperties.getSkill();
+        List<io.lumina.agent.service.SkillCatalogProvider.SkillCatalogEntry> entries =
+                skillCatalogProvider.listSkills();
+        int limit = Math.min(entries.size(), skillConfig.getMaxCatalogEntries());
+        if (limit == 0) {
+            return Msg.builder().role(MsgRole.SYSTEM)
+                    .textContent("<available_skills>（当前无可用技能）</available_skills>").build();
+        }
+        StringBuilder sb = new StringBuilder("<available_skills>\n");
+        sb.append("以下技能可用。判断需要某个技能的完整说明时，调用 util.loadSkill 工具按名加载：\n");
+        for (int i = 0; i < limit; i++) {
+            io.lumina.agent.service.SkillCatalogProvider.SkillCatalogEntry e = entries.get(i);
+            String desc = e.description() != null ? e.description() : "";
+            if (desc.length() > skillConfig.getDescriptionMaxLength()) {
+                desc = desc.substring(0, skillConfig.getDescriptionMaxLength()) + "...";
+            }
+            sb.append("- ").append(e.name()).append(": ").append(desc);
+            if (e.whenToUse() != null && !e.whenToUse().isBlank()) {
+                sb.append("（适用: ").append(e.whenToUse()).append("）");
+            }
+            sb.append("\n");
+        }
+        sb.append("</available_skills>");
+        return Msg.builder().role(MsgRole.SYSTEM).textContent(sb.toString()).build();
     }
 
     /**
