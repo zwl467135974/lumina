@@ -31,6 +31,7 @@ Lumina 是一套**企业私有化 AI Agent 中台**，基于 [AgentScope Java](h
 |---|---|---|---|---|
 | **行级多租户隔离** | ❌ 工作区粒度 | ❌ 不管 | ❌ 不管 | ✅ fail-closed + 集成测试 |
 | **五表 RBAC + 审计** | 部分 | ❌ | ❌ | ✅ `@Audit` AOP |
+| **工具级安全管线** | ❌ | ❌ | ❌ | ✅ 拦截器→审批→单调守卫 |
 | **预算管控（Token 计费）** | 部分 | ❌ | ❌ | ✅ 按租户/Agent 归集 |
 | **Prompt 注入检测 + PII 脱敏** | 部分 | ❌ | ❌ | ✅ 11 种模式 |
 | **JWT fail-fast + 身份头防伪造** | N/A | N/A | N/A | ✅ 网关入口剥离 |
@@ -58,8 +59,8 @@ docker compose -f docker-compose-standalone.yml up
 
 ### 五条主线能力
 
-- **🏢 企业级特性** - 行级多租户隔离（fail-closed）、五表 RBAC、审计日志、预算管控、JWT fail-fast、Prompt 注入检测 + PII 脱敏——全仓库最扎实、有集成测试
-- **🤖 Agent 执行引擎** - AgentScope 2.0.0 ReAct/Plan-Execute、SSE 流式（REASONING/ACTING/RAG_SOURCES）、多模态、Provider Failover 主备链
+- **🏢 企业级特性** - 行级多租户隔离（fail-closed）、五表 RBAC、审计日志、预算管控、JWT fail-fast、Prompt 注入检测 + PII 脱敏、工具级安全管线（拦截器→高危工具人工审批→单调守卫，fail-closed）——全仓库最扎实、有集成测试
+- **🤖 Agent 执行引擎** - AgentScope 2.0.0 ReAct/Plan-Execute、SSE 流式（REASONING/ACTING/RAG_SOURCES）、多模态、Provider Failover 主备链、上下文工程（Token 预算 + 两级压缩 + 溢出自愈）、SSE 中断合成闭合
 - **🔧 工具与集成** - MCP 协议接入（stdio/SSE/streamable-http 三传输 + headers 鉴权 + 重连健康检查）、OpenAI 兼容 `/v1/chat/completions` 出口、Webhook、企业微信机器人、Code Interpreter（Docker 容器池）
 - **📚 知识与编排** - RAG 混合检索（RRF + reranker + 5 OCR）、Flowable 7.0 DAG 工作流（6 节点 + 7 模板）、Prompt 版本管理、Agent 评估回归（4 评分器 + A/B 对比）
 - **🎨 工程化前端** - Vue 3 + Element Plus 32 视图、暗色主题、i18n、Agent 调试面板、动态菜单（权限下发）
@@ -799,6 +800,16 @@ npm install
 - ✅ **自动会话管理** — `/chat` 端点，前端无需手动管 conversationId
 - ✅ **知识库级分块策略** — 每个 KB 独立配 chunkSize/overlap/splitStrategy
 - ✅ **教学文档 58 篇** — 从 47 篇扩到 58 篇，含自测题答案，全部新功能配套教学
+
+### v3.11 上下文工程 + 工具安全管线（融合 DeepSeek Harness 设计）
+
+Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)、架构不变：
+
+- 🧠 **上下文工程** — Token 估算 + 输入侧预算（默认 16000，替换硬编码 20 条窗口）；两级压缩（免模型确定性修剪 + 8 段 LLM 检查点摘要，KV 前缀对齐 + 收缩硬保证）；溢出紧急压缩自愈（同步/流式）
+- 🔐 **工具安全管线**（开源竞品空白） — 拦截器链 → 高危工具人工审批（allow-once，通知渠道，fail-closed）→ 单调守卫（拒绝不可被任何策略翻转）；配置名单 deny-tools/approval-tools，默认关闭
+- 🩹 **失败恢复** — SSE 中断合成闭合（半截回复落库 + 标记，消除孤儿消息）；流式反思记忆修复；异步任务真取消（中断执行线程，停止 Token 消耗）
+- 📦 **工具结果外存化** — 超大结果全文存档（V51），模型只看预览 + `util.getArtifact` 按需取回
+- ✅ 新增 33 个单测（含单调守卫核心用例），agent-core 359 全绿
 
 ### v3.10 全面审查修复（Release 质量加固）
 

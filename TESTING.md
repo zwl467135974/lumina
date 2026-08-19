@@ -79,6 +79,26 @@ export SPRING_DATASOURCE_USERNAME=ci_user
 export SPRING_DATASOURCE_PASSWORD=ci_pass
 ```
 
+### 本地环境常见坑（v3.11 实测）
+
+**坑 1：改了 agent-core 后单模块测试报类缺失（`FileNotFoundException: ...xxx.class cannot be opened`）**
+
+`mvn test -pl lumina-modules/lumina-business-agent` 从**本地 Maven 仓库**解析 agent-core 依赖，
+不会自动用工作区最新代码。agent-core 有改动时必须先刷新：
+
+```bash
+mvn install -pl lumina-agent-core -DskipTests
+mvn test -pl lumina-modules/lumina-business-agent
+```
+
+**坑 2：本地 Redis 无密码，上下文启动报 `ERR Client sent AUTH, but no password is set`**
+
+application-test.yml 默认 Redis 密码 123456；本地 Redis 若未设密码，用空值覆盖：
+
+```bash
+SPRING_DATA_REDIS_PASSWORD="" mvn test -pl lumina-modules/lumina-business-agent
+```
+
 ---
 
 ## 测试体系概览

@@ -31,6 +31,7 @@ Our net advantage over Dify OSS / LangGraph / Spring AI Alibaba is **enterprise-
 |---|---|---|---|---|
 | **Row-level multi-tenancy** | ❌ workspace-level | ❌ N/A | ❌ N/A | ✅ fail-closed + integration tested |
 | **5-table RBAC + audit** | partial | ❌ | ❌ | ✅ `@Audit` AOP |
+| **Tool-level security pipeline** | ❌ | ❌ | ❌ | ✅ interceptors → approval → monotonic guards |
 | **Budget control (token billing)** | partial | ❌ | ❌ | ✅ per-tenant/agent |
 | **Prompt injection detection + PII masking** | partial | ❌ | ❌ | ✅ 11 patterns |
 | **JWT fail-fast + header anti-forgery** | N/A | N/A | N/A | ✅ gateway-level stripping |
@@ -47,8 +48,8 @@ Only MySQL + Redis required (compose includes both). No Nacos / RocketMQ / separ
 
 ### Five Pillars
 
-- **🏢 Enterprise Features** - Row-level multi-tenancy (fail-closed), 5-table RBAC, audit logging, budget control, JWT fail-fast, Prompt injection detection + PII masking — the most battle-tested part of the codebase, with integration tests
-- **🤖 Agent Execution Engine** - AgentScope 1.0.7 ReAct/Plan-Execute, SSE streaming (REASONING/ACTING/RAG_SOURCES), multimodal, Provider Failover
+- **🏢 Enterprise Features** - Row-level multi-tenancy (fail-closed), 5-table RBAC, audit logging, budget control, JWT fail-fast, Prompt injection detection + PII masking, tool-level security pipeline (interceptors → high-risk tool human approval → monotonic guards, fail-closed) — the most battle-tested part of the codebase, with integration tests
+- **🤖 Agent Execution Engine** - AgentScope 2.0 ReAct/Plan-Execute, SSE streaming (REASONING/ACTING/RAG_SOURCES), multimodal, Provider Failover, context engineering (token budget + two-level compaction + overflow recovery), SSE-interruption synthetic closure
 - **🔧 Tools & Integration** - MCP protocol (stdio/SSE/streamable-http + header auth + reconnect health check), OpenAI-compatible `/v1/chat/completions` exit, Webhook, WeCom bot, Code Interpreter (Docker pool)
 - **📚 Knowledge & Orchestration** - Hybrid RAG retrieval (RRF + reranker + 5 OCR), Flowable 7.0 DAG workflow (6 nodes + 7 templates), Prompt versioning, Agent evaluation regression (4 scorers + A/B comparison)
 - **🎨 Engineering Frontend** - Vue 3 + Element Plus 32 views, dark theme, i18n, Agent debug panel, permission-driven dynamic menus
@@ -245,6 +246,16 @@ helm install lumina deploy/helm/lumina \
 ---
 
 ## Project Status
+
+### v3.11 — Context Engineering + Tool Security Pipeline (DeepSeek Harness-inspired)
+
+Generational upgrade of core Agent capabilities. Mechanisms ported from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), architecture unchanged:
+
+- 🧠 **Context Engineering** — Token estimation + input-side budget (default 16000, replacing the hardcoded 20-message window); two-level compaction (model-free deterministic pruning + 8-section LLM checkpoint summary with KV prefix alignment and shrink guarantee); overflow emergency-compaction self-healing (sync & streaming)
+- 🔐 **Tool Security Pipeline** (blank space in competing OSS) — interceptor chain → high-risk tool human approval (allow-once, notification channel, fail-closed) → monotonic guards (denials mathematically cannot be flipped by any other policy); deny-tools/approval-tools config lists, off by default
+- 🩹 **Failure Recovery** — SSE-interruption synthetic closure (partial replies persisted + marked, no more orphan user messages); streaming reflective-memory fix; async task real cancellation (interrupts execution thread, stops token burn)
+- 📦 **Tool Result Spill** — oversized results archived in full (V51), model sees preview only + `util.getArtifact` on-demand retrieval
+- ✅ 33 new unit tests (incl. monotonic-guard core case), agent-core 359 all green
 
 ### v3.10 — Full Audit Fixes (Release Quality Hardening)
 

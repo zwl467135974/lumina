@@ -4,6 +4,62 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.11.0] - 2026-08-19
+
+### 上下文工程 + 工具安全管线（融合 DeepSeek Harness 设计）
+
+本次聚焦 Agent 核心能力代际升级：上下文管理从"固定条数窗口"进化到"Token 预算 + 两级压缩 +
+溢出自愈"，工具执行引入"拦截器 → 审批 → 单调守卫"安全管线（对标开源竞品均为空白），
+流式与异步任务的失败恢复全面加固。设计借鉴 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+的上下文工程与工具执行管线，机制移植、架构不搬。
+
+#### 上下文工程（长对话不再打爆窗口）
+- **Token 估算 + 输入侧预算**：新增 `TokenEstimator`（CJK ≈ 1 token/字），历史消息按
+  `lumina.agent.memory.contextWindowTokens`（默认 16000）从最新向最旧装填、装不下即停——
+  替换硬编码 20 条窗口；预算覆盖 [系统提示词+长期记忆+历史+当前输入（含多模态）]。
+- **两级压缩管线**：第一级免模型确定性修剪（`ContextPruner`，超 4000 字符消息 head/tail
+  + 省略标记，默认启用）；第二级 LLM 检查点摘要（8 段固定格式，关键路径/命令/错误串逐字
+  保留，KV 前缀对齐命中 provider 缓存，收缩硬保证摘要必须小于原文）。修复
+  `summary-max-tokens` 死配置。
+- **Plan-Execute 路径同步升级**："最后 6 条 × 500 字符"改为预算装填（占预算 1/4）。
+- **溢出恢复**：LLM 报上下文超限后确定性紧急压缩（保留 SYSTEM 头 + 最近 2 条 + 中段
+  修剪段，毫秒级）重试，同步与流式路径均支持（`max-overflow-retries` 默认 1）。
+
+#### 工具安全管线（开源竞品空白的企业差异点）
+- **拦截器 → 审批 → 单调守卫**三层：`ToolExecutionInterceptor`（有序可扩展策略，
+  DENY/ASK）→ `ToolApprovalPort`（allow-once 人工审批，fail-closed）→ `ToolGuard`
+  （单调守卫：无 allow 臂，拒绝在所有策略之后终审、数学上不可被翻转）。
+- **审批闭环**：通知渠道审批（站内/企微）+ 待决注册表 + 审批端点
+  `POST /agents/tools/approvals/{id}`（新权限 `agent:tool-approval`，V50 种子，
+  SUPER_ADMIN 默认授予），超时/异常/无接收人一律拒绝。
+- **配置名单**：`lumina.agent.tool.security.deny-tools`（平台禁用）与
+  `approval-tools`（高危审批，如 `code.execute`），总开关默认关闭。
+- 安全拒绝对模型可见（可自纠）且不计入熔断（策略否决 ≠ 工具故障）。
+
+#### 失败恢复加固
+- **SSE 中断合成闭合**：complete/cancel/error 三种终态都落库并写入 Redis 记忆，
+  中断时追加 `[本次响应因中断未完成]` 标记——消除"用户已问、模型无答"的孤儿消息，
+  下一轮模型与用户看到一致的中断事实。
+- **流式反思记忆**：修复 SSE 主路径不触发 Reflective Memory 的问题（与同步路径对齐）。
+- **任务真取消**：`cancelTask` 通过 `RunningTaskRegistry` 中断执行线程，真正停止
+  LLM 调用与 Token 消耗（此前只改状态位，调用继续烧钱）。
+
+#### 工具结果外存化（spill）
+- 超过阈值（默认 8000 字符）的工具结果全文存档（V51 `lumina_tool_artifact`，租户隔离），
+  模型侧只留 head/tail 预览 + `artifactId`，新增 `util.getArtifact` 工具按需取回全文；
+  取回结果不再 spill（防回环），存档失败降级硬截断。默认关闭
+  （`lumina.agent.tool.spill.enabled`）。
+
+#### 数据库迁移
+- V50：`agent:tool-approval` 权限种子（挂 Agent 管理，SUPER_ADMIN 授予）
+- V51：`lumina_tool_artifact` 工具结果存档表
+
+#### 测试
+- 新增 33 个单测：TokenEstimator（11）/ ContextPruner（4）/ 引擎预算装填与压缩（8）/
+  ToolSecurityPipeline 单调性与 fail-closed（11，含"审批放行 + 守卫仍否决"核心用例）/
+  ToolResultSpiller（5）；AgentTaskServiceImplTest 同步构造器签名。
+- agent-core 359 全绿；business-agent 263 与基线逐类一致。
+
 ## [3.10.0] - 2026-07-28
 
 ### 全面代码审查修复（Release 质量加固）
