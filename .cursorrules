@@ -126,6 +126,11 @@
 - [ ] **API 路径**: RESTful 命名 + 检查 Gateway 路由是否覆盖
 - [ ] **编译验证**: `mvn compile` 通过
 
+## Git 推送规则
+
+- **只推 origin（gitee）**：`git push origin master` 即可。**不需要、也不要推 GitHub**——gitee 仓库会自动同步到 GitHub 并触发其 CI
+- 本机 gh 凭据（wyler1）对 GitHub 仓库只有读权限，直接推会 403
+
 ## Git Commit 规范
 
 生成 Git Commit 信息时，遵循 `lumina_git_commit` skill 中的规范：
