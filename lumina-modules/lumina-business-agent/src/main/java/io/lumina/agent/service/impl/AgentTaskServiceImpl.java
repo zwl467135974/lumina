@@ -9,6 +9,7 @@ import io.lumina.agent.model.ExecuteResult;
 import io.lumina.agent.infrastructure.mapper.AgentTaskMapper;
 import io.lumina.agent.service.AgentService;
 import io.lumina.agent.service.AgentTaskService;
+import io.lumina.agent.service.RunningTaskRegistry;
 import io.lumina.agent.service.TaskProgressRegistry;
 import io.lumina.common.core.BaseContext;
 import io.lumina.common.core.ErrorCode;
@@ -65,6 +66,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     private final io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper;
     private final io.lumina.agent.config.LuminaAgentProperties agentProperties;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final RunningTaskRegistry runningTaskRegistry;
 
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
@@ -79,7 +81,8 @@ public class AgentTaskServiceImpl implements AgentTaskService {
                                 NotificationEventPublisher notificationEventPublisher,
                                 io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper,
                                 io.lumina.agent.config.LuminaAgentProperties agentProperties,
-                                com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+                                com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                                RunningTaskRegistry runningTaskRegistry) {
         this.agentTaskMapper = agentTaskMapper;
         this.agentService = agentService;
         this.agentTaskExecutor = agentTaskExecutor;
@@ -88,6 +91,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         this.agentMapper = agentMapper;
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
+        this.runningTaskRegistry = runningTaskRegistry;
     }
 
     @Override
@@ -184,6 +188,9 @@ public class AgentTaskServiceImpl implements AgentTaskService {
             }
 
             markRunning(task);
+            // 注册真取消：取消时中断本执行线程，停止 LLM 调用与 Token 消耗
+            Thread worker = Thread.currentThread();
+            runningTaskRegistry.register(taskUuid, worker::interrupt);
             String result;
             ExecuteResult.TokenUsage tokenUsage = null;
             List<String> fileUuids = parseFileUuids(task.getFileIds());
@@ -205,8 +212,13 @@ public class AgentTaskServiceImpl implements AgentTaskService {
             markCompleted(taskUuid, result, System.currentTimeMillis() - start, modelInfo[0], modelInfo[1],
                     promptTokens, completionTokens, totalTokens);
         } catch (Exception e) {
+            if (Thread.currentThread().isInterrupted()) {
+                // 取消引起的中断：状态已是 CANCELLED，markFailed 内部会跳过，这里单独记日志
+                log.info("任务执行被取消中断: taskUuid={}, error={}", taskUuid, e.getMessage());
+            }
             markFailed(taskUuid, e, System.currentTimeMillis() - start);
         } finally {
+            runningTaskRegistry.unregister(taskUuid);
             BaseContext.clear();
         }
     }
@@ -383,7 +395,9 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         task.setUpdateTime(LocalDateTime.now());
         agentTaskMapper.updateById(task);
         progressRegistry.emit(taskUuid, buildEvent(task));
-        log.info("Agent 异步任务已取消: taskUuid={}", taskUuid);
+        // 真取消：向运行中的执行线程发出中断（停止 LLM 调用与 Token 消耗）
+        boolean interrupted = runningTaskRegistry.cancel(taskUuid);
+        log.info("Agent 异步任务已取消: taskUuid={}, 执行中断={}", taskUuid, interrupted);
         return task;
     }
 

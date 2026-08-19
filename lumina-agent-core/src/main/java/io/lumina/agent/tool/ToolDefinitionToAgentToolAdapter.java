@@ -7,6 +7,9 @@ import io.agentscope.core.tool.ToolCallParam;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecord;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
+import io.lumina.agent.tool.security.ToolExecutionContext;
+import io.lumina.agent.tool.security.ToolSecurityPipeline;
+import io.lumina.agent.tool.spill.ToolResultSpiller;
 import io.lumina.agent.util.JsonUtils;
 import io.lumina.common.core.BaseContext;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,10 @@ import java.util.concurrent.TimeoutException;
  * <p>将 Lumina 的 ToolDefinition 适配为 AgentScope 的 AgentTool 接口实现。
  * 这样可以将 EnhancedToolManager 管理的工具动态注册到 AgentScope Toolkit。
  *
+ * <p>执行管线（3.11.0 起）：熔断检查 → 安全管线（拦截器→审批→单调守卫）
+ * → 工具体 → 超时。安全拒绝不计入熔断（策略否决不是工具故障），
+ * 拒绝理由对模型可见以便自纠。
+ *
  * @author Lumina Team
  * @since 1.0.0
  */
@@ -34,6 +41,8 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
     private final ToolCircuitBreaker circuitBreaker;
     private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
     private final long executionTimeoutMs;
+    private final ToolSecurityPipeline securityPipeline;
+    private final ToolResultSpiller resultSpiller;
     private Map<String, Object> parametersSchema;
 
     public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition) {
@@ -45,11 +54,33 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                                             ToolCircuitBreaker circuitBreaker,
                                             io.micrometer.core.instrument.MeterRegistry meterRegistry,
                                             long executionTimeoutMs) {
+        this(toolDefinition, recorder, circuitBreaker, meterRegistry, executionTimeoutMs, null);
+    }
+
+    public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition,
+                                            ToolInvocationRecorder recorder,
+                                            ToolCircuitBreaker circuitBreaker,
+                                            io.micrometer.core.instrument.MeterRegistry meterRegistry,
+                                            long executionTimeoutMs,
+                                            ToolSecurityPipeline securityPipeline) {
+        this(toolDefinition, recorder, circuitBreaker, meterRegistry, executionTimeoutMs,
+                securityPipeline, null);
+    }
+
+    public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition,
+                                            ToolInvocationRecorder recorder,
+                                            ToolCircuitBreaker circuitBreaker,
+                                            io.micrometer.core.instrument.MeterRegistry meterRegistry,
+                                            long executionTimeoutMs,
+                                            ToolSecurityPipeline securityPipeline,
+                                            ToolResultSpiller resultSpiller) {
         this.toolDefinition = toolDefinition;
         this.recorder = recorder;
         this.circuitBreaker = circuitBreaker;
         this.meterRegistry = meterRegistry;
         this.executionTimeoutMs = executionTimeoutMs;
+        this.securityPipeline = securityPipeline;
+        this.resultSpiller = resultSpiller;
         this.objectMapper = JsonUtils.OBJECT_MAPPER;
         this.parametersSchema = parseParametersSchema(toolDefinition);
     }
@@ -96,11 +127,29 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                     paramsJson = objectMapper.writeValueAsString(input);
                 }
 
+                // 安全管线（拦截器 → 审批 → 单调守卫）；拒绝不计入熔断（策略否决不是工具故障）
+                if (securityPipeline != null) {
+                    String denial = securityPipeline.check(new ToolExecutionContext(
+                            toolName, toolDefinition.getCategory(), paramsJson,
+                            BaseContext.getConversationId(), BaseContext.getTenantId(), BaseContext.getUserId()));
+                    if (denial != null) {
+                        String msg = "工具调用被安全策略拒绝: " + denial;
+                        doRecord(toolName, paramsJson, null, msg, System.currentTimeMillis() - start, false);
+                        return buildErrorResult(msg, paramsJson);
+                    }
+                }
+
                 log.debug("执行工具: {}, 参数: {}", toolName, paramsJson);
 
                 // 执行工具
                 Object result = toolDefinition.execute(paramsJson);
                 String resultString = toStringResult(result);
+
+                // 超大结果外存化：模型侧只留预览 + 存档 ID（记录同样有界）
+                if (resultSpiller != null) {
+                    resultString = resultSpiller.spillIfNeeded(toolName,
+                            BaseContext.getConversationId(), resultString);
+                }
 
                 long duration = System.currentTimeMillis() - start;
                 log.debug("工具执行完成: {}, 耗时: {}ms", toolName, duration);

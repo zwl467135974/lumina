@@ -51,6 +51,39 @@ public class GeneralToolProvider {
     @Autowired(required = false)
     private SearchProvider searchProvider;
 
+    /**
+     * 工具结果存档（可选，spill 启用时由业务模块注入）
+     */
+    @Autowired(required = false)
+    private io.lumina.agent.tool.spill.ToolArtifactStore artifactStore;
+
+    // ==================== 工具结果存档取回 ====================
+
+    /**
+     * 取回已存档的工具执行结果全文
+     *
+     * <p>配合结果外存化（spill）：超大工具结果只给模型预览 + 存档 ID，
+     * 模型判断需要全文时调用此工具按需取回。
+     *
+     * @since 3.11.0
+     */
+    @AgentTool(
+        name = "util.getArtifact",
+        description = "取回已存档的工具执行结果全文。当工具返回中出现“完整结果已存档 artifactId=xxx”时，用该 ID 调用此工具获取全文。",
+        category = "util.artifact"
+    )
+    public String getArtifact(String artifactId) {
+        log.info("Agent 调用存档取回工具: artifactId={}", artifactId);
+        if (artifactId == null || artifactId.isBlank()) {
+            return "Error: artifactId 不能为空";
+        }
+        if (artifactStore == null) {
+            return "Error: 存档服务不可用（未配置 ToolArtifactStore）";
+        }
+        String content = artifactStore.get(artifactId.trim());
+        return content != null ? content : "Error: 存档不存在、已过期或无权访问: " + artifactId;
+    }
+
     // ==================== HTTP 请求工具 ====================
 
     /**

@@ -409,6 +409,62 @@ public class LuminaAgentProperties {
          * 熔断恢复超时（毫秒）
          */
         private Long resetTimeoutMs = 60000L;
+
+        /**
+         * 工具安全管线配置（拦截器 + 审批 + 单调守卫）
+         *
+         * @since 3.11.0
+         */
+        private SecurityConfig security = new SecurityConfig();
+
+        /**
+         * 工具结果外存化配置（超大结果 spill）
+         *
+         * @since 3.11.0
+         */
+        private SpillConfig spill = new SpillConfig();
+    }
+
+    /**
+     * 工具结果外存化配置
+     *
+     * <p>启用后超过阈值的工具结果全文存档（ToolArtifactStore），
+     * 模型侧只保留 head/tail 预览 + 存档 ID（util.getArtifact 按需取回）。
+     *
+     * @since 3.11.0
+     */
+    @Data
+    public static class SpillConfig {
+        /** 是否启用外存化（默认 false；需业务侧提供 ToolArtifactStore 实现） */
+        private boolean enabled = false;
+        /** 触发外存化的长度阈值（字符数） */
+        private int thresholdChars = 8000;
+        /** 预览保留头部字符数 */
+        private int headChars = 3000;
+        /** 预览保留尾部字符数 */
+        private int tailChars = 1000;
+    }
+
+    /**
+     * 工具安全管线配置
+     *
+     * <p>启用后每次工具调用经"拦截器链 → 审批 → 单调守卫"三段检查，
+     * 拒绝结果对模型可见（可自纠），全程 fail-closed。
+     *
+     * @since 3.11.0
+     */
+    @Data
+    public static class SecurityConfig {
+        /** 是否启用工具安全管线（默认 false，向后兼容） */
+        private boolean enabled = false;
+        /** 平台禁用的工具名单（命中即 DENY） */
+        private java.util.List<String> denyTools = new java.util.ArrayList<>();
+        /** 需人工审批的工具名单（命中即 ASK，fail-closed） */
+        private java.util.List<String> approvalTools = new java.util.ArrayList<>();
+        /** 审批等待超时（秒，超时按拒绝处理） */
+        private long approvalTimeoutSeconds = 30;
+        /** 审批人用户 ID（空则通知发起调用的用户） */
+        private java.util.List<Long> approverUserIds = new java.util.ArrayList<>();
     }
 }
 

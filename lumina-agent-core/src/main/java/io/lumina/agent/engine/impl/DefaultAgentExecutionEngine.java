@@ -131,6 +131,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.service.ModelRouter modelRouter;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.tool.security.ToolSecurityPipeline toolSecurityPipeline;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.tool.spill.ToolResultSpiller toolResultSpiller;
+
     public DefaultAgentExecutionEngine(
             ConfigLoader configLoader,
             PromptLoader promptLoader,
@@ -1575,9 +1581,13 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     continue;
                 }
 
+                // 安全管线启用时传入适配器（拦截器→审批→单调守卫，fail-closed）；
+                // 结果外存化器一并传入（超大工具结果 spill 为预览 + 存档 ID）
+                io.lumina.agent.tool.security.ToolSecurityPipeline securityPipeline =
+                        agentProperties.getTool().getSecurity().isEnabled() ? toolSecurityPipeline : null;
                 ToolDefinitionToAgentToolAdapter adapter =
                         new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker, meterRegistry,
-                                agentProperties.getTool().getExecutionTimeoutMs());
+                                agentProperties.getTool().getExecutionTimeoutMs(), securityPipeline, toolResultSpiller);
                 toolkit.registerAgentTool(adapter);
                 registeredCount++;
                 log.info("工具已注册: {} (分类: {})", toolDef.getName(),
