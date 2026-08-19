@@ -88,8 +88,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import PageHeader from '@/components/PageHeader.vue'
-import LumTablePanel from '@/components/LumTablePanel.vue'
+import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
 import {
   listSkills,
   createSkill,
@@ -117,9 +116,9 @@ const formData = reactive<SkillDTO>({
   enabled: true
 })
 
-const searchFields = [
+const searchFields = computed<SearchField[]>(() => [
   { prop: 'name', label: t('skill.name'), type: 'input', placeholder: t('common.pleaseInput') }
-]
+])
 
 const dialogTitle = computed(() => (editingId.value ? t('skill.edit') : t('skill.create')))
 
