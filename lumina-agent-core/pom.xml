@@ -12,11 +12,29 @@
     </parent>
 
     <artifactId>lumina-agent-core</artifactId>
+
+    <properties>
+        <graalvm.polyglot.version>24.1.1</graalvm.polyglot.version>
+    </properties>
     <packaging>jar</packaging>
     <name>Lumina Agent Core</name>
     <description>Lumina Agent Core Module - Agent Execution Engine</description>
 
     <dependencies>
+        <!-- GraalJS（autonomy 节点：模型生成的 JS 编排脚本沙箱执行） -->
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>${graalvm.polyglot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>js-community</artifactId>
+            <version>${graalvm.polyglot.version}</version>
+            <type>pom</type>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Lumina Common -->
         <dependency>
             <groupId>io.lumina</groupId>

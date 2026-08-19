@@ -1,6 +1,7 @@
 package io.lumina.agent.orchestration.flowable;
 
 import io.lumina.agent.orchestration.model.AgentNode;
+import io.lumina.agent.orchestration.model.AutonomyNode;
 import io.lumina.agent.orchestration.model.ConditionNode;
 import io.lumina.agent.orchestration.model.HumanNode;
 import io.lumina.agent.orchestration.model.LoopNode;
@@ -145,6 +146,9 @@ public class FlowableBpmnConverter {
     private FlowElement convertNode(WorkflowNode node) {
         if (node instanceof AgentNode) {
             return createDelegateTask(node, "agentDelegate");
+        }
+        if (node instanceof AutonomyNode) {
+            return createDelegateTask(node, "autonomyDelegate");
         }
         if (node instanceof TransformNode) {
             return createDelegateTask(node, "transformDelegate");

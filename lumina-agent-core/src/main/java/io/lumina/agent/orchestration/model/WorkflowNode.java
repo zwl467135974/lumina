@@ -30,6 +30,7 @@ import lombok.Data;
         @JsonSubTypes.Type(value = ParallelNode.class, name = "parallel"),
         @JsonSubTypes.Type(value = TransformNode.class, name = "transform"),
         @JsonSubTypes.Type(value = HumanNode.class, name = "human"),
+        @JsonSubTypes.Type(value = AutonomyNode.class, name = "autonomy"),
 })
 public abstract class WorkflowNode {
 
