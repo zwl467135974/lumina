@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(AgentExecutionHandler.class)
 public class AutonomyScriptEngine {
 
     /** 物化时拒绝的属性名（防 __proto__ 类原型污染语义随结果外流） */

@@ -75,3 +75,7 @@ lumina:
   jwt:
     secret-key: test-secret-key-for-integration-test-at-least-32-chars-long
     expiration: 604800000
+
+# Flowable：全新库自动建 ACT_ 表（显式声明，与 FlowableConfig 的 schemaUpdate=true 意图一致）
+flowable:
+  database-schema-update: true
