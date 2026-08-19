@@ -41,6 +41,7 @@ import io.lumina.agent.resilience.LlmResilienceWrapper;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
 import io.lumina.agent.util.JsonUtils;
+import io.lumina.agent.util.TokenEstimator;
 import io.lumina.common.core.BaseContext;
 import io.micrometer.observation.annotation.Observed;
 import lombok.extern.slf4j.Slf4j;
@@ -69,8 +70,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component
 public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
-
-    private static final int CONTEXT_WINDOW = 20;
 
     private static final int MODEL_CACHE_MAX_SIZE = 50;
 
@@ -497,7 +496,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
 
         if (conversationId != null) {
-            List<MemoryManager.Memory> history = memoryManager.getRecentMemories(conversationId, CONTEXT_WINDOW);
+            List<MemoryManager.Memory> history = loadHistoryWithinBudget(conversationId, currentPrompt,
+                    contents, agentConfig, messages);
 
             // 上下文压缩：历史超过阈值时，摘要旧消息而非直接丢弃
             LuminaAgentProperties.CompressionConfig compressionConfig =
@@ -585,6 +585,71 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             messages.add(Msg.builder().role(MsgRole.USER).content(blocks).build());
         }
         return messages;
+    }
+
+    /**
+     * 按 Token 预算加载历史消息（从最新向最旧装填，装不下即停）
+     *
+     * <p>预算 = contextWindowTokens - [系统提示词 + 已注入的长期记忆 + 当前输入（含多模态）] 的估算成本。
+     * 预算关闭（contextWindowTokens <= 0）时退回固定条数窗口（historyWindowSize）。
+     *
+     * @param conversationId 会话 ID
+     * @param currentPrompt  当前用户提示词（已填充模板）
+     * @param contents       当前输入的多模态内容（图片按固定成本、文档按文本估算）
+     * @param agentConfig    Agent 配置（取系统提示词模板）
+     * @param assembled      已组装的消息（含长期记忆 SYSTEM 消息）
+     * @return 预算内的历史消息（时间升序）
+     * @since 3.11.0
+     */
+    private List<MemoryManager.Memory> loadHistoryWithinBudget(String conversationId, String currentPrompt,
+                                                               List<MultimodalContent> contents,
+                                                               AgentConfig agentConfig, List<Msg> assembled) {
+        LuminaAgentProperties.MemoryConfig memoryConfig = agentProperties.getMemory();
+        int windowTokens = memoryConfig.getContextWindowTokens();
+        if (windowTokens <= 0) {
+            return memoryManager.getRecentMemories(conversationId, memoryConfig.getHistoryWindowSize());
+        }
+
+        List<MemoryManager.Memory> recent = memoryManager.getRecentMemories(conversationId,
+                memoryConfig.getMaxHistoryMessages());
+
+        int spent = TokenEstimator.estimateTokens(currentPrompt)
+                + TokenEstimator.estimateTokens(agentConfig != null ? agentConfig.getPromptTemplate() : null)
+                + estimateMultimodalTokenCost(contents);
+        for (Msg m : assembled) {
+            spent += TokenEstimator.estimateTokens(m.getTextContent());
+        }
+        int budget = windowTokens - spent;
+
+        // 从最新到最旧装填，装不下即停（宁可少带历史，绝不超窗）
+        List<String> newestFirst = new ArrayList<>(recent.size());
+        for (int i = recent.size() - 1; i >= 0; i--) {
+            newestFirst.add(recent.get(i).content());
+        }
+        int keep = TokenEstimator.countWithinBudget(newestFirst, budget);
+        if (keep < recent.size()) {
+            log.info("上下文预算裁剪: budget={} tokens, 历史 {} 条 -> 保留最近 {} 条",
+                    budget, recent.size(), keep);
+        }
+        return recent.subList(recent.size() - keep, recent.size());
+    }
+
+    /**
+     * 估算多模态内容的 token 成本（图片按固定成本，文档按提取文本估算）
+     */
+    private int estimateMultimodalTokenCost(List<MultimodalContent> contents) {
+        if (contents == null || contents.isEmpty()) {
+            return 0;
+        }
+        int cost = 0;
+        for (MultimodalContent content : contents) {
+            if (content instanceof MultimodalImage) {
+                cost += TokenEstimator.IMAGE_TOKEN_COST;
+            } else if (content instanceof MultimodalDocument doc) {
+                cost += TokenEstimator.estimateTokens(doc.text());
+            }
+        }
+        return cost;
     }
 
     /**
@@ -758,7 +823,6 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private Msg executePlanAndExecute(AgentConfig config, List<Msg> messages) {
         // 提取最后一条用户消息作为执行任务
         String userPrompt = "";
-        String conversationContext = "";
         for (int i = messages.size() - 1; i >= 0; i--) {
             Msg msg = messages.get(i);
             if (MsgRole.USER.equals(msg.getRole())) {
@@ -766,18 +830,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 break;
             }
         }
-        // 历史上下文（最后 6 条）
-        int ctxStart = Math.max(0, messages.size() - 6);
-        StringBuilder ctx = new StringBuilder();
-        for (int i = ctxStart; i < messages.size(); i++) {
-            Msg msg = messages.get(i);
-            String role = msg.getRole() != null ? msg.getRole().name() : "UNKNOWN";
-            String text = msg.getTextContent();
-            if (text != null && !text.isBlank()) {
-                ctx.append(role).append(": ").append(text, 0, Math.min(500, text.length())).append("\n");
-            }
-        }
-        conversationContext = ctx.toString();
+        // 历史上下文按 Token 预算装填（替代固定 6 条 x 500 字符）
+        String conversationContext = buildPlanConversationContext(messages);
 
         AgentConfig.LLMConfig llmConfig = resolveLlmConfig(config);
         String modelKey = buildModelCacheKey(llmConfig);
@@ -793,6 +847,37 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         peAgent.setTraceCollector(traceCollector);
 
         return llmResilience.execute("agent-call", () -> peAgent.execute());
+    }
+
+    /**
+     * 构建 Plan-Execute 路径的对话上下文摘要（按 Token 预算从最新向最旧装填）
+     *
+     * <p>Plan 路径的上下文作为系统提示词附加段，只占输入预算的 1/4；
+     * 预算关闭时给固定 2000 token。单条消息超过 2000 字符时截断。
+     *
+     * @since 3.11.0
+     */
+    private String buildPlanConversationContext(List<Msg> messages) {
+        int windowTokens = agentProperties.getMemory().getContextWindowTokens();
+        int budget = windowTokens > 0 ? Math.max(windowTokens / 4, 500) : 2000;
+
+        List<String> newestFirst = new ArrayList<>(messages.size());
+        for (Msg msg : messages) {
+            String text = msg.getTextContent();
+            newestFirst.add(text != null ? text : "");
+        }
+        int keep = TokenEstimator.countWithinBudget(newestFirst, budget);
+
+        StringBuilder ctx = new StringBuilder();
+        for (int i = messages.size() - keep; i < messages.size(); i++) {
+            Msg msg = messages.get(i);
+            String role = msg.getRole() != null ? msg.getRole().name() : "UNKNOWN";
+            String text = msg.getTextContent();
+            if (text != null && !text.isBlank()) {
+                ctx.append(role).append(": ").append(text, 0, Math.min(2000, text.length())).append("\n");
+            }
+        }
+        return ctx.toString();
     }
 
     /**
@@ -902,17 +987,35 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                         finalResponse.append(chunk.content());
                     }
                 })
-                .doOnComplete(() -> {
-                    if (conversationId != null && finalResponse.length() > 0) {
-                        memoryManager.addMemory(conversationId, "user", task);
-                        memoryManager.addMemory(conversationId, "assistant", finalResponse.toString());
-                    }
-                })
+                .doOnComplete(() -> saveStreamMemory(conversationId, task, finalResponse.toString(), false))
+                .doOnCancel(() -> saveStreamMemory(conversationId, task, finalResponse.toString(), true))
                 .onErrorResume(e -> {
                     log.error("流式执行失败: agentType={}", agentType, e);
+                    saveStreamMemory(conversationId, task, finalResponse.toString(), true);
                     return Flux.just(new StreamChunk(StreamEventType.ERROR,
                             e.getMessage() != null ? e.getMessage() : "流式执行失败", true));
                 });
+    }
+
+    /**
+     * 流式结束后保存对话记忆（合成闭合：中断/错误时追加标记，保证记忆与落库一致）
+     *
+     * <p>客户端断开（cancel）、执行错误（error）、正常完成（complete）三种终态都会闭合记忆，
+     * 已生成的部分内容不丢弃，避免留下"用户已问、模型无答"的孤儿记录。
+     *
+     * @since 3.11.0
+     */
+    private void saveStreamMemory(String conversationId, String task, String response, boolean interrupted) {
+        if (conversationId == null || response.isEmpty()) {
+            return;
+        }
+        try {
+            memoryManager.addMemory(conversationId, "user", task);
+            memoryManager.addMemory(conversationId, "assistant",
+                    interrupted ? response + INTERRUPTED_RESPONSE_MARKER : response);
+        } catch (Exception e) {
+            log.warn("保存流式记忆失败（不影响主流程）: conversationId={}, error={}", conversationId, e.getMessage());
+        }
     }
 
     /**
@@ -920,19 +1023,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      */
     private Flux<StreamChunk> buildPlanExecuteStreamFlux(AgentConfig agentConfig, String userPrompt,
                                                           List<Msg> contextMessages) {
-        // 历史上下文（最后 6 条）
-        int ctxStart = Math.max(0, contextMessages.size() - 6);
-        StringBuilder ctx = new StringBuilder();
-        for (int i = ctxStart; i < contextMessages.size(); i++) {
-            Msg msg = contextMessages.get(i);
-            String role = msg.getRole() != null ? msg.getRole().name() : "UNKNOWN";
-            String text = msg.getTextContent();
-            if (text != null && !text.isBlank()) {
-                ctx.append(role).append(": ")
-                        .append(text, 0, Math.min(500, text.length())).append("\n");
-            }
-        }
-        String conversationContext = ctx.toString();
+        // 历史上下文按 Token 预算装填（替代固定 6 条 x 500 字符）
+        String conversationContext = buildPlanConversationContext(contextMessages);
 
         AgentConfig.LLMConfig llmConfig = resolveLlmConfig(agentConfig);
         String modelKey = buildModelCacheKey(llmConfig);

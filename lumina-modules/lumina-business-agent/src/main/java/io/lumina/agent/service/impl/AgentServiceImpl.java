@@ -445,6 +445,8 @@ public class AgentServiceImpl implements AgentService {
         final StringBuffer fullResponse = new StringBuffer();
         final java.util.concurrent.atomic.AtomicReference<ExecuteResult.TokenUsage> streamTokenUsage =
                 new java.util.concurrent.atomic.AtomicReference<>(null);
+        final java.util.concurrent.atomic.AtomicBoolean streamErrored =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
         boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, agent.getMaxConcurrent());
 
         return agentExecutionEngine.executeStream(
@@ -455,6 +457,9 @@ public class AgentServiceImpl implements AgentService {
         )
         .doOnNext(chunk -> {
             String type = chunk.type();
+            if (StreamEventType.ERROR.equals(type)) {
+                streamErrored.set(true);
+            }
             if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {
                 fullResponse.append(chunk.content());
                 if (chunk.tokenUsage() != null) {
@@ -463,14 +468,15 @@ public class AgentServiceImpl implements AgentService {
             }
         })
         .doOnComplete(() -> {
-            if (sid != null && fullResponse.length() > 0) {
-                String sanitized = outputSanitizer.sanitize(fullResponse.toString());
-                ExecuteResult.TokenUsage usage = streamTokenUsage.get();
-                int tokenCount = usage != null && usage.getTotalTokens() != null ? usage.getTotalTokens() : 0;
-                conversationService.saveMessage(sid, "assistant", sanitized, tokenCount, null);
-                conversationService.incrementMessageCount(sid, 2);
+            boolean interrupted = streamErrored.get();
+            String content = persistStreamAssistantMessage(sid, fullResponse, streamTokenUsage.get(), interrupted);
+            // 流式路径与同步路径对齐：正常完成后异步触发反思记忆提取
+            if (!interrupted && content != null) {
+                triggerReflectiveMemory(agentId, sid, task, content);
             }
         })
+        .doOnCancel(() -> persistStreamAssistantMessage(sid, fullResponse, streamTokenUsage.get(), true))
+        .doOnError(e -> persistStreamAssistantMessage(sid, fullResponse, streamTokenUsage.get(), true))
         .doFinally(signalType -> {
             if (concurrencyAcquired) {
                 concurrencyLimiter.release(agentId);
@@ -486,6 +492,8 @@ public class AgentServiceImpl implements AgentService {
         final StringBuffer fullResponse = new StringBuffer();
         final java.util.concurrent.atomic.AtomicReference<ExecuteResult.TokenUsage> streamTokenUsage =
                 new java.util.concurrent.atomic.AtomicReference<>(null);
+        final java.util.concurrent.atomic.AtomicBoolean streamErrored =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
         boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, ctx.agent().getMaxConcurrent());
 
         return agentExecutionEngine.executeMultimodalStream(
@@ -497,6 +505,9 @@ public class AgentServiceImpl implements AgentService {
         )
         .doOnNext(chunk -> {
             String type = chunk.type();
+            if (StreamEventType.ERROR.equals(type)) {
+                streamErrored.set(true);
+            }
             if (StreamEventType.FINAL.equals(type) || StreamEventType.AGENT_RESULT.equals(type)) {
                 fullResponse.append(chunk.content());
                 if (chunk.tokenUsage() != null) {
@@ -505,14 +516,14 @@ public class AgentServiceImpl implements AgentService {
             }
         })
         .doOnComplete(() -> {
-            if (sid != null && fullResponse.length() > 0) {
-                String sanitized = outputSanitizer.sanitize(fullResponse.toString());
-                ExecuteResult.TokenUsage usage = streamTokenUsage.get();
-                int tokenCount = usage != null && usage.getTotalTokens() != null ? usage.getTotalTokens() : 0;
-                conversationService.saveMessage(sid, "assistant", sanitized, tokenCount, null);
-                conversationService.incrementMessageCount(sid, 2);
+            boolean interrupted = streamErrored.get();
+            String content = persistStreamAssistantMessage(sid, fullResponse, streamTokenUsage.get(), interrupted);
+            if (!interrupted && content != null) {
+                triggerReflectiveMemory(agentId, sid, task, content);
             }
         })
+        .doOnCancel(() -> persistStreamAssistantMessage(sid, fullResponse, streamTokenUsage.get(), true))
+        .doOnError(e -> persistStreamAssistantMessage(sid, fullResponse, streamTokenUsage.get(), true))
         .doFinally(signalType -> {
             if (concurrencyAcquired) {
                 concurrencyLimiter.release(agentId);
@@ -921,6 +932,42 @@ public class AgentServiceImpl implements AgentService {
             agentTaskMapper.insert(task);
         } catch (Exception e) {
             log.warn("记录同步执行 token 用量失败(不影响主流程): agentId={}, error={}", agentId, e.getMessage());
+        }
+    }
+
+    /**
+     * 流式结束后落库 assistant 消息（合成闭合：中断/错误时追加标记）
+     *
+     * <p>客户端断开（cancel）、执行错误（error）时，已生成的部分内容仍然落库并追加
+     * {@link AgentExecutionEngine#INTERRUPTED_RESPONSE_MARKER}，保证会话记录完整：
+     * 下一轮对话模型与用户看到一致的中断事实，而不是丢失整段回复留下孤儿用户消息。
+     *
+     * @param sessionId   会话 ID
+     * @param fullResponse 已累积的回复内容（FINAL/AGENT_RESULT 片段）
+     * @param usage       流式捕获的 token 用量（可为 null）
+     * @param interrupted 是否中断/错误
+     * @return 实际落库的内容（未落库返回 null）
+     * @since 3.11.0
+     */
+    private String persistStreamAssistantMessage(String sessionId, StringBuffer fullResponse,
+                                                 ExecuteResult.TokenUsage usage, boolean interrupted) {
+        if (sessionId == null || fullResponse.length() == 0) {
+            return null;
+        }
+        try {
+            String sanitized = outputSanitizer.sanitize(fullResponse.toString());
+            String content = interrupted
+                    ? sanitized + AgentExecutionEngine.INTERRUPTED_RESPONSE_MARKER : sanitized;
+            int tokenCount = usage != null && usage.getTotalTokens() != null ? usage.getTotalTokens() : 0;
+            conversationService.saveMessage(sessionId, "assistant", content, tokenCount, null);
+            conversationService.incrementMessageCount(sessionId, 2);
+            if (interrupted) {
+                log.info("流式响应中断，已保存部分内容并标记: sessionId={}, length={}", sessionId, content.length());
+            }
+            return content;
+        } catch (Exception e) {
+            log.warn("保存流式 assistant 消息失败: sessionId={}, error={}", sessionId, e.getMessage());
+            return null;
         }
     }
 

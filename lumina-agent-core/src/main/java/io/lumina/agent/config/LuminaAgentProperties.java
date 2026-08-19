@@ -239,6 +239,33 @@ public class LuminaAgentProperties {
          * @since 3.8.0
          */
         private CompressionConfig compression = new CompressionConfig();
+
+        /**
+         * 输入侧上下文 Token 预算（估算值，默认 16000）
+         *
+         * <p>预算覆盖 [系统提示词 + 长期记忆 + 历史消息 + 当前输入] 的估算 token 总量，
+         * 历史消息按预算从最新向最旧装填，装不下即停——替代固定条数窗口，
+         * 避免长消息（大文档全文等）打爆模型上下文窗口。
+         * <p>设为 0 关闭 Token 预算，退回固定条数窗口（{@link #historyWindowSize}）。
+         * 本地小窗口模型（如 ollama 4K/8K）建议按模型窗口调低。
+         *
+         * @since 3.11.0
+         */
+        private int contextWindowTokens = 16000;
+
+        /**
+         * 历史消息条数上限（Token 预算模式下的硬上限，防止超长列表，默认 100）
+         *
+         * @since 3.11.0
+         */
+        private int maxHistoryMessages = 100;
+
+        /**
+         * 历史窗口条数（Token 预算关闭时的固定窗口，默认 20）
+         *
+         * @since 3.11.0
+         */
+        private int historyWindowSize = 20;
     }
 
     /**

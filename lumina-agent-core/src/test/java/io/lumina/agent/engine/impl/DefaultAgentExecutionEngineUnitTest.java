@@ -25,6 +25,7 @@ import org.mockito.Mockito;
 import org.springframework.context.ApplicationContext;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -42,13 +43,19 @@ class DefaultAgentExecutionEngineUnitTest {
 
     private DefaultAgentExecutionEngine engine;
 
+    private MemoryManager memoryManager;
+
+    private LuminaAgentProperties agentProperties;
+
     @BeforeEach
     void setUp() {
+        memoryManager = Mockito.mock(MemoryManager.class);
+        agentProperties = new LuminaAgentProperties();
         engine = new DefaultAgentExecutionEngine(
                 Mockito.mock(ConfigLoader.class),
                 Mockito.mock(PromptLoader.class),
-                Mockito.mock(MemoryManager.class),
-                new LuminaAgentProperties(),
+                memoryManager,
+                agentProperties,
                 Mockito.mock(ChatModelFactory.class),
                 Mockito.mock(LlmResilienceWrapper.class),
                 Mockito.mock(ApplicationContext.class),
@@ -148,6 +155,70 @@ class DefaultAgentExecutionEngineUnitTest {
         ExecuteResult.TokenUsage result = invokeExtractTokenUsage(response);
 
         assertThat(result).isNull();
+    }
+
+    // ==================== buildContextMessages（Token 预算装填） ====================
+
+    @Test
+    void buildContextMessagesKeepsAllHistoryUnderBudget() throws Exception {
+        agentProperties.getMemory().setContextWindowTokens(16000);
+        Mockito.when(memoryManager.getRecentMemories("conv-1", 100))
+                .thenReturn(buildMemories(30, 20));
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "当前问题");
+
+        // 30 条历史（30*20=600 token << 预算）+ 1 条当前输入
+        assertThat(messages).hasSize(31);
+        assertThat(messages.get(0).getTextContent()).startsWith("消息0");
+        assertThat(messages.get(29).getTextContent()).startsWith("消息29");
+        assertThat(messages.get(30).getTextContent()).isEqualTo("当前问题");
+    }
+
+    @Test
+    void buildContextMessagesDropsOldestWhenBudgetExceeded() throws Exception {
+        // 预算 100，prompt 占 2，5 条历史每条 20 token → 只能装 4 条最新的
+        agentProperties.getMemory().setContextWindowTokens(100);
+        Mockito.when(memoryManager.getRecentMemories("conv-1", 100))
+                .thenReturn(buildMemories(5, 20));
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "你好");
+
+        // 4 条历史（消息1~消息4，最旧的消息0 被裁掉）+ 1 条当前输入
+        assertThat(messages).hasSize(5);
+        assertThat(messages.get(0).getTextContent()).startsWith("消息1");
+        assertThat(messages.get(3).getTextContent()).startsWith("消息4");
+    }
+
+    @Test
+    void buildContextMessagesFallsBackToCountWindowWhenBudgetDisabled() throws Exception {
+        agentProperties.getMemory().setContextWindowTokens(0);
+        Mockito.when(memoryManager.getRecentMemories("conv-1", 20))
+                .thenReturn(buildMemories(20, 20).subList(0, 20));
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "当前问题");
+
+        // 固定窗口 20 条 + 1 条当前输入
+        assertThat(messages).hasSize(21);
+    }
+
+    private List<MemoryManager.Memory> buildMemories(int count, int cjkCharsPerMessage) {
+        java.util.List<MemoryManager.Memory> memories = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            // "消息{i}" + 填充汉字，保证估算 token 可控（每条 = 2+数字位数 + cjkCharsPerMessage）
+            String content = "消息" + i + "字".repeat(cjkCharsPerMessage);
+            memories.add(new MemoryManager.Memory("user", content, System.currentTimeMillis() + i));
+        }
+        return memories;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Msg> invokeBuildContextMessages(String conversationId, String currentPrompt) throws Exception {
+        Method method = DefaultAgentExecutionEngine.class.getDeclaredMethod(
+                "buildContextMessages", String.class, String.class, List.class,
+                io.lumina.agent.model.AgentConfig.class);
+        method.setAccessible(true);
+        return (List<Msg>) method.invoke(engine, conversationId, currentPrompt,
+                java.util.Collections.emptyList(), (io.lumina.agent.model.AgentConfig) null);
     }
 
     // ==================== 反射辅助方法 ====================

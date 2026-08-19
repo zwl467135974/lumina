@@ -21,6 +21,17 @@ import java.util.List;
 public interface AgentExecutionEngine {
 
     /**
+     * 流式响应中断标记
+     *
+     * <p>客户端断开 / 执行错误导致流式响应未完成时，已生成的部分内容仍会落库并写入记忆，
+     * 末尾追加此标记——保证会话记录"合成闭合"：下一轮对话模型与用户看到一致的中断事实，
+     * 而不是丢失整段回复留下孤儿用户消息。
+     *
+     * @since 3.11.0
+     */
+    String INTERRUPTED_RESPONSE_MARKER = "\n\n[本次响应因中断未完成，内容可能不完整]";
+
+    /**
      * 执行 Agent（响应式，带会话上下文）
      *
      * @param businessType    业务类型（如：customer-service、data-analysis）
