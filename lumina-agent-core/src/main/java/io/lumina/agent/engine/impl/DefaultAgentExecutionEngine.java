@@ -40,6 +40,7 @@ import io.lumina.agent.monitor.ToolInvocationRecorder;
 import io.lumina.agent.resilience.LlmResilienceWrapper;
 import io.lumina.agent.tool.ToolDefinition;
 import io.lumina.agent.tool.ToolDefinitionToAgentToolAdapter;
+import io.lumina.agent.util.ContextPruner;
 import io.lumina.agent.util.JsonUtils;
 import io.lumina.agent.util.TokenEstimator;
 import io.lumina.common.core.BaseContext;
@@ -237,8 +238,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 构建上下文消息（含历史记忆 + 长期记忆）
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents, agentConfig);
 
-            // 执行 Agent
-            Msg agentResponse = executeAgentWithAgentScope(agentConfig, contextMessages);
+            // 执行 Agent（上下文溢出时紧急压缩后重试）
+            Msg agentResponse = executeWithOverflowRecovery(agentConfig, contextMessages);
             String result = agentResponse.getTextContent() != null
                     ? agentResponse.getTextContent()
                     : "Agent 执行完成，但未返回有效响应";
@@ -496,66 +497,54 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
 
         if (conversationId != null) {
-            List<MemoryManager.Memory> history = loadHistoryWithinBudget(conversationId, currentPrompt,
+            HistorySelection selection = loadHistoryWithinBudget(conversationId, currentPrompt,
                     contents, agentConfig, messages);
+            List<MemoryManager.Memory> history = selection.selected();
+            List<MemoryManager.Memory> dropped = selection.dropped();
 
-            // 上下文压缩：历史超过阈值时，摘要旧消息而非直接丢弃
+            // 上下文压缩（两级）：压缩区域 = 预算裁掉的部分 + 条数阈值触发时更早的保留区消息
             LuminaAgentProperties.CompressionConfig compressionConfig =
                     agentProperties.getMemory().getCompression();
-            if (contextSummarizer != null && compressionConfig.isEnabled()
-                    && history.size() > compressionConfig.getThreshold()) {
-                int keepCount = compressionConfig.getRecentKeepCount();
-                // 分割：[0, splitIndex) 压缩，[splitIndex, end) 保留原始
-                int splitIndex = history.size() - keepCount;
-                List<MemoryManager.Memory> toCompress = history.subList(0, splitIndex);
-                List<MemoryManager.Memory> toKeep = history.subList(splitIndex, history.size());
+            List<MemoryManager.Memory> toCompress = new ArrayList<>(dropped);
+            if (compressionConfig.isEnabled() && history.size() > compressionConfig.getThreshold()) {
+                int splitIndex = history.size() - compressionConfig.getRecentKeepCount();
+                if (splitIndex > 0) {
+                    toCompress.addAll(history.subList(0, splitIndex));
+                    history = new ArrayList<>(history.subList(splitIndex, history.size()));
+                }
+            }
 
+            // 第二级：LLM 检查点摘要（无收益/失败返回 null，降级为直接丢弃，绝不回退全量加载）
+            if (!toCompress.isEmpty() && compressionConfig.isEnabled() && contextSummarizer != null) {
+                String summary = null;
                 try {
-                    String summary = contextSummarizer.summarize(toCompress,
-                            agentConfig != null ? agentConfig.getAgentName() : "Agent");
-                    // 摘要作为 SYSTEM 消息注入（和长期记忆同一位置）
-                    messages.add(Msg.builder().role(MsgRole.SYSTEM)
-                            .textContent("[对话历史摘要] " + summary)
-                            .build());
-                    log.info("上下文压缩: 压缩 {} 条旧消息为摘要，保留 {} 条最近消息",
-                            toCompress.size(), toKeep.size());
-
-                    // 只保留最近的消息
-                    for (MemoryManager.Memory m : toKeep) {
-                        MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
-                                : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
-                        messages.add(Msg.builder().role(role).textContent(m.content()).build());
-                    }
-
-                    // Trace 埋点（压缩后：原始 history 条数，保留条数）
-                    if (traceCollector != null) {
-                        traceCollector.recordMemoryStep(longTermCount, history.size());
-                    }
+                    summary = contextSummarizer.summarizeCheckpoint(toCompress,
+                            agentConfig != null ? agentConfig.getPromptTemplate() : null, null);
                 } catch (Exception e) {
-                    log.warn("上下文压缩失败，降级为全量加载: {}", e.getMessage());
-                    // 降级：不做压缩，加载全部历史
-                    for (MemoryManager.Memory m : history) {
-                        MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
-                                : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
-                        messages.add(Msg.builder().role(role).textContent(m.content()).build());
-                    }
-                    if (traceCollector != null) {
-                        traceCollector.recordMemoryStep(longTermCount, history.size());
-                    }
+                    log.warn("上下文压缩失败，降级为预算裁剪: {}", e.getMessage());
                 }
-            } else {
-                // 正常路径：全量加载历史
-                for (MemoryManager.Memory m : history) {
-                    MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
-                            : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
-                    messages.add(Msg.builder().role(role).textContent(m.content()).build());
+                if (summary != null) {
+                    messages.add(Msg.builder().role(MsgRole.SYSTEM)
+                            .textContent("[对话历史摘要] " + summary).build());
+                    log.info("上下文压缩: {} 条旧消息压缩为检查点摘要，保留 {} 条最近消息",
+                            toCompress.size(), history.size());
+                } else {
+                    log.info("上下文预算裁剪: 摘要不可用，丢弃 {} 条最旧历史", toCompress.size());
                 }
-                log.debug("加载历史记忆: conversationId={}, 条数={}", conversationId, history.size());
+            } else if (!toCompress.isEmpty()) {
+                log.info("上下文预算裁剪: 丢弃 {} 条最旧历史", toCompress.size());
+            }
 
-                // Trace 埋点：记忆注入
-                if (traceCollector != null) {
-                    traceCollector.recordMemoryStep(longTermCount, history.size());
-                }
+            for (MemoryManager.Memory m : history) {
+                MsgRole role = "assistant".equals(m.role()) ? MsgRole.ASSISTANT
+                        : "system".equals(m.role()) ? MsgRole.SYSTEM : MsgRole.USER;
+                messages.add(Msg.builder().role(role).textContent(m.content()).build());
+            }
+            log.debug("加载历史记忆: conversationId={}, 条数={}", conversationId, history.size());
+
+            // Trace 埋点：记忆注入（原始历史总量）
+            if (traceCollector != null) {
+                traceCollector.recordMemoryStep(longTermCount, history.size() + toCompress.size());
             }
         }
 
@@ -587,10 +576,16 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         return messages;
     }
 
+    /** 历史装填结果（预算内保留 + 被裁掉的部分，内容均为确定性修剪后的视图） */
+    private record HistorySelection(List<MemoryManager.Memory> selected, List<MemoryManager.Memory> dropped) {
+    }
+
     /**
      * 按 Token 预算加载历史消息（从最新向最旧装填，装不下即停）
      *
-     * <p>预算 = contextWindowTokens - [系统提示词 + 已注入的长期记忆 + 当前输入（含多模态）] 的估算成本。
+     * <p>两级压缩的第一级（确定性修剪）在此应用：超过 pruneThresholdChars 的消息
+     * 先做 head/tail 修剪视图，再参与预算计价。
+     * 预算 = contextWindowTokens - [系统提示词 + 已注入的长期记忆 + 当前输入（含多模态）] 的估算成本。
      * 预算关闭（contextWindowTokens <= 0）时退回固定条数窗口（historyWindowSize）。
      *
      * @param conversationId 会话 ID
@@ -598,20 +593,22 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * @param contents       当前输入的多模态内容（图片按固定成本、文档按文本估算）
      * @param agentConfig    Agent 配置（取系统提示词模板）
      * @param assembled      已组装的消息（含长期记忆 SYSTEM 消息）
-     * @return 预算内的历史消息（时间升序）
+     * @return 装填结果（selected 时间升序；dropped 为未装进预算的更旧消息，时间升序）
      * @since 3.11.0
      */
-    private List<MemoryManager.Memory> loadHistoryWithinBudget(String conversationId, String currentPrompt,
-                                                               List<MultimodalContent> contents,
-                                                               AgentConfig agentConfig, List<Msg> assembled) {
+    private HistorySelection loadHistoryWithinBudget(String conversationId, String currentPrompt,
+                                                      List<MultimodalContent> contents,
+                                                      AgentConfig agentConfig, List<Msg> assembled) {
         LuminaAgentProperties.MemoryConfig memoryConfig = agentProperties.getMemory();
         int windowTokens = memoryConfig.getContextWindowTokens();
         if (windowTokens <= 0) {
-            return memoryManager.getRecentMemories(conversationId, memoryConfig.getHistoryWindowSize());
+            List<MemoryManager.Memory> recent = memoryManager.getRecentMemories(conversationId,
+                    memoryConfig.getHistoryWindowSize());
+            return new HistorySelection(pruneHistoryView(recent), List.of());
         }
 
-        List<MemoryManager.Memory> recent = memoryManager.getRecentMemories(conversationId,
-                memoryConfig.getMaxHistoryMessages());
+        List<MemoryManager.Memory> recent = pruneHistoryView(
+                memoryManager.getRecentMemories(conversationId, memoryConfig.getMaxHistoryMessages()));
 
         int spent = TokenEstimator.estimateTokens(currentPrompt)
                 + TokenEstimator.estimateTokens(agentConfig != null ? agentConfig.getPromptTemplate() : null)
@@ -631,7 +628,27 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             log.info("上下文预算裁剪: budget={} tokens, 历史 {} 条 -> 保留最近 {} 条",
                     budget, recent.size(), keep);
         }
-        return recent.subList(recent.size() - keep, recent.size());
+        return new HistorySelection(
+                new ArrayList<>(recent.subList(recent.size() - keep, recent.size())),
+                new ArrayList<>(recent.subList(0, recent.size() - keep)));
+    }
+
+    /**
+     * 对历史消息应用确定性修剪视图（第一级压缩，免 LLM）
+     */
+    private List<MemoryManager.Memory> pruneHistoryView(List<MemoryManager.Memory> memories) {
+        LuminaAgentProperties.CompressionConfig cc = agentProperties.getMemory().getCompression();
+        if (!cc.isPruneEnabled() || memories.isEmpty()) {
+            return memories;
+        }
+        List<MemoryManager.Memory> pruned = new ArrayList<>(memories.size());
+        for (MemoryManager.Memory m : memories) {
+            String content = ContextPruner.prune(m.content(), cc.getPruneThresholdChars(),
+                    cc.getPruneHeadChars(), cc.getPruneTailChars());
+            pruned.add(content == m.content() ? m
+                    : new MemoryManager.Memory(m.role(), content, m.timestamp()));
+        }
+        return pruned;
     }
 
     /**
@@ -669,6 +686,94 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
 
         return new StreamChunk(type, content, event.isLast(), tokenUsage);
+    }
+
+    /** 上下文溢出的错误签名（跨 provider 的小集合，宁可漏判也不误重试无关错误） */
+    private static final String[] OVERFLOW_SIGNATURES = {
+            "context length", "context window", "maximum context", "context_length_exceeded",
+            "prompt is too long", "messages too long", "too long for this model",
+            "exceeds the context", "input too large"
+    };
+
+    /**
+     * 执行 Agent，上下文溢出时紧急压缩后重试（最多 maxOverflowRetries 次）
+     *
+     * <p>溢出恢复：provider 报上下文超限后不直接失败，而是确定性紧急压缩
+     * （免 LLM，毫秒级）再重试——"已落地的削减就是重试凭证"。
+     *
+     * @since 3.11.0
+     */
+    private Msg executeWithOverflowRecovery(AgentConfig config, List<Msg> messages) {
+        int retries = Math.max(0, agentProperties.getMemory().getCompression().getMaxOverflowRetries());
+        List<Msg> current = messages;
+        for (int attempt = 0; attempt <= retries; attempt++) {
+            try {
+                return executeAgentWithAgentScope(config, current);
+            } catch (Exception e) {
+                if (attempt == retries || !isContextOverflow(e) || current.size() <= 3) {
+                    throw e;
+                }
+                log.warn("上下文溢出（{}），紧急压缩后重试", e.getMessage());
+                current = emergencyCompact(current);
+            }
+        }
+        // 循环必然 return 或 throw，此处不可达
+        throw new IllegalStateException("unreachable");
+    }
+
+    /**
+     * 判断异常链中是否为上下文溢出错误
+     */
+    private boolean isContextOverflow(Throwable e) {
+        Throwable t = e;
+        while (t != null) {
+            String msg = t.getMessage();
+            if (msg != null) {
+                String lower = msg.toLowerCase(java.util.Locale.ROOT);
+                for (String signature : OVERFLOW_SIGNATURES) {
+                    if (lower.contains(signature)) {
+                        return true;
+                    }
+                }
+            }
+            t = t.getCause();
+        }
+        return false;
+    }
+
+    /**
+     * 溢出紧急压缩：保留头部 SYSTEM 消息（长期记忆/历史摘要）+ 最近 2 条消息，
+     * 中段用确定性修剪压成一条 SYSTEM 摘要段（不调 LLM）
+     *
+     * @since 3.11.0
+     */
+    private List<Msg> emergencyCompact(List<Msg> messages) {
+        List<Msg> compacted = new ArrayList<>();
+        int firstNonSystem = 0;
+        while (firstNonSystem < messages.size()
+                && MsgRole.SYSTEM.equals(messages.get(firstNonSystem).getRole())) {
+            firstNonSystem++;
+        }
+        int tailKeep = Math.max(0, Math.min(2, messages.size() - firstNonSystem));
+        compacted.addAll(messages.subList(0, firstNonSystem));
+
+        int midEnd = messages.size() - tailKeep;
+        if (midEnd > firstNonSystem) {
+            StringBuilder mid = new StringBuilder("[早期对话已紧急压缩]\n");
+            for (int i = firstNonSystem; i < midEnd; i++) {
+                Msg m = messages.get(i);
+                String role = m.getRole() != null ? m.getRole().name() : "UNKNOWN";
+                String text = m.getTextContent();
+                if (text != null && !text.isBlank()) {
+                    mid.append(role).append(": ")
+                            .append(ContextPruner.prune(text, 200, 100, 50)).append("\n");
+                }
+            }
+            compacted.add(Msg.builder().role(MsgRole.SYSTEM).textContent(mid.toString()).build());
+        }
+        compacted.addAll(messages.subList(messages.size() - tailKeep, messages.size()));
+        log.info("溢出紧急压缩: {} 条消息 -> {} 条", messages.size(), compacted.size());
+        return compacted;
     }
 
     /**
@@ -970,14 +1075,26 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // Plan-Execute 流式
             agentFlux = buildPlanExecuteStreamFlux(agentConfig, userPrompt, contextMessages);
         } else {
-            // ReAct 流式
+            // ReAct 流式（上下文溢出时紧急压缩后重试一次）
             ReActAgent agent = createReActAgent(agentConfig);
             StreamOptions options = StreamOptions.builder()
                     .incremental(true)
                     .includeReasoningChunk(true)
                     .includeActingChunk(true)
                     .build();
-            agentFlux = agent.stream(contextMessages, options).map(this::toStreamChunk);
+            boolean overflowRetryEnabled = agentProperties.getMemory().getCompression()
+                    .getMaxOverflowRetries() > 0;
+            agentFlux = agent.stream(contextMessages, options)
+                    .map(this::toStreamChunk)
+                    .onErrorResume(e -> {
+                        if (overflowRetryEnabled && isContextOverflow(e) && contextMessages.size() > 3) {
+                            log.warn("流式上下文溢出（{}），紧急压缩后重试", e.getMessage());
+                            ReActAgent retryAgent = createReActAgent(agentConfig);
+                            return retryAgent.stream(emergencyCompact(contextMessages), options)
+                                    .map(this::toStreamChunk);
+                        }
+                        return Flux.error(e);
+                    });
         }
 
         return agentFlux

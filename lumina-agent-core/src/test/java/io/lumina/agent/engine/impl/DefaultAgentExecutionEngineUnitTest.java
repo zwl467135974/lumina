@@ -221,6 +221,111 @@ class DefaultAgentExecutionEngineUnitTest {
                 java.util.Collections.emptyList(), (io.lumina.agent.model.AgentConfig) null);
     }
 
+    // ==================== 上下文压缩（两级管线） ====================
+
+    @Test
+    void buildContextMessagesInjectsCheckpointSummaryForDroppedHistory() throws Exception {
+        // 预算 100，prompt 占 2，5 条历史每条 20 token → 裁掉最旧 1 条，压缩为摘要
+        agentProperties.getMemory().setContextWindowTokens(100);
+        agentProperties.getMemory().getCompression().setEnabled(true);
+        Mockito.when(memoryManager.getRecentMemories("conv-1", 100))
+                .thenReturn(buildMemories(5, 20));
+        io.lumina.agent.service.ContextSummarizer summarizer =
+                Mockito.mock(io.lumina.agent.service.ContextSummarizer.class);
+        Mockito.when(summarizer.summarizeCheckpoint(Mockito.anyList(), Mockito.any(), Mockito.any()))
+                .thenReturn("检查点摘要");
+        injectField("contextSummarizer", summarizer);
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "你好");
+
+        // [摘要 SYSTEM] + 4 条保留历史 + 1 条当前输入
+        assertThat(messages).hasSize(6);
+        assertThat(messages.get(0).getTextContent()).startsWith("[对话历史摘要] 检查点摘要");
+        assertThat(messages.get(1).getTextContent()).startsWith("消息1");
+        Mockito.verify(summarizer).summarizeCheckpoint(
+                Mockito.argThat(list -> list.size() == 1), Mockito.isNull(), Mockito.isNull());
+    }
+
+    @Test
+    void buildContextMessagesDegradesToDropWhenSummaryUnavailable() throws Exception {
+        agentProperties.getMemory().setContextWindowTokens(100);
+        agentProperties.getMemory().getCompression().setEnabled(true);
+        Mockito.when(memoryManager.getRecentMemories("conv-1", 100))
+                .thenReturn(buildMemories(5, 20));
+        io.lumina.agent.service.ContextSummarizer summarizer =
+                Mockito.mock(io.lumina.agent.service.ContextSummarizer.class);
+        Mockito.when(summarizer.summarizeCheckpoint(Mockito.anyList(), Mockito.any(), Mockito.any()))
+                .thenReturn(null);
+        injectField("contextSummarizer", summarizer);
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "你好");
+
+        // 摘要不可用 -> 降级为丢弃，无摘要消息
+        assertThat(messages).hasSize(5);
+        assertThat(messages.get(0).getTextContent()).startsWith("消息1");
+    }
+
+    @Test
+    void buildContextMessagesAppliesDeterministicPruneToOversizedHistory() throws Exception {
+        // 单条历史 5000 字（超过默认 pruneThresholdChars=4000），预算充足也应被修剪
+        agentProperties.getMemory().setContextWindowTokens(16000);
+        Mockito.when(memoryManager.getRecentMemories("conv-1", 100))
+                .thenReturn(List.of(new MemoryManager.Memory("user", "字".repeat(5000), 1L)));
+
+        List<Msg> messages = invokeBuildContextMessages("conv-1", "当前问题");
+
+        assertThat(messages).hasSize(2);
+        String historyContent = messages.get(0).getTextContent();
+        assertThat(historyContent).contains("已省略");
+        assertThat(historyContent.length()).isLessThan(2500);
+    }
+
+    // ==================== 溢出恢复 ====================
+
+    @Test
+    void isContextOverflowMatchesProviderSignatures() throws Exception {
+        Method method = DefaultAgentExecutionEngine.class.getDeclaredMethod("isContextOverflow", Throwable.class);
+        method.setAccessible(true);
+
+        assertThat((Boolean) method.invoke(engine,
+                new RuntimeException("This model's maximum context length is 4096 tokens"))).isTrue();
+        assertThat((Boolean) method.invoke(engine,
+                new RuntimeException("prompt is too long: 200000 tokens > 128000 maximum"))).isTrue();
+        assertThat((Boolean) method.invoke(engine,
+                new RuntimeException("Connection timeout after 30000ms"))).isFalse();
+        assertThat((Boolean) method.invoke(engine,
+                new RuntimeException("nested", new RuntimeException("messages too long")))).isTrue();
+    }
+
+    @Test
+    void emergencyCompactKeepsSystemHeadAndRecentTail() throws Exception {
+        List<Msg> messages = new java.util.ArrayList<>();
+        messages.add(Msg.builder().role(io.agentscope.core.message.MsgRole.SYSTEM).textContent("长期记忆").build());
+        messages.add(Msg.builder().role(io.agentscope.core.message.MsgRole.USER).textContent("问题1").build());
+        messages.add(Msg.builder().role(io.agentscope.core.message.MsgRole.ASSISTANT).textContent("回答1").build());
+        messages.add(Msg.builder().role(io.agentscope.core.message.MsgRole.USER).textContent("问题2").build());
+        messages.add(Msg.builder().role(io.agentscope.core.message.MsgRole.ASSISTANT).textContent("回答2").build());
+        messages.add(Msg.builder().role(io.agentscope.core.message.MsgRole.USER).textContent("问题3").build());
+
+        Method method = DefaultAgentExecutionEngine.class.getDeclaredMethod("emergencyCompact", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<Msg> compacted = (List<Msg>) method.invoke(engine, messages);
+
+        // [SYSTEM 长期记忆] + [SYSTEM 紧急压缩段] + 最近 2 条 = 4 条
+        assertThat(compacted).hasSize(4);
+        assertThat(compacted.get(0).getTextContent()).isEqualTo("长期记忆");
+        assertThat(compacted.get(1).getTextContent()).contains("已紧急压缩").contains("问题1");
+        assertThat(compacted.get(2).getTextContent()).isEqualTo("回答2");
+        assertThat(compacted.get(3).getTextContent()).isEqualTo("问题3");
+    }
+
+    private void injectField(String name, Object value) throws Exception {
+        java.lang.reflect.Field field = DefaultAgentExecutionEngine.class.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(engine, value);
+    }
+
     // ==================== 反射辅助方法 ====================
 
     private StreamChunk invokeToStreamChunk(Event event) throws Exception {

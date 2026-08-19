@@ -277,7 +277,7 @@ public class LuminaAgentProperties {
      */
     @Data
     public static class CompressionConfig {
-        /** 是否启用上下文压缩（默认 false） */
+        /** 是否启用上下文压缩（LLM 检查点摘要，默认 false） */
         private boolean enabled = false;
         /** 触发压缩的消息条数阈值（超过此值时压缩旧消息） */
         private int threshold = 15;
@@ -285,6 +285,27 @@ public class LuminaAgentProperties {
         private int recentKeepCount = 5;
         /** 摘要最大 Token 数 */
         private int summaryMaxTokens = 500;
+        /**
+         * 是否启用确定性修剪（压缩第一级，免 LLM，默认 true）
+         *
+         * <p>历史消息超过 pruneThresholdChars 时做 head/tail 修剪 + 省略标记，
+         * 在 Token 预算装填和 LLM 摘要之前先行削减。
+         *
+         * @since 3.11.0
+         */
+        private boolean pruneEnabled = true;
+        /** 单条历史消息触发修剪的长度阈值（字符数） */
+        private int pruneThresholdChars = 4000;
+        /** 修剪后保留头部字符数 */
+        private int pruneHeadChars = 1500;
+        /** 修剪后保留尾部字符数 */
+        private int pruneTailChars = 500;
+        /**
+         * 溢出恢复：LLM 报上下文超限后紧急压缩并重试的次数上限（默认 1）
+         *
+         * @since 3.11.0
+         */
+        private int maxOverflowRetries = 1;
     }
 
     /**
