@@ -67,6 +67,17 @@ More than a framework — a **teachable AI Agent engineering course**, progressi
 | [Stage 4 AI Agent](tutorials/stage-4-ai-agent/) | Agent patterns, AgentScope, workflow orchestration, context engineering | 59 |
 
 Tutorials and code are maintained in lockstep — every release updates the corresponding articles (see [tutorials/README.md](tutorials/README.md)).
+
+### 🤖 A Working Template for Pure-AI Development (learn not just the framework, but how to build with AI)
+
+The vast majority of this codebase was **written by AI, directed by humans** — and the **methodology assets that make that possible ship with the repo**, offering practice-oriented teaching value beyond the project itself:
+
+- **[AGENTS.md charter](AGENTS.md)** - The project "constitution" for AI development (155 lines, mirrored across four tool-specific files): module structure, coding conventions, Git push/commit rules, plus a 20+ item **backend pre-delivery checklist** (layering / transactions / error codes / permissions / audit / compile verification). The AI runs the checklist before writing code — senior-engineer review discipline, made machine-executable
+- **13 custom skill packages** ([`.agents/skills/`](.agents/skills/), 2,500+ lines of codified conventions) - Project rules split into on-demand AI-loadable skills: code style, layered architecture, MyBatis-Plus, API design, domain modeling, JSON serialization, Git commits, testing, observability, conversation memory, frontend design, Redis, Flyway — load the skill that matches the code being written, precise injection instead of context stuffing
+- **Self-evolving skills** - The `lumina_frontend_design` skill writes back to `lumina-frontend/DESIGN.md` (187 lines of accumulated design system) after each use — conventions are not frozen at authoring time, they evolve with usage
+- **Same idea, two levels** - "Custom skill packages for the development AI" (build time) and v3.11's "progressive skill disclosure for the runtime model" (run time) are the same philosophy: **load on demand, inject precisely, rules first**
+
+The "charter + skill packages + checklist" collaboration model ports directly to any team's stack — the most transferable part of this project as a teaching engineering artifact.
 - **🎨 Engineering Frontend** - Vue 3 + Element Plus 32 views, dark theme, i18n, Agent debug panel, permission-driven dynamic menus
 
 ### Architecture
