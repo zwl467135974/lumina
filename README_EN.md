@@ -32,6 +32,8 @@ Our net advantage over Dify OSS / LangGraph / Spring AI Alibaba is **enterprise-
 | **Row-level multi-tenancy** | ❌ workspace-level | ❌ N/A | ❌ N/A | ✅ fail-closed + integration tested |
 | **5-table RBAC + audit** | partial | ❌ | ❌ | ✅ `@Audit` AOP |
 | **Tool-level security pipeline** | ❌ | ❌ | ❌ | ✅ interceptors → approval → monotonic guards |
+| **Context engineering** | truncation | manual | manual | ✅ token budget + two-level compaction + overflow self-healing |
+| **AI-native orchestration** | declarative DSL | developer-written code | ❌ | ✅ autonomy node: model-generated scripts sandbox sub-agents |
 | **Budget control (token billing)** | partial | ❌ | ❌ | ✅ per-tenant/agent |
 | **Prompt injection detection + PII masking** | partial | ❌ | ❌ | ✅ 11 patterns |
 | **JWT fail-fast + header anti-forgery** | N/A | N/A | N/A | ✅ gateway-level stripping |
@@ -51,7 +53,20 @@ Only MySQL + Redis required (compose includes both). No Nacos / RocketMQ / separ
 - **🏢 Enterprise Features** - Row-level multi-tenancy (fail-closed), 5-table RBAC, audit logging, budget control, JWT fail-fast, Prompt injection detection + PII masking, tool-level security pipeline (interceptors → high-risk tool human approval → monotonic guards, fail-closed) — the most battle-tested part of the codebase, with integration tests
 - **🤖 Agent Execution Engine** - AgentScope 2.0 ReAct/Plan-Execute, SSE streaming (REASONING/ACTING/RAG_SOURCES), multimodal, Provider Failover, context engineering (token budget + two-level compaction + overflow recovery), SSE-interruption synthetic closure
 - **🔧 Tools & Integration** - MCP protocol (stdio/SSE/streamable-http + header auth + reconnect health check), OpenAI-compatible `/v1/chat/completions` exit, Webhook, WeCom bot, Code Interpreter (Docker pool)
-- **📚 Knowledge & Orchestration** - Hybrid RAG retrieval (RRF + reranker + 5 OCR), Flowable 7.0 DAG workflow (6 nodes + 7 templates), Prompt versioning, Agent evaluation regression (4 scorers + A/B comparison)
+- **📚 Knowledge & Orchestration** - Hybrid RAG retrieval (RRF + reranker + 5 OCR), Flowable 7.0 DAG workflow (7 node types incl. **autonomy** — model-generated JS scripts orchestrating sub-agents in a GraalJS sandbox), tenant skill library (catalog in context, content on demand), Prompt versioning, Agent evaluation regression (4 scorers + A/B comparison)
+
+### 🎓 Companion Tutorial System (110 articles, the modern AI-engineer curriculum)
+
+More than a framework — a **teachable AI Agent engineering course**, progressing from LLM fundamentals to multi-agent orchestration, all tied to the project's real code with self-test quizzes. Ready-to-use team training material:
+
+| Stage | Topics | Articles |
+|---|---|---|
+| [Stage 1 Foundation](tutorials/stage-1-foundation/) | LLM principles, tokens/context windows, prompt engineering | 18 |
+| [Stage 2 Application](tutorials/stage-2-application/) | Multi-tenancy, RBAC, audit, RAG, cost management | 16 |
+| [Stage 3 Mastery](tutorials/stage-3-mastery/) | Architecture patterns, observability, evaluation, production deployment | 16 |
+| [Stage 4 AI Agent](tutorials/stage-4-ai-agent/) | Agent patterns, AgentScope, workflow orchestration, context engineering | 59 |
+
+Tutorials and code are maintained in lockstep — every release updates the corresponding articles (see [tutorials/README.md](tutorials/README.md)).
 - **🎨 Engineering Frontend** - Vue 3 + Element Plus 32 views, dark theme, i18n, Agent debug panel, permission-driven dynamic menus
 
 ### Architecture
@@ -247,16 +262,6 @@ helm install lumina deploy/helm/lumina \
 
 ## Project Status
 
-### v3.11 — Context Engineering + Tool Security Pipeline (DeepSeek Harness-inspired)
-
-Generational upgrade of core Agent capabilities. Mechanisms ported from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), architecture unchanged:
-
-- 🧠 **Context Engineering** — Token estimation + input-side budget (default 16000, replacing the hardcoded 20-message window); two-level compaction (model-free deterministic pruning + 8-section LLM checkpoint summary with KV prefix alignment and shrink guarantee); overflow emergency-compaction self-healing (sync & streaming)
-- 🔐 **Tool Security Pipeline** (blank space in competing OSS) — interceptor chain → high-risk tool human approval (allow-once, notification channel, fail-closed) → monotonic guards (denials mathematically cannot be flipped by any other policy); deny-tools/approval-tools config lists, off by default
-- 🩹 **Failure Recovery** — SSE-interruption synthetic closure (partial replies persisted + marked, no more orphan user messages); streaming reflective-memory fix; async task real cancellation (interrupts execution thread, stops token burn)
-- 📦 **Tool Result Spill** — oversized results archived in full (V51), model sees preview only + `util.getArtifact` on-demand retrieval
-- ✅ 33 new unit tests (incl. monotonic-guard core case), agent-core 359 all green
-
 ### v3.10 — Full Audit Fixes (Release Quality Hardening)
 
 Based on a four-dimensional systematic audit (CI tech debt / layered architecture / exception handling / new feature quality), fixed 6 release-blocking issues + standardized conventions, no breaking API changes.
@@ -267,6 +272,20 @@ Based on a four-dimensional systematic audit (CI tech debt / layered architectur
 - ⚡ **Performance** — Cold-start warm-up reduced from 300 Redis round-trips to 3
 - 📊 **Observability** — State save / config hot-reload failures now emit monitoring counters; MultiAgent summarization integrated into Trace
 - 📐 **Conventions** — Error code semantics fixed (MODEL_NOT_FOUND); Jackson instances unified; dependency injection fully constructor-based; guardrail thresholds configurable
+
+### v3.11 — Context Engineering + Tool Security + Skills & Autonomous Orchestration (DeepSeek Harness-inspired)
+
+Generational upgrade of core Agent capabilities. Mechanisms ported from [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), architecture unchanged:
+
+- 🧠 **Context Engineering** — Token estimation + input-side budget (default 16000, replacing the hardcoded 20-message window); two-level compaction (model-free deterministic pruning + 8-section LLM checkpoint summary with KV prefix alignment and shrink guarantee); overflow emergency-compaction self-healing (sync & streaming)
+- 🔐 **Tool Security Pipeline** (blank space in competing OSS) — interceptor chain → high-risk tool human approval (allow-once, notification channel, fail-closed) → monotonic guards (denials mathematically cannot be flipped by any other policy); deny-tools/approval-tools config lists, off by default
+- 🩹 **Failure Recovery** — SSE-interruption synthetic closure (partial replies persisted + marked, no more orphan user messages); streaming reflective-memory fix; async task real cancellation (interrupts execution thread, stops token burn); stale RUNNING tasks marked INTERRUPTED on restart (unknown ≠ failed)
+- 📦 **Tool Result Spill** — oversized results archived in full (V51), model sees preview only + `util.getArtifact` on-demand retrieval
+- 🧩 **Skill System with Progressive Disclosure** (V52) — tenant skill library: system prompt carries only the catalog (name + description, a few hundred tokens); the model loads full content on demand via `util.loadSkill` (no caching — edits take effect next call); content passes injection detection (fail-closed)
+- 🤖 **Autonomous Orchestration Node** (7th workflow node type) — model/config-generated JS scripts orchestrate sub-agents inside a GraalJS sandbox: `agent()/parallel()/pipeline()/log()` bridge functions; no host access / no IO; total/concurrency/item/timeout caps; pure-JSON return materialization (rejects `__proto__` payloads); bounded-grace kill on timeout
+- 📡 **Observation Event Bus** — `AgentTurnEvent` four-phase events (incl. INTERRUPTED semantics); new metrics = new listener, no engine changes
+- 🛡 **MultiAgent Delegation Freeze** — sub-agent tool whitelists restricted to subsets of the parent's; structured expert results (token/duration/success attribution)
+- ✅ 45+ new unit tests (sandbox escapes / monotonic guards / budget filling), agent-core 373 all green
 
 ### v3.9 — Production-Grade Refinement
 

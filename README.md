@@ -32,6 +32,8 @@ Lumina 是一套**企业私有化 AI Agent 中台**，基于 [AgentScope Java](h
 | **行级多租户隔离** | ❌ 工作区粒度 | ❌ 不管 | ❌ 不管 | ✅ fail-closed + 集成测试 |
 | **五表 RBAC + 审计** | 部分 | ❌ | ❌ | ✅ `@Audit` AOP |
 | **工具级安全管线** | ❌ | ❌ | ❌ | ✅ 拦截器→审批→单调守卫 |
+| **上下文工程** | 截断 | 手工管理 | 手工管理 | ✅ Token 预算 + 两级压缩 + 溢出自愈 |
+| **AI 原生编排** | DSL 声明式 | 开发者写代码 | ❌ | ✅ autonomy 节点：模型生成脚本沙箱编排子 Agent |
 | **预算管控（Token 计费）** | 部分 | ❌ | ❌ | ✅ 按租户/Agent 归集 |
 | **Prompt 注入检测 + PII 脱敏** | 部分 | ❌ | ❌ | ✅ 11 种模式 |
 | **JWT fail-fast + 身份头防伪造** | N/A | N/A | N/A | ✅ 网关入口剥离 |
@@ -60,10 +62,23 @@ docker compose -f docker-compose-standalone.yml up
 ### 五条主线能力
 
 - **🏢 企业级特性** - 行级多租户隔离（fail-closed）、五表 RBAC、审计日志、预算管控、JWT fail-fast、Prompt 注入检测 + PII 脱敏、工具级安全管线（拦截器→高危工具人工审批→单调守卫，fail-closed）——全仓库最扎实、有集成测试
-- **🤖 Agent 执行引擎** - AgentScope 2.0.0 ReAct/Plan-Execute、SSE 流式（REASONING/ACTING/RAG_SOURCES）、多模态、Provider Failover 主备链、上下文工程（Token 预算 + 两级压缩 + 溢出自愈）、SSE 中断合成闭合
-- **🔧 工具与集成** - MCP 协议接入（stdio/SSE/streamable-http 三传输 + headers 鉴权 + 重连健康检查）、OpenAI 兼容 `/v1/chat/completions` 出口、Webhook、企业微信机器人、Code Interpreter（Docker 容器池）
-- **📚 知识与编排** - RAG 混合检索（RRF + reranker + 5 OCR）、Flowable 7.0 DAG 工作流（6 节点 + 7 模板）、Prompt 版本管理、Agent 评估回归（4 评分器 + A/B 对比）
-- **🎨 工程化前端** - Vue 3 + Element Plus 32 视图、暗色主题、i18n、Agent 调试面板、动态菜单（权限下发）
+- **🤖 Agent 执行引擎** - AgentScope 2.0.0 ReAct/Plan-Execute、SSE 流式（REASONING/ACTING/RAG_SOURCES）、多模态、Provider Failover 主备链、上下文工程（Token 预算 + 两级压缩 + 溢出自愈）、技能渐进披露、SSE 中断合成闭合
+- **🔧 工具与集成** - MCP 协议接入（stdio/SSE/streamable-http 三传输 + headers 鉴权 + 重连健康检查）、OpenAI 兼容 `/v1/chat/completions` 出口、Webhook、企业微信机器人、Code Interpreter（Docker 容器池）、超大结果外存化（spill + 按需取回）
+- **📚 知识与编排** - RAG 混合检索（RRF + reranker + 5 OCR）、Flowable 7.0 DAG 工作流（7 种节点含 **autonomy 自主编排**——模型生成 JS 脚本在 GraalJS 沙箱编排子 Agent）、租户技能库（目录进上下文、全文按需加载）、Prompt 版本管理、Agent 评估回归（4 评分器 + A/B 对比）
+- **🎨 工程化前端** - Vue 3 + Element Plus 33 视图、暗色主题、i18n、Agent 调试面板、动态菜单（权限下发）
+
+### 🎓 配套教学体系（110 篇，新时代 AI 工程师养成路线）
+
+不只是框架，还是一套**可教学的 AI Agent 工程课程**——从 LLM 基础到多 Agent 编排渐进式进阶，全部配套项目真实代码与自测题，团队拿来即用的培训教材：
+
+| 阶段 | 内容 | 篇数 |
+|---|---|---|
+| [Stage 1 基础](tutorials/stage-1-foundation/) | LLM 原理、Token/上下文窗口、Prompt 工程 | 18 |
+| [Stage 2 应用](tutorials/stage-2-application/) | 多租户、RBAC、审计、RAG、成本管理 | 16 |
+| [Stage 3 进阶](tutorials/stage-3-mastery/) | 架构模式、可观测性、评估回归、生产部署 | 16 |
+| [Stage 4 AI Agent](tutorials/stage-4-ai-agent/) | Agent 模式、AgentScope、工作流编排、上下文工程 | 59 |
+
+教学与代码同源维护——每个新版本功能同步更新对应教程（见 [tutorials/README.md](tutorials/README.md)）。
 
 <details>
 <summary><b>📋 完整能力清单（点击展开）</b></summary>
@@ -71,10 +86,12 @@ docker compose -f docker-compose-standalone.yml up
 - **微服务架构** - Spring Cloud Alibaba，Gateway(8080) + Agent(8081) + Base(8082)；**也支持 standalone 单体模式**（仅 MySQL+Redis 两件套）
 - **简化分层架构** - API/Service/Domain/Infrastructure 四层
 - **多轮对话与记忆** - Redis 热记忆 + DB 冷存储 + Reflective Memory（LLM 提取事实注入）
-- **异步任务执行** - 提交即返回 taskId，后台执行，状态查询
+- **上下文工程** - Token 预算装填、两级压缩（免模型修剪 + 检查点摘要）、溢出紧急压缩自愈、SSE 中断合成闭合
+- **技能系统（渐进披露）** - 租户技能库，目录进上下文、`util.loadSkill` 按需加载全文、注入检测 fail-closed
+- **异步任务执行** - 提交即返回 taskId，后台执行，状态查询，真取消（中断执行）+ 重启中断对账（INTERRUPTED）
 - **成本管理** - 模型价格表 + Token 计费 + 消费汇总仪表盘 + 趋势图表
-- **全链路可观测** - MDC 结构化日志 + Micrometer 指标 + OpenTelemetry 分布式追踪
-- **工程化** - 统一错误码、Flyway V1–V49+、网关限流、Resilience4j 熔断器/重试、SpringDoc OpenAPI（Swagger UI）
+- **全链路可观测** - MDC 结构化日志 + Micrometer 指标 + OpenTelemetry 分布式追踪 + AgentTurnEvent 事件总线（含 INTERRUPTED 语义）
+- **工程化** - 统一错误码、Flyway V1–V52、网关限流、Resilience4j 熔断器/重试、SpringDoc OpenAPI（Swagger UI）
 - **响应式编程** - Project Reactor + Context Propagation，跨线程租户上下文传递
 - **多 LLM 支持** - DashScope/OpenAI/DeepSeek/Claude/Gemini/Ollama + OpenAI 兼容预设（GLM/Kimi/豆包零代码扩展）
 - **A/B Testing** - 实验框架，按权重流量分发 + 同会话粘滞 + 效果报告
@@ -556,6 +573,14 @@ public String executeAgent(String task) {
 
 ## 文档
 
+### 教学体系（110 篇）
+
+- [教学总览](tutorials/README.md) - 四阶段渐进式 AI Agent 工程师养成路线（含自测题）
+- [Stage 1 基础](tutorials/stage-1-foundation/) - LLM 原理 / Token / Prompt 工程
+- [Stage 2 应用](tutorials/stage-2-application/) - 多租户 / RBAC / RAG / 成本
+- [Stage 3 进阶](tutorials/stage-3-mastery/) - 架构 / 可观测 / 评估 / 部署
+- [Stage 4 AI Agent](tutorials/stage-4-ai-agent/) - Agent 模式 / 工作流 / 上下文工程
+
 ### 快速开始
 
 - [项目 README](README.md) - 项目介绍和快速开始
@@ -801,16 +826,6 @@ npm install
 - ✅ **知识库级分块策略** — 每个 KB 独立配 chunkSize/overlap/splitStrategy
 - ✅ **教学文档 58 篇** — 从 47 篇扩到 58 篇，含自测题答案，全部新功能配套教学
 
-### v3.11 上下文工程 + 工具安全管线（融合 DeepSeek Harness 设计）
-
-Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)、架构不变：
-
-- 🧠 **上下文工程** — Token 估算 + 输入侧预算（默认 16000，替换硬编码 20 条窗口）；两级压缩（免模型确定性修剪 + 8 段 LLM 检查点摘要，KV 前缀对齐 + 收缩硬保证）；溢出紧急压缩自愈（同步/流式）
-- 🔐 **工具安全管线**（开源竞品空白） — 拦截器链 → 高危工具人工审批（allow-once，通知渠道，fail-closed）→ 单调守卫（拒绝不可被任何策略翻转）；配置名单 deny-tools/approval-tools，默认关闭
-- 🩹 **失败恢复** — SSE 中断合成闭合（半截回复落库 + 标记，消除孤儿消息）；流式反思记忆修复；异步任务真取消（中断执行线程，停止 Token 消耗）
-- 📦 **工具结果外存化** — 超大结果全文存档（V51），模型只看预览 + `util.getArtifact` 按需取回
-- ✅ 新增 33 个单测（含单调守卫核心用例），agent-core 359 全绿
-
 ### v3.10 全面审查修复（Release 质量加固）
 
 基于四维度系统审查（CI 技术债 / 分层架构 / 异常处理 / 新功能质量），修复 6 个 release 阻塞项 + 规范统一：
@@ -821,6 +836,20 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - ⚡ **性能** — 冷启动 warm-up 从 300 次 Redis 往返降到 3 次
 - 📊 **可观测** — 状态保存/配置热更新失败加监控 counter；MultiAgent 汇总过程接入 Trace
 - 📐 **规范** — 错误码语义修正（MODEL_NOT_FOUND）；Jackson 实例统一；依赖注入全部构造器化；guardrail 阈值可配
+
+### v3.11 上下文工程 + 工具安全 + 技能与自主编排（融合 DeepSeek Harness 设计）
+
+Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)、架构不变：
+
+- 🧠 **上下文工程** — Token 估算 + 输入侧预算（默认 16000，替换硬编码 20 条窗口）；两级压缩（免模型确定性修剪 + 8 段 LLM 检查点摘要，KV 前缀对齐 + 收缩硬保证）；溢出紧急压缩自愈（同步/流式）
+- 🔐 **工具安全管线**（开源竞品空白） — 拦截器链 → 高危工具人工审批（allow-once，通知渠道，fail-closed）→ 单调守卫（拒绝不可被任何策略翻转）；配置名单 deny-tools/approval-tools，默认关闭
+- 🩹 **失败恢复** — SSE 中断合成闭合（半截回复落库 + 标记，消除孤儿消息）；流式反思记忆修复；异步任务真取消（中断执行线程，停止 Token 消耗）；服务重启遗留任务标记 INTERRUPTED（结果未知 ≠ 失败）
+- 📦 **工具结果外存化** — 超大结果全文存档（V51），模型只看预览 + `util.getArtifact` 按需取回
+- 🧩 **技能系统渐进披露**（V52） — 租户级技能库：系统提示只注入目录（名称+描述，几百 token），模型按需 `util.loadSkill` 加载全文；每次重读不缓存，改了立即生效；内容过注入检测（fail-closed）
+- 🤖 **自主编排节点**（workflow 第 7 种节点） — 模型/配置生成的 JS 脚本在 GraalJS 沙箱内编排子 Agent：`agent()/parallel()/pipeline()/log()` 四个桥接函数；无宿主访问/无 IO 沙箱，总量/并发/条目/超时四重限额，返回值纯 JSON 物化校验（拒 `__proto__` 载荷），超时有界宽限强杀
+- 📡 **观测事件总线** — `AgentTurnEvent` 四阶段事件（含 INTERRUPTED 语义），指标消费只加监听器不改引擎
+- 🛡 **MultiAgent 委派权限冻结** — 子 Agent 工具白名单收敛为父白名单子集（交集为空即空集），专家结果结构化回传（token/耗时/成败归因）
+- ✅ 新增 45+ 单测（沙箱逃逸/单调守卫/预算装填等），agent-core 373 全绿
 
 ---
 
