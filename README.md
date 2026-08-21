@@ -67,12 +67,13 @@ docker compose -f docker-compose-standalone.yml up
 - **📚 知识与编排** - RAG 混合检索（RRF + reranker + 5 OCR）、Flowable 7.0 DAG 工作流（7 种节点含 **autonomy 自主编排**——模型生成 JS 脚本在 GraalJS 沙箱编排子 Agent）、租户技能库（目录进上下文、全文按需加载）、Prompt 版本管理、Agent 评估回归（4 评分器 + A/B 对比）
 - **🎨 工程化前端** - Vue 3 + Element Plus 33 视图、暗色主题、i18n、Agent 调试面板、动态菜单（权限下发）
 
-### 🎓 配套教学体系（110 篇，新时代 AI 工程师养成路线）
+### 🎓 配套教学体系（111 篇，新时代 AI 工程师养成路线）
 
 不只是框架，还是一套**可教学的 AI Agent 工程课程**——从 LLM 基础到多 Agent 编排渐进式进阶，全部配套项目真实代码与自测题，团队拿来即用的培训教材：
 
 | 阶段 | 内容 | 篇数 |
 |---|---|---|
+| [Stage 0 AI 协作方法论](tutorials/stage-0-ai-collaboration/) | 如何用 AI 开发本项目：纲领、技能包、检查清单（可复制到任何团队） | 1 |
 | [Stage 1 基础](tutorials/stage-1-foundation/) | LLM 原理、Token/上下文窗口、Prompt 工程 | 18 |
 | [Stage 2 应用](tutorials/stage-2-application/) | 多租户、RBAC、审计、RAG、成本管理 | 16 |
 | [Stage 3 进阶](tutorials/stage-3-mastery/) | 架构模式、可观测性、评估回归、生产部署 | 16 |
@@ -89,7 +90,7 @@ docker compose -f docker-compose-standalone.yml up
 - **自进化技能** - `lumina_frontend_design` 技能要求每次使用后回写 `lumina-frontend/DESIGN.md`（设计系统沉淀 187 行）——规范不是写完就冻结，而是随使用持续进化
 - **与框架能力同源呼应** - "给开发 AI 定制技能包"（开发时）与 v3.11 的"给运行时模型渐进披露技能"（运行时）是同一理念在两个层面的落地：**按需加载、精准注入、规则先行**
 
-这套"纲领 + 技能包 + 检查清单"的协作模式可直接复制到任何团队的技术栈——这也是本项目作为教学工程最有 transfer 价值的部分。
+这套"纲领 + 技能包 + 检查清单"的协作模式可以直接复制到任何团队的技术栈——这也是本项目作为教学工程最有 transfer 价值的部分。**完整方法论拆解与五步迁移指南见 [第零阶教程：如何用 AI 开发本项目](tutorials/stage-0-ai-collaboration/01-how-this-project-is-built-with-ai.md)。**
 
 <details>
 <summary><b>📋 完整能力清单（点击展开）</b></summary>

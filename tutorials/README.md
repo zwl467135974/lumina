@@ -90,6 +90,12 @@
 
 ## 教程结构总览
 
+### 🤝 第零阶：AI 协作方法论（1 篇）— 本项目的独有教学资产
+
+[如何用 AI 开发本项目：纲领、技能包与检查清单](stage-0-ai-collaboration/01-how-this-project-is-built-with-ai.md)
+
+本项目绝大部分代码由 AI 编写、人类定向完成。这一篇拆解支撑这种开发方式的方法论资产——AGENTS.md 纲领（四镜像）、13 个按需加载的定制技能包、事故驱动的前置检查清单、自进化机制——以及**五步迁移指南**，可完整复制到任何团队的技术栈。**不止学框架，学"怎么用 AI 做工程"。**
+
 ### 📘 第一阶：技术栈基础（17 篇）— "能上手"
 
 [→ 查看第一阶导读](stage-1-foundation/README.md)
@@ -190,6 +196,8 @@
 ---
 
 ## 准备好了吗
+
+**想先了解"这个项目是怎么被 AI 开发出来的"**：读 [第零阶 · AI 协作方法论](stage-0-ai-collaboration/01-how-this-project-is-built-with-ai.md)（40 分钟，不需要写代码）。
 
 **最推荐的开始方式**：打开 [第一阶导读](stage-1-foundation/README.md)，从 `01-environment-setup.md`（环境搭建）开始。
 
