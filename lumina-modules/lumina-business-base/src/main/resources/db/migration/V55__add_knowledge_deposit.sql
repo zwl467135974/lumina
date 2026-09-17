@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS `lumina_knowledge_deposit` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识沉淀审核队列（自维护 Wiki 飞轮）';
 
 -- 权限：发起/查看沉淀 与 审核分离（提出人 ≠ 审核人）
-INSERT INTO `lumina_permission` (`parent_id`, `permission_code`, `permission_name`, `permission_type`, `path`, `sort_order`)
+INSERT INTO `lumina_permission` (`parent_id`, `permission_code`, `permission_name`, `permission_type`, `sort_order`)
 SELECT p.`permission_id`, 'knowledge:deposit', '知识沉淀', 2, 5 FROM `lumina_permission` p WHERE p.`permission_code` = 'knowledge'
 ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
-INSERT INTO `lumina_permission` (`parent_id`, `permission_code`, `permission_name`, `permission_type`, `path`, `sort_order`)
+INSERT INTO `lumina_permission` (`parent_id`, `permission_code`, `permission_name`, `permission_type`, `sort_order`)
 SELECT p.`permission_id`, 'knowledge:review', '知识审核', 2, 6 FROM `lumina_permission` p WHERE p.`permission_code` = 'knowledge'
 ON DUPLICATE KEY UPDATE `permission_name` = VALUES(`permission_name`);
 
