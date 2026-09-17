@@ -4,8 +4,8 @@
 # 阶段1：构建前端
 FROM node:20-alpine AS builder
 
-# 安装 pnpm
-RUN npm install -g pnpm
+# 安装 pnpm（钉住大版本，与 CI/本地一致；新版默认拦截依赖构建脚本）
+RUN npm install -g pnpm@10
 
 WORKDIR /app
 
