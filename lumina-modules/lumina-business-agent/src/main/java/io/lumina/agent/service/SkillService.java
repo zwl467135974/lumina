@@ -1,7 +1,9 @@
 package io.lumina.agent.service;
 
 import io.lumina.agent.api.dto.SkillDTO;
+import io.lumina.agent.api.dto.SkillImportResult;
 import io.lumina.agent.api.vo.SkillVO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -27,4 +29,22 @@ public interface SkillService {
 
     /** 分页列表（当前租户） */
     List<SkillVO> list(String name, int pageNum, int pageSize);
+
+    /**
+     * 导入 SKILL.md（单个 .md 或多技能 .zip，开放标准格式）
+     *
+     * <p>导入前强制安全体检：HIGH（注入/破坏性指令）拒收；MEDIUM（可疑）落库但禁用待复核。
+     *
+     * @since 3.12.0
+     */
+    SkillImportResult importSkills(MultipartFile file);
+
+    /** 导出为 SKILL.md 文本（单个技能，开放标准格式） @since 3.12.0 */
+    String exportMarkdown(Long id);
+
+    /** 导出当前租户全部技能为 zip（每技能一个 {name}/SKILL.md 目录） @since 3.12.0 */
+    byte[] exportAllAsZip();
+
+    /** 对已入库技能重跑安全体检（REJECTED 将强制禁用） @since 3.12.0 */
+    SkillVO rescan(Long id);
 }

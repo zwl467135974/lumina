@@ -77,3 +77,8 @@
 - Observation: webhooks.vue/api-tokens.vue 写了 `var(--lumina-bg-secondary, #f5f7fa)`，但 `--lumina-bg-secondary` 从未定义，永远回退 #f5f7fa 浅灰，暗色下刺眼。CSS var 带回退值会掩盖"token 不存在"的 bug
 - Action: 用 token 前先 grep variables.scss 确认存在。另外 `--lumina-text-inverse` 在暗色是 #0f172a（深色），印在饱和品牌色按钮上会丢对比度——品牌色上的白字必须用 `--lumina-text-on-brand`（亮暗同值 #fff）
 - Confidence: high
+
+## 2026-09-17 — axios 拦截器对 blob 下载的误判
+- Observation: request.ts 响应拦截器统一按 R 结构解包（res.code === 200 判断），文件下载（responseType: 'blob'）没有 code 字段会掉进业务错误分支直接报"请求失败"
+- Action: 下载需求必须在拦截器最前面加 `if (response.config.responseType === 'blob') return response` 直通分支，调用方用 `res.data as Blob` + URL.createObjectURL 触发下载；不要为绕过拦截器另建 axios 实例（会丢 token 注入）
+- Confidence: high

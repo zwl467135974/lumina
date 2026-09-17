@@ -35,6 +35,15 @@ public class SkillDO {
     /** 0=禁用 1=启用 */
     private Integer enabled;
 
+    /** 来源：MANUAL=手工创建 IMPORT=SKILL.md 导入 */
+    private String source;
+
+    /** 体检状态：NONE=未体检 PASSED=通过 FLAGGED=可疑（禁用待复核） */
+    private String scanStatus;
+
+    /** 体检报告 JSON（findings 列表） */
+    private String scanReport;
+
     private Long tenantId;
     private Long createBy;
     private LocalDateTime createTime;

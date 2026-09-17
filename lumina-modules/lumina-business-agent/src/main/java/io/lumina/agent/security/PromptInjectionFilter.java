@@ -49,19 +49,35 @@ public class PromptInjectionFilter {
             return;
         }
 
+        String finding = detect(input);
+        if (finding != null) {
+            log.warn("检测到 Prompt 注入尝试: rule={}", finding);
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "输入包含潜在的安全风险，请修改后重试");
+        }
+    }
+
+    /**
+     * 非抛出版本：返回首个命中的注入规则描述，未命中返回 null
+     *
+     * <p>供技能上架体检等需要"收集结论而非中断"的场景使用。
+     *
+     * @since 3.12.0
+     */
+    public String detect(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
         for (Pattern pattern : INJECTION_PATTERNS) {
             if (pattern.matcher(input).find()) {
-                log.warn("检测到 Prompt 注入尝试: pattern={}", pattern.pattern());
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "输入包含潜在的安全风险，请修改后重试");
+                return "prompt-injection:" + pattern.pattern();
             }
         }
-
         String lowerInput = input.toLowerCase();
         for (String keyword : HIGH_RISK_KEYWORDS) {
             if (lowerInput.contains(keyword.toLowerCase())) {
-                log.warn("检测到高风险关键词: {}", keyword);
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "输入包含不允许的特殊标记");
+                return "high-risk-keyword:" + keyword;
             }
         }
+        return null;
     }
 }

@@ -33,6 +33,11 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse<R<any>>) => {
+    // blob 响应（文件下载）无统一 R 结构，直接放行由调用方处理
+    if (response.config.responseType === 'blob') {
+      return response
+    }
+
     const res = response.data
 
     // 统一响应格式处理

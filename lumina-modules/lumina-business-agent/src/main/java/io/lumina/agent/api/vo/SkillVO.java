@@ -20,6 +20,12 @@ public class SkillVO {
     private String whenToUse;
     private String content;
     private Boolean enabled;
+    /** 来源：MANUAL / IMPORT */
+    private String source;
+    /** 体检状态：NONE / PASSED / FLAGGED */
+    private String scanStatus;
+    /** 体检报告 JSON（可空） */
+    private String scanReport;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
@@ -31,6 +37,9 @@ public class SkillVO {
         vo.setWhenToUse(skill.getWhenToUse());
         vo.setContent(skill.getContent());
         vo.setEnabled(skill.getEnabled() != null && skill.getEnabled() == 1);
+        vo.setSource(skill.getSource());
+        vo.setScanStatus(skill.getScanStatus());
+        vo.setScanReport(skill.getScanReport());
         vo.setCreateTime(skill.getCreateTime());
         vo.setUpdateTime(skill.getUpdateTime());
         return vo;
