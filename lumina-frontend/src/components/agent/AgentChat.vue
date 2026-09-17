@@ -31,7 +31,7 @@
 
         <div ref="messagesRef" class="chat-messages">
           <!-- 历史消息 -->
-          <div v-for="msg in historyMessages" :key="msg.messageId" :class="['msg-item', `msg-${msg.role}`]">
+              <div v-for="msg in historyMessages" :key="msg.messageId" :class="['msg-item', `msg-${msg.role}`]">
             <div class="msg-avatar">{{ msg.role === 'user' ? t('chat.me') : 'AI' }}</div>
             <div class="msg-body">
               <div class="msg-role">{{ msg.role === 'user' ? t('chat.me') : t('chat.assistant') }}</div>
@@ -46,6 +46,17 @@
               </div>
               <div v-if="msg.tokenCount" class="msg-meta">
                 Token: {{ msg.tokenCount }}<span v-if="msg.durationMs"> · {{ msg.durationMs }}ms</span>
+              </div>
+              <div v-if="msg.role === 'assistant' && msg.content" class="msg-actions">
+                <el-button
+                  size="small"
+                  text
+                  :type="speakingId === msg.messageId ? 'primary' : ''"
+                  @click="toggleSpeak(msg)"
+                >
+                  <el-icon><Headset /></el-icon>
+                  {{ speakingId === msg.messageId ? t('chat.stopSpeak') : t('chat.speak') }}
+                </el-button>
               </div>
             </div>
           </div>
@@ -202,6 +213,15 @@
               :disabled="isBusy"
               @change="onFilesChange"
             />
+            <el-button
+              v-if="!isBusy"
+              :type="recording ? 'danger' : 'default'"
+              :disabled="transcribing"
+              @click="toggleRecording"
+            >
+              <el-icon v-if="!recording && !transcribing" style="margin-right: 4px"><Microphone /></el-icon>
+              {{ recording ? t('chat.recording') : (transcribing ? t('chat.transcribing') : t('chat.voiceInput')) }}
+            </el-button>
             <el-button v-if="!isBusy" type="primary" :disabled="!task.trim()" @click="send">{{ t('chat.send') }}</el-button>
             <el-button v-if="streaming" type="danger" @click="abort">{{ t('chat.abort') }}</el-button>
           </div>
@@ -212,11 +232,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Document } from '@element-plus/icons-vue'
+import { Document, Microphone, Headset } from '@element-plus/icons-vue'
 import { streamExecuteAgent, streamExecuteMultimodalAgent, type StreamChunk } from '@/api/modules/agent'
+import { transcribeAudio, synthesizeSpeech } from '@/api/modules/speech'
+import { audioBlobToWav16k } from '@/utils/audio'
 import LumUploader from '@/components/common/LumUploader.vue'
 import {
   listConversations,
@@ -350,6 +372,101 @@ const eventTagType = (type: string) => {
 }
 
 let controller: AbortController | null = null
+
+// ==================== 语音输入（STT）与回复朗读（TTS） ====================
+const recording = ref(false)
+const transcribing = ref(false)
+let mediaRecorder: MediaRecorder | null = null
+let audioChunks: Blob[] = []
+const speakingId = ref<number | null>(null)
+let currentAudio: HTMLAudioElement | null = null
+
+const toggleRecording = async () => {
+  if (recording.value) {
+    stopRecording()
+    return
+  }
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+    ElMessage.error(t('chat.voiceUnsupported'))
+    return
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+    audioChunks = []
+    mediaRecorder.ondataavailable = (e: BlobEvent) => {
+      if (e.data.size > 0) {
+        audioChunks.push(e.data)
+      }
+    }
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(track => track.stop())
+      const raw = new Blob(audioChunks, { type: mediaRecorder?.mimeType || 'audio/webm' })
+      void handleTranscribe(raw)
+    }
+    mediaRecorder.start()
+    recording.value = true
+  } catch (e: any) {
+    ElMessage.error(e?.name === 'NotAllowedError' ? t('chat.micDenied') : t('chat.transcribeFailed'))
+  }
+}
+
+const stopRecording = () => {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  }
+  recording.value = false
+}
+
+const handleTranscribe = async (raw: Blob) => {
+  transcribing.value = true
+  try {
+    const wav = await audioBlobToWav16k(raw)
+    const res = await transcribeAudio(wav)
+    const text = (res.data || '').trim()
+    if (text) {
+      task.value = task.value ? `${task.value} ${text}` : text
+    } else {
+      ElMessage.warning(t('chat.transcribeEmpty'))
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? t('chat.transcribeFailed'))
+  } finally {
+    transcribing.value = false
+  }
+}
+
+const toggleSpeak = async (msg: MessageVO) => {
+  if (speakingId.value === msg.messageId) {
+    stopSpeak()
+    return
+  }
+  stopSpeak()
+  try {
+    const res: any = await synthesizeSpeech(msg.content)
+    const url = URL.createObjectURL(res.data as Blob)
+    currentAudio = new Audio(url)
+    currentAudio.onended = () => {
+      URL.revokeObjectURL(url)
+      speakingId.value = null
+      currentAudio = null
+    }
+    speakingId.value = msg.messageId
+    await currentAudio.play()
+  } catch (e: any) {
+    speakingId.value = null
+    ElMessage.error(e?.response?.data?.message ?? t('chat.ttsFailed'))
+  }
+}
+
+const stopSpeak = () => {
+  if (currentAudio) {
+    currentAudio.pause()
+    currentAudio = null
+  }
+  speakingId.value = null
+}
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -605,6 +722,13 @@ onMounted(() => {
   loadConversations()
 })
 
+onUnmounted(() => {
+  stopSpeak()
+  if (recording.value) {
+    stopRecording()
+  }
+})
+
 defineExpose({ resetStream })
 </script>
 
@@ -757,6 +881,13 @@ defineExpose({ resetStream })
     font-size: 12px;
     color: var(--el-text-color-placeholder);
     margin-top: 4px;
+  }
+  .msg-actions {
+    margin-top: 4px;
+
+    .el-button + .el-button {
+      margin-left: 0;
+    }
   }
 }
 

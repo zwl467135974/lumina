@@ -203,6 +203,15 @@ lumina:
       project-id: ${LLM_PROJECT_ID:}              # GCP 项目 ID
       location: ${LLM_LOCATION:us-central1}       # GCP 区域
 
+  # 语音（DashScope：paraformer 识别 + cosyvoice 合成；密钥缺省回退 DASHSCOPE Provider / LLM_API_KEY）
+  speech:
+    api-key: ${SPEECH_API_KEY:}
+    stt:
+      model: ${SPEECH_STT_MODEL:paraformer-realtime-v2}
+    tts:
+      model: ${SPEECH_TTS_MODEL:cosyvoice-v2}
+      voice: ${SPEECH_TTS_VOICE:longxiaochun}
+
   # RAG 默认关闭，避免 Qdrant 依赖（需要时设 RAG_ENABLED=true 并部署 Qdrant）
   rag:
     enabled: ${RAG_ENABLED:false}
