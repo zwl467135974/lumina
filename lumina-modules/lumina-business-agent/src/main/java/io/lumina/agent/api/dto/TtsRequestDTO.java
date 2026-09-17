@@ -18,8 +18,8 @@ public class TtsRequestDTO {
     @Size(max = 2000, message = "合成文本最长 2000 字符")
     private String text;
 
-    /** 音色（可选，空用默认；如 longxiaochun / longwan / longcheng） */
-    @Size(max = 64, message = "音色名最长 64 字符")
-    @Pattern(regexp = "^[a-zA-Z0-9_-]*$", message = "音色名仅允许字母/数字/连字符")
+    /** 音色（可选，空用默认；DashScope 如 longxiaochun；OpenAI 兼容如 FunAudioLLM/CosyVoice2-0.5B:alex） */
+    @Size(max = 128, message = "音色名最长 128 字符")
+    @Pattern(regexp = "^[a-zA-Z0-9_\\-./:]*$", message = "音色名仅允许字母/数字/连字符/点/斜杠/冒号")
     private String voice;
 }

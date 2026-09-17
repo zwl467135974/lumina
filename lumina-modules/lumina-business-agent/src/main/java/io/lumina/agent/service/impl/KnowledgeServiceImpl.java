@@ -180,7 +180,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                             false, true, io.agentscope.core.rag.reader.TableFormat.MARKDOWN).read(input).block();
                     break;
                 default:
-                    docs = new TextReader(effectiveChunkSize, strategy, effectiveOverlap).read(input).block();
+                    // TextReader 需要文件内容（fromFile），fromPath 会把路径串当正文入库
+                    docs = new TextReader(effectiveChunkSize, strategy, effectiveOverlap)
+                            .read(ReaderInput.fromFile(tempFile)).block();
             }
 
             // 扫描件检测：PDF 解析后无任何文本内容（扫描件/图片型 PDF 无可提取文本层）
@@ -197,7 +199,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                             ocrTempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
                             java.nio.file.Files.writeString(ocrTempFile, ocrText);
                             docs = new TextReader(effectiveChunkSize, strategy, effectiveOverlap)
-                                    .read(ReaderInput.fromPath(ocrTempFile)).block();
+                                    .read(ReaderInput.fromFile(ocrTempFile)).block();
                             log.info("OCR 识别成功: file={}, textLen={}", filename, ocrText.length());
                         } finally {
                             if (ocrTempFile != null) {
@@ -298,8 +300,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         try {
             tempFile = Files.createTempFile("lumina_deposit_", ".txt");
             Files.writeString(tempFile, content);
+            // fromFile 读入内容（fromPath 会把路径串当正文分块入库）
             List<Document> docs = new TextReader(effectiveChunkSize, strategy, effectiveOverlap)
-                    .read(ReaderInput.fromPath(tempFile)).block();
+                    .read(ReaderInput.fromFile(tempFile)).block();
             if (docs == null || docs.isEmpty()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "文本分块结果为空，无法入库");
             }
@@ -484,12 +487,15 @@ public class KnowledgeServiceImpl implements KnowledgeService {
 
         List<Map<String, Object>> list = new ArrayList<>();
         for (Document doc : results) {
-            Object docTenantId = doc.getPayloadValue("tenantId");
+            // stampTenantAndKb 写入的 payload 键为 tenant_id（snake_case）
+            Object docTenantId = doc.getPayloadValue("tenant_id");
             if (docTenantId != null && !String.valueOf(tenantId).equals(String.valueOf(docTenantId))) {
                 continue;
             }
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("content", doc.getPayloadValue("content"));
+            // 检索结果的 content 在 metadata.content（TextBlock），payload 中不含（写入侧保留字段）
+            String contentText = doc.getMetadata() != null ? doc.getMetadata().getContentText() : null;
+            item.put("content", contentText != null ? contentText : "");
             item.put("score", doc.getScore());
             item.put("metadata", doc.getMetadata());
             list.add(item);

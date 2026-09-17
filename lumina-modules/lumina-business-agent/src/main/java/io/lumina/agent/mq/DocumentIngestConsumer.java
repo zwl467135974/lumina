@@ -213,6 +213,8 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
 
     private List<Document> parseDocument(Path filePath, String format, int chunkSize, int overlap,
                                          SplitStrategy splitStrategy) {
+        // PDF/Word Reader 把 asString 当文件路径打开（fromPath 正确）；
+        // TextReader 把 asString 当正文分块——必须 fromFile 读入内容，否则入库的是路径串
         ReaderInput input = ReaderInput.fromPath(filePath);
         switch (format) {
             case "pdf":
@@ -222,7 +224,13 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
                 return new WordReader(chunkSize, splitStrategy, overlap,
                         false, true, io.agentscope.core.rag.reader.TableFormat.MARKDOWN).read(input).block();
             default:
-                return new TextReader(chunkSize, splitStrategy, overlap).read(input).block();
+                try {
+                    return new TextReader(chunkSize, splitStrategy, overlap)
+                            .read(ReaderInput.fromFile(filePath)).block();
+                } catch (Exception e) {
+                    log.warn("文本文件读取失败: {}, {}", filePath, e.getMessage());
+                    return List.of();
+                }
         }
     }
 
@@ -247,7 +255,8 @@ public class DocumentIngestConsumer implements RocketMQListener<DocumentIngestMe
         try {
             tempFile = java.nio.file.Files.createTempFile("lumina_ocr_", ".txt");
             java.nio.file.Files.writeString(tempFile, text);
-            ReaderInput input = ReaderInput.fromPath(tempFile);
+            // fromFile：TextReader 需要文件内容而非路径
+            ReaderInput input = ReaderInput.fromFile(tempFile);
             return new TextReader(chunkSize, splitStrategy, overlap).read(input).block();
         } catch (Exception e) {
             log.warn("OCR 文本转 Document 失败: {}", e.getMessage());

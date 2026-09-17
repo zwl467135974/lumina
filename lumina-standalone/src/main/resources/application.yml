@@ -203,8 +203,10 @@ lumina:
       project-id: ${LLM_PROJECT_ID:}              # GCP 项目 ID
       location: ${LLM_LOCATION:us-central1}       # GCP 区域
 
-  # 语音（DashScope：paraformer 识别 + cosyvoice 合成；密钥缺省回退 DASHSCOPE Provider / LLM_API_KEY）
+  # 语音（默认 DashScope：paraformer 识别 + cosyvoice 合成；可切 openai 兼容平台如硅基流动）
   speech:
+    provider: ${SPEECH_PROVIDER:dashscope}
+    base-url: ${SPEECH_BASE_URL:}
     api-key: ${SPEECH_API_KEY:}
     stt:
       model: ${SPEECH_STT_MODEL:paraformer-realtime-v2}
