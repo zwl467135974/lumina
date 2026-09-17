@@ -45,6 +45,35 @@ export interface AgentTaskVO {
   updateTime?: string
 }
 
+export interface ToolUsageStatsVO {
+  toolName: string
+  calls: number
+  successCalls: number
+  successRate?: number | null
+  avgDurationMs: number
+  maxDurationMs: number
+  avgResultChars: number
+  lastUsedAt?: string
+}
+
+export interface AgentToolUsageVO {
+  agentId: number
+  agentName: string
+  days: number
+  totalCalls: number
+  tools: ToolUsageStatsVO[]
+  unusedTools: string[]
+}
+
+/**
+ * Agent 工具使用分析（生产数据驱动的工具集蒸馏）
+ */
+export function getAgentToolUsage(agentId: number, days = 30) {
+  return request.get<R<AgentToolUsageVO>>(`/api/v1/agents/${agentId}/tool-usage`, {
+    params: { days }
+  })
+}
+
 /**
  * 创建 Agent
  */

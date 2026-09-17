@@ -23,6 +23,7 @@ public class TraceContext {
     private String agentName;
     private String agentType;
     private Long agentId;
+    private Long tenantId;
     private String conversationUuid;
     private String taskUuid;
 
@@ -96,6 +97,8 @@ public class TraceContext {
     public void setAgentType(String agentType) { this.agentType = agentType; }
     public Long getAgentId() { return agentId; }
     public void setAgentId(Long agentId) { this.agentId = agentId; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getConversationUuid() { return conversationUuid; }
     public void setConversationUuid(String conversationUuid) { this.conversationUuid = conversationUuid; }
     public String getTaskUuid() { return taskUuid; }

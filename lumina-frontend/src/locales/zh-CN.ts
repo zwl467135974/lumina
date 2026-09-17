@@ -198,6 +198,18 @@ export default {
     asyncSubmitted: '异步任务已提交',
     taskCompleted: '任务完成',
     taskFailed: '任务失败',
+    toolUsage: {
+      title: '工具使用分析',
+      days: '{n} 天',
+      toolName: '工具',
+      calls: '调用次数',
+      successRate: '成功率',
+      avgDuration: '平均耗时',
+      avgResult: '平均结果字符',
+      lastUsed: '最近使用',
+      unusedTip: '以下工具已配置但窗口内零调用——仍随每次请求占用模型上下文，是精简工具集的第一候选：',
+      empty: '暂无使用数据（自 v3.12 明细启用起累计）'
+    },
     form: {
       basicInfo: '基本信息',
       llmConfig: 'LLM 配置',

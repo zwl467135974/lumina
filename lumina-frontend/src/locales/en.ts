@@ -198,6 +198,18 @@ export default {
     asyncSubmitted: 'Async task submitted',
     taskCompleted: 'Task completed',
     taskFailed: 'Task failed',
+    toolUsage: {
+      title: 'Tool Usage Analytics',
+      days: '{n} days',
+      toolName: 'Tool',
+      calls: 'Calls',
+      successRate: 'Success Rate',
+      avgDuration: 'Avg Duration',
+      avgResult: 'Avg Result Chars',
+      lastUsed: 'Last Used',
+      unusedTip: 'These tools are configured but had zero calls in the window — they still consume model context on every request and are the first candidates to remove:',
+      empty: 'No usage data yet (accumulates since v3.12)'
+    },
     form: {
       basicInfo: 'Basic Information',
       llmConfig: 'LLM Configuration',

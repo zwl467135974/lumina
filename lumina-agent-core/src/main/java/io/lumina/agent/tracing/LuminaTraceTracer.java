@@ -140,6 +140,14 @@ public class LuminaTraceTracer implements Tracer {
                         }
                         collector.recordToolStep(ctx, finalToolName, finalInput,
                                 TraceStep.truncate(output, 500), duration);
+                        // 使用统计：截断前字符量（上下文成本代理指标）
+                        collector.recordToolUsage(ctx, finalToolName, true, duration,
+                                finalInput.length(), output.length());
+                    })
+                    .doOnError(error -> {
+                        if (ctx == null) return;
+                        collector.recordToolUsage(ctx, finalToolName, false,
+                                System.currentTimeMillis() - start, finalInput.length(), 0);
                     });
         });
     }

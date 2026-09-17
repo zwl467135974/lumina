@@ -85,6 +85,57 @@
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
+
+    <el-card class="usage-card" shadow="never" v-loading="usageLoading">
+      <template #header>
+        <div class="usage-header">
+          <span>{{ t('agent.toolUsage.title') }}</span>
+          <el-select v-model="usageDays" size="small" style="width: 110px" @change="loadToolUsage">
+            <el-option :value="7" :label="t('agent.toolUsage.days', { n: 7 })" />
+            <el-option :value="30" :label="t('agent.toolUsage.days', { n: 30 })" />
+            <el-option :value="90" :label="t('agent.toolUsage.days', { n: 90 })" />
+          </el-select>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="toolUsage?.unusedTools?.length"
+        type="warning"
+        :closable="false"
+        class="unused-alert"
+        :title="t('agent.toolUsage.unusedTip')"
+      >
+        <div class="unused-tags">
+          <el-tag v-for="tool in toolUsage.unusedTools" :key="tool" size="small" type="warning">{{ tool }}</el-tag>
+        </div>
+      </el-alert>
+
+      <el-table :data="toolUsage?.tools ?? []" size="small">
+        <el-table-column prop="toolName" :label="t('agent.toolUsage.toolName')" min-width="170">
+          <template #default="{ row }">
+            <span class="tool-name">{{ row.toolName }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="calls" :label="t('agent.toolUsage.calls')" width="90" />
+        <el-table-column :label="t('agent.toolUsage.successRate')" width="100">
+          <template #default="{ row }">
+            <el-tag size="small" :type="rateType(row.successRate)">
+              {{ row.successRate != null ? `${row.successRate}%` : '-' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('agent.toolUsage.avgDuration')" width="110">
+          <template #default="{ row }">{{ Math.round(row.avgDurationMs) }} ms</template>
+        </el-table-column>
+        <el-table-column :label="t('agent.toolUsage.avgResult')" width="120">
+          <template #default="{ row }">{{ Math.round(row.avgResultChars) }}</template>
+        </el-table-column>
+        <el-table-column :label="t('agent.toolUsage.lastUsed')" width="170">
+          <template #default="{ row }">{{ row.lastUsedAt ? new Date(row.lastUsedAt).toLocaleString() : '-' }}</template>
+        </el-table-column>
+        <template #empty>{{ t('agent.toolUsage.empty') }}</template>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
@@ -93,7 +144,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { getAgent, submitAgentTask, streamAgentTask, type AgentTaskVO, type TaskProgressEvent } from '@/api/modules/agent'
+import { getAgent, submitAgentTask, streamAgentTask, getAgentToolUsage, type AgentTaskVO, type TaskProgressEvent, type AgentToolUsageVO } from '@/api/modules/agent'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import PageHeader from '@/components/common/PageHeader.vue'
 import AgentChat from '@/components/agent/AgentChat.vue'
@@ -115,6 +166,9 @@ const currentPrompt = ref<PromptVO | null>(null)
 const asyncTaskText = ref('')
 const submittingTask = ref(false)
 const currentTask = ref<AgentTaskVO | null>(null)
+const usageLoading = ref(false)
+const usageDays = ref(30)
+const toolUsage = ref<AgentToolUsageVO | null>(null)
 let taskSseController: AbortController | undefined
 
 const promptName = computed(() => agentType.value.toLowerCase())
@@ -135,9 +189,30 @@ const loadAgentDetail = async () => {
     createTime.value = agent.createTime
     updateTime.value = agent.updateTime
     await loadActivePrompt()
+    loadToolUsage()
   } finally {
     loading.value = false
   }
+}
+
+const loadToolUsage = async () => {
+  if (!agentId.value) return
+  usageLoading.value = true
+  try {
+    const res = await getAgentToolUsage(agentId.value, usageDays.value)
+    toolUsage.value = res.data || null
+  } catch {
+    toolUsage.value = null
+  } finally {
+    usageLoading.value = false
+  }
+}
+
+const rateType = (rate?: number | null) => {
+  if (rate == null) return 'info'
+  if (rate >= 95) return 'success'
+  if (rate >= 80) return 'warning'
+  return 'danger'
 }
 
 const loadActivePrompt = async () => {
@@ -238,12 +313,35 @@ onUnmounted(() => {
 
 .prompt-card,
 .chat-card,
-.task-card {
+.task-card,
+.usage-card {
   margin-top: 16px;
 }
 
 .task-result {
   margin-top: 16px;
+}
+
+.usage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.unused-alert {
+  margin-bottom: 12px;
+}
+
+.unused-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tool-name {
+  font-family: var(--lumina-font-mono, monospace);
+  font-size: 12px;
 }
 
 @media (max-width: 768px) {

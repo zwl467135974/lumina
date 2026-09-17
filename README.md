@@ -871,6 +871,7 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 🛡 **上架安全体检（信任基础设施）** — 导入即强制体检：提示注入/破坏性命令（HIGH）直接拒收；捆绑可执行脚本/凭据访问（MEDIUM）落库但禁用待人工复核；体检报告（findings JSON）随技能存储，可随时重扫（REJECTED 强制禁用）。针对社区技能 36% 含注入的现状，把已有的注入检测/安全管线复用为技能生态的信任层
 - 🌐 **A2A Server 出口** — `/v1/a2a` 开放协议面（与 OpenAI 兼容出口并列，复用 API Token 认证）：Agent Card 发现（`GET /v1/a2a/agents[/{id}/card]`）+ JSON-RPC 任务（`message/send`、`tasks/get`、`tasks/cancel`）；任务生命周期与 Lumina 异步任务管线天然对齐（submitted/working/completed/failed/canceled），contextId 透传为会话上下文
 - 🤝 **A2A Client 工具** — `a2a.callAgent` / `a2a.getAgentCard`：Lumina Agent 可把任务委派给任意外部 A2A Agent（提交 + 轮询到终态）；内置 SSRF 防护（默认拒绝私网/环回目标，可配置放行）
+- 📊 **工具使用分析（生产数据蒸馏，V54）** — 借鉴 open-code-review"从真实调用轨迹精简工具集"：每次工具调用（含失败）异步落库 `lumina_tool_usage`，`GET /api/v1/agents/{id}/tool-usage` 按时间窗聚合调用量/成功率/耗时/结果字符量，并给出**未用工具蒸馏候选**（已配置但零调用——仍占用每次请求的上下文 token）；Agent 详情页新增分析面板
 - ✅ 新增 40 单测（解析/体检/导入导出/A2A 映射/SSRF 防护），前端技能页支持导入对话框、体检标签与导出操作
 
 ---

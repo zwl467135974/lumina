@@ -40,7 +40,9 @@ public class TenantLineHandlerImpl implements TenantLineHandler {
         "lumina_user_role",
         "lumina_dict_type",
         "lumina_dict_item",
-        "lumina_audit_log"
+        "lumina_audit_log",
+        // 异步线程写入（无 BaseContext ThreadLocal），租户条件由写入方/查询方显式携带
+        "lumina_tool_usage"
     );
 
     private static final String DETECT_SQL =

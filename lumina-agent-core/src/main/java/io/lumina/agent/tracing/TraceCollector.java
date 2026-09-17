@@ -30,6 +30,9 @@ public class TraceCollector {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private TraceSink traceSink;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ToolUsageSink toolUsageSink;
+
     public TraceCollector(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
@@ -43,6 +46,8 @@ public class TraceCollector {
     public TraceContext startTrace(String agentName) {
         TraceContext ctx = new TraceContext();
         ctx.setAgentName(agentName);
+        // 租户在启动线程捕获（异步落库/工具使用记录线程无 ThreadLocal）
+        ctx.setTenantId(BaseContext.getTenantId());
 
         CURRENT.set(ctx);
         return ctx;
@@ -124,6 +129,31 @@ public class TraceCollector {
         step.setOutput(output);
         step.setDurationMs(durationMs);
         ctx.addStep(step);
+    }
+
+    /**
+     * 记录一次工具使用（聚合统计事实，成功/失败均记）——异步落库
+     *
+     * <p>与 {@link #recordToolStep} 分工：trace 步骤存截断明细供调试，
+     * 本方法存最小事实（成败/耗时/字符量）供工具使用分析。sink 未注册时跳过。
+     *
+     * @since 3.12.0
+     */
+    public void recordToolUsage(TraceContext ctx, String toolName, boolean success,
+                                long durationMs, int inputChars, int resultChars) {
+        if (ctx == null || toolUsageSink == null) return;
+
+        ToolUsageRecord record = new ToolUsageRecord(ctx.getAgentId(), ctx.getAgentName(),
+                ctx.getTenantId(), toolName, success, durationMs, inputChars, resultChars,
+                System.currentTimeMillis());
+        CompletableFuture.runAsync(() -> {
+            try {
+                toolUsageSink.record(record);
+            } catch (Exception e) {
+                log.warn("工具使用记录落库失败（不影响主流程）: tool={}, agent={}, error={}",
+                        toolName, ctx.getAgentName(), e.getMessage());
+            }
+        });
     }
 
     /**
