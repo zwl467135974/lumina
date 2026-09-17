@@ -55,3 +55,49 @@ export function searchKnowledge(query: string, limit = 5) {
     params: { query, limit }
   })
 }
+
+// ==================== 知识沉淀（自维护 Wiki 飞轮） ====================
+
+export interface KnowledgeDepositVO {
+  id: number
+  title: string
+  content: string
+  sourceType: 'TASK' | 'MANUAL'
+  sourceId?: string
+  agentId?: number | null
+  kbId: number
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  reviewComment?: string
+  docUuid?: string
+  reviewTime?: string
+  createTime: string
+}
+
+export interface KnowledgeDepositDTO {
+  title: string
+  content: string
+  kbId: number
+  sourceType?: 'TASK' | 'MANUAL'
+  sourceId?: string
+  agentId?: number
+}
+
+export function createKnowledgeDeposit(data: KnowledgeDepositDTO) {
+  return request.post<R<KnowledgeDepositVO>>('/api/v1/knowledge/deposits', data)
+}
+
+export function listKnowledgeDeposits(params?: {
+  status?: string
+  kbId?: number
+  pageNum?: number
+  pageSize?: number
+}) {
+  return request.get<R<PageResult<KnowledgeDepositVO>>>('/api/v1/knowledge/deposits', { params })
+}
+
+export function reviewKnowledgeDeposit(id: number, approved: boolean, comment?: string) {
+  return request.post<R<KnowledgeDepositVO>>(`/api/v1/knowledge/deposits/${id}/review`, {
+    approved,
+    comment
+  })
+}

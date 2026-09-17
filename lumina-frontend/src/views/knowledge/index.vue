@@ -4,7 +4,7 @@
       <el-button @click="loadAll" :loading="loading">{{ t('common.refresh') }}</el-button>
     </PageHeader>
 
-    <el-tabs v-model="activeTab" class="knowledge-tabs">
+    <el-tabs v-model="activeTab" class="knowledge-tabs" @tab-change="onTabChange">
       <!-- 文档管理 -->
       <el-tab-pane :label="t('knowledge.documents')" name="documents">
         <el-card shadow="never">
@@ -124,7 +124,79 @@
           <el-empty v-if="searched && searchResults.length === 0" :description="t('knowledge.noResult')" :image-size="60" />
         </el-card>
       </el-tab-pane>
+
+      <!-- 知识沉淀审核（自维护 Wiki 飞轮） -->
+      <el-tab-pane :label="t('knowledge.deposits')" name="deposits">
+        <el-card shadow="never">
+          <div class="search-bar">
+            <el-select v-model="depositStatusFilter" style="width: 160px" @change="loadDeposits(1)">
+              <el-option value="" :label="t('common.all')" />
+              <el-option value="PENDING" :label="t('knowledge.depositPending')" />
+              <el-option value="APPROVED" :label="t('knowledge.depositApproved')" />
+              <el-option value="REJECTED" :label="t('knowledge.depositRejected')" />
+            </el-select>
+            <el-button type="primary" @click="loadDeposits(1)">{{ t('common.search') }}</el-button>
+          </div>
+          <el-table :data="deposits" v-loading="depositsLoading" stripe size="small">
+            <el-table-column prop="title" :label="t('knowledge.depositTitle')" min-width="180" show-overflow-tooltip />
+            <el-table-column :label="t('knowledge.depositSource')" width="90">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.sourceType === 'TASK' ? 'primary' : 'info'">
+                  {{ row.sourceType === 'TASK' ? t('knowledge.depositSourceTask') : t('knowledge.depositSourceManual') }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('knowledgeBase.title')" width="90">
+              <template #default="{ row }">{{ row.kbId }}</template>
+            </el-table-column>
+            <el-table-column :label="t('common.status')" width="100">
+              <template #default="{ row }">
+                <el-tag size="small" :type="depositStatusType(row.status)">{{ depositStatusLabel(row.status) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createTime" :label="t('task.createTime')" width="170" />
+            <el-table-column :label="t('common.actions')" width="170" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="viewDeposit(row)">{{ t('common.detail') }}</el-button>
+                <template v-if="row.status === 'PENDING'">
+                  <el-button link type="success" @click="handleReviewDeposit(row, true)">{{ t('knowledge.depositApprove') }}</el-button>
+                  <el-button link type="danger" @click="handleReviewDeposit(row, false)">{{ t('knowledge.depositRejectBtn') }}</el-button>
+                </template>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="deposit-pagination">
+            <el-pagination
+              layout="total, prev, pager, next"
+              :total="depositTotal"
+              :page-size="depositPageSize"
+              :current-page="depositPageNum"
+              @current-change="(p: number) => loadDeposits(p)"
+            />
+          </div>
+        </el-card>
+      </el-tab-pane>
     </el-tabs>
+
+    <!-- 沉淀详情/预览 -->
+    <el-dialog v-model="depositDetailVisible" :title="t('knowledge.depositDetail')" width="700px">
+      <el-descriptions v-if="depositDetail" :column="2" border>
+        <el-descriptions-item :label="t('knowledge.depositTitle')" :span="2">{{ depositDetail.title }}</el-descriptions-item>
+        <el-descriptions-item :label="t('common.status')">
+          <el-tag size="small" :type="depositStatusType(depositDetail.status)">{{ depositStatusLabel(depositDetail.status) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item :label="t('knowledgeBase.title')">KB {{ depositDetail.kbId }}</el-descriptions-item>
+        <el-descriptions-item :label="t('knowledge.depositContent')" :span="2">
+          <div class="deposit-content">{{ depositDetail.content }}</div>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="depositDetail.reviewComment" :label="t('knowledge.depositComment')" :span="2">
+          {{ depositDetail.reviewComment }}
+        </el-descriptions-item>
+        <el-descriptions-item v-if="depositDetail.docUuid" label="Doc UUID" :span="2">
+          {{ depositDetail.docUuid }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
 
     <el-dialog v-model="kbDialogVisible" :title="t('knowledgeBase.create')" width="500px">
       <el-form :model="kbForm" label-width="80px">
@@ -155,13 +227,19 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadInstance } from 'element-plus'
 import { UploadFilled, Loading } from '@element-plus/icons-vue'
 import PageHeader from '@/components/common/PageHeader.vue'
-import { uploadDocument, listDocuments, deleteDocument, searchKnowledge, type KnowledgeDocumentVO, type SearchResult } from '@/api/modules/knowledge'
+import { uploadDocument, listDocuments, deleteDocument, searchKnowledge, listKnowledgeDeposits, reviewKnowledgeDeposit, type KnowledgeDocumentVO, type SearchResult, type KnowledgeDepositVO } from '@/api/modules/knowledge'
 import { listKnowledgeBases, createKnowledgeBase, deleteKnowledgeBase, getAgentKnowledgeBases, mountKnowledgeBase, unmountKnowledgeBase, type KnowledgeBaseVO } from '@/api/modules/knowledge-base'
 import { listAgents } from '@/api/modules/agent'
 import type { AgentVO } from '@/types/api'
 
 const { t } = useI18n()
 const activeTab = ref('documents')
+
+const onTabChange = (name: string | number) => {
+  if (name === 'deposits' && deposits.value.length === 0) {
+    loadDeposits(1)
+  }
+}
 const loading = ref(false)
 const uploading = ref(false)
 const searching = ref(false)
@@ -267,6 +345,68 @@ const handleUnmount = async (kbId: number) => {
   await unmountKnowledgeBase(mountAgentId.value, kbId); ElMessage.success(t('common.success')); await loadAgentKbs()
 }
 
+// ==================== 知识沉淀审核（自维护 Wiki 飞轮） ====================
+const deposits = ref<KnowledgeDepositVO[]>([])
+const depositsLoading = ref(false)
+const depositStatusFilter = ref('PENDING')
+const depositPageNum = ref(1)
+const depositPageSize = 10
+const depositTotal = ref(0)
+const depositDetailVisible = ref(false)
+const depositDetail = ref<KnowledgeDepositVO | null>(null)
+
+const depositStatusType = (s: string) =>
+  ({ PENDING: 'warning', APPROVED: 'success', REJECTED: 'info' }[s] || 'info')
+
+const depositStatusLabel = (s: string) =>
+  ({
+    PENDING: t('knowledge.depositPending'),
+    APPROVED: t('knowledge.depositApproved'),
+    REJECTED: t('knowledge.depositRejected')
+  }[s] || s)
+
+const loadDeposits = async (page = depositPageNum.value) => {
+  depositsLoading.value = true
+  try {
+    const res = await listKnowledgeDeposits({
+      status: depositStatusFilter.value || undefined,
+      pageNum: page,
+      pageSize: depositPageSize
+    })
+    deposits.value = res.data.list || []
+    depositTotal.value = res.data.total || 0
+    depositPageNum.value = page
+  } finally {
+    depositsLoading.value = false
+  }
+}
+
+const viewDeposit = (row: KnowledgeDepositVO) => {
+  depositDetail.value = row
+  depositDetailVisible.value = true
+}
+
+const handleReviewDeposit = async (row: KnowledgeDepositVO, approved: boolean) => {
+  let comment = ''
+  if (!approved) {
+    try {
+      const { value } = await ElMessageBox.prompt(t('knowledge.depositRejectPrompt'), t('knowledge.depositRejectBtn'), {
+        inputPlaceholder: t('knowledge.depositComment')
+      })
+      comment = value || ''
+    } catch {
+      return
+    }
+  }
+  try {
+    await reviewKnowledgeDeposit(row.id, approved, comment)
+    ElMessage.success(approved ? t('knowledge.depositApprovedDone') : t('knowledge.depositRejectedDone'))
+    await loadDeposits(depositPageNum.value)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? t('common.saveFailed'))
+  }
+}
+
 onMounted(() => {
   loadAll()
   listAgents({ pageNum: 1, pageSize: 100 }).then(res => { agents.value = res.data.list || [] }).catch(() => {})
@@ -282,6 +422,15 @@ onMounted(() => {
 .upload-progress { display: flex; align-items: center; gap: 8px; color: var(--lumina-text-secondary); margin-top: 8px; }
 .pagination-wrap { margin-top: 16px; display: flex; justify-content: flex-end; }
 .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.deposit-pagination { margin-top: 12px; display: flex; justify-content: flex-end; }
+.deposit-content {
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 13px;
+  line-height: 1.6;
+}
 .search-results { display: flex; flex-direction: column; gap: 12px; }
 .search-item { border: 1px solid var(--lumina-border); border-radius: var(--lumina-radius-sm); padding: 12px; }
 .search-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }

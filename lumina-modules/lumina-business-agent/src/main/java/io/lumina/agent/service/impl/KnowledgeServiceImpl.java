@@ -264,6 +264,90 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         }
     }
 
+    @Override
+    public String ingestText(String title, String content, Long kbId) {
+        if (content == null || content.isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "入库文本为空");
+        }
+        if (kbId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "目标知识库不能为空");
+        }
+        Long tenantId = BaseContext.getTenantId() != null ? BaseContext.getTenantId() : 0L;
+        String uuid = UUID.randomUUID().toString().replace("-", "");
+
+        // KB 级分块配置优先，与文件上传路径一致
+        int effectiveChunkSize = chunkSize;
+        int effectiveOverlap = overlap;
+        io.agentscope.core.rag.reader.SplitStrategy strategy = getSplitStrategy();
+        if (knowledgeBaseMapper != null) {
+            io.lumina.agent.infrastructure.entity.KnowledgeBaseDO kb = knowledgeBaseMapper.selectById(kbId);
+            if (kb == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "目标知识库不存在: " + kbId);
+            }
+            if (kb.getChunkSize() != null) effectiveChunkSize = kb.getChunkSize();
+            if (kb.getOverlap() != null) effectiveOverlap = kb.getOverlap();
+            if (kb.getSplitStrategy() != null) {
+                try {
+                    strategy = SplitStrategy.valueOf(kb.getSplitStrategy().toUpperCase());
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+
+        Path tempFile = null;
+        try {
+            tempFile = Files.createTempFile("lumina_deposit_", ".txt");
+            Files.writeString(tempFile, content);
+            List<Document> docs = new TextReader(effectiveChunkSize, strategy, effectiveOverlap)
+                    .read(ReaderInput.fromPath(tempFile)).block();
+            if (docs == null || docs.isEmpty()) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "文本分块结果为空，无法入库");
+            }
+
+            stampTenantAndKb(docs, tenantId, kbId);
+            if (knowledge != null) {
+                knowledge.addDocuments(docs).block();
+            }
+
+            List<String> vectorDocIds = new ArrayList<>();
+            for (Document d : docs) {
+                if (d.getId() != null) {
+                    vectorDocIds.add(d.getId());
+                }
+            }
+
+            KnowledgeDocumentDO doc = new KnowledgeDocumentDO();
+            doc.setDocumentUuid(uuid);
+            doc.setTenantId(tenantId);
+            doc.setAgentId(null);
+            doc.setKbId(kbId);
+            doc.setTitle(title);
+            doc.setFormat("txt");
+            doc.setChunkCount(docs.size());
+            doc.setVectorDocIds(objectMapper.writeValueAsString(vectorDocIds));
+            doc.setFileSize((long) content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+            doc.setLanguage(detectLanguage(content));
+            doc.setEmbeddingModel(getEmbeddingModelName());
+            doc.setStatus(1);
+            documentMapper.insert(doc);
+
+            saveChunksToMysql(docs, uuid, tenantId, kbId);
+
+            log.info("文本入库成功（知识沉淀）: uuid={}, kbId={}, title={}, chunks={}",
+                    uuid, kbId, title, docs.size());
+            return uuid;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("文本入库失败: title={}", title, e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "文本入库失败: " + e.getMessage());
+        } finally {
+            if (tempFile != null) {
+                try { Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
+            }
+        }
+    }
+
     /**
      * 双写 chunk 原文到 MySQL（混合检索关键词路数据源）
      *

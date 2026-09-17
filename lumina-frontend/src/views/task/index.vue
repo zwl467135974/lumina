@@ -38,9 +38,15 @@
           <template #default="{ row }">{{ row.durationMs ? (row.durationMs / 1000).toFixed(1) + 's' : '-' }}</template>
         </el-table-column>
         <el-table-column prop="createTime" :label="t('task.createTime')" width="170" />
-        <el-table-column :label="t('common.actions')" width="120" fixed="right">
+        <el-table-column :label="t('common.actions')" width="170" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="viewDetail(row)">{{ t('common.detail') }}</el-button>
+            <el-button
+              v-if="row.status === 'COMPLETED' && row.result"
+              link
+              type="success"
+              @click="openDepositDialog(row)"
+            >{{ t('knowledge.depositAction') }}</el-button>
             <el-button v-if="row.status === 'QUEUED' || row.status === 'RUNNING'" link type="danger" @click="handleCancel(row.taskUuid)">{{ t('common.cancel') }}</el-button>
           </template>
         </el-table-column>
@@ -68,6 +74,28 @@
         <el-descriptions-item :label="t('task.createTime')">{{ detailTask.updateTime || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
+
+    <!-- 知识沉淀对话框（任务产物 → 审核 → 入知识库） -->
+    <el-dialog v-model="depositVisible" :title="t('knowledge.depositAction')" width="720px" :close-on-click-modal="false">
+      <el-form label-width="100px">
+        <el-form-item :label="t('knowledge.depositTitle')" required>
+          <el-input v-model="depositForm.title" maxlength="200" show-word-limit />
+        </el-form-item>
+        <el-form-item :label="t('knowledge.depositKb')" required>
+          <el-select v-model="depositForm.kbId" style="width: 100%" :placeholder="t('knowledge.depositKbPlaceholder')">
+            <el-option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id" :label="kb.name" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('knowledge.depositContent')" required>
+          <el-input v-model="depositForm.content" type="textarea" :rows="12" />
+        </el-form-item>
+      </el-form>
+      <el-alert type="info" :closable="false" :title="t('knowledge.depositTip')" style="margin-top: 8px" />
+      <template #footer>
+        <el-button @click="depositVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="depositing" @click="submitDeposit">{{ t('common.confirm') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -79,6 +107,8 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
 import { cancelAgentTask, listAgentTasks, type AgentTaskVO } from '@/api/modules/agent'
+import { createKnowledgeDeposit } from '@/api/modules/knowledge'
+import { listKnowledgeBases, type KnowledgeBaseVO } from '@/api/modules/knowledge-base'
 
 const { t } = useI18n()
 
@@ -174,6 +204,52 @@ const handleCancel = async (taskUuid: string) => {
 const startAutoRefresh = () => {
   autoRefresh.value = true
   refreshTimer = setInterval(loadTasks, 3000)
+}
+
+// ==================== 知识沉淀（任务产物 → 审核 → 入知识库） ====================
+const depositVisible = ref(false)
+const depositing = ref(false)
+const knowledgeBases = ref<KnowledgeBaseVO[]>([])
+const depositForm = reactive({ title: '', kbId: null as number | null, content: '' })
+let depositTask: AgentTaskVO | null = null
+
+const openDepositDialog = async (row: AgentTaskVO) => {
+  depositTask = row
+  depositForm.title = (row.inputText || '').slice(0, 50) || `task-${row.taskUuid.slice(0, 8)}`
+  depositForm.content = row.result || ''
+  if (knowledgeBases.value.length === 0) {
+    try {
+      const res = await listKnowledgeBases()
+      knowledgeBases.value = res.data || []
+    } catch {
+      knowledgeBases.value = []
+    }
+  }
+  depositVisible.value = true
+}
+
+const submitDeposit = async () => {
+  if (!depositForm.title.trim() || !depositForm.kbId || !depositForm.content.trim()) {
+    ElMessage.warning(t('knowledge.depositRequired'))
+    return
+  }
+  depositing.value = true
+  try {
+    await createKnowledgeDeposit({
+      title: depositForm.title.trim(),
+      content: depositForm.content,
+      kbId: depositForm.kbId,
+      sourceType: 'TASK',
+      sourceId: depositTask?.taskUuid,
+      agentId: depositTask?.agentId
+    })
+    ElMessage.success(t('knowledge.depositSubmitted'))
+    depositVisible.value = false
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? t('common.saveFailed'))
+  } finally {
+    depositing.value = false
+  }
 }
 
 const stopAutoRefresh = () => {
