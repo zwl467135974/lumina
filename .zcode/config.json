@@ -8,9 +8,12 @@
           "matcher": "Edit|Write|ApplyPatch",
           "hooks": [
             {
-              "type": "command",
-              "command": "bash \"${ZCODE_PROJECT_DIR}/scripts/skill-reminder-hook.sh\"",
-              "timeout": 5
+              "type": "process",
+              "command": "python",
+              "args": [
+                "${ZCODE_PROJECT_DIR}/scripts/skill-reminder-hook.py"
+              ],
+              "timeoutMs": 5000
             }
           ]
         }
