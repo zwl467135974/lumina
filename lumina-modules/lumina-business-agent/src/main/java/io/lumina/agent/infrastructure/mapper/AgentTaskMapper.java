@@ -54,4 +54,47 @@ public interface AgentTaskMapper extends BaseMapper<AgentTaskDO> {
             "update_time = NOW() " +
             "WHERE status = #{status} AND is_deleted = 0")
     int markInterruptedOnStartup(@Param("status") String status);
+
+    /**
+     * 查询处于指定状态的任务归属的实例集合（多实例对账：逐实例判活）
+     *
+     * <p>只返回非 NULL 的实例标识；存量 NULL 行（本特性上线前的遗留任务）
+     * 由 {@link #markInterruptedLegacyNull} 单独处理。
+     *
+     * @since 3.12.1
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Select("SELECT DISTINCT instance_id FROM lumina_agent_task " +
+            "WHERE status = #{status} AND is_deleted = 0 AND instance_id IS NOT NULL")
+    List<String> selectDistinctInstances(@Param("status") String status);
+
+    /**
+     * 按实例标记中断（心跳消失的死亡实例 / 本实例优雅停机）
+     *
+     * @since 3.12.1
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Update("UPDATE lumina_agent_task SET status = 'INTERRUPTED', " +
+            "error_message = #{message}, " +
+            "update_time = NOW() " +
+            "WHERE status = #{status} AND is_deleted = 0 AND instance_id = #{instanceId}")
+    int markInterruptedForInstance(@Param("status") String status,
+                                   @Param("instanceId") String instanceId,
+                                   @Param("message") String message);
+
+    /**
+     * 标记存量无主任务（instance_id 为 NULL 的遗留行，等价旧的全量对账行为）
+     *
+     * <p>仅在单实例部署或全量停机升级时安全；混合版本滚动升级窗口期
+     * （旧版本实例不写实例标识也不发心跳）可通过配置关闭，
+     * 见 {@code lumina.agent.task.reconcile.interrupt-null-instance}。
+     *
+     * @since 3.12.1
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @Update("UPDATE lumina_agent_task SET status = 'INTERRUPTED', " +
+            "error_message = #{message}, " +
+            "update_time = NOW() " +
+            "WHERE status = #{status} AND is_deleted = 0 AND instance_id IS NULL")
+    int markInterruptedLegacyNull(@Param("status") String status, @Param("message") String message);
 }

@@ -47,6 +47,14 @@ public class AgentTaskDO {
      */
     private Long triggerId;
 
+    /**
+     * 提交实例标识（AgentInstanceRegistry 生成；多实例对账只处理
+     * 心跳已消失的死亡实例任务，NULL 为存量遗留行）
+     *
+     * @since 3.12.1
+     */
+    private String instanceId;
+
     private Long tenantId;
     private Long createBy;
     private LocalDateTime createTime;

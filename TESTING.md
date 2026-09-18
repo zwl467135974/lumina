@@ -1,8 +1,12 @@
 # Lumina 测试指南
 
-> **v3.3 更新**：自动化测试体系已覆盖后端 487 @Test + 前端 103 用例。
+> **v3.12 基线**：自动化测试体系覆盖后端 981 @Test + 前端 106 用例
+> （2026-09-18 全模块本地实测全绿：common 28 / framework 50 / gateway 24 /
+> agent-core 389 / business-base 84 / business-agent 353 / notification 33）。
 > 集成测试只需 MySQL + Redis 两个本地服务，无需 Nacos / RocketMQ / Docker。
-> v3.3 新增 39 个测试覆盖混合检索 RRF 融合、Reranker 三模式、Plan-Execute JSON 解析、多模态文档截断、工作流模板、评估回归。
+> v3.12 新增覆盖：SKILL.md 开放标准（解析/体检/导入导出）、A2A 双端与 SSRF
+> 连接时校验、语音、知识飞轮、OAuth2 PKCE、工具使用分析、大输入分治、
+> 分享中心、任务对账实例隔离。
 
 ---
 
@@ -99,44 +103,48 @@ application-test.yml 默认 Redis 密码 123456；本地 Redis 若未设密码�
 SPRING_DATA_REDIS_PASSWORD="" mvn test -pl lumina-modules/lumina-business-agent
 ```
 
+**坑 3（Windows）：6379 端口可能同时有原生 Redis 服务与 Docker 容器，`127.0.0.1` 优先命中原生服务**
+
+本机若同时存在（1）原生 Windows `redis-server.exe` 服务（监听 `127.0.0.1:6379`）与
+（2）Docker 容器的端口映射（监听 `0.0.0.0:6379`），应用连 `localhost:6379` 会**优先走
+原生服务**（回环地址比通配地址更精确）。排查要点：
+
+- `docker exec <容器> redis-cli ping` 测的是**容器内部**，不代表宿主端口连通性；
+- 用 `netstat -ano | findstr :6379` 确认实际监听进程（`redis-server.exe` vs
+  `com.docker.backend.exe`），两边密码可能不同；
+- 原生服务通常配了 `requirepass 123456`（与 test 配置默认一致，直接跑即可）；
+  指向无密码实例时才需要坑 2 的空值覆盖。
+
+**坑 4：单模块测试用本地仓库 jar 解析依赖模块，改了被依赖模块必须先 install**
+
+business-agent 的 Flyway 迁移来自本地仓库中 business-base 的 jar。新增迁移
+（如 V59）后必须先刷新，否则上下文启动即 `Unknown column`：
+
+```bash
+mvn install -pl lumina-modules/lumina-business-base -am -DskipTests
+mvn test -pl lumina-modules/lumina-business-agent
+```
+
 ---
 
 ## 测试体系概览
 
-### 后端测试（487 @Test）
+### 后端测试（981 @Test，v3.12 实测）
 
-| 模块 | 单元测试 | 集成测试 | 说明 |
-|------|---------|---------|------|
-| lumina-common | 28 | - | 工具类、异常、上下文 |
-| lumina-agent-core | 252 | 6 (RAG Qdrant) | Agent 引擎、工具管理、MCP、工作流、混合检索、Reranker、Plan-Execute、多模态 |
-| lumina-framework | 50 | - | 框架配置、拦截器 |
-| lumina-gateway | 24 | - | 网关过滤器、白名单 |
-| lumina-business-base | 68 | 36 | 用户/角色/权限/租户/字典/审计 CRUD + 租户隔离 |
-| lumina-business-agent | 163 | 41 | Agent/对话/知识库/工作流/评估回归/成本/Prompt/LlmProvider |
-| lumina-business-notification | - | 6 | 通知 CRUD/已读/租户隔离 |
+| 模块 | 用例总数（含集成） | 说明 |
+|------|------------------|------|
+| lumina-common | 28 | 工具类、异常、上下文 |
+| lumina-framework | 50 | 框架配置、拦截器 |
+| lumina-gateway | 24 | 网关过滤器、白名单 |
+| lumina-agent-core | 389 | Agent 引擎、工具管理、MCP、工作流、上下文工程、A2A 客户端（SSRF 连接时校验） |
+| lumina-business-base | 84 | 用户/角色/权限/租户/OAuth2（PKCE） |
+| lumina-business-agent | 353 | Agent/对话/知识库/工作流/评估/成本/技能/A2A 服务端/知识飞轮/分治/分享中心/任务对账实例隔离 |
+| lumina-business-notification | 33 | 通知 CRUD/已读/租户隔离 |
 
-### v3.3 新增测试（39 个）
+### 前端测试（106 用例）
 
-| 测试文件 | 用例数 | 覆盖点 |
-|---------|--------|--------|
-| HybridKnowledgeTest | 8 | RRF 融合算法、去重、阈值过滤、limit 截断、null 降级 |
-| RerankProviderTest | 8 | NoopReranker/SiliconFlow/Local 三模式降级 |
-| PlanExecuteAgentTest | 9 | JSON 子任务解析（6 场景）+ Token 累加 |
-| MultimodalDocumentTest | 6 | 文本截断（短/长/边界/null）+ 接口兼容 |
-| WorkflowFromTemplateTest | 2 | 占位符提取 + 加载容错 |
-| EvaluationRegressionTest | 5 | 基线标记 + 版本 diff |
-
-### 前端测试（103 用例 / 15 文件）
-
-| 类型 | 文件数 | 用例数 | 覆盖 |
-|------|--------|--------|------|
-| utils | 3 | 25 | auth / format / storage |
-| stores | 3 | 31 | permission / user / notification |
-| composables | 1 | 5 | useTable |
-| api | 2 | 12 | request / stream-events |
-| views | 2 | 7 | agent form / agent list / prompt |
-| directives | 2 | 10 | v-permission / v-role |
-| router | 1 | 6 | guards（鉴权跳转） |
+覆盖 utils / stores / composables / api / views / directives / router，
+`cd lumina-frontend && npx vitest run` 运行。
 
 ---
 

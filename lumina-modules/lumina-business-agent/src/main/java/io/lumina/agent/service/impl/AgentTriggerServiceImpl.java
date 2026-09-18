@@ -94,6 +94,7 @@ public class AgentTriggerServiceImpl implements AgentTriggerService {
     private final RedissonClient redissonClient;
     private final NotificationEventPublisher notificationEventPublisher;
     private final Executor agentTaskExecutor;
+    private final io.lumina.agent.service.AgentInstanceRegistry instanceRegistry;
 
     @Autowired(required = false)
     private io.micrometer.core.instrument.MeterRegistry meterRegistry;
@@ -104,7 +105,8 @@ public class AgentTriggerServiceImpl implements AgentTriggerService {
                                    AgentService agentService,
                                    RedissonClient redissonClient,
                                    NotificationEventPublisher notificationEventPublisher,
-                                   @Qualifier("agentTaskExecutor") Executor agentTaskExecutor) {
+                                   @Qualifier("agentTaskExecutor") Executor agentTaskExecutor,
+                                   io.lumina.agent.service.AgentInstanceRegistry instanceRegistry) {
         this.agentTriggerMapper = agentTriggerMapper;
         this.agentTaskMapper = agentTaskMapper;
         this.agentTaskService = agentTaskService;
@@ -112,6 +114,7 @@ public class AgentTriggerServiceImpl implements AgentTriggerService {
         this.redissonClient = redissonClient;
         this.notificationEventPublisher = notificationEventPublisher;
         this.agentTaskExecutor = agentTaskExecutor;
+        this.instanceRegistry = instanceRegistry;
     }
 
     // ==================== CRUD ====================
@@ -283,6 +286,7 @@ public class AgentTriggerServiceImpl implements AgentTriggerService {
             task.setTotalTokens(0);
             task.setTenantId(trigger.getTenantId());
             task.setCreateBy(trigger.getCreateBy());
+            task.setInstanceId(instanceRegistry.selfId());
             task.setCreateTime(LocalDateTime.now());
             task.setUpdateTime(LocalDateTime.now());
             task.setIsDeleted(0);

@@ -122,6 +122,13 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
+        <!-- Apache HttpClient 5：A2A 客户端传输层（自定义 DnsResolver 支持，
+             将 SSRF 校验钉在连接时，消除校验/连接两次解析的 TOCTOU） -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+
         <!-- PDF 文档解析（RAG PDFReader） -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

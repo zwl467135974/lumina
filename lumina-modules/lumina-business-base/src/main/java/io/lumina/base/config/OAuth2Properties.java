@@ -69,6 +69,15 @@ public class OAuth2Properties {
 
         private String emailField = "email";
 
+        /**
+         * 是否启用 PKCE（S256）：默认开启——授权码被截获时无 verifier 也换不到
+         * token。GitHub（2025-07 起）与主流 OIDC 均支持；个别老 IdP 不支持时
+         * 单独关闭
+         *
+         * @since 3.12.1
+         */
+        private boolean pkce = true;
+
         /** 展示名（登录页按钮），空则用配置键 */
         private String displayName = "";
 

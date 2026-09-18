@@ -159,9 +159,82 @@ class OAuth2LoginServiceImplTest {
                 .hasMessageContaining("唯一标识");
     }
 
+    @Test
+    void buildAuthorizeUrlIncludesPkceChallengeWhenEnabled() {
+        String url = service.buildAuthorizeUrl("github");
+
+        assertThat(url).contains("code_challenge=").contains("code_challenge_method=S256");
+        // verifier 存本方 Redis（与 state 同 TTL），不上送授权页
+        verify(redisCacheManager).set(Mockito.startsWith(OAuth2LoginServiceImpl.PKCE_KEY_PREFIX),
+                Mockito.argThat(v -> v instanceof String s && s.length() >= 43 && s.length() <= 128),
+                any());
+        assertThat(url).doesNotContain("code_verifier");
+    }
+
+    @Test
+    void buildAuthorizeUrlOmitsPkceWhenDisabled() {
+        properties.getProviders().get("github").setPkce(false);
+
+        assertThat(service.buildAuthorizeUrl("github")).doesNotContain("code_challenge");
+    }
+
+    @Test
+    void callbackSendsCodeVerifierToTokenExchange() {
+        stubValidState();
+        stubTokenAndUserinfo("{\"id\":\"12345\",\"login\":\"octocat\"}");
+        OAuth2IdentityDO existing = new OAuth2IdentityDO();
+        existing.setId(7L);
+        existing.setUserId(42L);
+        when(identityMapper.selectOne(any())).thenReturn(existing);
+        UserDO bound = new UserDO();
+        bound.setUserId(42L);
+        bound.setStatus(1);
+        bound.setDeleted(0);
+        when(userMapper.selectById(42L)).thenReturn(bound);
+        when(authService.loginByUserId(42L)).thenReturn(new LoginVO());
+
+        service.handleCallback("github", "code-1", "state-1");
+
+        verify(httpClient).postForm(anyString(), Mockito.<Map<String, String>>argThat(
+                form -> "verifier-1".equals(form.get("code_verifier"))));
+    }
+
+    @Test
+    void callbackRejectsMissingVerifierWhenPkceEnabled() {
+        when(redisCacheManager.get(OAuth2LoginServiceImpl.STATE_KEY_PREFIX + "state-1"))
+                .thenReturn("github");
+        // PKCE 键缺失/过期：fail-closed
+        when(redisCacheManager.get(OAuth2LoginServiceImpl.PKCE_KEY_PREFIX + "state-1"))
+                .thenReturn(null);
+
+        assertThatThrownBy(() -> service.handleCallback("github", "code-1", "state-1"))
+                .hasMessageContaining("code_verifier");
+        verify(httpClient, never()).postForm(anyString(), any());
+    }
+
+    @Test
+    void s256ChallengeMatchesRfc7636AppendixBVector() {
+        // RFC 7636 Appendix B 官方测试向量
+        assertThat(OAuth2LoginServiceImpl.s256Challenge(
+                "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"))
+                .isEqualTo("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    }
+
+    @Test
+    void generateCodeVerifierIsBase64UrlAndSingleUse() {
+        String v1 = OAuth2LoginServiceImpl.generateCodeVerifier();
+        String v2 = OAuth2LoginServiceImpl.generateCodeVerifier();
+
+        assertThat(v1).matches("[A-Za-z0-9_-]{43,128}");
+        assertThat(v1).isNotEqualTo(v2);
+    }
+
     private void stubValidState() {
         when(redisCacheManager.get(OAuth2LoginServiceImpl.STATE_KEY_PREFIX + "state-1"))
                 .thenReturn("github");
+        // PKCE 默认开启：verifier 与 state 同键族暂存
+        when(redisCacheManager.get(OAuth2LoginServiceImpl.PKCE_KEY_PREFIX + "state-1"))
+                .thenReturn("verifier-1");
     }
 
     private void stubTokenAndUserinfo(String userinfoJson) {

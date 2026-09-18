@@ -4,6 +4,61 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.12.1] - 2026-09-18
+
+### 发布评审驱动的安全与可靠性修复
+
+针对 v3.12.0 架构评审定位的四项 P0 缺口集中修复，决策记录沉淀为 ADR
+（`docs/zh/design/adr/`）。
+
+#### SSRF 校验钉在连接时（ADR-001）
+- A2A 客户端传输层换 Apache HttpClient 5，自定义 `ValidatingDnsResolver`
+  挂连接管理器——解析、校验、建连同一次解析，从构造上消除"校验后连接前
+  再次解析"的 TOCTOU / DNS rebinding 缝隙；重定向默认不跟随。
+- 网段判定收敛 `InetAddresses.isPrivateOrLocal()` 单一谓词（请求前 fail-fast
+  与连接时权威校验共用），补齐 IPv6 唯一本地（fc00::/7）、运营商级 NAT
+  （100.64/10）、IPv4-mapped IPv6。
+
+#### 任务对账实例隔离（ADR-002，V59）
+- `lumina_agent_task` 增加 `instance_id`（+idx_status_instance），三个任务
+  创建点统一写入；`AgentInstanceRegistry` Redis 心跳（TTL 90s/3 续期）。
+- 对账只回收**心跳消失**实例的任务——多实例滚动发布不再互杀；判活
+  fail-safe（Redis 异常按存活，宁晚回收不误杀）；周期对账（默认 300s，可关）
+  兜底崩溃回收；优雅停机 @PreDestroy 直接标记本实例。
+- 存量 NULL 行默认照旧回收（单实例升级语义不变），混合版本滚动升级窗口期
+  可 `interrupt-null-instance=false` 暂缓。
+
+#### A2A 出口安检（上下文注入面收口）
+- agent-core 新增 `ExternalContentSanitizer` 接缝（与 TraceSink/ToolUsageSink
+  同一可选装配模式），business 层 `A2aContentSanitizer` 复用
+  PromptInjectionFilter：外部 Agent 返回与 Agent Card 内容进入本方模型上下文
+  前统一安检；命中即整体拦截不回传原文（fail-closed，摘要也不行）。
+
+#### OAuth2 PKCE（ADR-003）
+- 授权码流程默认启用 PKCE（S256）：verifier 只存本方 Redis（与 state 同 TTL
+  单次有效），token 交换回传 `code_verifier`，缺失即拒绝（fail-closed）；
+  按 Provider 可关（`lumina.oauth2.providers.<name>.pkce=false`）兜底老 IdP。
+  S256 以 RFC 7636 Appendix B 官方向量锁定。
+
+#### 配置化
+- 分治监视器轮询间隔/批次超时提为配置：
+  `lumina.agent.batch.poll-interval-ms`（默认 2000）/
+  `lumina.agent.batch.timeout-seconds`（默认 1800）。
+
+#### 数据库迁移
+- V59：`lumina_agent_task` 增加 `instance_id` + `idx_status_instance` 索引
+
+#### 文档
+- TESTING.md 基线刷新至 v3.12（后端 981 @Test 全模块实测 + 前端 106），
+  新增 Windows 双 Redis 监听坑与依赖模块 install 坑；建立 ADR 制度
+  （ADR-001/002/003）。
+
+#### 测试
+- 新增 34 个单测：InetAddresses 网段判定（7）/ DnsResolver 连接时校验（4）/
+  内容安检（4）/ 实例心跳（7）/ 对账隔离（6）/ OAuth2 PKCE（6，含 RFC 官方
+  向量）；全模块本地实测全绿（common 28 / framework 50 / gateway 24 /
+  agent-core 389 / base 84 / agent 353 / notification 33）。
+
 ## [3.12.0] - 2026-09-18
 
 ### 开放标准互操作 + 语音多模态 + 知识飞轮 + 分享中心（V53–V58）

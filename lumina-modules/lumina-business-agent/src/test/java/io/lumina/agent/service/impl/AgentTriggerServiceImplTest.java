@@ -71,6 +71,9 @@ class AgentTriggerServiceImplTest {
     @Mock
     private NotificationEventPublisher notificationEventPublisher;
 
+    @Mock
+    private io.lumina.agent.service.AgentInstanceRegistry instanceRegistry;
+
     private AgentTriggerServiceImpl triggerService;
 
     /**
@@ -82,7 +85,7 @@ class AgentTriggerServiceImplTest {
     void setUp() {
         triggerService = new AgentTriggerServiceImpl(
                 agentTriggerMapper, agentTaskMapper, agentTaskService, agentService,
-                redissonClient, notificationEventPublisher, directExecutor);
+                redissonClient, notificationEventPublisher, directExecutor, instanceRegistry);
     }
 
     @AfterEach

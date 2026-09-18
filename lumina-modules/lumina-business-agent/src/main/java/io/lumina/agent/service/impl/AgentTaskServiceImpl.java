@@ -67,6 +67,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
     private final io.lumina.agent.config.LuminaAgentProperties agentProperties;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final RunningTaskRegistry runningTaskRegistry;
+    private final io.lumina.agent.service.AgentInstanceRegistry instanceRegistry;
 
     @Autowired(required = false)
     private RocketMQTemplate rocketMQTemplate;
@@ -82,7 +83,8 @@ public class AgentTaskServiceImpl implements AgentTaskService {
                                 io.lumina.agent.infrastructure.mapper.AgentMapper agentMapper,
                                 io.lumina.agent.config.LuminaAgentProperties agentProperties,
                                 com.fasterxml.jackson.databind.ObjectMapper objectMapper,
-                                RunningTaskRegistry runningTaskRegistry) {
+                                RunningTaskRegistry runningTaskRegistry,
+                                io.lumina.agent.service.AgentInstanceRegistry instanceRegistry) {
         this.agentTaskMapper = agentTaskMapper;
         this.agentService = agentService;
         this.agentTaskExecutor = agentTaskExecutor;
@@ -92,6 +94,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         this.agentProperties = agentProperties;
         this.objectMapper = objectMapper;
         this.runningTaskRegistry = runningTaskRegistry;
+        this.instanceRegistry = instanceRegistry;
     }
 
     @Override
@@ -119,6 +122,7 @@ public class AgentTaskServiceImpl implements AgentTaskService {
         task.setTotalTokens(0);
         task.setTenantId(currentTenant());
         task.setCreateBy(BaseContext.getUserId());
+        task.setInstanceId(instanceRegistry.selfId());
         task.setCreateTime(LocalDateTime.now());
         task.setUpdateTime(LocalDateTime.now());
         task.setIsDeleted(0);

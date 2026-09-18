@@ -32,7 +32,7 @@ import java.util.concurrent.Executors;
  *
  * <p>子任务经 {@link AgentTaskService#submitTask} 走完整异步管线（Agent 并发
  * 限制天然约束同时执行的子任务数）；父任务由单线程终态监视器轮询合并
- * （2s 间隔 / 30 分钟超时），服务重启时父任务由既有的重启对账机制标记
+ * （间隔/超时可配：lumina.agent.batch.poll-interval-ms / timeout-seconds），服务重启时父任务由既有的重启对账机制标记
  * INTERRUPTED（结果未知 ≠ 失败）。
  *
  * @author Lumina Team
@@ -49,21 +49,25 @@ public class AgentTaskBatchServiceImpl implements AgentTaskBatchService {
     private static final String STATUS_FAILED = "FAILED";
     private static final String STATUS_CANCELLED = "CANCELLED";
 
-    /** 终态监视轮询间隔 */
-    private static final long POLL_INTERVAL_MS = 2000;
-
-    /** 批次总超时（超过后父任务置 FAILED） */
-    private static final long BATCH_TIMEOUT_MS = 30 * 60 * 1000L;
 
     /** LLM 合并模式下单片结果截断（防合并 prompt 膨胀） */
     private static final int MERGE_RESULT_MAX_CHARS = 4000;
 
     private final AgentTaskMapper agentTaskMapper;
     private final AgentTaskService agentTaskService;
+    private final io.lumina.agent.service.AgentInstanceRegistry instanceRegistry;
     private final AgentService agentService;
 
     @Value("${lumina.agent.batch.merge-max-chars:20000}")
     private int mergeMaxChars;
+
+    /** 终态监视轮询间隔（ms） */
+    @Value("${lumina.agent.batch.poll-interval-ms:2000}")
+    private long pollIntervalMs;
+
+    /** 批次总超时（秒，超过后父任务置 FAILED；按 分片数×单任务 P95 评估配置） */
+    @Value("${lumina.agent.batch.timeout-seconds:1800}")
+    private long batchTimeoutSeconds;
 
     /** 单线程终态监视器（守护线程，不阻塞停机） */
     private final ExecutorService finalizer = Executors.newSingleThreadExecutor(r -> {
@@ -100,6 +104,7 @@ public class AgentTaskBatchServiceImpl implements AgentTaskBatchService {
         parent.setTotalTokens(0);
         parent.setTenantId(tenantId);
         parent.setCreateBy(BaseContext.getUserId());
+        parent.setInstanceId(instanceRegistry.selfId());
         parent.setCreateTime(LocalDateTime.now());
         parent.setUpdateTime(LocalDateTime.now());
         parent.setIsDeleted(0);
@@ -165,7 +170,7 @@ public class AgentTaskBatchServiceImpl implements AgentTaskBatchService {
 
     private void watchAndMerge(String parentUuid, Long agentId, String instruction,
                                boolean llmMerge, LoginContext loginContext, Long tenantId) {
-        long deadline = System.currentTimeMillis() + BATCH_TIMEOUT_MS;
+        long deadline = System.currentTimeMillis() + batchTimeoutSeconds * 1000;
         try {
             while (true) {
                 AgentTaskDO parent = agentTaskService.getTask(parentUuid);
@@ -178,10 +183,10 @@ public class AgentTaskBatchServiceImpl implements AgentTaskBatchService {
                     return;
                 }
                 if (System.currentTimeMillis() > deadline) {
-                    failParent(parentUuid, "批次超时（" + (BATCH_TIMEOUT_MS / 60000) + " 分钟）未全部完成");
+                    failParent(parentUuid, "批次超时（" + (batchTimeoutSeconds / 60) + " 分钟）未全部完成");
                     return;
                 }
-                Thread.sleep(POLL_INTERVAL_MS);
+                Thread.sleep(pollIntervalMs);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

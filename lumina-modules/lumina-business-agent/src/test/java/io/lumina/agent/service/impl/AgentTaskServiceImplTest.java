@@ -61,6 +61,9 @@ class AgentTaskServiceImplTest {
     @Mock
     private io.lumina.agent.service.RunningTaskRegistry runningTaskRegistry;
 
+    @Mock
+    private io.lumina.agent.service.AgentInstanceRegistry instanceRegistry;
+
     @AfterEach
     void tearDown() {
         BaseContext.clear();

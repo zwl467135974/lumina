@@ -23,8 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,6 +49,11 @@ public class OAuth2LoginServiceImpl implements OAuth2LoginService {
 
     /** state 暂存键前缀（Redis，5 分钟单次有效） */
     static final String STATE_KEY_PREFIX = "oauth2:state:";
+
+    /** PKCE code_verifier 暂存键前缀（与 state 同 TTL 单次有效） */
+    static final String PKCE_KEY_PREFIX = "oauth2:pkce:";
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private static final Duration STATE_TTL = Duration.ofMinutes(5);
 
@@ -95,13 +104,24 @@ public class OAuth2LoginServiceImpl implements OAuth2LoginService {
         String state = UUID.randomUUID().toString().replace("-", "");
         redisCacheManager.set(STATE_KEY_PREFIX + state, provider, STATE_TTL);
 
+        // PKCE（S256）：verifier 只存本方 Redis，挑战上送授权页；
+        // token 交换时回传 verifier，授权码被截获也换不到 token
+        String pkceParams = "";
+        if (config.isPkce()) {
+            String verifier = generateCodeVerifier();
+            redisCacheManager.set(PKCE_KEY_PREFIX + state, verifier, STATE_TTL);
+            pkceParams = "&code_challenge=" + url(s256Challenge(verifier))
+                    + "&code_challenge_method=S256";
+        }
+
         return config.getAuthorizeUrl()
                 + (config.getAuthorizeUrl().contains("?") ? "&" : "?")
                 + "response_type=code"
                 + "&client_id=" + url(config.getClientId())
                 + "&redirect_uri=" + url(callbackUrl(provider))
                 + "&scope=" + url(config.getScopes() == null ? "" : config.getScopes())
-                + "&state=" + url(state);
+                + "&state=" + url(state)
+                + pkceParams;
     }
 
     @Override
@@ -118,8 +138,14 @@ public class OAuth2LoginServiceImpl implements OAuth2LoginService {
         if (stateProvider == null || !stateProvider.equals(provider)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "OAuth2 state 无效或已过期");
         }
+        // PKCE verifier 同为单次有效；启用方校验时 verifier 缺失即为异常流
+        String verifier = redisCacheManager.get(PKCE_KEY_PREFIX + (state == null ? "" : state));
+        redisCacheManager.delete(PKCE_KEY_PREFIX + (state == null ? "" : state));
+        if (requireProvider(provider).isPkce() && (verifier == null || verifier.isBlank())) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "OAuth2 code_verifier 无效或已过期");
+        }
 
-        OAuth2IdentityDO identity = fetchIdentity(provider, code);
+        OAuth2IdentityDO identity = fetchIdentity(provider, code, verifier);
         UserDO user = findOrCreateUser(identity);
         LoginVO login = authService.loginByUserId(user.getUserId());
         log.info("OAuth2 登录成功: provider={}, openId={}, userId={}",
@@ -138,15 +164,19 @@ public class OAuth2LoginServiceImpl implements OAuth2LoginService {
     }
 
     /** code → access_token → userinfo → 身份（不含建号） */
-    private OAuth2IdentityDO fetchIdentity(String provider, String code) {
+    private OAuth2IdentityDO fetchIdentity(String provider, String code, String codeVerifier) {
         ProviderConfig config = requireProvider(provider);
         try {
-            String tokenResponse = httpClient.postForm(config.getTokenUrl(), Map.of(
-                    "grant_type", "authorization_code",
-                    "client_id", config.getClientId(),
-                    "client_secret", config.getClientSecret(),
-                    "code", code,
-                    "redirect_uri", callbackUrl(provider)));
+            Map<String, String> form = new HashMap<>();
+            form.put("grant_type", "authorization_code");
+            form.put("client_id", config.getClientId());
+            form.put("client_secret", config.getClientSecret());
+            form.put("code", code);
+            form.put("redirect_uri", callbackUrl(provider));
+            if (codeVerifier != null && !codeVerifier.isBlank()) {
+                form.put("code_verifier", codeVerifier);
+            }
+            String tokenResponse = httpClient.postForm(config.getTokenUrl(), form);
             JsonNode tokenJson = objectMapper.readTree(tokenResponse);
             if (tokenJson.hasNonNull("error")) {
                 throw new BusinessException(ErrorCode.UNAUTHORIZED,
@@ -274,6 +304,24 @@ public class OAuth2LoginServiceImpl implements OAuth2LoginService {
 
     private static String firstNonBlank(String a, String b) {
         return a != null && !a.isBlank() ? a : b;
+    }
+
+    /** PKCE code_verifier：64 随机字节的 Base64URL（86 字符，43~128 合法区间） */
+    static String generateCodeVerifier() {
+        byte[] bytes = new byte[64];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /** PKCE code_challenge：BASE64URL(SHA-256(verifier))，method=S256 */
+    static String s256Challenge(String verifier) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(digest.digest(verifier.getBytes(StandardCharsets.US_ASCII)));
+        } catch (Exception e) {
+            throw new IllegalStateException("SHA-256 不可用", e);
+        }
     }
 
     private static String url(String value) {
