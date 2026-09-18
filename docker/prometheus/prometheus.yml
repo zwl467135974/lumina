@@ -3,6 +3,15 @@ global:
   scrape_interval: 15s          # 抓取间隔
   evaluation_interval: 15s      # 规则评估间隔
 
+# 告警规则（SLO 定义与处置手册见 docs/zh/guides/SLO与告警.md）
+rule_files:
+  - /etc/prometheus/alerts/lumina-alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
 scrape_configs:
   # Gateway 网关
   - job_name: 'lumina-gateway'

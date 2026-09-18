@@ -1,10 +1,11 @@
-# Lumina 监控栈（Prometheus + Grafana）
+# Lumina 监控栈（Prometheus + Alertmanager + Grafana）
 # 可叠加到任意部署模式：
 #   微服务：docker compose -f docker-compose.yml -f docker-compose-monitoring.yml up
 #   单体：  docker compose -f docker-compose-standalone.yml -f docker-compose-monitoring.yml up
 #
 # Grafana 预置 3 个仪表盘（Agent / Tools+RAG / Workflow+Trigger），首次启动自动加载。
 # 访问 http://localhost:3001（admin/admin）
+# 告警规则见 docker/prometheus/alerts/，SLO 与处置手册见 docs/zh/guides/SLO与告警.md
 
 version: '3.8'
 
@@ -17,6 +18,7 @@ services:
       - "9090:9090"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/alerts:/etc/prometheus/alerts:ro
       - prometheus-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -24,6 +26,17 @@ services:
       - --storage.tsdb.retention.time=7d
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
+    networks:
+      - default
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: lumina-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./docker/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     networks:
       - default
 

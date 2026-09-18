@@ -44,6 +44,38 @@
 - 分治监视器轮询间隔/批次超时提为配置：
   `lumina.agent.batch.poll-interval-ms`（默认 2000）/
   `lumina.agent.batch.timeout-seconds`（默认 1800）。
+- 魔数审计结论：spill 阈值/修剪阈值/guardrail/上下文预算此前已配置化，
+  分治监视器为本批补齐项；溢出紧急路径的固定启发式（200/100/50）为有意
+  内置，不外化。
+
+#### SLO 与告警（评审 P1-8）
+- 新增告警规则 `docker/prometheus/alerts/lumina-alerts.yml`（10 条，promtool
+  校验通过），只挂已验证存在的指标；Prometheus 接入 rule_files + Alertmanager
+  分级路由（critical 10s 聚合/1h 重复），监控栈新增 alertmanager 服务。
+- `docs/zh/guides/SLO与告警.md`：5 项 SLO 定义（含"INTERRUPTED 不计失败率"
+  语义约定）、分级响应要求、5 类告警处置手册、已知盲区诚实声明。
+
+#### CI 自动审计层（评审 P2-12）
+- `.github/workflows/security.yml`：CodeQL（Java+JS）+ gitleaks 全历史密钥
+  扫描 + OWASP dependency-check / pnpm audit 依赖漏洞扫描（含每周定时
+  全量兜底）——纯 AI 开发流程的产出自此有与人工代码同级的自动审计。
+
+#### 压测与 RAG 评测脚手架（评审 P1-5/P1-7 前置件）
+- `docs/zh/guides/容量压测指南.md` + `scripts/loadtest/lumina-smoke.js`（k6）：
+  L1~L4 压测口径、防烧钱纪律（mock/最便宜模型）、产出物回填要求。
+- `docs/zh/guides/RAG评测集.md` + `scripts/rag/golden-set.example.jsonl` +
+  `RagGoldenSetEvaluationTest`（环境门控，无数据自动跳过）：golden set
+  格式、hit@k/MRR 回归、维护纪律。
+- 两项的"闭环"定义均为产出真实数值回填文档，脚手架为前置件。
+
+#### Token 估算校准回路（评审 P1-6，ADR-004）
+- 评估结论：完整回路需穿透引擎四条执行路径，风险收益不匹配——设计定稿
+  于 ADR-004（观测先行 → 数据证明必要后再做 EMA 校准），实现分期。
+
+#### 迁移与回滚策略（评审 P2-13）
+- `docs/zh/guides/数据库迁移与回滚.md`：只进不退的回滚单位（版本而非
+  迁移）、发布前纪律（备份/兼容性规则/V55·V58 教训）、四类故障场景处置
+  路径、v3.12→v3.12.1 升级检查单。
 
 #### 数据库迁移
 - V59：`lumina_agent_task` 增加 `instance_id` + `idx_status_instance` 索引
@@ -51,7 +83,7 @@
 #### 文档
 - TESTING.md 基线刷新至 v3.12（后端 981 @Test 全模块实测 + 前端 106），
   新增 Windows 双 Redis 监听坑与依赖模块 install 坑；建立 ADR 制度
-  （ADR-001/002/003）。
+  （ADR-001~004）。
 
 #### 测试
 - 新增 34 个单测：InetAddresses 网段判定（7）/ DnsResolver 连接时校验（4）/

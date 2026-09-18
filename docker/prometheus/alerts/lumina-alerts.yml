@@ -1,0 +1,116 @@
+# Lumina 告警规则（挂在已注册指标上，见 docs/zh/guides/SLO与告警.md）
+# 指标名核对来源：
+#   agent_turn_count{result}        AgentTurnMetricsListener（v3.11）
+#   agent_state_save_errors         RedisAgentStateStore（v3.10）
+#   agent_config_reload_errors      ConfigLoader（v3.10）
+#   qdrant_error_count              Qdrant 客户端
+#   http_server_requests            Spring Boot Actuator 标准
+groups:
+  # ==================== 可用性 ====================
+  - name: lumina-availability
+    rules:
+      - alert: LuminaInstanceDown
+        expr: up{job=~"lumina-.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "服务实例失联（{{ $labels.job }}/{{ $labels.instance }}）"
+          description: "抓取目标连续 2 分钟 down。SLO：月可用性 99.5%。"
+
+      - alert: LuminaHttp5xxRateHigh
+        expr: |
+          sum by (job) (rate(http_server_requests_seconds_count{status=~"5.."}[10m]))
+            / sum by (job) (rate(http_server_requests_seconds_count[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} 5xx 比例超 5%（10 分钟窗口）"
+          description: "SLO：月可用性 99.5% ≈ 单服务 5xx 比例持续 < 0.5%，>5% 已是严重偏离。"
+
+      - alert: LuminaHttpLatencyHigh
+        expr: |
+          sum by (job) (rate(http_server_requests_seconds_sum[10m]))
+            / sum by (job) (rate(http_server_requests_seconds_count[10m])) > 2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} 平均 HTTP 时延超 2s（15 分钟）"
+          description: "先看下游 LLM provider 时延与线程池饱和。"
+
+  # ==================== Agent 执行质量 ====================
+  - name: lumina-agent-quality
+    rules:
+      - alert: LuminaAgentTurnErrorRateHigh
+        # INTERRUPTED 不计入失败率（中断≠失败，语义见 ADR/防御性设计原则）
+        expr: |
+          sum (rate(agent_turn_count_total{result="FAILED"}[15m]))
+            / sum (rate(agent_turn_count_total{result=~"FAILED|COMPLETED"}[15m])) > 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent 轮次失败率超 10%（15 分钟窗口）"
+          description: "SLO：轮次成功率 ≥90%。排查熔断器/工具失败/上下文溢出恢复日志。"
+
+      - alert: LuminaAgentTurnSlowP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(agent_turn_duration_seconds_bucket[15m]))) > 120
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent 轮次 p95 时延超 120s"
+          description: "参考 SLO p95 < 60s（因模型与工具集而异，按需调整阈值）。"
+
+      - alert: LuminaAgentTurnInterruptedSpike
+        expr: sum (increase(agent_turn_count_total{result="INTERRUPTED"}[15m])) > 10
+        labels:
+          severity: warning
+        annotations:
+          summary: "15 分钟内 INTERRUPTED 轮次激增（{{ $value }} 次）"
+          description: "中断≠失败：结果未知。若非发布窗口，排查实例重启/线程池中断。"
+
+  # ==================== 状态与配置一致性（永久卡死防线） ====================
+  - name: lumina-state-consistency
+    rules:
+      - alert: LuminaAgentStateSaveErrors
+        expr: increase(agent_state_save_errors_total[10m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent 状态保存失败（{{ $value }} 次/10 分钟）"
+          description: "跨实例状态漂移无感知期。SLO：0。排查 Redis 连接与序列化。"
+
+      - alert: LuminaConfigReloadErrors
+        expr: increase(agent_config_reload_errors_total[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "配置热更新失败（{{ $value }} 次/10 分钟）"
+          description: "实例行为将持续偏离直至缓存 TTL。排查 Nacos/配置源。"
+
+  # ==================== 基础设施 ====================
+  - name: lumina-infra
+    rules:
+      - alert: LuminaQdrantErrors
+        expr: increase(qdrant_error_count_total[10m]) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: "Qdrant 错误增多（{{ $value }} 次/10 分钟）"
+          description: "RAG 检索质量将劣化。检查 Qdrant 容器与网络。"
+
+      - alert: LuminaJvmMemoryHigh
+        expr: |
+          sum by (job, instance) (jvm_memory_used_bytes{area="heap"})
+            / sum by (job, instance) (jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} 堆内存使用率超 90%"
+          description: "长上下文（Token 预算 16000）场景关注内存放大。"

@@ -1,0 +1,29 @@
+# Alertmanager 基础路由（Lumina）
+# 通知渠道接入：把 webhook 的 url 换成企业微信/飞书/钉钉的机器人地址，
+# 或扩展 receivers 增加 email。分级策略与 SLO 对应关系见
+# docs/zh/guides/SLO与告警.md
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default
+  group_by: ['alertname', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # critical 立即送达、更频繁重复（可用性/状态一致性类）
+    - matchers: ['severity == "critical"']
+      receiver: critical
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: default
+    webhook_configs:
+      - url: http://lumina-standalone:8080/actuator/health  # 占位：替换为通知机器人地址
+        send_resolved: true
+  - name: critical
+    webhook_configs:
+      - url: http://lumina-standalone:8080/actuator/health  # 占位：替换为通知机器人地址
+        send_resolved: true

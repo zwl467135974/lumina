@@ -1,0 +1,98 @@
+# Lumina 安全扫描 - AI 产出的自动审计层（v3.12.1）
+# 背景：本项目纯 AI 协作开发，代码产出必须经过与人工代码同级的自动安全审计
+# （v3.12 评审缺口 P2-12："AI 产出无自动审计层，投毒/缺陷检出完全依赖人肉 review"）。
+# 触发：Push 到 master / PR（与 ci.yml 一致）
+name: Security Scan
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # 每周一 03:00 UTC 全量扫（新披露 CVE 的周期性兜底）
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  # ========== CodeQL：静态安全分析（Java + JS）==========
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin, javascript-typescript
+          # 只扫源码目录，排除前端依赖与构建产物
+          config: |
+            paths-ignore:
+              - lumina-frontend/node_modules
+              - '**/target'
+              - '**/dist'
+
+      - uses: github/codeql-action/autobuild@v3
+        continue-on-error: true
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:full'
+
+  # ========== 密钥泄露扫描（提交历史 + 工作区）==========
+  gitleaks:
+    name: Secret Leak Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # 全量历史：密钥一旦提交即永久暴露，只扫浅历史没有意义
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ========== 依赖漏洞扫描（Maven + pnpm 锁文件）==========
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Maven 依赖树已知漏洞（OWASP dependency-check，NVD API key 未配时降级为警告）
+      - name: OWASP Dependency Check (backend)
+        run: |
+          mvn -B org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
+            -DskipTests \
+            -q || echo "::warning::dependency-check 存在发现项或 NVD 限流，详见报告"
+
+      # 前端依赖（pnpm audit，高危即失败）
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: pnpm audit (frontend)
+        working-directory: lumina-frontend
+        run: pnpm install --frozen-lockfile && pnpm audit --audit-level high

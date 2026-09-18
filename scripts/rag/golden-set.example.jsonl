@@ -1,0 +1,7 @@
+# Lumina RAG 评测集示例（JSONL，# 开头为注释行）
+# 格式与维护纪律见 docs/zh/guides/RAG评测集.md
+# expectedDocUuids 优先填入库返回的 docUuid；也可填内容片段（结果 content 的子串）
+{"query": "公司报销流程需要提交哪些材料", "limit": 5, "expectedDocUuids": ["<报销制度文档的docUuid>"], "minHitAtK": 1}
+{"query": "出差住宿标准一晚上最多能报多少", "limit": 5, "expectedDocUuids": ["<差旅制度文档的docUuid>"]}
+{"query": "年假没休完会清零吗", "limit": 5, "expectedDocUuids": ["<考勤假期文档的docUuid>"], "minHitAtK": 1}
+{"query": "服务器密码忘了找谁重置", "limit": 5, "expectedDocUuids": ["<IT服务手册的docUuid>"], "minHitAtK": 1}
