@@ -67,7 +67,7 @@ docker compose -f docker-compose-standalone.yml up
 - **📚 知识与编排** - RAG 混合检索（RRF + reranker + 5 OCR）、Flowable 7.0 DAG 工作流（7 种节点含 **autonomy 自主编排**——模型生成 JS 脚本在 GraalJS 沙箱编排子 Agent）、租户技能库（目录进上下文、全文按需加载）、Prompt 版本管理、Agent 评估回归（4 评分器 + A/B 对比）
 - **🎨 工程化前端** - Vue 3 + Element Plus 33 视图、暗色主题、i18n、Agent 调试面板、动态菜单（权限下发）
 
-### 🎓 配套教学体系（111 篇，新时代 AI 工程师养成路线）
+### 🎓 配套教学体系（120 篇，新时代 AI 工程师养成路线）
 
 不只是框架，还是一套**可教学的 AI Agent 工程课程**——从 LLM 基础到多 Agent 编排渐进式进阶，全部配套项目真实代码与自测题，团队拿来即用的培训教材：
 
@@ -78,6 +78,7 @@ docker compose -f docker-compose-standalone.yml up
 | [Stage 2 应用](tutorials/stage-2-application/) | 多租户、RBAC、审计、RAG、成本管理 | 16 |
 | [Stage 3 进阶](tutorials/stage-3-mastery/) | 架构模式、可观测性、评估回归、生产部署 | 16 |
 | [Stage 4 AI Agent](tutorials/stage-4-ai-agent/) | Agent 模式、AgentScope、工作流编排、上下文工程 | 59 |
+| [Stage 5 攻防与规模化](tutorials/stage-5-battle-tested/) | SSRF/DNS rebinding、多实例对账、OAuth2 攻防、提示注入纵深、架构找茬——全部来自项目真实事故与安全评审 | 8 |
 
 教学与代码同源维护——每个新版本功能同步更新对应教程（见 [tutorials/README.md](tutorials/README.md)）。
 
@@ -585,13 +586,14 @@ public String executeAgent(String task) {
 
 ## 文档
 
-### 教学体系（110 篇）
+### 教学体系（119 篇）
 
-- [教学总览](tutorials/README.md) - 四阶段渐进式 AI Agent 工程师养成路线（含自测题）
+- [教学总览](tutorials/README.md) - 五阶段渐进式 AI Agent 工程师养成路线（含自测题）
 - [Stage 1 基础](tutorials/stage-1-foundation/) - LLM 原理 / Token / Prompt 工程
 - [Stage 2 应用](tutorials/stage-2-application/) - 多租户 / RBAC / RAG / 成本
 - [Stage 3 进阶](tutorials/stage-3-mastery/) - 架构 / 可观测 / 评估 / 部署
 - [Stage 4 AI Agent](tutorials/stage-4-ai-agent/) - Agent 模式 / 工作流 / 上下文工程
+- [Stage 5 攻防与规模化](tutorials/stage-5-battle-tested/) - SSRF / 多实例 / OAuth2 / 注入纵深 / 系统找茬（真实事故复盘）
 
 ### 快速开始
 

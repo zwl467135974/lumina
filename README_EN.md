@@ -55,7 +55,7 @@ Only MySQL + Redis required (compose includes both). No Nacos / RocketMQ / separ
 - **🔧 Tools & Integration** - MCP protocol (stdio/SSE/streamable-http + header auth + reconnect health check), OpenAI-compatible `/v1/chat/completions` exit, Webhook, WeCom bot, Code Interpreter (Docker pool)
 - **📚 Knowledge & Orchestration** - Hybrid RAG retrieval (RRF + reranker + 5 OCR), Flowable 7.0 DAG workflow (7 node types incl. **autonomy** — model-generated JS scripts orchestrating sub-agents in a GraalJS sandbox), tenant skill library (catalog in context, content on demand), Prompt versioning, Agent evaluation regression (4 scorers + A/B comparison)
 
-### 🎓 Companion Tutorial System (111 articles, the modern AI-engineer curriculum)
+### 🎓 Companion Tutorial System (120 articles, the modern AI-engineer curriculum)
 
 More than a framework — a **teachable AI Agent engineering course**, progressing from LLM fundamentals to multi-agent orchestration, all tied to the project's real code with self-test quizzes. Ready-to-use team training material:
 
@@ -66,6 +66,7 @@ More than a framework — a **teachable AI Agent engineering course**, progressi
 | [Stage 2 Application](tutorials/stage-2-application/) | Multi-tenancy, RBAC, audit, RAG, cost management | 16 |
 | [Stage 3 Mastery](tutorials/stage-3-mastery/) | Architecture patterns, observability, evaluation, production deployment | 16 |
 | [Stage 4 AI Agent](tutorials/stage-4-ai-agent/) | Agent patterns, AgentScope, workflow orchestration, context engineering | 59 |
+| [Stage 5 Battle-Tested](tutorials/stage-5-battle-tested/) | SSRF & DNS rebinding, multi-instance reconciliation, OAuth2 attack/defense, prompt-injection defense in depth, self-review — all from the project's real incidents and security reviews | 8 |
 
 Tutorials and code are maintained in lockstep — every release updates the corresponding articles (see [tutorials/README.md](tutorials/README.md)).
 
