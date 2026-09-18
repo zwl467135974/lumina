@@ -875,6 +875,7 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 🎙 **语音多模态** — 会话页麦克风录音 → 前端统一转 16k WAV → paraformer 实时识别回填输入框；AI 回复一键朗读（cosyvoice 合成，可换音色）。密钥自动复用 DASHSCOPE Provider 配置（`/api/v1/agents/speech/transcribe`、`/tts`，零网关配置）
 - 🔄 **知识飞轮（自维护 Wiki，V55）** — 对标 WeKnora：任务产物一键沉淀 → 审核队列（PENDING）→ 人工审核通过即入库（复用 RAG 分块/向量化/双写管线，`ingestText` 文本直入路径）→ 知识库随使用变厚；沉淀与审核权限分离（提出人 ≠ 审核人），任务页沉淀入口 + 知识页审核 tab
 - 🔑 **OAuth2/SSO 第三方登录（V56）** — 标准**授权码**流程（零 Spring Security，复用自有 JWT 体系）：GitHub 预设 + 通用 OIDC（yml/env 配置即启用）；state 存 Redis 单次有效防 CSRF；首次登录**自动建号**（默认 TENANT_USER 角色）并绑定三方身份（一个用户可绑多个）；登录页三方按钮 + 回调页自动存 Token 跳首页。本地 Mock Provider 全流程 E2E 验证（providers→authorize→callback→建号→JWT 可用→二次登录复用）
+- 🌊 **A2A message/stream 流式** — 协议流式补齐：卡片 `streaming:true`，`message/stream` 走 SSE 推送任务事件流（`submitted → working → completed`，completed 携带文本 Artifact，流中断降级为 failed 事件后收口）；与 message/send 共用提交管线（预算/审计/取消一致），真实 LLM E2E 验证
 - ✅ 新增 40 单测（解析/体检/导入导出/A2A 映射/SSRF 防护），前端技能页支持导入对话框、体检标签与导出操作
 
 ---

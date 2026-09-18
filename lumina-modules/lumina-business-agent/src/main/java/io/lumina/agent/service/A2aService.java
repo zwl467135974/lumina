@@ -3,6 +3,7 @@ package io.lumina.agent.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.lumina.agent.api.dto.a2a.A2aAgentCard;
 import io.lumina.agent.api.dto.a2a.A2aTask;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -10,7 +11,8 @@ import java.util.List;
  * A2A（Agent2Agent）协议服务
  *
  * <p>把 Lumina Agent 暴露为 A2A 开放协议的远端 Agent：Agent Card 描述能力，
- * JSON-RPC message/send 派发任务（复用异步任务管线），tasks/get 轮询结果。
+ * JSON-RPC message/send 派发任务（复用异步任务管线），tasks/get 轮询结果，
+ * message/stream 以 SSE 推送任务状态事件流。
  *
  * @author Lumina Team
  * @since 3.12.0
@@ -25,6 +27,14 @@ public interface A2aService {
 
     /** JSON-RPC message/send：提交异步任务，返回 submitted 状态的 A2A Task */
     A2aTask messageSend(Long agentId, JsonNode params);
+
+    /**
+     * JSON-RPC message/stream：提交任务并推送事件流
+     * （submitted → working → 终态；completed 携带文本 Artifact；流异常降级为 failed 事件）
+     *
+     * @since 3.12.1
+     */
+    Flux<A2aTask> messageStream(Long agentId, JsonNode params);
 
     /** JSON-RPC tasks/get：按任务 ID 查询状态/产出 */
     A2aTask taskGet(JsonNode params);

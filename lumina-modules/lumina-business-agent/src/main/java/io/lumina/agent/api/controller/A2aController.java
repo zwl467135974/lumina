@@ -1,8 +1,8 @@
 package io.lumina.agent.api.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lumina.agent.api.dto.a2a.A2aAgentCard;
 import io.lumina.agent.api.dto.a2a.A2aJsonRpc;
-import io.lumina.agent.api.dto.a2a.A2aTask;
 import io.lumina.agent.service.A2aService;
 import io.lumina.common.exception.BaseException;
 import io.lumina.framework.audit.annotation.Audit;
@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -49,11 +51,15 @@ public class A2aController {
 
     private static final String METHOD_MESSAGE_SEND = "message/send";
 
+    private static final String METHOD_MESSAGE_STREAM = "message/stream";
+
     private static final String METHOD_TASKS_GET = "tasks/get";
 
     private static final String METHOD_TASKS_CANCEL = "tasks/cancel";
 
     private final A2aService a2aService;
+
+    private final ObjectMapper objectMapper;
 
     @Operation(summary = "A2A Agent 卡片列表（发现）")
     @GetMapping("/agents")
@@ -68,12 +74,16 @@ public class A2aController {
     }
 
     @Audit(module = "a2a", action = "EXECUTE", description = "A2A JSON-RPC 调用")
-    @Operation(summary = "A2A JSON-RPC 端点（message/send、tasks/get、tasks/cancel）")
+    @Operation(summary = "A2A JSON-RPC 端点（message/send、message/stream、tasks/get、tasks/cancel）")
     @PostMapping("/agents/{agentId}")
-    public A2aJsonRpc.Response jsonRpc(@PathVariable("agentId") Long agentId,
-                                       @Valid @RequestBody A2aJsonRpc.Request rpcRequest) {
+    public Object jsonRpc(@PathVariable("agentId") Long agentId,
+                          @Valid @RequestBody A2aJsonRpc.Request rpcRequest) {
+        String method = rpcRequest.getMethod() == null ? "" : rpcRequest.getMethod();
+        if (METHOD_MESSAGE_STREAM.equals(method)) {
+            return messageStreamSse(agentId, rpcRequest);
+        }
         try {
-            Object result = switch (rpcRequest.getMethod() == null ? "" : rpcRequest.getMethod()) {
+            Object result = switch (method) {
                 case METHOD_MESSAGE_SEND -> a2aService.messageSend(agentId, rpcRequest.getParams());
                 case METHOD_TASKS_GET -> a2aService.taskGet(rpcRequest.getParams());
                 case METHOD_TASKS_CANCEL -> a2aService.taskCancel(rpcRequest.getParams());
@@ -95,6 +105,38 @@ public class A2aController {
             return A2aJsonRpc.Response.error(rpcRequest.getId(), -32000,
                     "Internal error: " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
         }
+    }
+
+    /**
+     * message/stream：SSE 推送任务事件流（data 为 JSON-RPC 响应，result 为 A2A Task）
+     *
+     * <p>客户端需带 {@code Accept: text/event-stream}；流建立前的业务错误以
+     * 首个错误事件下发（HTTP 200），流中异常降级为 failed 事件后结束。
+     */
+    private Object messageStreamSse(Long agentId, A2aJsonRpc.Request rpcRequest) {
+        Object id = rpcRequest.getId();
+        return a2aService.messageStream(agentId, rpcRequest.getParams())
+                .<ServerSentEvent<String>>map(task -> ServerSentEvent
+                        .builder(toJson(A2aJsonRpc.Response.ok(id, task)))
+                        .build())
+                .onErrorResume(e -> Flux.just(ServerSentEvent
+                        .builder(toJson(errorResponse(id, e)))
+                        .build()));
+    }
+
+    private String toJson(A2aJsonRpc.Response response) {
+        try {
+            return objectMapper.writeValueAsString(response);
+        } catch (Exception e) {
+            return "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"serialize failed\"}}";
+        }
+    }
+
+    private A2aJsonRpc.Response errorResponse(Object id, Throwable e) {
+        int code = e instanceof BaseException be && be.getCode() != null
+                && be.getCode() == HttpStatus.BAD_REQUEST.value() ? -32602 : -32000;
+        return A2aJsonRpc.Response.error(id, code,
+                e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
     }
 
     /**

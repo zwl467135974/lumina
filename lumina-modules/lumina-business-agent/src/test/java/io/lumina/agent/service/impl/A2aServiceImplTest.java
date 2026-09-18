@@ -139,6 +139,64 @@ class A2aServiceImplTest {
     }
 
     @Test
+    void messageStreamEmitsLifecycleUntilCompleted() throws Exception {
+        Mockito.when(agentService.getAgentById(3L)).thenReturn(activeAgent());
+        Mockito.when(agentTaskService.submitTask(eq(3L), any(AgentTaskRequestDTO.class)))
+                .thenAnswer(inv -> {
+                    AgentTaskDO task = new AgentTaskDO();
+                    task.setTaskUuid("task-uuid-20");
+                    task.setStatus("QUEUED");
+                    return task;
+                });
+        // 进度事件流：QUEUED → RUNNING → COMPLETED(带结果)
+        Mockito.when(agentTaskService.streamTaskProgress("task-uuid-20"))
+                .thenReturn(reactor.core.publisher.Flux.just(
+                        java.util.Map.of("taskUuid", "task-uuid-20", "status", "QUEUED"),
+                        java.util.Map.of("taskUuid", "task-uuid-20", "status", "RUNNING"),
+                        java.util.Map.of("taskUuid", "task-uuid-20", "status", "COMPLETED",
+                                "result", "流式最终回答")));
+
+        String paramsJson = "{\"message\":{\"parts\":[{\"type\":\"text\",\"text\":\"流式验证\"}]}}";
+        var tasks = service.messageStream(3L, objectMapper.readTree(paramsJson))
+                .collectList()
+                .block(java.time.Duration.ofSeconds(5));
+
+        assertThat(tasks).isNotNull();
+        assertThat(tasks.size()).isEqualTo(4); // initial submitted + 3 progress
+        assertThat(tasks.get(0).getStatus().getState()).isEqualTo("submitted");
+        assertThat(tasks.get(1).getStatus().getState()).isEqualTo("submitted");
+        assertThat(tasks.get(2).getStatus().getState()).isEqualTo("working");
+        assertThat(tasks.get(3).getStatus().getState()).isEqualTo("completed");
+        assertThat(tasks.get(3).getArtifacts()).hasSize(1);
+        assertThat(tasks.get(3).getArtifacts().get(0).getParts().get(0).getText())
+                .isEqualTo("流式最终回答");
+    }
+
+    @Test
+    void messageStreamDegradestoFailedOnError() throws Exception {
+        Mockito.when(agentService.getAgentById(3L)).thenReturn(activeAgent());
+        Mockito.when(agentTaskService.submitTask(eq(3L), any(AgentTaskRequestDTO.class)))
+                .thenAnswer(inv -> {
+                    AgentTaskDO task = new AgentTaskDO();
+                    task.setTaskUuid("task-uuid-21");
+                    task.setStatus("QUEUED");
+                    return task;
+                });
+        Mockito.when(agentTaskService.streamTaskProgress("task-uuid-21"))
+                .thenReturn(reactor.core.publisher.Flux.error(new RuntimeException("sink gone")));
+
+        String paramsJson = "{\"message\":{\"parts\":[{\"type\":\"text\",\"text\":\"异常验证\"}]}}";
+        var tasks = service.messageStream(3L, objectMapper.readTree(paramsJson))
+                .collectList()
+                .block(java.time.Duration.ofSeconds(5));
+
+        assertThat(tasks).isNotNull();
+        assertThat(tasks.get(0).getStatus().getState()).isEqualTo("submitted");
+        assertThat(tasks.get(1).getStatus().getState()).isEqualTo("failed");
+        assertThat(tasks.get(1).getStatus().getMessage()).contains("sink gone");
+    }
+
+    @Test
     void agentCardPointsToJsonRpcEndpoint() {
         Mockito.when(agentService.getAgentById(3L)).thenReturn(activeAgent());
 
