@@ -4,9 +4,166 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.12.0] - 2026-09-18
+
+### 开放标准互操作 + 语音多模态 + 知识飞轮 + 分享中心（V53–V58）
+
+接入 2026 年 Agent 生态两大开放标准——Anthropic Agent Skills（SKILL.md）与 A2A 协议
+（Linux 基金会 150+ 组织），让 Lumina 的技能与 Agent 资产可流通、也可被外部生态消费；
+同时补齐四块生产级能力：生产数据驱动的工具集蒸馏、语音多模态、知识飞轮、大输入分治，
+并以统一的模板与分享中心收口；企业采购侧新增 OAuth2/SSO 第三方登录。
+
+#### SKILL.md 开放标准互操作（V53）
+- **解析/序列化**：`SkillMarkdownParser` 对接开放标准格式（frontmatter + 正文，
+  零 YAML 依赖，兼容引号/块标量/注释）。
+- **导入**：`POST /api/v1/skills/import`——`.md` 单个 / `.zip` 多技能
+  （`{name}/SKILL.md` 目录结构，防 zip 炸弹）一键导入。
+- **上架安全体检（信任基础设施）**：导入前强制体检——提示注入/破坏性命令（HIGH）
+  直接拒收；捆绑可执行脚本/凭据访问（MEDIUM）落库但禁用待人工复核；体检报告
+  （findings JSON）随技能存储、可随时重扫（REJECTED 强制禁用）；
+  `PromptInjectionFilter` 新增非抛出 `detect()` 供体检复用。手工创建走咨询式体检。
+- **导出**：单个 SKILL.md 下载 / 全量 zip，可直接对接 agent-skills 等社区技能生态
+  （95K+ stars）。
+- 前端技能页：导入对话框（拖拽上传 + 结果反馈）、体检标签（findings 悬浮）、
+  导出/导出全部/重扫操作。
+
+#### A2A 协议双端 + 流式
+- **Server**（`/v1/a2a`，复用 API Token 认证，零网关配置）：Agent Card 发现
+  （`GET /v1/a2a/agents[/{id}/card]`）+ JSON-RPC 2.0（`message/send`、`tasks/get`、
+  `tasks/cancel`）；任务生命周期映射（QUEUED→submitted / RUNNING→working /
+  COMPLETED→completed 携带文本 Artifact / FAILED→failed / CANCELLED→canceled）；
+  contextId 透传为 conversationId 支持多轮。
+- **流式补齐**：`message/stream` 走 SSE 推送任务事件流（submitted → working → 终态），
+  completed 携带文本 Artifact，流异常降级为 failed 事件后收口不悬挂；Agent Card
+  `capabilities.streaming=true`；与 `message/send` 共用提交管线（预算/审计/取消一致）。
+- **Client**（agent-core）：`a2a.callAgent`（委派外部 A2A Agent，提交 + 轮询到终态）
+  与 `a2a.getAgentCard`（发现）；内置 SSRF 防护——默认拒绝私网/环回目标，
+  `lumina.agent.a2a.allow-private-hosts` 可放行。
+
+#### 工具使用分析——生产数据驱动的工具集蒸馏（V54）
+- 新增 `ToolUsageRecord` / `ToolUsageSink` 接缝（镜像 TraceSink 扩展模式，未注册
+  实现自动跳过）；TraceCollector 成败均异步落库（含截断前字符量作上下文成本代理
+  指标），容错不影响主路径。
+- `lumina_tool_usage` 明细表（append-only，仅聚合读取），加入租户插件 ALWAYS_IGNORE；
+  聚合 SQL 纯 GROUP BY，成功率等派生指标 Java 侧计算。
+- `GET /api/v1/agents/{id}/tool-usage`：时间窗（1–365 天，默认 30）聚合调用量/
+  成功率/平均耗时/平均结果字符；**unusedTools = 配置工具集 − 窗口内实际调用集**
+  ——未用工具仍随每次请求进入模型上下文（token 成本 + 干扰选择），是精简的第一候选。
+- Agent 详情页新增"工具使用分析"卡片：时间窗切换、各工具统计表（成功率色阶）、
+  未用工具蒸馏候选告警。
+
+#### 语音多模态——会话语音输入（STT）与回复朗读（TTS）
+- **STT**：paraformer-realtime-v2 以"整段喂入"转写录音（≤10MB），按句终点去重拼接
+  （实时协议先给增量后定稿）；wav/mp3/opus/aac 按扩展名映射。
+- **TTS**：cosyvoice-v2 非流式合成 16k 单声道 16bit WAV（浏览器直接播放），
+  文本 ≤2000 字符，音色可选（默认 longxiaochun）。
+- **OpenAI 兼容分支**（`lumina.speech.provider: openai`）：`/audio/transcriptions`
+  （SenseVoice/Whisper 系）与 `/audio/speech`（CosyVoice2/OpenAI TTS），不再绑死
+  DashScope；voice 校验放宽兼容 `CosyVoice2-0.5B:alex` 形态。
+- **密钥解析链**：`lumina.speech.api-key` → 租户 DASHSCOPE Provider 解密 Key →
+  `lumina.agent.llm.api-key` 兜底——语音开箱即用无需单独配密钥。
+- 端点挂 agents 前缀复用既有网关路由与 `agent:list` 权限，零网关配置。
+- 前端 `utils/audio.ts`：任意录音 Blob（webm/opus、mp4/aac）→ Web Audio 解码 →
+  OfflineAudioContext 重采样 16k 单声道 16bit PCM WAV（服务端格式分支归零）；
+  会话页麦克风按钮（录音/转写状态机）+ AI 回复朗读按钮（单实例播放，卸载清理）。
+
+#### 知识飞轮——任务产物沉淀入知识库（V55，自维护 Wiki）
+- 闭环：任务产物 → 沉淀队列（PENDING）→ 人工审核（通过=入库 / 驳回=留痕）→
+  更好的检索 → 更好的回答；对标 Tencent/WeKnora 自维护 Wiki，让 RAG 知识库随使用变厚。
+- `KnowledgeService.ingestText` 纯文本直接入库路径——复用与文件上传完全一致的管线：
+  KB 级分块配置优先 → TextReader 分块 → 租户/库隔离 payload stamping → 向量化 →
+  MySQL chunk 双写，同步执行并返回 docUuid。
+- 审核状态机：仅 PENDING 可审（幂等保护）；通过即同步入库并回链 docUuid，入库失败
+  异常回滚保持 PENDING 可重审；驳回留痕。`knowledge:deposit` 与 `knowledge:review`
+  权限分离（提出人 ≠ 审核人）。
+- 前端：任务页 COMPLETED 任务"沉淀知识"入口（内容预填任务产物可编辑、目标知识库
+  下拉）、知识页"知识沉淀"审核 tab（状态过滤/详情预览/通过/驳回）。
+
+#### OAuth2/SSO 第三方登录（V56）
+- 标准**授权码**流程（零 Spring Security，复用自有 JWT/权限/在线用户体系）：
+  authorize 302 三方授权页（state 存 Redis 5 分钟单次有效，防 CSRF/重放）→
+  callback（state 校验 → 换 token → 拉 userinfo → 按 provider+openId 查绑定）→
+  绑定用户已删明确报错。
+- GitHub 预设端点 + 通用 OIDC（全部 URL 与 userinfo 字段映射可 yml/env 覆盖）；
+  client-id 非空即启用。
+- **首登自动建号**：随机密码 + 默认 TENANT_USER 角色 + 用户名去冲突
+  （`{provider}_{login}`，冲突追加序号）；`lumina_oauth2_identity` 绑定表
+  （uk provider+open_id，一用户可绑多身份）。
+- `AuthService` 抽取 issueLogin 共用签发管线（密码登录与三方登录同一管线）；
+  三端点 `/api/v1/base/auth/oauth2/{providers,authorize,callback}` 白名单放行
+  （网关部署需同步 Nacos 白名单）。
+- 前端：登录页三方按钮动态渲染（未配置自动隐藏）+ `/oauth2/callback` 回调页
+  （取 token → 存储 → 跳首页）。
+
+#### 大输入分治——确定性拆分 + 隔离上下文并发 + 合并（V57）
+- **拆分（工程代码约束）**：BY_LINES 按行分组 / BY_CHARS 按字符带 10% 重叠
+  （减少语义断裂）；分片数超 maxBundles 直接拒绝（防误操作打爆队列）。
+- **执行**：子任务走 submitTask 完整异步管线（隔离会话，限流/预算/审计一致，
+  Agent 并发限制天然约束并发度），回填批次标记。
+- **合并**：单线程终态监视器（守护线程，2s 轮询/30min 超时）→ 全部终态后
+  CONCAT 工程拼接（带分片标头）/ LLM 汇总（单片截断+总量上限，失败回退拼接）；
+  部分失败时父任务 FAILED 并保留成功分片合并结果与失败序号；token 汇总写父任务；
+  cancelBatch 整批取消；服务重启由既有重启对账机制标记 INTERRUPTED。
+- 端点：`POST /{id}/execute/batch`、`GET /tasks/{uuid}/batch`、
+  `POST /tasks/{uuid}/batch/cancel`；AgentTaskVO 补批次三字段。
+- 前端任务页：分治提交对话框（Agent 下拉/策略/分片大小/合并方式）、批次列
+  （xN 父任务 / #n 子任务）、详情分片明细表、整批取消。
+
+#### 模板与分享中心（V58）
+- **角色包（统一分享格式）**：zip 结构 manifest.json + agent.json +
+  skills/{name}/SKILL.md；导出自动剥离 apiKey 及任何含 key/secret 字段，可选随包
+  全部启用技能；Agent 列表一键导出。
+- **导入**：技能逐条走安全体检管线（拒收/重名跳过不阻断整包）→ 模板入库（重名
+  版本自增）；agent.json 缺失整包拒绝。
+- **模板实例化**：一键建 Agent，名称冲突自动加序号后缀，llmConfig 剥密钥还原；
+  删除模板不影响已实例化 Agent 与技能。
+- **技能 URL/Git 拉取（直连社区生态）**：单文件 .md 直链 / GitHub、Gitee 仓库及
+  子目录（contents API 自动遍历两层找 `{name}/SKILL.md`，单次上限 30 条）；
+  拉取后走同一导入管线（体检/查重/入库）。
+- `/share` 分享中心页：模板列表/上传角色包/实例化/技能 URL 导入卡片。
+
+#### 存量 Bug 修复（真实环境 E2E 发现）
+- **TextReader 场景入库的是文件路径而非正文（严重）**：agentscope
+  `ReaderInput.fromPath()` 只存路径、`fromFile()` 才读内容——同一 API 两种语义，
+  文本类调用点全部踩坑；txt/md 文档上传（同步/异步/OCR）与 ingestText 的 MySQL
+  chunk 与 Qdrant payload/vector 全是路径串（向量检索变底噪匹配）。修复 5 处
+  fromPath→fromFile（PDF/Word 分支保持原正确语义）。
+- **检索 API 的 content 永远为空**：写入侧 content 放在 metadata.content
+  （TextBlock），读取侧却从 payload 取；同修租户二次过滤键名 `tenantId`→`tenant_id`。
+- **V55/V58 权限种子 INSERT 列数与值数不匹配**：本地真实 MySQL 集成测试暴露
+  （单测 mock 掉 mapper 未覆盖），对齐 V52 五列格式；同一模式两次翻车，后续迁移
+  必须对照已验证格式。
+- **CI**：pnpm 10+ 默认拦截依赖构建脚本导致前端构建失败（package.json 声明
+  onlyBuiltDependencies + CI/Docker 钉 pnpm @10）；GitHub Actions 升级 v5/v6/v7
+  （Node 24 runtime，消除 Node 20 弃用警告）。
+
+#### 数据库迁移
+- V53：`lumina_skill` 增加 source/scan_status/scan_report 列（开放标准导入与体检）
+- V54：`lumina_tool_usage` 工具调用明细表（append-only）
+- V55：`lumina_knowledge_deposit` 知识沉淀审核队列表 + knowledge:deposit/review 权限
+- V56：`lumina_oauth2_identity` 三方身份绑定表（uk provider+open_id）+ 权限种子
+- V57：`lumina_agent_task` 增加 parent_uuid/bundle_index/bundle_count + parent 索引
+- V58：`lumina_agent_template` 模板表 + share:list/share:import 权限与菜单
+
+#### 文档
+- README 新增"纯 AI 开发的工程实践范本"章节（纲领/技能包/检查清单方法论资产）；
+  教程体系新增第零阶 Stage 0（如何用 AI 开发本项目，110→111 篇）。
+
+#### 测试
+- 新增 80 个单测：SKILL.md 解析/体检/导入导出/重扫 + A2A 映射 + SSRF（40）+
+  工具使用分析（6）+ 语音（8）+ 知识飞轮（6）+ OAuth2（6）+ A2A 流式（2）+
+  分治（6）+ 分享中心（6）。
+- 真实 LLM E2E：A2A 流式事件流（submitted→working→completed 携带模型真实回答）、
+  分治 3 片并发执行合并（token 汇总正确）、角色包导出→导入→实例化→新 Agent 真实
+  执行、GitHub 单文件与仓库子目录真实拉取、知识飞轮向量路（修复前 0 命中/路径串 →
+  修复后 score 0.654 命中真实正文）、语音回环（CosyVoice2 合成→SenseVoice 转写
+  一致）、Mock OAuth2 全流程（providers→302 授权→回调→自动建号→JWT 调业务 API→
+  二次登录复用）。
+- 前端 106 用例全绿；全项目单测+集成测试在本地 MySQL/Redis 环境全绿。
+
 ## [3.11.0] - 2026-08-19
 
-### 上下文工程 + 工具安全管线（融合 DeepSeek Harness 设计）
+### 上下文工程 + 工具安全 + 技能与自主编排（融合 DeepSeek Harness 设计）
 
 本次聚焦 Agent 核心能力代际升级：上下文管理从"固定条数窗口"进化到"Token 预算 + 两级压缩 +
 溢出自愈"，工具执行引入"拦截器 → 审批 → 单调守卫"安全管线（对标开源竞品均为空白），
@@ -50,15 +207,58 @@
   取回结果不再 spill（防回环），存档失败降级硬截断。默认关闭
   （`lumina.agent.tool.spill.enabled`）。
 
+#### 技能系统渐进披露（V52）
+- **第一段（目录）**：引擎在系统提示注入 `<available_skills>` 块——仅技能名 +
+  截断描述（默认 200 字符）+ 适用场景，成本恒定几百 token，计入 Token 预算；
+  默认关闭（`lumina.agent.skill.*`）。
+- **第二段（加载）**：模型判断需要时调用 `util.loadSkill` 工具按名取全文，
+  每次重读不缓存（技能更新下一次调用即生效）；超长内容由 A5 spill 兜底。
+- `SkillCatalogProvider` 接缝（listSkills/loadContent）+ `SkillServiceImpl`
+  （CRUD + 租户隔离 + 名称唯一）；loadContent 前过 PromptInjectionFilter
+  （fail-closed：命中按不可访问处理）。
+- 前端技能管理页（列表/新建/编辑/启停/删除）+ skill 菜单/按钮权限种子
+  （SUPER_ADMIN + TENANT_ADMIN 授予）。
+
+#### 自主编排节点（workflow 第 7 种节点类型）
+- 融合 DeepSeek Harness"代码即工作流"设计：YAML `type: autonomy`——script（JS，
+  以 return 结束）+ agentId（子调用目标由配置指定，脚本不能自选——无提权面）+
+  四重限额（maxTotalAgents 20 / maxConcurrentAgents 5 / maxItemsPerCall 200 /
+  timeoutSeconds 120）。
+- `AutonomyScriptEngine`：GraalJS 沙箱（`allowAllAccess(false)`，Java.type/类查找/
+  IO/进程/线程全禁）；桥接函数 `agent(prompt)`（走 A4 安全管线与工具白名单）、
+  `parallel([...])`（宿主侧虚拟线程并行，单项失败映射 null）、`pipeline(items,...stages)`、
+  `log(msg)`；返回值纯 JSON 物化校验（拒函数/宿主对象/`__proto__` 载荷）；fatal 与
+  单条失败分离（拼错选项/触顶限额/超时响亮失败）；超时先 interrupt 有界宽限再强杀。
+- 双引擎接入：DefaultWorkflowEngine 策略 Bean + Flowable delegate/BPMN 转换器。
+
+#### 观测事件总线 + MultiAgent 委派收紧 + 重启对账
+- **AgentTurnEvent 事件总线**：STARTED/COMPLETED/FAILED/INTERRUPTED 四阶段轮次事件
+  （INTERRUPTED 与 FAILED 语义区分：已有部分输出、副作用未知）；同步与流式路径均
+  发布，发布失败不影响执行；首个消费者 `AgentTurnMetricsListener`（轮次计数/时长/
+  token 指标）——新增观测自此只加监听器不改引擎。
+- **MultiAgent 结构化回传 + 委派权限冻结**：ExpertResult 记录（成败/输出/输入输出
+  token/耗时）替代 StringBuilder 拼接，专家失败是一等公民；子 Agent 工具白名单收敛
+  为父白名单子集（retainAll，交集为空即空集）；附带修复子 Toolkit 此前按父 agentId
+  误缓存（多个子 Agent 配置不同会命中同一缓存条目）。
+- **服务重启中断任务对账**：`AgentTaskStartupReconciler` 启动时将 RUNNING 任务标记
+  INTERRUPTED（"执行结果未知：仅幂等操作可安全重试"），不再永久卡"执行中"；
+  QUEUED 仅本地线程池模式标记（MQ 模式会重投递）；前端补 INTERRUPTED 状态映射。
+- 新增 `docs/zh/design/防御性设计原则.md`：确定性优先 / fail-closed 入词表 /
+  中断即事实 / 观测走事件 / 委派只能收紧。
+
 #### 数据库迁移
 - V50：`agent:tool-approval` 权限种子（挂 Agent 管理，SUPER_ADMIN 授予）
 - V51：`lumina_tool_artifact` 工具结果存档表
+- V52：`lumina_skill` 技能表（租户内名称唯一）+ skill 菜单/按钮权限种子
 
 #### 测试
 - 新增 33 个单测：TokenEstimator（11）/ ContextPruner（4）/ 引擎预算装填与压缩（8）/
   ToolSecurityPipeline 单调性与 fail-closed（11，含"审批放行 + 守卫仍否决"核心用例）/
   ToolResultSpiller（5）；AgentTaskServiceImplTest 同步构造器签名。
-- agent-core 359 全绿；business-agent 263 与基线逐类一致。
+- 另有 23 个单测覆盖 B/C 层：自主编排沙箱（12，含沙箱逃逸拒绝/限额响亮失败/死循环
+  超时强杀/`__proto__` 载荷防御）、技能系统（7，租户隔离/重名拒绝/注入 fail-closed/
+  目录注入边界）、事件指标（4）。
+- agent-core 373 全绿；business-agent 272 与基线逐类一致。
 
 ## [3.10.0] - 2026-07-28
 
