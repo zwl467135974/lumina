@@ -72,10 +72,30 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_DISABLED);
         }
 
-        // 5. 转换为领域模型
+        // 5-11. 装载角色权限并签发 JWT（与 OAuth2 登录共用）
+        return issueLogin(userDO);
+    }
+
+    @Override
+    public LoginVO loginByUserId(Long userId) {
+        UserDO userDO = userMapper.selectById(userId);
+        if (userDO == null || userDO.getDeleted() == 1) {
+            throw new BusinessException(ErrorCode.LOGIN_FAILED, "用户不存在");
+        }
+        if (userDO.getStatus() == 0) {
+            throw new BusinessException(ErrorCode.USER_DISABLED);
+        }
+        return issueLogin(userDO);
+    }
+
+    /**
+     * 装载角色/权限并签发 JWT（账号密码登录与 OAuth2 三方登录共用）
+     */
+    private LoginVO issueLogin(UserDO userDO) {
+        // 1. 转换为领域模型
         User user = toDomain(userDO);
 
-        // 6. 加载用户角色（过滤禁用的角色）
+        // 2. 加载用户角色（过滤禁用的角色）
         List<RoleDO> roleDOs = roleMapper.selectRolesByUserId(user.getUserId());
         List<Role> roles = roleDOs.stream()
                 .filter(roleDO -> roleDO.getStatus() != 0)  // 过滤禁用的角色
@@ -88,7 +108,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.setRoles(roles);
 
-        // 7. 加载角色权限
+        // 3. 加载角色权限
         if (!roles.isEmpty()) {
             List<Long> roleIds = roles.stream()
                     .map(Role::getRoleId)
@@ -104,7 +124,7 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        // 8. 生成 JWT Token
+        // 4. 生成 JWT Token
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getUserId());
         claims.put("username", user.getUsername());
@@ -114,14 +134,14 @@ public class AuthServiceImpl implements AuthService {
 
         String token = jwtUtil.generateToken(user.getUsername(), claims);
 
-        // 9. 缓存权限快照（供 Gateway 实时读取）
+        // 5. 缓存权限快照（供 Gateway 实时读取）
         redisCacheManager.cachePermissionSnapshot(user.getUserId(),
                 String.join(",", user.getPermissionCodes()));
 
-        // 10. 记录在线用户
+        // 6. 记录在线用户
         onlineUserService.recordLogin(user.getUserId(), user.getUsername());
 
-        // 11. 构建响应
+        // 7. 构建响应
         LoginVO loginVO = new LoginVO();
         loginVO.setToken(token);
         loginVO.setTokenType("Bearer");

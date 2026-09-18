@@ -15,6 +15,15 @@ export const basicRoutes: AppRouteRecordRaw[] = [
     }
   },
   {
+    path: '/oauth2/callback',
+    name: 'OAuth2Callback',
+    component: () => import('@/views/login/oauth2-callback.vue'),
+    meta: {
+      title: '三方登录',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/404',
     name: 'NotFound',
     component: () => import('@/views/error/404.vue'),

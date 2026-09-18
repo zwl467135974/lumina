@@ -118,6 +118,7 @@ lumina:
     paths:
       - /api/v1/auth/login
       - /api/v1/base/auth/login
+      - /api/v1/base/auth/oauth2/**
       - /actuator/health
       - /actuator/info
 
@@ -213,6 +214,39 @@ lumina:
     tts:
       model: ${SPEECH_TTS_MODEL:cosyvoice-v2}
       voice: ${SPEECH_TTS_VOICE:longxiaochun}
+
+  # OAuth2 第三方登录（client-id 非空即启用；默认跳过网关/standalone 均需在白名单放行 /api/v1/base/auth/oauth2/**）
+  oauth2:
+    frontend-redirect-uri: ${OAUTH2_FRONTEND_REDIRECT:http://localhost:5173/oauth2/callback}
+    public-base-url: ${OAUTH2_PUBLIC_BASE_URL:}    # 对外可达基地址（构造 redirect_uri），空则 localhost:8080
+    default-tenant-id: ${OAUTH2_DEFAULT_TENANT_ID:0}
+    default-role-id: ${OAUTH2_DEFAULT_ROLE_ID:4}   # TENANT_USER
+    username-prefix: ${OAUTH2_USERNAME_PREFIX:}
+    providers:
+      github:
+        display-name: GitHub
+        client-id: ${OAUTH2_GITHUB_CLIENT_ID:}
+        client-secret: ${OAUTH2_GITHUB_CLIENT_SECRET:}
+        authorize-url: https://github.com/login/oauth/authorize
+        token-url: https://github.com/login/oauth/access_token
+        userinfo-url: https://api.github.com/user
+        scopes: read:user
+        openid-field: id
+        username-field: login
+        avatar-field: avatar_url
+        email-field: email
+      oidc:
+        display-name: SSO
+        client-id: ${OAUTH2_OIDC_CLIENT_ID:}
+        client-secret: ${OAUTH2_OIDC_CLIENT_SECRET:}
+        authorize-url: ${OAUTH2_OIDC_AUTHORIZE_URL:}
+        token-url: ${OAUTH2_OIDC_TOKEN_URL:}
+        userinfo-url: ${OAUTH2_OIDC_USERINFO_URL:}
+        scopes: ${OAUTH2_OIDC_SCOPES:openid profile email}
+        openid-field: sub
+        username-field: preferred_username
+        avatar-field: picture
+        email-field: email
 
   # RAG 默认关闭，避免 Qdrant 依赖（需要时设 RAG_ENABLED=true 并部署 Qdrant）
   rag:

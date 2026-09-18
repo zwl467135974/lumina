@@ -20,6 +20,14 @@ public interface AuthService {
     LoginVO login(LoginDTO loginDTO);
 
     /**
+     * 按用户 ID 直接签发登录态（OAuth2 三方登录回调成功后复用）
+     *
+     * @param userId 用户 ID
+     * @since 3.12.0
+     */
+    LoginVO loginByUserId(Long userId);
+
+    /**
      * 用户登出
      *
      * @param token JWT Token（可为 null）

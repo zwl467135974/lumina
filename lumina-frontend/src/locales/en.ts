@@ -147,7 +147,14 @@ export default {
     footerHint: 'Lumina AI Agent Platform — Intelligent Agent Management',
     usernameRequired: 'Please enter username',
     passwordRequired: 'Please enter password',
-    error: 'Login failed, please try again'
+    error: 'Login failed, please try again',
+    oauth2: {
+      divider: 'Or continue with',
+      processing: 'Processing third-party login…',
+      failed: 'Third-party login failed',
+      noToken: 'Callback did not carry credentials',
+      backToLogin: 'Back to Login'
+    }
   },
   dashboard: {
     title: 'Dashboard',

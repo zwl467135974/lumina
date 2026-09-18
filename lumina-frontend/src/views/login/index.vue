@@ -84,17 +84,35 @@
         </el-form-item>
       </el-form>
 
+      <!-- 三方登录（OAuth2 Provider 由后端配置启用） -->
+      <template v-if="oauth2Providers.length > 0">
+        <el-divider class="oauth2-divider">{{ t('login.oauth2.divider') }}</el-divider>
+        <div class="oauth2-buttons">
+          <el-button
+            v-for="provider in oauth2Providers"
+            :key="provider.name"
+            size="large"
+            class="oauth2-btn"
+            @click="loginWithProvider(provider.name)"
+          >
+            {{ provider.displayName }}
+          </el-button>
+        </div>
+      </template>
+
       <p class="login-footer-text">{{ t('login.footerHint') }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Lock, Sunny, Moon } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import request from '@/api/request'
+import type { R } from '@/types/api'
 import { useUserStore, useAppStore } from '@/stores'
 
 const { t, locale, availableLocales } = useI18n()
@@ -144,6 +162,24 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
+}
+
+// ==================== 三方登录（OAuth2） ====================
+interface OAuth2Provider { name: string; displayName: string }
+const oauth2Providers = ref<OAuth2Provider[]>([])
+
+onMounted(async () => {
+  try {
+    const res = await request.get<R<OAuth2Provider[]>>('/api/v1/base/auth/oauth2/providers')
+    oauth2Providers.value = res.data || []
+  } catch {
+    oauth2Providers.value = [] // 未配置时静默隐藏
+  }
+})
+
+function loginWithProvider(provider: string) {
+  const base = import.meta.env.VITE_API_BASE_URL || ''
+  window.location.href = `${base}/api/v1/base/auth/oauth2/${provider}/authorize`
 }
 </script>
 
@@ -329,6 +365,21 @@ async function handleLogin() {
   margin: var(--lumina-spacing-lg) 0 0 0;
   font-size: var(--lumina-font-size-xs);
   color: var(--lumina-text-muted);
+}
+
+/* ---------- 三方登录 ---------- */
+.oauth2-divider {
+  margin: var(--lumina-spacing-md, 16px) 0;
+}
+
+.oauth2-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lumina-spacing-sm, 8px);
+}
+
+.oauth2-btn {
+  width: 100%;
 }
 
 /* ---------- 响应式 ---------- */

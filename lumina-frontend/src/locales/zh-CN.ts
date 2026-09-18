@@ -147,7 +147,14 @@ export default {
     footerHint: 'Lumina AI Agent 平台 — 智能代理管理',
     usernameRequired: '请输入用户名',
     passwordRequired: '请输入密码',
-    error: '登录失败，请重试'
+    error: '登录失败，请重试',
+    oauth2: {
+      divider: '三方登录',
+      processing: '三方登录处理中…',
+      failed: '三方登录失败',
+      noToken: '回调未携带登录凭证',
+      backToLogin: '返回登录'
+    }
   },
   dashboard: {
     title: '仪表盘',
