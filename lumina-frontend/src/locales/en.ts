@@ -307,7 +307,30 @@ export default {
     cancelConfirm: 'Cancel this task?',
     autoRefresh: 'Auto Refresh',
     stopRefresh: 'Stop',
-    detail: 'Task Detail'
+    detail: 'Task Detail',
+    batch: {
+      title: 'Batch (Fan-out)',
+      flag: 'Batch',
+      children: 'Bundle Sub-tasks',
+      index: 'Bundle',
+      cancelAll: 'Cancel Batch',
+      cancelConfirm: 'Cancel the whole batch (including running sub-tasks)?',
+      agentPlaceholder: 'Select agent',
+      instruction: 'Instruction',
+      instructionPlaceholder: 'Per-bundle instruction, e.g. summarize this section in one sentence',
+      input: 'Large Input',
+      inputPlaceholder: 'Paste large text (split into bundles and processed concurrently)',
+      strategy: 'Split Strategy',
+      byLines: 'By lines',
+      byChars: 'By chars (overlap)',
+      sizeHint: 'lines / chars per bundle',
+      merge: 'Merge Mode',
+      mergeConcat: 'Concat',
+      mergeLlm: 'LLM merge',
+      maxBundlesHint: 'max bundles',
+      required: 'Agent, instruction and input are required',
+      submitted: 'Batch submitted'
+    }
   },
   trigger: {
     title: 'Cron Triggers',

@@ -24,6 +24,12 @@ public class AgentTaskDO {
     private String taskUuid;
     private Long agentId;
     private String conversationUuid;
+    /** 所属批次父任务（分治模式子任务专用） */
+    private String parentUuid;
+    /** 分片序号（从 0 起） */
+    private Integer bundleIndex;
+    /** 批次总分片数 */
+    private Integer bundleCount;
     private String inputText;
     private String fileIds;
     private String status;

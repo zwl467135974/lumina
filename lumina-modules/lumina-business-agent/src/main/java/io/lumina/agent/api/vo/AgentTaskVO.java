@@ -16,6 +16,12 @@ public class AgentTaskVO {
     private String taskUuid;
     private Long agentId;
     private String conversationUuid;
+    /** 分治批次父任务（子任务专有） @since 3.12.0 */
+    private String parentUuid;
+    /** 分片序号（从 0 起） @since 3.12.0 */
+    private Integer bundleIndex;
+    /** 批次总分片数（父任务专有） @since 3.12.0 */
+    private Integer bundleCount;
     private String inputText;
     private String fileIds;
     private String status;

@@ -17,6 +17,7 @@
       <template #toolbar-right>
         <el-button v-if="autoRefresh" type="success" plain @click="stopAutoRefresh">{{ t('task.stopRefresh') }}</el-button>
         <el-button v-else type="warning" plain @click="startAutoRefresh">{{ t('task.autoRefresh') }}</el-button>
+        <el-button type="primary" @click="openBatchDialog">{{ t('task.batch.title') }}</el-button>
       </template>
 
       <el-table-column prop="taskUuid" :label="t('task.taskUuid')" min-width="200" show-overflow-tooltip>
@@ -38,9 +39,16 @@
           <template #default="{ row }">{{ row.durationMs ? (row.durationMs / 1000).toFixed(1) + 's' : '-' }}</template>
         </el-table-column>
         <el-table-column prop="createTime" :label="t('task.createTime')" width="170" />
-        <el-table-column :label="t('common.actions')" width="170" fixed="right">
+        <el-table-column :label="t('task.batch.flag')" width="90">
+          <template #default="{ row }">
+            <el-tag v-if="row.bundleCount" size="small" type="primary">x{{ row.bundleCount }}</el-tag>
+            <el-tag v-else-if="row.parentUuid" size="small" type="info">#{{ (row.bundleIndex ?? 0) + 1 }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('common.actions')" width="250" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="viewDetail(row)">{{ t('common.detail') }}</el-button>
+            <el-button v-if="row.bundleCount && (row.status === 'QUEUED' || row.status === 'RUNNING')" link type="warning" @click="handleCancelBatch(row.taskUuid)">{{ t('task.batch.cancelAll') }}</el-button>
             <el-button
               v-if="row.status === 'COMPLETED' && row.result"
               link
@@ -73,6 +81,62 @@
         <el-descriptions-item :label="t('task.createTime')">{{ detailTask.createTime || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="t('task.createTime')">{{ detailTask.updateTime || '-' }}</el-descriptions-item>
       </el-descriptions>
+
+      <!-- 分治批次子任务 -->
+      <template v-if="detailTask && detailTask.bundleCount">
+        <el-divider content-position="left">{{ t('task.batch.children') }}（{{ batchChildren.length }}/{{ detailTask.bundleCount }}）</el-divider>
+        <el-table :data="batchChildren" size="small" max-height="260">
+          <el-table-column prop="bundleIndex" :label="t('task.batch.index')" width="70">
+            <template #default="{ row }">#{{ (row.bundleIndex ?? 0) + 1 }}</template>
+          </el-table-column>
+          <el-table-column :label="t('task.status')" width="100">
+            <template #default="{ row }">
+              <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="totalTokens" :label="t('task.tokenUsage')" width="90">
+            <template #default="{ row }">{{ row.totalTokens || '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="result" :label="t('task.result')" min-width="200" show-overflow-tooltip />
+        </el-table>
+      </template>
+    </el-dialog>
+
+    <!-- 分治任务提交对话框 -->
+    <el-dialog v-model="batchVisible" :title="t('task.batch.title')" width="720px" :close-on-click-modal="false">
+      <el-form label-width="110px">
+        <el-form-item :label="t('task.agentId')" required>
+          <el-select v-model="batchForm.agentId" style="width: 100%" :placeholder="t('task.batch.agentPlaceholder')">
+            <el-option v-for="a in batchAgents" :key="a.agentId" :value="a.agentId" :label="a.agentName" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('task.batch.instruction')" required>
+          <el-input v-model="batchForm.instruction" :placeholder="t('task.batch.instructionPlaceholder')" maxlength="2000" show-word-limit />
+        </el-form-item>
+        <el-form-item :label="t('task.batch.input')" required>
+          <el-input v-model="batchForm.inputText" type="textarea" :rows="10" :placeholder="t('task.batch.inputPlaceholder')" />
+        </el-form-item>
+        <el-form-item :label="t('task.batch.strategy')">
+          <el-select v-model="batchForm.splitStrategy" style="width: 200px">
+            <el-option value="BY_LINES" :label="t('task.batch.byLines')" />
+            <el-option value="BY_CHARS" :label="t('task.batch.byChars')" />
+          </el-select>
+          <el-input-number v-model="batchForm.bundleSize" :min="1" :max="50000" style="margin-left: 12px; width: 140px" />
+          <span class="batch-hint">{{ t('task.batch.sizeHint') }}</span>
+        </el-form-item>
+        <el-form-item :label="t('task.batch.merge')">
+          <el-radio-group v-model="batchForm.mergeMode">
+            <el-radio value="CONCAT">{{ t('task.batch.mergeConcat') }}</el-radio>
+            <el-radio value="LLM">{{ t('task.batch.mergeLlm') }}</el-radio>
+          </el-radio-group>
+          <el-input-number v-model="batchForm.maxBundles" :min="1" :max="50" style="margin-left: 12px; width: 120px" />
+          <span class="batch-hint">{{ t('task.batch.maxBundlesHint') }}</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="batchSubmitting" @click="submitBatch">{{ t('common.confirm') }}</el-button>
+      </template>
     </el-dialog>
 
     <!-- 知识沉淀对话框（任务产物 → 审核 → 入知识库） -->
@@ -106,7 +170,8 @@ import { onMounted, onUnmounted, ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { PageHeader, LumTablePanel, type SearchField } from '@/components/common'
-import { cancelAgentTask, listAgentTasks, type AgentTaskVO } from '@/api/modules/agent'
+import { cancelAgentTask, listAgentTasks, listAgents, submitBatchTask, listBatchChildren, cancelBatchTask, type AgentTaskVO } from '@/api/modules/agent'
+import type { AgentVO } from '@/types/api'
 import { createKnowledgeDeposit } from '@/api/modules/knowledge'
 import { listKnowledgeBases, type KnowledgeBaseVO } from '@/api/modules/knowledge-base'
 
@@ -192,6 +257,73 @@ const resetFilter = () => {
 const viewDetail = (row: AgentTaskVO) => {
   detailTask.value = row
   detailVisible.value = true
+  batchChildren.value = []
+  if (row.bundleCount) {
+    listBatchChildren(row.taskUuid).then(res => { batchChildren.value = res.data || [] }).catch(() => {})
+  }
+}
+
+// ==================== 分治批次（大输入 fan-out） ====================
+const batchVisible = ref(false)
+const batchSubmitting = ref(false)
+const batchAgents = ref<AgentVO[]>([])
+const batchChildren = ref<AgentTaskVO[]>([])
+const batchForm = reactive({
+  agentId: null as number | null,
+  instruction: '',
+  inputText: '',
+  splitStrategy: 'BY_LINES',
+  bundleSize: 50,
+  maxBundles: 20,
+  mergeMode: 'CONCAT'
+})
+
+const openBatchDialog = async () => {
+  if (batchAgents.value.length === 0) {
+    try {
+      const res = await listAgents({ pageNum: 1, pageSize: 100 })
+      batchAgents.value = (res.data?.list || []).filter(a => a.status === 1)
+    } catch {
+      batchAgents.value = []
+    }
+  }
+  batchForm.agentId = null
+  batchForm.instruction = ''
+  batchForm.inputText = ''
+  batchVisible.value = true
+}
+
+const submitBatch = async () => {
+  if (!batchForm.agentId || !batchForm.instruction.trim() || !batchForm.inputText.trim()) {
+    ElMessage.warning(t('task.batch.required'))
+    return
+  }
+  batchSubmitting.value = true
+  try {
+    await submitBatchTask(batchForm.agentId, {
+      instruction: batchForm.instruction.trim(),
+      inputText: batchForm.inputText,
+      splitStrategy: batchForm.splitStrategy as 'BY_LINES' | 'BY_CHARS',
+      bundleSize: batchForm.bundleSize,
+      maxBundles: batchForm.maxBundles,
+      mergeMode: batchForm.mergeMode as 'CONCAT' | 'LLM'
+    })
+    ElMessage.success(t('task.batch.submitted'))
+    batchVisible.value = false
+    pagination.pageNum = 1
+    loadTasks()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? t('common.saveFailed'))
+  } finally {
+    batchSubmitting.value = false
+  }
+}
+
+const handleCancelBatch = async (taskUuid: string) => {
+  await ElMessageBox.confirm(t('task.batch.cancelConfirm'), t('common.confirm'), { type: 'warning' })
+  await cancelBatchTask(taskUuid)
+  ElMessage.success(t('common.success'))
+  loadTasks()
 }
 
 const handleCancel = async (taskUuid: string) => {
@@ -283,6 +415,7 @@ onUnmounted(() => {
   line-height: 1.6;
 }
 .error-text { color: var(--lumina-danger); }
+.batch-hint { margin-left: 8px; color: var(--lumina-text-secondary); font-size: 12px; }
 
 @media (max-width: 768px) {
   :deep(.el-col) {

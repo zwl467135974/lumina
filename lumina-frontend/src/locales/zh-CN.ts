@@ -307,7 +307,30 @@ export default {
     cancelConfirm: '确认取消该任务？',
     autoRefresh: '自动刷新',
     stopRefresh: '停止刷新',
-    detail: '任务详情'
+    detail: '任务详情',
+    batch: {
+      title: '分治任务',
+      flag: '批次',
+      children: '分片子任务',
+      index: '分片',
+      cancelAll: '取消批次',
+      cancelConfirm: '确认取消整批任务（含未完成的子任务）？',
+      agentPlaceholder: '选择执行 Agent',
+      instruction: '处理指令',
+      instructionPlaceholder: '对每个分片执行的处理指令，如：用一句话总结这段内容',
+      input: '分治内容',
+      inputPlaceholder: '粘贴大文本（将按策略拆分为多个分片子任务并发处理）',
+      strategy: '拆分策略',
+      byLines: '按行',
+      byChars: '按字符（带重叠）',
+      sizeHint: '每片行数 / 字符数',
+      merge: '合并方式',
+      mergeConcat: '工程拼接',
+      mergeLlm: 'LLM 汇总',
+      maxBundlesHint: '分片上限',
+      required: 'Agent、处理指令、分治内容均为必填',
+      submitted: '分治批次已提交'
+    }
   },
   trigger: {
     title: '定时触发器',

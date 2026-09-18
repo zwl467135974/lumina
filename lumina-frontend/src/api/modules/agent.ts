@@ -32,9 +32,12 @@ export interface AgentTaskVO {
   taskUuid: string
   agentId: number
   conversationUuid?: string
+  parentUuid?: string | null
+  bundleIndex?: number | null
+  bundleCount?: number | null
   inputText: string
   fileIds?: string
-  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'INTERRUPTED'
   result?: string
   errorMessage?: string
   promptTokens?: number
@@ -43,6 +46,31 @@ export interface AgentTaskVO {
   durationMs?: number
   createTime?: string
   updateTime?: string
+}
+
+export interface BatchTaskDTO {
+  instruction: string
+  inputText: string
+  splitStrategy?: 'BY_LINES' | 'BY_CHARS'
+  bundleSize?: number
+  maxBundles?: number
+  mergeMode?: 'CONCAT' | 'LLM'
+  agentId?: number
+}
+
+/** 提交大输入分治批次（返回父任务） */
+export function submitBatchTask(agentId: number, data: Omit<BatchTaskDTO, 'agentId'>) {
+  return request.post<R<AgentTaskVO>>(`/api/v1/agents/${agentId}/execute/batch`, { ...data, agentId })
+}
+
+/** 分治批次子任务列表 */
+export function listBatchChildren(taskUuid: string) {
+  return request.get<R<AgentTaskVO[]>>(`/api/v1/agents/tasks/${taskUuid}/batch`)
+}
+
+/** 取消分治批次 */
+export function cancelBatchTask(taskUuid: string) {
+  return request.post<R<AgentTaskVO>>(`/api/v1/agents/tasks/${taskUuid}/batch/cancel`)
 }
 
 export interface ToolUsageStatsVO {

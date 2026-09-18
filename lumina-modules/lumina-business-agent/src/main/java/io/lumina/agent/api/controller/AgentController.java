@@ -76,6 +76,8 @@ public class AgentController {
 
     private final AgentTaskService agentTaskService;
 
+    private final io.lumina.agent.service.AgentTaskBatchService agentTaskBatchService;
+
     private final ConversationService conversationService;
 
     private final ObjectMapper objectMapper;
@@ -405,6 +407,32 @@ public class AgentController {
         log.info("取消异步任务: taskUuid={}", taskUuid);
         AgentTaskDO task = agentTaskService.cancelTask(taskUuid);
         return R.success(toTaskVO(task));
+    }
+
+    /**
+     * 大输入分治批次：确定性拆分 → 隔离上下文子任务并发执行 → 合并
+     */
+    @Audit(module = "agent", action = "EXECUTE_ASYNC", description = "提交分治批次任务")
+    @Operation(summary = "提交分治批次任务（大输入 fan-out，返回父任务）")
+    @PostMapping("/{id}/execute/batch")
+    public R<AgentTaskVO> submitBatchTask(@PathVariable("id") Long id,
+                                          @Valid @RequestBody io.lumina.agent.api.dto.BatchTaskDTO dto) {
+        dto.setAgentId(id);
+        AgentTaskDO parent = agentTaskBatchService.submitBatch(dto);
+        return R.success(toTaskVO(parent));
+    }
+
+    @Operation(summary = "查询分治批次子任务（按分片序号升序）")
+    @GetMapping("/tasks/{taskUuid}/batch")
+    public R<List<AgentTaskVO>> listBatchChildren(@PathVariable("taskUuid") String taskUuid) {
+        return R.success(agentTaskBatchService.listChildren(taskUuid).stream().map(this::toTaskVO).toList());
+    }
+
+    @Audit(module = "agent", action = "UPDATE", description = "取消分治批次")
+    @Operation(summary = "取消分治批次（父任务 + 未终态子任务）")
+    @PostMapping("/tasks/{taskUuid}/batch/cancel")
+    public R<AgentTaskVO> cancelBatchTask(@PathVariable("taskUuid") String taskUuid) {
+        return R.success(toTaskVO(agentTaskBatchService.cancelBatch(taskUuid)));
     }
 
     /**
