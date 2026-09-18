@@ -526,6 +526,27 @@ export default {
     agentId: 'Agent ID',
     deleteConfirm: '删除知识库将解除所有 Agent 挂载，确认？'
   },
+  share: {
+    title: '分享中心',
+    description: '角色包（Agent 模板 + 技能集合）导入导出、模板实例化与技能 URL 拉取',
+    templates: 'Agent 模板',
+    importBundle: '导入角色包',
+    templateName: '模板名',
+    skillsCol: '随包技能',
+    empty: '暂无模板——从 Agent 列表导出角色包，或在上方导入',
+    instantiate: '实例化',
+    agentName: 'Agent 名称',
+    bundleImported: '角色包已导入：{name}',
+    instantiated: '已创建 Agent：{name}',
+    deleteConfirm: '确认删除模板 {name}？（不影响已实例化的 Agent 与技能）',
+    exportBundle: '导出角色包',
+    urlImport: '技能 URL 导入',
+    urlTip: '支持：单文件 .md 直链 / GitHub、Gitee 仓库或子目录（自动遍历找 SKILL.md，上限 30 条）；全部走安全体检',
+    urlPlaceholder: 'https://github.com/xxx/agent-skills 或 https://raw.githubusercontent.com/.../SKILL.md',
+    importUrl: '拉取并导入',
+    importedCount: '成功 {n} 条：',
+    urlDone: '拉取完成'
+  },
   skill: {
     title: '技能管理',
     description: 'Agent 技能库（渐进披露）：目录进上下文，全文按需加载',

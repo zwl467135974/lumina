@@ -124,4 +124,12 @@ public class SkillController {
     public R<SkillVO> rescan(@PathVariable("id") Long id) {
         return R.success(skillService.rescan(id));
     }
+
+    @Audit(module = "skill", action = "CREATE", description = "URL导入技能")
+    @Operation(summary = "从 URL/Git 仓库导入技能（单文件 .md / GitHub/Gitee 仓库目录，走安全体检）")
+    @RequirePermission("skill:create")
+    @PostMapping("/import-url")
+    public R<io.lumina.agent.api.dto.SkillImportResult> importFromUrl(@RequestBody java.util.Map<String, String> body) {
+        return R.success(skillService.importFromUrl(body.get("url")));
+    }
 }

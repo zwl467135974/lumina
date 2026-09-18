@@ -411,6 +411,21 @@ export const skillRoutes: AppRouteRecordRaw[] = [
   }
 ]
 
+// 分享中心路由（模板与角色包）
+export const shareRoutes: AppRouteRecordRaw[] = [
+  {
+    path: '/share',
+    name: 'Share',
+    component: () => import('@/views/share/index.vue'),
+    meta: {
+      title: '分享中心',
+      icon: 'Share',
+      requiresAuth: true,
+      keepAlive: true
+    }
+  }
+]
+
 // 成本仪表盘路由
 export const costRoutes: AppRouteRecordRaw[] = [
   {

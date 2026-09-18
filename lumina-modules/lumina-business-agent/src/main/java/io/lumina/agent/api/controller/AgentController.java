@@ -78,6 +78,8 @@ public class AgentController {
 
     private final io.lumina.agent.service.AgentTaskBatchService agentTaskBatchService;
 
+    private final io.lumina.agent.service.AgentTemplateService agentTemplateService;
+
     private final ConversationService conversationService;
 
     private final ObjectMapper objectMapper;
@@ -433,6 +435,17 @@ public class AgentController {
     @PostMapping("/tasks/{taskUuid}/batch/cancel")
     public R<AgentTaskVO> cancelBatchTask(@PathVariable("taskUuid") String taskUuid) {
         return R.success(toTaskVO(agentTaskBatchService.cancelBatch(taskUuid)));
+    }
+
+    @Audit(module = "agent_template", action = "CREATE", description = "导出角色包")
+    @Operation(summary = "导出角色包 zip（Agent 定义 + 可选全部启用技能，密钥自动剥离）")
+    @RequirePermission("share:list")
+    @GetMapping("/{id}/export-bundle")
+    public org.springframework.http.ResponseEntity<byte[]> exportBundle(
+            @PathVariable("id") Long id,
+            @RequestParam(defaultValue = "true") boolean includeSkills) {
+        byte[] zip = agentTemplateService.exportBundle(id, includeSkills);
+        return AgentTemplateController.zipResponse(zip, "lumina-bundle.zip");
     }
 
     /**

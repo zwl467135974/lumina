@@ -283,6 +283,12 @@ public class SkillServiceImpl implements SkillService, SkillCatalogProvider {
             result.addRejected(label, e.getMessage());
             return;
         }
+        importParsed(parsed, bundledFiles, result);
+    }
+
+    /** 已解析技能的导入（文件导入与角色包导入共用管线） */
+    private void importParsed(SkillMarkdownParser.ParsedSkill parsed, List<String> bundledFiles,
+                              SkillImportResult result) {
         Long tenantId = currentTenant();
         if (existsByName(tenantId, parsed.name(), null)) {
             result.addRejected(parsed.name(), "名称已存在（如需覆盖请先删除原技能）");
@@ -296,6 +302,29 @@ public class SkillServiceImpl implements SkillService, SkillCatalogProvider {
             return;
         }
 
+        SkillDO skill = insertSkill(parsed, tenantId, report, "IMPORT");
+        result.addImported(new SkillImportResult.ImportedSkill(
+                skill.getId(), skill.getName(), skill.getScanStatus(), skill.getEnabled() == 1));
+        log.info("导入技能: name={}, verdict={}, enabled={}", skill.getName(), report.getVerdict(), skill.getEnabled());
+    }
+
+    @Override
+    public SkillImportResult.ImportedSkill importSkillContent(String name, String description,
+                                                              String whenToUse, String content,
+                                                              List<String> bundledFiles) {
+        SkillImportResult single = new SkillImportResult();
+        importParsed(new SkillMarkdownParser.ParsedSkill(name, description,
+                whenToUse == null ? "" : whenToUse, content),
+                bundledFiles == null ? List.of() : bundledFiles, single);
+        if (!single.getImported().isEmpty()) {
+            return single.getImported().get(0);
+        }
+        String reason = single.getRejected().isEmpty() ? "unknown" : single.getRejected().get(0).getReason();
+        throw new BusinessException(ErrorCode.BAD_REQUEST, "技能导入失败: " + reason);
+    }
+
+    private SkillDO insertSkill(SkillMarkdownParser.ParsedSkill parsed, Long tenantId,
+                                SkillScanReport report, String source) {
         SkillDO skill = new SkillDO();
         skill.setName(parsed.name());
         skill.setDescription(truncateCatalog(parsed.description()));
@@ -305,13 +334,11 @@ public class SkillServiceImpl implements SkillService, SkillCatalogProvider {
         skill.setTenantId(tenantId);
         skill.setCreateBy(BaseContext.getUserId());
         skill.setIsDeleted(0);
-        skill.setSource("IMPORT");
+        skill.setSource(source);
         skill.setScanStatus(report.getVerdict());
         skill.setScanReport(toJson(report));
         skillMapper.insert(skill);
-        result.addImported(new SkillImportResult.ImportedSkill(
-                skill.getId(), skill.getName(), skill.getScanStatus(), skill.getEnabled() == 1));
-        log.info("导入技能: name={}, verdict={}, enabled={}", skill.getName(), report.getVerdict(), skill.getEnabled());
+        return skill;
     }
 
     /** 扫描并写入体检结论（不改动 enabled，由调用方决定策略） */
@@ -355,6 +382,140 @@ public class SkillServiceImpl implements SkillService, SkillCatalogProvider {
         } catch (Exception e) {
             log.warn("体检报告序列化失败，仅存结论: {}", e.getMessage());
             return "{\"verdict\":\"" + report.getVerdict() + "\"}";
+        }
+    }
+
+    // ==================== URL / Git 仓库导入（3.12.0 分享中心） ====================
+
+    /** 单仓库单次导入的技能数上限 */
+    private static final int MAX_URL_SKILLS = 30;
+
+    private final org.springframework.web.client.RestClient urlRestClient =
+            org.springframework.web.client.RestClient.builder().build();
+
+    @Override
+    public SkillImportResult importFromUrl(String url) {
+        if (url == null || !(url.startsWith("http://") || url.startsWith("https://"))) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "仅支持 http(s) URL");
+        }
+        List<FileContent> files = isRepoUrl(url)
+                ? fetchFromRepo(url)
+                : List.of(fetchSingleFile(url));
+        if (files.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "URL 中未找到可导入的 SKILL.md");
+        }
+        SkillImportResult result = new SkillImportResult();
+        for (FileContent file : files) {
+            if (result.getImported().size() + result.getRejected().size() >= MAX_URL_SKILLS) {
+                result.addRejected(file.name(), "超过单次 " + MAX_URL_SKILLS + " 条上限");
+                break;
+            }
+            importOne(file.name(), file.content(), List.of(), result);
+        }
+        log.info("URL 导入技能完成: url={}, imported={}, rejected={}",
+                url, result.getImported().size(), result.getRejected().size());
+        return result;
+    }
+
+    private record FileContent(String name, String content) {
+    }
+
+    private static boolean isRepoUrl(String url) {
+        return url.contains("github.com/") || url.contains("gitee.com/");
+    }
+
+    /** GitHub/Gitee 仓库或子目录：contents API 遍历两层找 {name}/SKILL.md */
+    private List<FileContent> fetchFromRepo(String repoUrl) {
+        try {
+            String[] parts = repoUrl.replaceAll("/+$", "").split("/");
+            // github.com/{owner}/{repo}[/tree/{branch}/{dir...}]
+            String host = parts[2];
+            String owner = parts[3];
+            String repo = parts[4];
+            String dir = "";
+            String ref = "";
+            if (parts.length > 6 && "tree".equals(parts[5])) {
+                ref = parts[6];
+                dir = String.join("/", java.util.Arrays.asList(parts).subList(7, parts.length));
+            } else if (parts.length > 5) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        "无法解析仓库 URL（期望 {host}/{owner}/{repo} 或 /tree/{branch}/{dir}）: " + repoUrl);
+            }
+            String apiBase = host.contains("gitee.com")
+                    ? "https://gitee.com/api/v5/repos"
+                    : "https://api.github.com/repos";
+            String listingUrl = apiBase + "/" + owner + "/" + repo + "/contents/" + dir
+                    + (ref.isEmpty() ? "" : (apiBase.contains("gitee") ? "?ref=" : "?ref=") + ref);
+
+            List<FileContent> found = new ArrayList<>();
+            collectSkillFiles(listingUrl, found);
+            return found;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "仓库拉取失败: " + e.getMessage());
+        }
+    }
+
+    /** 遍历一层目录列表：目录内含 SKILL.md 则取，顶层 SKILL.md 直接取 */
+    private void collectSkillFiles(String listingUrl, List<FileContent> found) {
+        String body = httpGet(listingUrl);
+        com.fasterxml.jackson.databind.JsonNode entries = readTree(body);
+        if (!entries.isArray()) {
+            return;
+        }
+        for (com.fasterxml.jackson.databind.JsonNode entry : entries) {
+            if (found.size() >= MAX_URL_SKILLS) {
+                return;
+            }
+            String name = entry.path("name").asText("");
+            String downloadUrl = entry.path("download_url").asText("");
+            if ("file".equals(entry.path("type").asText()) && "SKILL.md".equalsIgnoreCase(name)
+                    && !downloadUrl.isEmpty()) {
+                found.add(fetchSingleFile(downloadUrl));
+            } else if ("dir".equals(entry.path("type").asText()) && !name.isEmpty()) {
+                try {
+                    String sub = httpGet(listingUrl.contains("?")
+                            ? listingUrl.substring(0, listingUrl.indexOf('?')) + "/" + name + subRef(listingUrl)
+                            : listingUrl + "/" + name);
+                    com.fasterxml.jackson.databind.JsonNode subEntries = readTree(sub);
+                    if (subEntries != null && subEntries.isArray()) {
+                        for (com.fasterxml.jackson.databind.JsonNode subEntry : subEntries) {
+                            if ("SKILL.md".equalsIgnoreCase(subEntry.path("name").asText())
+                                    && "file".equals(subEntry.path("type").asText())
+                                    && !subEntry.path("download_url").asText("").isEmpty()) {
+                                found.add(fetchSingleFile(subEntry.path("download_url").asText()));
+                                break;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("子目录遍历失败（跳过）: {}, {}", name, e.getMessage());
+                }
+            }
+        }
+    }
+
+    private static String subRef(String listingUrl) {
+        int idx = listingUrl.indexOf("?ref=");
+        return idx >= 0 ? "?ref=" + listingUrl.substring(idx + 5) : "";
+    }
+
+    private FileContent fetchSingleFile(String url) {
+        String content = httpGet(url);
+        String name = url.replaceAll(".*/", "");
+        return new FileContent(name.isEmpty() ? "SKILL.md" : name, content);
+    }
+
+    private String httpGet(String url) {
+        return urlRestClient.get().uri(url).retrieve().body(String.class);
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode readTree(String body) {
+        try {
+            return objectMapper.readTree(body);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "响应解析失败（非 JSON）");
         }
     }
 

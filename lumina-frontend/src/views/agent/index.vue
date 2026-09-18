@@ -51,10 +51,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" :label="t('common.createTime')" width="180" />
-      <el-table-column :label="t('common.actions')" width="160" fixed="right">
+      <el-table-column :label="t('common.actions')" width="210" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="handleView(row)">{{ t('common.view') }}</el-button>
           <el-button link type="primary" @click="handleEdit(row)">{{ t('common.edit') }}</el-button>
+          <el-button link type="success" @click="handleExportBundle(row)">{{ t('share.exportBundle') }}</el-button>
           <el-button link type="danger" @click="handleDelete(row)">{{ t('common.delete') }}</el-button>
         </template>
       </el-table-column>
@@ -71,6 +72,7 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { listAgents, deleteAgent, updateAgent } from '@/api/modules/agent'
+import { exportBundle } from '@/api/modules/share'
 import { getActivePrompt, type PromptVO } from '@/api/modules/prompt'
 import type { AgentVO, QueryAgentDTO } from '@/types/api'
 import { useTable } from '@/composables/useTable'
@@ -146,8 +148,21 @@ const handleCreate = () => router.push('/agent/create')
 const handleView = (row: AgentVO) => router.push(`/agent/detail/${row.agentId}`)
 const handleEdit = (row: AgentVO) => router.push(`/agent/edit/${row.agentId}`)
 
-const handleDelete = async (row: AgentVO) => {
+const handleExportBundle = async (row: AgentVO) => {
   try {
+    const res: any = await exportBundle(row.agentId)
+    const url = URL.createObjectURL(res.data as Blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `lumina-bundle-${row.agentName}.zip`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message ?? t('common.saveFailed'))
+  }
+}
+
+const handleDelete = async (row: AgentVO) => {  try {
     await ElMessageBox.confirm(t('agent.deleteConfirm'), t('common.tip'), { type: 'warning' })
   } catch {
     return // 用户取消

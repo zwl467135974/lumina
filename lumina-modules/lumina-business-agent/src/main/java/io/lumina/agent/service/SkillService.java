@@ -47,4 +47,21 @@ public interface SkillService {
 
     /** 对已入库技能重跑安全体检（REJECTED 将强制禁用） @since 3.12.0 */
     SkillVO rescan(Long id);
+
+    /**
+     * 导入单条技能内容（角色包导入复用；与文件导入同一体检/查重管线）
+     *
+     * @since 3.12.0
+     */
+    SkillImportResult.ImportedSkill importSkillContent(String name, String description,
+                                                        String whenToUse, String content,
+                                                        List<String> bundledFiles);
+
+    /**
+     * 从 URL/Git 仓库导入技能：
+     * 任意 http(s) 单文件（.md）/ GitHub 仓库或子目录（api 遍历找 SKILL.md）/ Gitee 同构
+     *
+     * @since 3.12.0
+     */
+    SkillImportResult importFromUrl(String url);
 }

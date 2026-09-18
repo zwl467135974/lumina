@@ -877,6 +877,7 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 🔑 **OAuth2/SSO 第三方登录（V56）** — 标准**授权码**流程（零 Spring Security，复用自有 JWT 体系）：GitHub 预设 + 通用 OIDC（yml/env 配置即启用）；state 存 Redis 单次有效防 CSRF；首次登录**自动建号**（默认 TENANT_USER 角色）并绑定三方身份（一个用户可绑多个）；登录页三方按钮 + 回调页自动存 Token 跳首页。本地 Mock Provider 全流程 E2E 验证（providers→authorize→callback→建号→JWT 可用→二次登录复用）
 - 🌊 **A2A message/stream 流式** — 协议流式补齐：卡片 `streaming:true`，`message/stream` 走 SSE 推送任务事件流（`submitted → working → completed`，completed 携带文本 Artifact，流中断降级为 failed 事件后收口）；与 message/send 共用提交管线（预算/审计/取消一致），真实 LLM E2E 验证
 - 🧩 **大输入分治（V57）** — open-code-review 三设计收官：工程代码确定性拆分（按行分组/按字符带 10% 重叠）→ 子任务**隔离上下文并发执行**（复用完整异步管线：限流/预算/审计，Agent 并发限制天然约束并发度）→ 全部终态后合并（工程拼接带分片标头 / LLM 汇总去重，失败回退拼接）；父任务锚定批次（token 汇总/取消整批/重启对账继承），分片数上限防误操作；任务页新增分治提交对话框与分片明细
+- 📦 **模板与分享中心（V58）** — Agent 模板中心 + 技能市场拉取 + 角色包三合一：**角色包 zip**（manifest + agent.json + skills/*/SKILL.md）一键分享整套编排产物（ECC 式角色包）；导出**自动剥离 LLM 密钥**，导入全走安全体检，模板重名版本自增、实例化名称去重；技能支持 **URL/Git 拉取**（单文件直链 / GitHub、Gitee 仓库自动遍历 SKILL.md，直连 95K stars 的 agent-skills 生态）；`/share` 分享中心页 + Agent 列表一键导出
 - ✅ 新增 40 单测（解析/体检/导入导出/A2A 映射/SSRF 防护），前端技能页支持导入对话框、体检标签与导出操作
 
 ---

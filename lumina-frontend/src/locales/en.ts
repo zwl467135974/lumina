@@ -526,6 +526,27 @@ export default {
     agentId: 'Agent ID',
     deleteConfirm: 'Deleting will unmount from all agents. Continue?'
   },
+  share: {
+    title: 'Share Center',
+    description: 'Role bundles (Agent template + skills): import/export, instantiate, and skill URL fetch',
+    templates: 'Agent Templates',
+    importBundle: 'Import Bundle',
+    templateName: 'Template',
+    skillsCol: 'Bundled Skills',
+    empty: 'No templates yet — export a bundle from the agent list, or import one above',
+    instantiate: 'Instantiate',
+    agentName: 'Agent Name',
+    bundleImported: 'Bundle imported: {name}',
+    instantiated: 'Agent created: {name}',
+    deleteConfirm: 'Delete template {name}? (instantiated agents and skills are kept)',
+    exportBundle: 'Export Bundle',
+    urlImport: 'Skill URL Import',
+    urlTip: 'Supports: direct .md file URLs / GitHub or Gitee repos & subdirectories (auto-discovers SKILL.md, max 30); all imports go through the security scan',
+    urlPlaceholder: 'https://github.com/xxx/agent-skills or https://raw.githubusercontent.com/.../SKILL.md',
+    importUrl: 'Fetch & Import',
+    importedCount: '{n} imported:',
+    urlDone: 'Fetch complete'
+  },
   skill: {
     title: 'Skill Management',
     description: 'Agent skill library (progressive disclosure): catalog in context, content on demand',
