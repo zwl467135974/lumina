@@ -882,6 +882,19 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 📦 **模板与分享中心（V58）** — Agent 模板中心 + 技能市场拉取 + 角色包三合一：**角色包 zip**（manifest + agent.json + skills/*/SKILL.md）一键分享整套编排产物（ECC 式角色包）；导出**自动剥离 LLM 密钥**，导入全走安全体检，模板重名版本自增、实例化名称去重；技能支持 **URL/Git 拉取**（单文件直链 / GitHub、Gitee 仓库自动遍历 SKILL.md，直连 95K stars 的 agent-skills 生态）；`/share` 分享中心页 + Agent 列表一键导出
 - ✅ 新增 40 单测（解析/体检/导入导出/A2A 映射/SSRF 防护），前端技能页支持导入对话框、体检标签与导出操作
 
+### v3.13 上游双源借鉴：只读分级、输入侧外存与执行可视化（规划中）
+
+合并消化 DeepSeek Harness 与 ZCode 两个上游的机制设计（[v3.13 路线图](docs/zh/roadmap/v3.13路线图.md)）：
+
+- 🚦 **工具只读分级与自动放行** — 可证明只读的调用免审批（MCP 注解映射 + `code.execute` 静态启发式），判不定 fail-closed 走既有审批；映射 ZCode argv 分层方法论
+- 🎚 **会话模式 plan / build / yolo** — 运行时级策略：plan 模式写操作构造性阻断、计划批准后解锁，映射企业「方案→审批→执行」
+- 📄 **输入侧上下文外存** — 历史工具输入（文件快照/图片）外存化留引用、按需水合，A5 spill 的输入侧镜像（双上游验证）
+- 🪝 **`phase(title)` 进度钩子** — 自主编排节点第 5 个桥接函数，支撑阶段进度与审批投影（双上游验证）
+- 🌐 **Playwright 浏览器接入** — playwright-mcp 复用 MCP 通道 + 配套浏览器技能（双上游验证）
+- 🔌 **决策型生命周期 Hook** — AgentTurnEvent 总线扩展决策点（allow/deny/replace-input/add-context），企业合规门不改引擎
+- 🔍 **只读探索子代理 + 运行中转向** — Explore profile 工具白名单 = 只读集
+- 📊 **审批投影 + artifact 面板** — 计划先成图再审批，执行中 chart/table/metrics 实时面板（工作流执行页升级）
+
 ---
 
 **Lumina Framework** - 让 AI Agent 开发更简单 🚀
