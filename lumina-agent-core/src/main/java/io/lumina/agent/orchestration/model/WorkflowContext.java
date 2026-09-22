@@ -57,6 +57,14 @@ public class WorkflowContext {
     private transient Consumer<AutonomyPhaseEvent> autonomyPhaseNotifier;
 
     /**
+     * 自主编排报告回调（{@code artifact.report(payload)} 事件透出通道，v3.14 批次 3.3）
+     *
+     * <p>与阶段回调同一装配/清理生命周期；报告数据仅呈现（SSE + 执行日志
+     * REPORT 行），不进模型上下文。
+     */
+    private transient Consumer<AutonomyReportEvent> autonomyReportNotifier;
+
+    /**
      * 向变量空间存入值
      */
     public void setVariable(String key, Object value) {

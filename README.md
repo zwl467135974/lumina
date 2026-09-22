@@ -894,7 +894,7 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 🖼 **图片历史卸载** ✅ — 多轮图片会话从"完全失忆"升级为"引用可感知"：记忆落点留文件名+fileUuid 轻量标记（Base64 本体绝不进历史）+ PNG/JPEG/GIF 头解析的尺寸感知 token 估算（替代 flat 1000）
 - 🔌 **决策型生命周期 Hook**（→ v3.14.0）✅ — AgentTurnEvent 总线扩展决策点（SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/Stop，标准决策 allow/deny/replace-input/add-context/continue），企业合规门不改引擎；超时/异常中立放行不崩回合，Stop 续跑有防循环上限
 - 🔍 **只读探索子代理 + 运行中转向**（→ v3.14.0）✅ — Explore 型 agentType 双重防线（工具面 = 只读集 ∩ 白名单 + 强制 PLAN 模式）；steering API 三消费点（工具结果搭车即时生效/段边界 USER 注入/执行入口），与 Stop continue 共享续跑预算
-- 📊 **审批投影 + artifact 面板**（→ v3.14.0）— 计划先成图再审批，执行中 chart/table/metrics 实时面板（工作流执行页升级）
+- 📊 **审批投影 + artifact 面板**（→ v3.14.0）✅ — autonomy 节点启动即出计划图（phase/agent 字面量静态投影，先成图再执行）；`artifact.report()` 桥接发布 chart/table/metrics 报告（SSE + 执行日志行，数据不进模型上下文）；执行页新增仪表盘视图
 
 ---
 

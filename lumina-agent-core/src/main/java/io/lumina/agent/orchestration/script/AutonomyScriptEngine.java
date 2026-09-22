@@ -45,6 +45,9 @@ import java.util.function.Consumer;
  *   <li>{@code phase(title)} → 阶段声明（纯展示性：事件透出给监听器供
  *       SSE/执行日志/指标消费，不改变控制流、不等待、观察者异常不失败脚本；
  *       借鉴 DSH {@code phase(title)} 与 ZCode {@code phase()} 双源收敛设计）</li>
+ *   <li>{@code artifact.report(payload)} → 结构化报告发布（chart/table/metrics，
+ *       v3.14 批次 3.3）：payload 物化为有界 JSON 后经事件透出供前端面板呈现——
+ *       <b>报告数据不进模型上下文</b>（模型如需数据应经脚本返回值）</li>
  * </ul>
  *
  * <p>边界纪律（照抄 dsh workflow-worker-thread）：返回值物化为纯 JSON
@@ -67,6 +70,15 @@ public class AutonomyScriptEngine {
 
     /** phase 调用次数上限：纯展示性声明不得失败脚本，超限后静默熔断 */
     private static final int MAX_PHASE_CALLS = 500;
+
+    /** artifact.report 标题长度上限 */
+    private static final int REPORT_TITLE_MAX_LEN = 120;
+
+    /** artifact.report 调用次数上限：纯呈现性发布不得失败脚本，超限静默熔断 */
+    private static final int MAX_REPORT_CALLS = 100;
+
+    /** artifact.report 物化 JSON 大小上限（字符）——报告是呈现面不是数据通道 */
+    private static final int REPORT_JSON_MAX_CHARS = 64_000;
 
     private static final long TERMINATION_GRACE_MS = 3000;
 
@@ -100,6 +112,22 @@ public class AutonomyScriptEngine {
      * @throws IllegalStateException 超时/触顶限额/脚本 fatal 错误
      */
     public Object run(AutonomyNode node, String input, Consumer<AutonomyPhaseEvent> phaseNotifier) {
+        return run(node, input, phaseNotifier, null);
+    }
+
+    /**
+     * 执行脚本并返回物化结果（Map/List/字符串/数字/布尔/null）
+     *
+     * @param node            自主编排节点
+     * @param input           解析后的节点输入（绑定到脚本的 input 变量）
+     * @param phaseNotifier   阶段事件回调（可空；由引擎装配，phase(title) 声明时逐次触发）
+     * @param reportNotifier  报告事件回调（可空；由引擎装配，artifact.report 发布时逐次触发）
+     * @return 物化后的纯 JSON 值
+     * @throws IllegalStateException 超时/触顶限额/脚本 fatal 错误
+     * @since 3.14.0
+     */
+    public Object run(AutonomyNode node, String input, Consumer<AutonomyPhaseEvent> phaseNotifier,
+                      Consumer<io.lumina.agent.orchestration.model.AutonomyReportEvent> reportNotifier) {
         int maxTotal = orDefault(node.getMaxTotalAgents(), 20);
         int maxConcurrent = orDefault(node.getMaxConcurrentAgents(), 5);
         int maxItems = orDefault(node.getMaxItemsPerCall(), 200);
@@ -108,6 +136,7 @@ public class AutonomyScriptEngine {
         AtomicLong totalCalls = new AtomicLong();
         Semaphore concurrency = new Semaphore(maxConcurrent);
         AtomicInteger phaseSeq = new AtomicInteger();
+        AtomicInteger reportSeq = new AtomicInteger();
 
         try (Context context = Context.newBuilder("js")
                 .allowAllAccess(false)
@@ -122,6 +151,9 @@ public class AutonomyScriptEngine {
             });
             bindings.putMember("phase", (ProxyExecutable) args ->
                     phase(node, args, phaseSeq, phaseNotifier));
+            bindings.putMember("artifact", org.graalvm.polyglot.proxy.ProxyObject.fromMap(Map.of(
+                    "report", (ProxyExecutable) args ->
+                            report(node, args, reportSeq, reportNotifier))));
             bindings.putMember("agent", (ProxyExecutable) args -> {
                 if (args.length < 1 || !args[0].isString()) {
                     throw new IllegalArgumentException("agent(prompt) 需要一个字符串参数");
@@ -182,6 +214,67 @@ public class AutonomyScriptEngine {
                         node.getId(), title, seq, System.currentTimeMillis()));
             } catch (Exception e) {
                 log.warn("[autonomy {}] phase 监听器异常，忽略: {}", node.getId(), e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * artifact.report(payload) 桥接实现：结构化报告发布（chart/table/metrics，纯呈现性）
+     *
+     * <p>纪律与 {@link #phase} 对齐：参数契约违反（非对象/非法 type/标题或 JSON 超限）
+     * 按 fail-fast 处理；调用次数超限静默熔断——呈现性发布绝不失败脚本；
+     * 监听器异常吞掉只告警。<b>报告数据不进模型上下文</b>（模型如需数据应经脚本返回值）。
+     */
+    private Object report(AutonomyNode node, Value[] args, AtomicInteger reportSeq,
+                          Consumer<io.lumina.agent.orchestration.model.AutonomyReportEvent> reportNotifier) {
+        if (args.length < 1 || !args[0].hasMembers()) {
+            throw new IllegalArgumentException("artifact.report(payload) 需要一个对象参数");
+        }
+        Object materialized = materialize(args[0], "报告");
+        if (!(materialized instanceof Map<?, ?> payload)) {
+            throw new IllegalArgumentException("artifact.report(payload) 物化结果必须是对象");
+        }
+        String type = payload.get("type") != null ? String.valueOf(payload.get("type")) : "table";
+        if (!io.lumina.agent.orchestration.model.AutonomyReportEvent.isValidType(type)) {
+            throw new IllegalArgumentException("artifact.report 的 type 必须是 chart/table/metrics，实际: " + type);
+        }
+        int seq = reportSeq.incrementAndGet();
+        String title = payload.get("title") != null ? String.valueOf(payload.get("title")).trim()
+                : "报告 #" + seq;
+        if (title.isEmpty()) {
+            throw new IllegalArgumentException("artifact.report 的 title 不能为空");
+        }
+        if (title.length() > REPORT_TITLE_MAX_LEN) {
+            throw new IllegalArgumentException(
+                    "artifact.report 的 title 超长（" + title.length() + " > " + REPORT_TITLE_MAX_LEN + "）");
+        }
+        String json;
+        try {
+            json = JsonUtils.OBJECT_MAPPER.writeValueAsString(payload.get("data") != null
+                    ? payload.get("data") : payload);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("artifact.report 数据序列化失败: " + e.getMessage());
+        }
+        if (json.length() > REPORT_JSON_MAX_CHARS) {
+            throw new IllegalArgumentException(
+                    "artifact.report 数据超限（" + json.length() + " > " + REPORT_JSON_MAX_CHARS + " 字符）——报告是呈现面不是数据通道");
+        }
+        if (seq > MAX_REPORT_CALLS) {
+            if (seq == MAX_REPORT_CALLS + 1) {
+                log.warn("[autonomy {}] artifact.report 调用超出上限 {}，后续报告仅记录日志不再透出",
+                        node.getId(), MAX_REPORT_CALLS);
+            }
+            return null;
+        }
+        log.info("[autonomy {}] 报告 #{}/{}: type={}, title={}, {} 字符",
+                node.getId(), seq, MAX_REPORT_CALLS, type, title, json.length());
+        if (reportNotifier != null) {
+            try {
+                reportNotifier.accept(new io.lumina.agent.orchestration.model.AutonomyReportEvent(
+                        node.getId(), type, title, json, seq, System.currentTimeMillis()));
+            } catch (Exception e) {
+                log.warn("[autonomy {}] report 监听器异常，忽略: {}", node.getId(), e.getMessage());
             }
         }
         return null;

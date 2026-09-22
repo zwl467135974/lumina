@@ -30,6 +30,56 @@
       </el-descriptions>
     </el-card>
 
+    <!-- 执行计划（审批投影，v3.14 批次 3.3）：autonomy 节点启动时的静态计划 -->
+    <el-card v-if="planRows.length" shadow="never" class="timeline-card">
+      <template #header>{{ t('workflow.planProjection') }}</template>
+      <div v-for="plan in planRows" :key="plan.id" class="plan-block">
+        <el-steps :active="reachedStageIndex(plan)" finish-status="success" align-center class="plan-steps">
+          <el-step v-for="(stage, i) in planStages(plan)" :key="i" :title="stage" />
+        </el-steps>
+        <div v-if="planAgents(plan).length" class="plan-agents">
+          <span class="io-label">{{ t('workflow.planAgents') }}：</span>
+          <el-tag v-for="(a, i) in planAgents(plan)" :key="i" size="small" type="info" class="plan-agent-tag">{{ a }}</el-tag>
+        </div>
+      </div>
+    </el-card>
+
+    <!-- 阶段进度：phase(title) 钩子事件回放 -->
+    <el-card v-if="phaseRows.length" shadow="never" class="timeline-card">
+      <template #header>{{ t('workflow.phaseProgress') }}（{{ phaseRows.length }}）</template>
+      <el-timeline>
+        <el-timeline-item v-for="row in phaseRows" :key="row.id" type="primary" :timestamp="formatDate(row.createTime)">
+          {{ row.nodeName }}　{{ row.output }}
+        </el-timeline-item>
+      </el-timeline>
+    </el-card>
+
+    <!-- 报告面板：artifact.report 发布的 chart/table/metrics（数据不进模型上下文，仅呈现） -->
+    <el-card v-if="reportRows.length" shadow="never" class="timeline-card">
+      <template #header>{{ t('workflow.reportPanels') }}（{{ reportRows.length }}）</template>
+      <div class="report-grid">
+        <div v-for="rep in reportRows" :key="rep.id" class="report-item">
+          <div class="report-header">
+            <span class="report-title">{{ rep.nodeName }}</span>
+            <el-tag size="small" :type="rep.type === 'chart' ? 'warning' : rep.type === 'metrics' ? 'success' : 'info'">
+              {{ t(`workflow.report${cap(rep.type)}`) }}
+            </el-tag>
+          </div>
+          <VChart v-if="rep.type === 'chart'" :option="chartOption(rep.data)" :autoresize="true" class="report-chart" />
+          <el-table v-else-if="rep.type === 'table' && rep.data?.columns" :data="tableRows(rep.data)" size="small" border>
+            <el-table-column v-for="(col, i) in rep.data.columns" :key="i" :prop="String(i)" :label="String(col)" />
+          </el-table>
+          <div v-else-if="rep.type === 'metrics' && Array.isArray(rep.data)" class="metrics-grid">
+            <div v-for="(m, i) in rep.data" :key="i" class="metric-tile">
+              <div class="metric-value">{{ m?.value ?? '-' }}<span v-if="m?.unit" class="metric-unit">{{ m.unit }}</span></div>
+              <div class="metric-label">{{ m?.label ?? '-' }}</div>
+            </div>
+          </div>
+          <pre v-else class="json-output">{{ formatJson(rep.rawOutput) }}</pre>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 多 Agent 对话视图 -->
     <el-card shadow="never" class="timeline-card">
       <template #header>
@@ -112,8 +162,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { LineChart, BarChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import VChart from 'vue-echarts'
 import PageHeader from '@/components/common/PageHeader.vue'
 import { getInstanceLogs, listInstances, type WorkflowInstanceVO, type WorkflowExecutionLogVO } from '@/api/modules/workflow'
+
+use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const route = useRoute()
 const router = useRouter()
@@ -168,6 +225,72 @@ const logStatusType = (status: string) => {
 }
 
 const agentLogs = computed(() => logs.value.filter(l => l.output || l.errorMessage || l.nodeType === 'agent'))
+
+// ==================== 审批投影 / 阶段进度 / 报告面板（v3.14 批次 3.3） ====================
+
+interface ReportRow {
+  id?: number
+  nodeId?: string
+  nodeName?: string
+  type: string
+  data: any
+  rawOutput?: string
+}
+
+/** PLAN 行（autonomy 节点启动时的静态计划投影） */
+const planRows = computed(() => logs.value.filter(l => l.status === 'PLAN'))
+
+const parsePlan = (row: WorkflowExecutionLogVO): { stages: string[]; agents: string[] } => {
+  try {
+    const parsed = JSON.parse(row.output || '{}')
+    return { stages: Array.isArray(parsed.stages) ? parsed.stages : [], agents: Array.isArray(parsed.agents) ? parsed.agents : [] }
+  } catch {
+    return { stages: [], agents: [] }
+  }
+}
+
+const planStages = (row: WorkflowExecutionLogVO) => parsePlan(row).stages
+const planAgents = (row: WorkflowExecutionLogVO) => parsePlan(row).agents
+
+/** 计划步骤点亮进度：该节点已产出的 PHASE 行数（阶段声明到达即点亮） */
+const reachedStageIndex = (planRow: WorkflowExecutionLogVO) => {
+  return logs.value.filter(l => l.status === 'PHASE' && l.nodeId === planRow.nodeId).length
+}
+
+/** PHASE 行（phase(title) 钩子回放） */
+const phaseRows = computed(() => logs.value.filter(l => l.status === 'PHASE'))
+
+/** REPORT 行：状态格式 REPORT:{type}#{seq}，output 为数据 JSON */
+const reportRows = computed<ReportRow[]>(() =>
+  logs.value
+    .filter(l => (l.status || '').startsWith('REPORT:'))
+    .map(l => {
+      const type = (l.status || '').split('#')[0].split(':')[1] || 'table'
+      let data: any = null
+      try { data = JSON.parse(l.output || 'null') } catch { data = null }
+      return { id: l.id, nodeId: l.nodeId, nodeName: l.nodeName, type, data, rawOutput: l.output }
+    })
+)
+
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '')
+
+const chartOption = (data: any) => ({
+  tooltip: { trigger: 'axis' },
+  legend: { top: 0 },
+  grid: { left: 40, right: 16, top: 32, bottom: 24 },
+  xAxis: { type: 'category', data: data?.labels ?? [] },
+  yAxis: { type: 'value' },
+  series: (data?.series ?? []).map((s: any) => ({
+    name: s?.name ?? '',
+    type: 'bar',
+    data: Array.isArray(s?.values) ? s.values : []
+  }))
+})
+
+const tableRows = (data: any) => {
+  if (!Array.isArray(data?.rows)) return []
+  return data.rows.map((r: any[]) => Object.fromEntries((Array.isArray(r) ? r : [r]).map((v, i) => [String(i), v])))
+}
 
 const truncateOutput = (text: string): string => {
   if (!text) return ''
@@ -252,6 +375,38 @@ onMounted(loadData)
 }
 .bubble-error { color: var(--el-color-danger); font-size: 12px; margin-top: 4px; }
 .conv-arrow { text-align: center; color: var(--el-text-color-placeholder); font-size: 16px; padding: 4px 0; }
+
+/* 执行计划投影 / 报告面板（v3.14 批次 3.3） */
+.plan-block { margin-bottom: 12px; }
+.plan-block:last-child { margin-bottom: 0; }
+.plan-steps { margin-bottom: 8px; }
+.plan-agents { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.plan-agent-tag { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 12px;
+}
+.report-item {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--el-fill-color-light);
+}
+.report-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.report-title { font-weight: 600; font-size: 14px; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-chart { height: 220px; width: 100%; }
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.metric-tile {
+  padding: 12px 8px; text-align: center; border-radius: 6px;
+  background: var(--el-fill-color);
+}
+.metric-value { font-size: 20px; font-weight: 700; color: var(--el-color-primary); }
+.metric-unit { font-size: 12px; margin-left: 2px; color: var(--el-text-color-secondary); }
+.metric-label { font-size: 12px; color: var(--el-text-color-secondary); margin-top: 4px; }
 .log-node {
   .log-header {
     display: flex;

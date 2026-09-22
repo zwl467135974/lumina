@@ -6,6 +6,14 @@
 
 ## [3.14.0] - 未发布
 
+### 审批投影 + artifact 报告面板（v3.14 路线图批次 3.3，ZCode）
+
+- **计划先成图再执行**：`AutonomyPlanProjector` 从编排脚本静态抽取计划投影（`phase()` 字面量阶段序列 + `agent()` 字面量子调用面，动态标题留给运行期 phase 钩子补全）——autonomy 节点启动时 SSE `NODE_STARTED` 事件附加 `plan` 字段 + 执行日志落 `PLAN` 行；审批人看到的是图不是日志
+- **`artifact.report(payload)` 第 6 个桥接函数**：编排脚本发布结构化报告（`type` ∈ chart/table/metrics + `title` + `data`），物化为有界 JSON（64KB 上限）后经 `AutonomyReportEvent` → `WorkflowContext` 透传通道（与 phase 通知同装配/清理/并行传播）→ SSE `AUTONOMY_REPORT` 事件 + 执行日志 `REPORT:{type}#{seq}` 行；**报告数据不进模型上下文**（呈现面非数据通道，模型如需数据走脚本返回值）
+- 契约纪律与 `phase()` 对齐：非对象/非法 type/标题超长/JSON 超限 fail-fast，次数超限（100）静默熔断，监听器异常吞掉——呈现性发布绝不失败脚本
+- **前端工作流执行页仪表盘**：新增三个视图卡——执行计划（el-steps 阶段图，PHASE 回放点亮进度 + 子调用面标签）、阶段进度（phase 钩子时间线）、报告面板（chart 经 vue-echarts 柱状图 / table 经 el-table / metrics 指标瓦片，网格布局）
+- 新增 10 个用例（报告事件物化/默认值/契约拒绝/无回调行为/超大 JSON fail-fast + 计划投影抽取五态）；agent-core 502 / business-agent 353 全绿；前端 `pnpm build` 通过
+
 ### 只读探索子代理 + 运行中转向（v3.14 路线图批次 3.2，ZCode 子代理/steering × DSH B2）
 
 - **Explore 型只读探索子代理**：`agentType = "Explore"` 约定即能力（零新字段）——双重防线：① 工具注册面过滤（白名单 ∩ 可证明只读集，复用 v3.13 只读分级三层证据；配置误加写工具也不注册）；② `effectiveSessionMode` 强制 PLAN（即使显式 YOLO，运行期非只读调用仍被构造性阻断）——探索类任务不触发任何写路径

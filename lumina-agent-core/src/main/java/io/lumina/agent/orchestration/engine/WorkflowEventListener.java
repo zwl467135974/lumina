@@ -1,6 +1,7 @@
 package io.lumina.agent.orchestration.engine;
 
 import io.lumina.agent.orchestration.model.AutonomyPhaseEvent;
+import io.lumina.agent.orchestration.model.AutonomyReportEvent;
 import io.lumina.agent.orchestration.model.WorkflowContext;
 
 /**
@@ -25,6 +26,16 @@ public interface WorkflowEventListener {
      * @since 3.13.0
      */
     default void onAutonomyPhase(AutonomyPhaseEvent event) {}
+
+    /**
+     * 自主编排节点内脚本发布了结构化报告（{@code artifact.report(payload)}）
+     *
+     * <p>chart / table / metrics 三类，payload 为物化后的 JSON 字符串；
+     * 报告仅呈现（面板数据不进模型上下文），观察者异常不会中断脚本执行。
+     *
+     * @since 3.14.0
+     */
+    default void onAutonomyReport(AutonomyReportEvent event) {}
 
     /** 节点执行完成 */
     default void onNodeCompleted(String nodeId, Object result, long durationMs) {}

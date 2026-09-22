@@ -214,6 +214,9 @@ public class WorkflowServiceImpl implements WorkflowService {
                     event.put("nodeId", nodeId);
                     event.put("nodeName", nodeName != null ? nodeName : "");
                     enrichWithNodeInfo(event, definition, nodeId);
+                    // 审批投影（v3.14 批次 3.3）：autonomy 节点启动时附静态计划投影
+                    //（阶段序列 + 子调用面，先成图再执行——审批人看到的是图不是日志）
+                    attachPlanProjection(event, definition, nodeId);
                     sink.next(event);
                 }
 
@@ -253,6 +256,20 @@ public class WorkflowServiceImpl implements WorkflowService {
                     event.put("title", phaseEvent.title());
                     event.put("seq", phaseEvent.seq());
                     enrichWithNodeInfo(event, definition, phaseEvent.nodeId());
+                    sink.next(event);
+                }
+
+                @Override
+                public void onAutonomyReport(io.lumina.agent.orchestration.model.AutonomyReportEvent reportEvent) {
+                    java.util.Map<String, Object> event = new java.util.HashMap<>();
+                    event.put("event", "AUTONOMY_REPORT");
+                    event.put("instanceId", instanceId);
+                    event.put("nodeId", reportEvent.nodeId());
+                    event.put("type", reportEvent.type());
+                    event.put("title", reportEvent.title());
+                    event.put("seq", reportEvent.seq());
+                    event.put("data", reportEvent.json());
+                    enrichWithNodeInfo(event, definition, reportEvent.nodeId());
                     sink.next(event);
                 }
 
@@ -339,7 +356,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         instance.setUpdateTime(LocalDateTime.now());
         instanceMapper.updateById(instance);
 
-        ExecutionLogCollector logCollector = new ExecutionLogCollector(instance.getId(), logMapper, objectMapper);
+        ExecutionLogCollector logCollector = new ExecutionLogCollector(instance.getId(), logMapper, objectMapper, definition);
 
         try {
             workflowEngine.addListener(logCollector);
@@ -387,6 +404,28 @@ public class WorkflowServiceImpl implements WorkflowService {
         }
     }
 
+    /**
+     * 审批投影（v3.14 批次 3.3）：autonomy 节点启动事件附加静态计划投影
+     *（阶段序列 + 子调用面）——审批人看到的是图不是日志
+     */
+    private void attachPlanProjection(java.util.Map<String, Object> event,
+                                       WorkflowDefinition definition, String nodeId) {
+        if (definition == null) return;
+        try {
+            WorkflowNode node = definition.findNode(nodeId);
+            if (node instanceof io.lumina.agent.orchestration.model.AutonomyNode autonomyNode) {
+                io.lumina.agent.orchestration.script.AutonomyPlanProjector.Plan plan =
+                        io.lumina.agent.orchestration.script.AutonomyPlanProjector.extractPlan(
+                                autonomyNode.getScript());
+                if (!plan.isEmpty()) {
+                    event.put("plan", java.util.Map.of("stages", plan.stages(), "agents", plan.agents()));
+                }
+            }
+        } catch (Exception e) {
+            log.debug("计划投影失败: nodeId={}", nodeId);
+        }
+    }
+
     private String resolveNodeType(WorkflowNode node) {
         String className = node.getClass().getSimpleName();
         if (className.endsWith("Node")) {
@@ -419,7 +458,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         instance.setUpdateTime(LocalDateTime.now());
         instanceMapper.updateById(instance);
 
-        ExecutionLogCollector logCollector = new ExecutionLogCollector(instance.getId(), logMapper, objectMapper);
+        ExecutionLogCollector logCollector = new ExecutionLogCollector(instance.getId(), logMapper, objectMapper, definition);
 
         try {
             workflowEngine.addListener(logCollector);
@@ -633,7 +672,12 @@ public class WorkflowServiceImpl implements WorkflowService {
         private final Long instanceId;
         private final WorkflowExecutionLogMapper logMapper;
         private final ObjectMapper objectMapper;
+        private final WorkflowDefinition definition;
         private final List<WorkflowExecutionLogDO> pending = new java.util.ArrayList<>();
+
+        ExecutionLogCollector(Long instanceId, WorkflowExecutionLogMapper logMapper, ObjectMapper objectMapper) {
+            this(instanceId, logMapper, objectMapper, null);
+        }
 
         @Override
         public void onNodeStarted(String nodeId, String nodeName, WorkflowContext ctx) {
@@ -644,6 +688,40 @@ public class WorkflowServiceImpl implements WorkflowService {
             logDO.setStatus("RUNNING");
             logDO.setCreateTime(LocalDateTime.now());
             pending.add(logDO);
+            recordPlanProjection(nodeId);
+        }
+
+        /**
+         * 审批投影行（v3.14 批次 3.3）：autonomy 节点启动时落 PLAN 行
+         *（静态计划：阶段序列 + 子调用面），详情页"执行计划"视图数据源
+         */
+        private void recordPlanProjection(String nodeId) {
+            if (definition == null) {
+                return;
+            }
+            try {
+                WorkflowNode node = definition.findNode(nodeId);
+                if (!(node instanceof io.lumina.agent.orchestration.model.AutonomyNode autonomyNode)) {
+                    return;
+                }
+                io.lumina.agent.orchestration.script.AutonomyPlanProjector.Plan plan =
+                        io.lumina.agent.orchestration.script.AutonomyPlanProjector.extractPlan(
+                                autonomyNode.getScript());
+                if (plan.isEmpty()) {
+                    return;
+                }
+                WorkflowExecutionLogDO planRow = new WorkflowExecutionLogDO();
+                planRow.setInstanceId(instanceId);
+                planRow.setNodeId(nodeId);
+                planRow.setNodeName("执行计划");
+                planRow.setStatus("PLAN");
+                planRow.setOutput(objectMapper.writeValueAsString(
+                        java.util.Map.of("stages", plan.stages(), "agents", plan.agents())));
+                planRow.setCreateTime(LocalDateTime.now());
+                pending.add(planRow);
+            } catch (Exception e) {
+                // 计划投影是呈现面，失败不影响执行
+            }
         }
 
         @Override
@@ -679,6 +757,20 @@ public class WorkflowServiceImpl implements WorkflowService {
             logDO.setNodeName("阶段 #" + event.seq());
             logDO.setStatus("PHASE");
             logDO.setOutput(event.title());
+            logDO.setCreateTime(LocalDateTime.now());
+            pending.add(logDO);
+        }
+
+        @Override
+        public void onAutonomyReport(io.lumina.agent.orchestration.model.AutonomyReportEvent event) {
+            // 报告行（v3.14 批次 3.3）：独立 REPORT 状态（与 PHASE 同理不干扰节点回填），
+            // nodeName 存类型标记 "报告:{type}#{seq}"，output 存数据 JSON——前端面板数据源
+            WorkflowExecutionLogDO logDO = new WorkflowExecutionLogDO();
+            logDO.setInstanceId(instanceId);
+            logDO.setNodeId(event.nodeId());
+            logDO.setNodeName(event.title());
+            logDO.setStatus("REPORT:" + event.type() + "#" + event.seq());
+            logDO.setOutput(event.json());
             logDO.setCreateTime(LocalDateTime.now());
             pending.add(logDO);
         }

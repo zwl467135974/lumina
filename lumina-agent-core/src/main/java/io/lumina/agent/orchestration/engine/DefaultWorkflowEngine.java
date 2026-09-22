@@ -88,8 +88,10 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
 
     private WorkflowContext doExecute(WorkflowDefinition definition, WorkflowContext ctx, String startNodeId) {
         long workflowStart = System.currentTimeMillis();
-        // 装配阶段事件回调（phase(title) → 监听器），执行完清理避免回调泄漏到复用的 ctx
+        // 装配阶段/报告事件回调（phase(title)/artifact.report(...) → 监听器），
+        // 执行完清理避免回调泄漏到复用的 ctx
         ctx.setAutonomyPhaseNotifier(this::dispatchAutonomyPhase);
+        ctx.setAutonomyReportNotifier(this::dispatchAutonomyReport);
         try {
             if (startNodeId == null) {
                 throw new IllegalStateException("工作流没有起始节点: " + definition.getName());
@@ -135,6 +137,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             log.error("工作流执行失败: {}", definition.getName(), e);
         } finally {
             ctx.setAutonomyPhaseNotifier(null);
+            ctx.setAutonomyReportNotifier(null);
         }
 
         recordWorkflowTimer(definition.getName(), ctx.getStatus().name(),
@@ -145,6 +148,11 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
     /** 把自主编排阶段事件分发给注册的监听器（观察者异常由脚本引擎侧兜底） */
     private void dispatchAutonomyPhase(AutonomyPhaseEvent event) {
         listeners.forEach(l -> l.onAutonomyPhase(event));
+    }
+
+    /** 把自主编排报告事件分发给注册的监听器（观察者异常由脚本引擎侧兜底） */
+    private void dispatchAutonomyReport(io.lumina.agent.orchestration.model.AutonomyReportEvent event) {
+        listeners.forEach(l -> l.onAutonomyReport(event));
     }
 
     private String executeNode(WorkflowDefinition definition, WorkflowNode node, WorkflowContext ctx) {
@@ -333,6 +341,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
         copy.setStatus(source.getStatus());
         copy.setErrorMessage(source.getErrorMessage());
         copy.setAutonomyPhaseNotifier(source.getAutonomyPhaseNotifier());
+        copy.setAutonomyReportNotifier(source.getAutonomyReportNotifier());
         return copy;
     }
 

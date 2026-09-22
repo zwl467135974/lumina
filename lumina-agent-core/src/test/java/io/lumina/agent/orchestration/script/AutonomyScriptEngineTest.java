@@ -249,4 +249,68 @@ class AutonomyScriptEngineTest {
         Map<String, Object> map = (Map<String, Object>) result;
         assertThat(map).doesNotContainKey("__proto__");
     }
+
+    // ==================== artifact.report 结构化报告（v3.14 批次 3.3） ====================
+
+    @Test
+    void reportEventCarriesMaterializedJson() {
+        List<io.lumina.agent.orchestration.model.AutonomyReportEvent> events = new ArrayList<>();
+
+        Object result = engine.run(node(
+                "artifact.report({type:'table', title:'结果表', data:{columns:['项','值'], rows:[['a',1]]}});\n" +
+                "return 'done'"), "", null, events::add);
+
+        assertThat(result).isEqualTo("done");
+        assertThat(events).hasSize(1);
+        io.lumina.agent.orchestration.model.AutonomyReportEvent event = events.get(0);
+        assertThat(event.type()).isEqualTo("table");
+        assertThat(event.title()).isEqualTo("结果表");
+        assertThat(event.nodeId()).isEqualTo("auto-1");
+        assertThat(event.seq()).isEqualTo(1);
+        assertThat(event.json()).contains("columns").contains("rows");
+    }
+
+    @Test
+    void reportDefaultsTypeAndTitle() {
+        List<io.lumina.agent.orchestration.model.AutonomyReportEvent> events = new ArrayList<>();
+
+        engine.run(node("artifact.report({data:{k:1}}); return 1"), "", null, events::add);
+
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0).type()).isEqualTo("table");
+        assertThat(events.get(0).title()).isEqualTo("报告 #1");
+    }
+
+    @Test
+    void reportRejectsInvalidContract() {
+        List<io.lumina.agent.orchestration.model.AutonomyReportEvent> events = new ArrayList<>();
+        assertThatThrownBy(() -> engine.run(node("artifact.report({type:'barchart'})"), "", null, events::add))
+                .hasMessageContaining("chart/table/metrics");
+        assertThatThrownBy(() -> engine.run(node("artifact.report('不是对象')"), "", null, events::add))
+                .hasMessageContaining("需要一个对象参数");
+        assertThatThrownBy(() -> engine.run(node(
+                "artifact.report({type:'table', title:'" + "长".repeat(121) + "'})"), "", null, events::add))
+                .hasMessageContaining("超长");
+        // 契约违反 fail-fast：事件不外流
+        assertThat(events).isEmpty();
+    }
+
+    @Test
+    void reportWithoutNotifierKeepsBehavior() {
+        Object result = engine.run(node(
+                "artifact.report({type:'metrics', title:'指标', data:[{label:'qps', value:1}]}); return 42"), "");
+
+        assertThat(result).isEqualTo(42);
+    }
+
+    @Test
+    void reportOversizedJsonFailsFast() {
+        StringBuilder big = new StringBuilder();
+        for (int i = 0; i < 70; i++) {
+            big.append("x".repeat(1000));
+        }
+        assertThatThrownBy(() -> engine.run(node(
+                "artifact.report({type:'table', title:'超大', data:{blob:'" + big + "'}})"), "", null, e -> {}))
+                .hasMessageContaining("数据超限");
+    }
 }
