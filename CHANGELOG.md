@@ -4,7 +4,7 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [3.13.0] - 未发布
+## [3.13.0] - 2026-09-22
 
 ### 大消息外存化与按需水合（v3.13 路线图批次 2.3，ZCode read-file-state 的 Lumina 化）
 
