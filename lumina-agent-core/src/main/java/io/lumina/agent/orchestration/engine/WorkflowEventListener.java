@@ -1,5 +1,6 @@
 package io.lumina.agent.orchestration.engine;
 
+import io.lumina.agent.orchestration.model.AutonomyPhaseEvent;
 import io.lumina.agent.orchestration.model.WorkflowContext;
 
 /**
@@ -14,6 +15,16 @@ public interface WorkflowEventListener {
 
     /** 节点开始执行 */
     default void onNodeStarted(String nodeId, String nodeName, WorkflowContext ctx) {}
+
+    /**
+     * 自主编排节点内脚本声明了阶段（{@code phase(title)}）
+     *
+     * <p>纯展示性进度事件：同一节点执行内可多次触发，序号递增，
+     * 观察者异常不会中断脚本执行。
+     *
+     * @since 3.13.0
+     */
+    default void onAutonomyPhase(AutonomyPhaseEvent event) {}
 
     /** 节点执行完成 */
     default void onNodeCompleted(String nodeId, Object result, long durationMs) {}

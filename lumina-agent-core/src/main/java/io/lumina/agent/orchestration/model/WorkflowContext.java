@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * 工作流运行时上下文
@@ -46,6 +47,14 @@ public class WorkflowContext {
 
     /** 错误信息（失败时） */
     private String errorMessage;
+
+    /**
+     * 自主编排阶段回调（{@code phase(title)} 事件透出通道）
+     *
+     * <p>引擎执行前装配、执行完清理的运行时回调，transient 不参与序列化；
+     * 未装配（如 Flowable 委托路径、单测直调引擎）时自主编排节点只写服务器日志。
+     */
+    private transient Consumer<AutonomyPhaseEvent> autonomyPhaseNotifier;
 
     /**
      * 向变量空间存入值

@@ -88,6 +88,8 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
 
     private WorkflowContext doExecute(WorkflowDefinition definition, WorkflowContext ctx, String startNodeId) {
         long workflowStart = System.currentTimeMillis();
+        // 装配阶段事件回调（phase(title) → 监听器），执行完清理避免回调泄漏到复用的 ctx
+        ctx.setAutonomyPhaseNotifier(this::dispatchAutonomyPhase);
         try {
             if (startNodeId == null) {
                 throw new IllegalStateException("工作流没有起始节点: " + definition.getName());
@@ -131,11 +133,18 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
             ctx.setErrorMessage(e.getMessage());
             listeners.forEach(l -> l.onWorkflowFailed(ctx, e.getMessage()));
             log.error("工作流执行失败: {}", definition.getName(), e);
+        } finally {
+            ctx.setAutonomyPhaseNotifier(null);
         }
 
         recordWorkflowTimer(definition.getName(), ctx.getStatus().name(),
                 System.currentTimeMillis() - workflowStart);
         return ctx;
+    }
+
+    /** 把自主编排阶段事件分发给注册的监听器（观察者异常由脚本引擎侧兜底） */
+    private void dispatchAutonomyPhase(AutonomyPhaseEvent event) {
+        listeners.forEach(l -> l.onAutonomyPhase(event));
     }
 
     private String executeNode(WorkflowDefinition definition, WorkflowNode node, WorkflowContext ctx) {
@@ -323,6 +332,7 @@ public class DefaultWorkflowEngine implements WorkflowEngine {
         copy.setCurrentNodeId(source.getCurrentNodeId());
         copy.setStatus(source.getStatus());
         copy.setErrorMessage(source.getErrorMessage());
+        copy.setAutonomyPhaseNotifier(source.getAutonomyPhaseNotifier());
         return copy;
     }
 

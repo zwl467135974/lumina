@@ -39,7 +39,7 @@ public class AutonomyNodeExecutor implements NodeExecutor {
                 autonomyNode.getId(), autonomyNode.getAgentId(),
                 autonomyNode.getScript() != null ? autonomyNode.getScript().length() : 0);
 
-        Object result = scriptEngine.run(autonomyNode, input);
+        Object result = scriptEngine.run(autonomyNode, input, ctx.getAutonomyPhaseNotifier());
 
         log.info("autonomy 节点完成: id={}, resultType={}", autonomyNode.getId(),
                 result != null ? result.getClass().getSimpleName() : "null");

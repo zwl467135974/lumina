@@ -2,6 +2,7 @@ package io.lumina.agent.orchestration.script;
 
 import io.lumina.agent.orchestration.engine.AgentExecutionHandler;
 import io.lumina.agent.orchestration.model.AutonomyNode;
+import io.lumina.agent.orchestration.model.AutonomyPhaseEvent;
 import io.lumina.agent.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.graalvm.polyglot.Context;
@@ -21,7 +22,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * 自主编排脚本引擎（GraalJS 沙箱）
@@ -39,6 +42,9 @@ import java.util.concurrent.atomic.AtomicLong;
  *   <li>{@code pipeline(items, ...stages)} → 逐段加工（guest 顺序执行），
  *       单项失败该条为 null</li>
  *   <li>{@code log(msg)} → 服务器日志（观察，不影响执行）</li>
+ *   <li>{@code phase(title)} → 阶段声明（纯展示性：事件透出给监听器供
+ *       SSE/执行日志/指标消费，不改变控制流、不等待、观察者异常不失败脚本；
+ *       借鉴 DSH {@code phase(title)} 与 ZCode {@code phase()} 双源收敛设计）</li>
  * </ul>
  *
  * <p>边界纪律（照抄 dsh workflow-worker-thread）：返回值物化为纯 JSON
@@ -56,6 +62,12 @@ public class AutonomyScriptEngine {
     /** 物化时拒绝的属性名（防 __proto__ 类原型污染语义随结果外流） */
     private static final Set<String> FORBIDDEN_MEMBER_KEYS = Set.of("__proto__", "prototype", "constructor");
 
+    /** phase 标题长度上限（与 ZCode 编译期字面量约束同量级的运行时防线） */
+    private static final int PHASE_TITLE_MAX_LEN = 120;
+
+    /** phase 调用次数上限：纯展示性声明不得失败脚本，超限后静默熔断 */
+    private static final int MAX_PHASE_CALLS = 500;
+
     private static final long TERMINATION_GRACE_MS = 3000;
 
     private final AgentExecutionHandler agentHandler;
@@ -65,7 +77,8 @@ public class AutonomyScriptEngine {
     }
 
     /**
-     * 执行脚本并返回物化结果（Map/List/字符串/数字/布尔/null）
+     * 执行脚本并返回物化结果（无阶段回调——Flowable 委托路径/单测用，
+     * {@code phase(title)} 只写服务器日志）。
      *
      * @param node  自主编排节点
      * @param input 解析后的节点输入（绑定到脚本的 input 变量）
@@ -73,6 +86,20 @@ public class AutonomyScriptEngine {
      * @throws IllegalStateException 超时/触顶限额/脚本 fatal 错误
      */
     public Object run(AutonomyNode node, String input) {
+        return run(node, input, null);
+    }
+
+    /**
+     * 执行脚本并返回物化结果（Map/List/字符串/数字/布尔/null）
+     *
+     * @param node           自主编排节点
+     * @param input          解析后的节点输入（绑定到脚本的 input 变量）
+     * @param phaseNotifier  阶段事件回调（可空；由引擎装配，
+     *                       {@code phase(title)} 声明时逐次触发）
+     * @return 物化后的纯 JSON 值
+     * @throws IllegalStateException 超时/触顶限额/脚本 fatal 错误
+     */
+    public Object run(AutonomyNode node, String input, Consumer<AutonomyPhaseEvent> phaseNotifier) {
         int maxTotal = orDefault(node.getMaxTotalAgents(), 20);
         int maxConcurrent = orDefault(node.getMaxConcurrentAgents(), 5);
         int maxItems = orDefault(node.getMaxItemsPerCall(), 200);
@@ -80,6 +107,7 @@ public class AutonomyScriptEngine {
 
         AtomicLong totalCalls = new AtomicLong();
         Semaphore concurrency = new Semaphore(maxConcurrent);
+        AtomicInteger phaseSeq = new AtomicInteger();
 
         try (Context context = Context.newBuilder("js")
                 .allowAllAccess(false)
@@ -92,6 +120,8 @@ public class AutonomyScriptEngine {
                 log.info("[autonomy {}] {}", node.getId(), args.length > 0 ? args[0].toString() : "");
                 return null;
             });
+            bindings.putMember("phase", (ProxyExecutable) args ->
+                    phase(node, args, phaseSeq, phaseNotifier));
             bindings.putMember("agent", (ProxyExecutable) args -> {
                 if (args.length < 1 || !args[0].isString()) {
                     throw new IllegalArgumentException("agent(prompt) 需要一个字符串参数");
@@ -114,6 +144,47 @@ public class AutonomyScriptEngine {
                     materialized == null ? "null" : materialized.getClass().getSimpleName());
             return materialized;
         }
+    }
+
+    /**
+     * phase(title) 桥接实现：阶段声明（纯展示性）
+     *
+     * <p>纪律：参数契约违反（非字符串/空白/超长）按 fail-fast 处理，与
+     * {@code agent()} 参数校验同一纪律；调用次数超限则静默熔断——展示性
+     * 声明绝不允许失败脚本，与资源限额的 fatal 语义刻意不同。
+     * 监听器异常吞掉只告警（与 {@code log()} 同为观察面）。
+     */
+    private Object phase(AutonomyNode node, Value[] args, AtomicInteger phaseSeq,
+                         Consumer<AutonomyPhaseEvent> phaseNotifier) {
+        if (args.length < 1 || !args[0].isString()) {
+            throw new IllegalArgumentException("phase(title) 需要一个字符串参数");
+        }
+        String title = args[0].asString().trim();
+        if (title.isEmpty()) {
+            throw new IllegalArgumentException("phase(title) 标题不能为空");
+        }
+        if (title.length() > PHASE_TITLE_MAX_LEN) {
+            throw new IllegalArgumentException(
+                    "phase(title) 标题超长（" + title.length() + " > " + PHASE_TITLE_MAX_LEN + "）");
+        }
+        int seq = phaseSeq.incrementAndGet();
+        if (seq > MAX_PHASE_CALLS) {
+            if (seq == MAX_PHASE_CALLS + 1) {
+                log.warn("[autonomy {}] phase 调用超出上限 {}，后续阶段仅记录日志不再透出",
+                        node.getId(), MAX_PHASE_CALLS);
+            }
+            return null;
+        }
+        log.info("[autonomy {}] 阶段 #{}/{}: {}", node.getId(), seq, MAX_PHASE_CALLS, title);
+        if (phaseNotifier != null) {
+            try {
+                phaseNotifier.accept(new AutonomyPhaseEvent(
+                        node.getId(), title, seq, System.currentTimeMillis()));
+            } catch (Exception e) {
+                log.warn("[autonomy {}] phase 监听器异常，忽略: {}", node.getId(), e.getMessage());
+            }
+        }
+        return null;
     }
 
     private String callAgent(AutonomyNode node, String prompt, AtomicLong totalCalls,

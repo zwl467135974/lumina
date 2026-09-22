@@ -4,6 +4,16 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.13.0] - 未发布
+
+### 自主编排 phase(title) 阶段声明（v3.13 路线图批次 1.1，DSH/ZCode 双源收敛机制）
+
+- 自主编排脚本沙箱新增第 5 个桥接函数 `phase(title)`：纯展示性阶段声明——不改变控制流、不等待、不携带数据；模型生成的编排脚本由此可标注"当前阶段在做什么"，为批次 3.3 审批投影与执行面板提供数据源
+- 事件链路：脚本 `phase()` → `AutonomyPhaseEvent`（nodeId/title/seq/timestampMs）→ `WorkflowContext` 透传通道（transient 回调，引擎执行前装配、finally 清理，`copyContext` 传播到并行分支）→ `WorkflowEventListener.onAutonomyPhase`（default 方法，既有实现零破坏）
+- 消费端：工作流 SSE 流新增 `AUTONOMY_PHASE` 事件（instanceId/nodeId/title/seq + enrichWithNodeInfo）；执行日志收集器落 `PHASE` 状态进度行（独立状态值，不干扰节点 RUNNING→COMPLETED/FAILED 回填匹配），任务详情可见阶段进度
+- 边界纪律：标题非空白且 ≤120 字符（契约违反 fail-fast，与 `agent()` 参数校验同一纪律）；单节点调用上限 500 次，超限静默熔断——展示性声明绝不失败脚本（与资源限额的 fatal 语义刻意不同）；监听器异常吞掉只告警；Flowable 委托路径维持日志-only（旧 `run` 签名兼容）
+- 新增 5 个单测（事件顺序/序号、无回调行为不变、参数契约、超限熔断不 fatal、监听器异常隔离）；agent-core 357 / business-agent 353 全绿
+
 ## [3.12.1] - 2026-09-18
 
 ### 发布评审驱动的安全与可靠性修复

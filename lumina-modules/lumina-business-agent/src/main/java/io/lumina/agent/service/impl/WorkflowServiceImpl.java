@@ -245,6 +245,18 @@ public class WorkflowServiceImpl implements WorkflowService {
                 }
 
                 @Override
+                public void onAutonomyPhase(io.lumina.agent.orchestration.model.AutonomyPhaseEvent phaseEvent) {
+                    java.util.Map<String, Object> event = new java.util.HashMap<>();
+                    event.put("event", "AUTONOMY_PHASE");
+                    event.put("instanceId", instanceId);
+                    event.put("nodeId", phaseEvent.nodeId());
+                    event.put("title", phaseEvent.title());
+                    event.put("seq", phaseEvent.seq());
+                    enrichWithNodeInfo(event, definition, phaseEvent.nodeId());
+                    sink.next(event);
+                }
+
+                @Override
                 public void onWorkflowCompleted(WorkflowContext ctx) {
                     sink.next(java.util.Map.of(
                             "event", "WORKFLOW_COMPLETED",
@@ -655,6 +667,20 @@ public class WorkflowServiceImpl implements WorkflowService {
                 logDO.setStatus("FAILED");
                 logDO.setErrorMessage(error.getMessage());
             }
+        }
+
+        @Override
+        public void onAutonomyPhase(io.lumina.agent.orchestration.model.AutonomyPhaseEvent event) {
+            // 阶段进度行：独立 PHASE 状态，不占用 findPending 的 RUNNING 匹配，
+            // 因此不会干扰节点本身的 COMPLETED/FAILED 回填
+            WorkflowExecutionLogDO logDO = new WorkflowExecutionLogDO();
+            logDO.setInstanceId(instanceId);
+            logDO.setNodeId(event.nodeId());
+            logDO.setNodeName("阶段 #" + event.seq());
+            logDO.setStatus("PHASE");
+            logDO.setOutput(event.title());
+            logDO.setCreateTime(LocalDateTime.now());
+            pending.add(logDO);
         }
 
         private WorkflowExecutionLogDO findPending(String nodeId) {

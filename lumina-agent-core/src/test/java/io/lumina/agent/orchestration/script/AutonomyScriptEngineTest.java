@@ -2,9 +2,11 @@ package io.lumina.agent.orchestration.script;
 
 import io.lumina.agent.orchestration.engine.AgentExecutionHandler;
 import io.lumina.agent.orchestration.model.AutonomyNode;
+import io.lumina.agent.orchestration.model.AutonomyPhaseEvent;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -116,6 +118,71 @@ class AutonomyScriptEngineTest {
                 "return pipeline(['a','b'], boom)"), "");
 
         assertThat(result).isEqualTo(java.util.Arrays.asList("a", null));
+    }
+
+    // ==================== phase(title) 阶段声明 ====================
+
+    @Test
+    void phaseEventsEmitInOrderWithSeq() {
+        List<AutonomyPhaseEvent> events = new ArrayList<>();
+
+        Object result = engine.run(node(
+                "phase('检索资料');\n" +
+                "phase('汇总产出');\n" +
+                "return 'done'"), "", events::add);
+
+        assertThat(result).isEqualTo("done");
+        assertThat(events).hasSize(2);
+        assertThat(events.get(0).title()).isEqualTo("检索资料");
+        assertThat(events.get(0).nodeId()).isEqualTo("auto-1");
+        assertThat(events.get(0).seq()).isEqualTo(1);
+        assertThat(events.get(1).title()).isEqualTo("汇总产出");
+        assertThat(events.get(1).seq()).isEqualTo(2);
+        assertThat(events.get(1).timestampMs()).isGreaterThanOrEqualTo(events.get(0).timestampMs());
+    }
+
+    @Test
+    void phaseWithoutNotifierKeepsBehavior() {
+        // 无回调（Flowable 委托路径/旧调用方）：只写日志，脚本行为不变
+        Object result = engine.run(node("phase('任意阶段'); return 42"), "");
+
+        assertThat(result).isEqualTo(42);
+    }
+
+    @Test
+    void phaseRejectsBlankAndOversizedTitle() {
+        assertThatThrownBy(() -> engine.run(node("phase('   ')"), "", e -> {}))
+                .hasMessageContaining("标题不能为空");
+        String longTitle = "长".repeat(121);
+        assertThatThrownBy(() -> engine.run(node("phase('" + longTitle + "')"), "", e -> {}))
+                .hasMessageContaining("超长");
+        assertThatThrownBy(() -> engine.run(node("phase(123)"), "", e -> {}))
+                .hasMessageContaining("需要一个字符串参数");
+    }
+
+    @Test
+    void phaseCapNeverFailsScript() {
+        List<AutonomyPhaseEvent> events = new ArrayList<>();
+
+        // 超出 500 次上限：静默熔断，脚本必须照常完成（展示性声明绝不 fatal）
+        StringBuilder script = new StringBuilder();
+        for (int i = 0; i < 520; i++) {
+            script.append("phase('p").append(i).append("');\n");
+        }
+        script.append("return 'ok'");
+
+        Object result = engine.run(node(script.toString()), "", events::add);
+
+        assertThat(result).isEqualTo("ok");
+        assertThat(events).hasSize(500);
+    }
+
+    @Test
+    void phaseListenerFailureDoesNotKillScript() {
+        Object result = engine.run(node("phase('会炸的监听器'); return 'alive'"), "",
+                e -> { throw new RuntimeException("监听器炸了"); });
+
+        assertThat(result).isEqualTo("alive");
     }
 
     // ==================== 限额与超时纪律 ====================
