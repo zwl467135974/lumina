@@ -6,6 +6,15 @@
 
 ## [3.14.0] - 2026-09-22
 
+### 真实 LLM 端到端验证（硅基流动免费模型）+ 两项真实缺陷修复
+
+- **验证环境**：standalone + SiliconFlow `Qwen/Qwen2.5-7B-Instruct`（免费模型，OpenAI 兼容通道），真实 MySQL/Redis/浏览器全栈
+- **验证通过的真实链路**：① Agent 对话完整引擎管线（鉴权→会话→引擎→记忆，模型正常回复）；② 4.1 记忆整理代理真实执行（24 消息闲置会话 → LLM 提炼 4 条高价值记忆带 importance 0.8-0.9 入库，恰好 1 次 LLM 调用即计量上限语义实证）；③ 3.3 autonomy 工作流真实执行（phase×2 + 真实 agent() 子调用 + artifact.report 三类报告全链路落库，报告数据含模型真实回答；前端执行页真实渲染核验：计划步骤条/阶段时间线/指标瓦片/表格/柱状图全部正确）
+- **修复①（真实运行暴露的产品缺陷）**：`ChatModelFactory.createOpenAI/createAnthropic` 的 baseUrl 不回退全局默认——反思记忆/记忆整理等"空 LLMConfig 直连工厂"的调用方在 OpenAI 兼容平台部署下请求打到 api.openai.com 必 401；修复为 config → `lumina.agent.llm.base-url` 回退链
+- **修复②（自 v3.11 的隐性 bug）**：`ExecutionLogCollector` 四类日志行未设 `node_type`（NOT NULL 列）→ 执行日志插入**静默失败**（逐行 catch 吞掉），工作流执行详情页因此拿不到任何日志；修复为所有行强制携带（RUNNING 行经定义解析节点类型，PLAN/PHASE/REPORT 行固定 autonomy），收集器测试同步断言 nodeType
+- 过程备忘：增量构建不 clean 会让 standalone repackage 嵌入本地仓库陈旧业务 jar（症状：新 Bean 静默不装配）——改依赖后重打 fat jar 必须 `clean`
+- agent-core 512 / business-agent 370 全绿；验证种子数据与临时定义已全部清理
+
 ### 发布后补验收口（验证完整性专项）
 
 - 单测补齐四缺口（+27 用例）：① WorkflowServiceImpl 收集器 PLAN/REPORT 行接线（含 PHASE/REPORT 不干扰节点回填）；② Explore 工具面注册端到端（断言 Toolkit 实际注册集，非仅决策方法；含分类器缺失退化）；③ Stop 续跑/转向续段完整循环（spy stub 执行层驱动"决策→再执行→再决策→上限强制结束"全链路，含续跑消息内容、共享预算、最终结果单次落库、流式递归段循环）；④ 记忆整理 LLM 成功路径（提炼→打分夹取→入库全字段断言，含 LLM 输出解析失败不落库）

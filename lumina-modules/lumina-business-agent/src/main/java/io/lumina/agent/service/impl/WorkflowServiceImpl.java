@@ -685,10 +685,33 @@ public class WorkflowServiceImpl implements WorkflowService {
             logDO.setInstanceId(instanceId);
             logDO.setNodeId(nodeId);
             logDO.setNodeName(nodeName);
+            logDO.setNodeType(resolveNodeType(nodeId));
             logDO.setStatus("RUNNING");
             logDO.setCreateTime(LocalDateTime.now());
             pending.add(logDO);
             recordPlanProjection(nodeId);
+        }
+
+        /**
+         * 解析节点类型（node_type 为 NOT NULL 列，缺失会导致整行插入静默失败——
+         * 2026-09-22 真实执行核验暴露的隐性 bug，修复后所有行强制携带）
+         */
+        private String resolveNodeType(String nodeId) {
+            if (definition == null) {
+                return "unknown";
+            }
+            try {
+                WorkflowNode node = definition.findNode(nodeId);
+                if (node != null) {
+                    String simpleName = node.getClass().getSimpleName();
+                    return simpleName.endsWith("Node")
+                            ? simpleName.substring(0, simpleName.length() - 4).toLowerCase()
+                            : simpleName.toLowerCase();
+                }
+            } catch (Exception e) {
+                log.debug("节点类型解析失败: nodeId={}", nodeId);
+            }
+            return "unknown";
         }
 
         /**
@@ -714,6 +737,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                 planRow.setInstanceId(instanceId);
                 planRow.setNodeId(nodeId);
                 planRow.setNodeName("执行计划");
+                planRow.setNodeType("autonomy");
                 planRow.setStatus("PLAN");
                 planRow.setOutput(objectMapper.writeValueAsString(
                         java.util.Map.of("stages", plan.stages(), "agents", plan.agents())));
@@ -755,6 +779,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             logDO.setInstanceId(instanceId);
             logDO.setNodeId(event.nodeId());
             logDO.setNodeName("阶段 #" + event.seq());
+            logDO.setNodeType("autonomy");
             logDO.setStatus("PHASE");
             logDO.setOutput(event.title());
             logDO.setCreateTime(LocalDateTime.now());
@@ -769,6 +794,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             logDO.setInstanceId(instanceId);
             logDO.setNodeId(event.nodeId());
             logDO.setNodeName(event.title());
+            logDO.setNodeType("autonomy");
             logDO.setStatus("REPORT:" + event.type() + "#" + event.seq());
             logDO.setOutput(event.json());
             logDO.setCreateTime(LocalDateTime.now());

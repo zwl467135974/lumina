@@ -57,6 +57,8 @@ class WorkflowExecutionLogCollectorTest {
         List<WorkflowExecutionLogDO> rows = captor.getAllValues();
         assertThat(rows).extracting(WorkflowExecutionLogDO::getStatus)
                 .containsExactly("COMPLETED", "PLAN");
+        assertThat(rows).extracting(WorkflowExecutionLogDO::getNodeType)
+                .containsExactly("autonomy", "autonomy");
         WorkflowExecutionLogDO planRow = rows.get(1);
         assertThat(planRow.getNodeName()).isEqualTo("执行计划");
         assertThat(planRow.getOutput()).contains("检索资料", "汇总产出", "查一下");
@@ -105,6 +107,7 @@ class WorkflowExecutionLogCollectorTest {
         verify(logMapper).insert(captor.capture());
         WorkflowExecutionLogDO row = captor.getValue();
         assertThat(row.getStatus()).isEqualTo("REPORT:metrics#2");
+        assertThat(row.getNodeType()).isEqualTo("autonomy");
         assertThat(row.getNodeName()).isEqualTo("核心指标");
         assertThat(row.getOutput()).contains("qps");
         assertThat(row.getNodeId()).isEqualTo("auto1");

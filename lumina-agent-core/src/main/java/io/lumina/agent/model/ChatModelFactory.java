@@ -118,6 +118,10 @@ public class ChatModelFactory {
 
     /**
      * OpenAI 及其兼容 API（DeepSeek、GLM、Moonshot 等，通过 baseUrl 适配）
+     *
+     * <p>baseUrl 回退链：config → 全局默认（lumina.agent.llm.base-url）。
+     * 反思记忆/记忆整理等"空 LLMConfig 直连工厂"的调用方依赖该回退——
+     * 缺失时 OpenAIChatModel 落到 api.openai.com，兼容平台 Key 必 401。
      */
     private Model createOpenAI(LLMConfig config, LuminaAgentProperties.LLMConfig defaults,
                                String apiKey, String modelName) {
@@ -127,8 +131,9 @@ public class ChatModelFactory {
                 .stream(resolveStream(config, defaults))
                 .formatter(new OpenAIChatFormatter());
 
-        if (config.getBaseUrl() != null) {
-            builder.baseUrl(config.getBaseUrl());
+        String baseUrl = config.getBaseUrl() != null ? config.getBaseUrl() : defaults.getBaseUrl();
+        if (baseUrl != null && !baseUrl.isBlank()) {
+            builder.baseUrl(baseUrl);
         }
         if (config.getTemperature() != null) {
             builder.generateOptions(buildGenerateOptions(config));
@@ -149,6 +154,8 @@ public class ChatModelFactory {
 
         if (config.getBaseUrl() != null) {
             builder.baseUrl(config.getBaseUrl());
+        } else if (defaults.getBaseUrl() != null && !defaults.getBaseUrl().isBlank()) {
+            builder.baseUrl(defaults.getBaseUrl());
         }
         if (config.getTemperature() != null) {
             builder.defaultOptions(buildGenerateOptions(config));
