@@ -4,7 +4,7 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [3.14.0] - 未发布
+## [3.14.0] - 2026-09-22
 
 ### 批次 4：记忆整理代理 + 制度收口（v3.14 路线图批次 4）
 
