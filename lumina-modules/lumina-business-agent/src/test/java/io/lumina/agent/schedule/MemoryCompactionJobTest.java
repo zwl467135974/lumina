@@ -53,6 +53,16 @@ class MemoryCompactionJobTest {
         memoryMapper = Mockito.mock(LongTermMemoryMapper.class);
         job = new MemoryCompactionJob(conversationMapper, messageMapper, memoryMapper,
                 Mockito.mock(ChatModelFactory.class), props);
+        // 纯单测环境无 Spring/MyBatis 上下文：手动初始化 TableInfo，
+        // 否则 LambdaQueryWrapper 解析 LongTermMemoryDO（含 FieldFill）会因缺 lambda 缓存抛异常
+        com.baomidou.mybatisplus.core.MybatisConfiguration mpConfig =
+                new com.baomidou.mybatisplus.core.MybatisConfiguration();
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(mpConfig, ""),
+                LongTermMemoryDO.class);
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(mpConfig, ""),
+                ConversationDO.class);
     }
 
     @AfterEach
@@ -197,5 +207,61 @@ class MemoryCompactionJobTest {
         job.compact(); // 不上抛：一个租户失败不影响另一个
 
         assertThat(BaseContext.getTenantId()).isNull();
+    }
+
+    // ==================== LLM 成功路径（spy stub 提炼结果） ====================
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void compactSuccessPathSavesScoredMemories() {
+        props.getMemory().getCompaction().setTenantWhitelist(Set.of(7L));
+        stubConversations(conversation(1, "u1", 30));
+        stubCompactedExisting();
+        MessageDO message = new MessageDO();
+        message.setMessageId(1L);
+        message.setRole("user");
+        message.setContent("我们项目要用 Java 24，帮我记住");
+        when(messageMapper.selectList(any(Wrapper.class))).thenReturn(List.of(message));
+
+        MemoryCompactionJob spyJob = Mockito.spy(job);
+        Mockito.doReturn("{\"memories\":[{\"content\":\"用户项目使用 Java 24\",\"importance\":0.9},"
+                        + "{\"content\":\"打分越界的条目\",\"importance\":1.5}]}")
+                .when(spyJob).callLlm(org.mockito.ArgumentMatchers.anyString());
+
+        spyJob.compact();
+
+        org.mockito.ArgumentCaptor<LongTermMemoryDO> captor =
+                org.mockito.ArgumentCaptor.forClass(LongTermMemoryDO.class);
+        verify(memoryMapper, Mockito.times(2)).insert(captor.capture());
+        LongTermMemoryDO first = captor.getAllValues().get(0);
+        assertThat(first.getMemoryType()).isEqualTo(MemoryCompactionJob.MEMORY_TYPE_COMPACTION);
+        assertThat(first.getContent()).isEqualTo("用户项目使用 Java 24");
+        assertThat(first.getImportance()).isEqualTo(BigDecimal.valueOf(0.9));
+        assertThat(first.getConversationId()).isEqualTo("u1");
+        assertThat(first.getTenantId()).isEqualTo(7L);
+        assertThat(first.getUserId()).isEqualTo(5L);
+        // 打分越界夹取
+        assertThat(captor.getAllValues().get(1).getImportance()).isEqualTo(BigDecimal.valueOf(1.0));
+        assertThat(BaseContext.getTenantId()).isNull();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void compactLlmGarbageSavesNothing() {
+        props.getMemory().getCompaction().setTenantWhitelist(Set.of(7L));
+        stubConversations(conversation(1, "u1", 30));
+        stubCompactedExisting();
+        MessageDO message = new MessageDO();
+        message.setMessageId(1L);
+        message.setRole("user");
+        message.setContent("内容");
+        when(messageMapper.selectList(any(Wrapper.class))).thenReturn(List.of(message));
+
+        MemoryCompactionJob spyJob = Mockito.spy(job);
+        Mockito.doReturn("LLM 抽风输出非 JSON").when(spyJob).callLlm(org.mockito.ArgumentMatchers.anyString());
+
+        spyJob.compact();
+
+        verify(memoryMapper, never()).insert(any(LongTermMemoryDO.class));
     }
 }

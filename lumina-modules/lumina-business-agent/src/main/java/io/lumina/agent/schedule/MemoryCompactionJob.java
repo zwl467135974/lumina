@@ -247,7 +247,7 @@ public class MemoryCompactionJob {
         return String.join("\n", lines);
     }
 
-    private String callLlm(String prompt) {
+    String callLlm(String prompt) {
         try {
             AgentConfig.LLMConfig llmConfig = new AgentConfig.LLMConfig();
             String apiKey = resolveApiKey();

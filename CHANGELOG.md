@@ -6,6 +6,14 @@
 
 ## [3.14.0] - 2026-09-22
 
+### 发布后补验收口（验证完整性专项）
+
+- 单测补齐四缺口（+27 用例）：① WorkflowServiceImpl 收集器 PLAN/REPORT 行接线（含 PHASE/REPORT 不干扰节点回填）；② Explore 工具面注册端到端（断言 Toolkit 实际注册集，非仅决策方法；含分类器缺失退化）；③ Stop 续跑/转向续段完整循环（spy stub 执行层驱动"决策→再执行→再决策→上限强制结束"全链路，含续跑消息内容、共享预算、最终结果单次落库、流式递归段循环）；④ 记忆整理 LLM 成功路径（提炼→打分夹取→入库全字段断言，含 LLM 输出解析失败不落库）
+- 为可测性放宽两处包级可见：`executeWithOverflowRecovery` / `MemoryCompactionJob.callLlm`（无行为变更）；纯单测环境需手动初始化 MyBatis-Plus TableInfo（FieldFill 实体的 lambda 缓存）
+- **前端 3.3 E2E 截图核验通过**（本地全栈：standalone 8080 + vite 3001，MySQL/Redis 真实环境）：执行计划步骤条（三阶段 + 子调用面标签）、阶段进度时间线（3 项）、报告面板三项（metrics 指标瓦片 128单/3.2s/87.5%、table 两行数据、chart 双系列柱状图真实渲染）全部正确，布局无错乱——路线图"前端批次需 E2E 截图核验"验收标准闭合
+- 过程发现并规避的两个本地环境点（记录备忘）：vite 端口冲突回落 3001 时需 `LUMINA_CORS_ALLOWED_ORIGINS` 放行；Windows mysql 客户端导入中文需 `--default-character-set=utf8mb4`
+- agent-core 512 / business-agent 370 全绿（发布时 502/362）
+
 ### 批次 4：记忆整理代理 + 制度收口（v3.14 路线图批次 4）
 
 - **4.1 记忆整理代理**（`MemoryCompactionJob`）：后台作业对已归档长会话（消息数 ≥20 且闲置 ≥7 天）做 LLM 提炼，产出 `memory_type = compaction`、带召回打分（importance 0-1 夹取）的长期记忆，经既有长期记忆注入通道参与后续会话。**费用三闸门**（路线图硬约束全落实）：默认关闭（@ConditionalOnProperty，关闭时 Bean 不装配）+ 租户白名单（空 = 无租户生效，租户级费用授权显式列举）+ 每轮会话数硬上限（每会话恰好一次 LLM 调用，计数即计量）。幂等（同会话只整理一次）；租户上下文按会话归属构造 system LoginContext（与 AgentTrigger 同模式，单会话粒度切换 + finally 清理）；摘录装填"宁可少带"纪律（从最新回填至字符上限）；单会话/单租户失败隔离

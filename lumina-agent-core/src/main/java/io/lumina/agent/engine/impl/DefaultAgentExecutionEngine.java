@@ -877,7 +877,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      *
      * @since 3.11.0
      */
-    private Msg executeWithOverflowRecovery(AgentConfig config, List<Msg> messages) {
+    Msg executeWithOverflowRecovery(AgentConfig config, List<Msg> messages) {
         int retries = Math.max(0, agentProperties.getMemory().getCompression().getMaxOverflowRetries());
         List<Msg> current = messages;
         for (int attempt = 0; attempt <= retries; attempt++) {
