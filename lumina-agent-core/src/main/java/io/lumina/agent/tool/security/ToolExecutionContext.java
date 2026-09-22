@@ -18,15 +18,23 @@ public final class ToolExecutionContext {
     private final String conversationId;
     private final Long tenantId;
     private final Long userId;
+    private final Boolean readOnlyHint;
 
     public ToolExecutionContext(String toolName, String category, String paramsJson,
                                 String conversationId, Long tenantId, Long userId) {
+        this(toolName, category, paramsJson, conversationId, tenantId, userId, null);
+    }
+
+    public ToolExecutionContext(String toolName, String category, String paramsJson,
+                                String conversationId, Long tenantId, Long userId,
+                                Boolean readOnlyHint) {
         this.toolName = toolName;
         this.category = category;
         this.paramsJson = paramsJson;
         this.conversationId = conversationId;
         this.tenantId = tenantId;
         this.userId = userId;
+        this.readOnlyHint = readOnlyHint;
     }
 
     public String getToolName() {
@@ -51,5 +59,12 @@ public final class ToolExecutionContext {
 
     public Long getUserId() {
         return userId;
+    }
+
+    /**
+     * 工具自报的只读提示（来自 MCP Tool Annotations，可空 = 未知）
+     */
+    public Boolean getReadOnlyHint() {
+        return readOnlyHint;
     }
 }

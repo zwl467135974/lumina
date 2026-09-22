@@ -8,11 +8,13 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 工具安全管线（拦截器链 → 审批 → 单调守卫）
+ * 工具安全管线（拦截器链 → 只读豁免 → 审批 → 单调守卫）
  *
  * <p>执行顺序（借鉴 DeepSeek Harness 工具执行管线的分层）：
  * <ol>
  *   <li>拦截器链（有序，DENY 立即拒绝；ASK 汇总）</li>
+ *   <li>只读豁免（v3.13）：ASK 汇总非空且分类器判定"可证明只读"时跳过审批
+ *       直接放行——只降级 ASK，DENY 与守卫不受影响，单调性不破坏</li>
  *   <li>审批（ASK 时经 {@link ToolApprovalPort} 请求 allow-once，fail-closed）</li>
  *   <li>单调守卫（最后说话：任何非 null 即否决，无法被前面任何层翻回）</li>
  * </ol>
@@ -31,13 +33,24 @@ public class ToolSecurityPipeline {
     @Nullable
     private final ToolApprovalPort approvalPort;
 
+    @Nullable
+    private final ReadOnlyToolClassifier readOnlyClassifier;
+
     public ToolSecurityPipeline(List<ToolExecutionInterceptor> interceptors,
                                 List<ToolGuard> guards,
                                 @Nullable ToolApprovalPort approvalPort) {
+        this(interceptors, guards, approvalPort, null);
+    }
+
+    public ToolSecurityPipeline(List<ToolExecutionInterceptor> interceptors,
+                                List<ToolGuard> guards,
+                                @Nullable ToolApprovalPort approvalPort,
+                                @Nullable ReadOnlyToolClassifier readOnlyClassifier) {
         this.interceptors = new ArrayList<>(interceptors != null ? interceptors : List.of());
         this.interceptors.sort(Comparator.comparingInt(ToolExecutionInterceptor::getOrder));
         this.guards = new ArrayList<>(guards != null ? guards : List.of());
         this.approvalPort = approvalPort;
+        this.readOnlyClassifier = readOnlyClassifier;
     }
 
     /**
@@ -78,7 +91,24 @@ public class ToolSecurityPipeline {
             }
         }
 
-        // 2. 审批（fail-closed：无端口/异常/超时/拒绝都视为未批准）
+        // 2. 只读豁免（v3.13）：可证明只读的调用跳过审批（仅降级 ASK，DENY 已在上面立即返回）
+        if (!askReasons.isEmpty() && readOnlyClassifier != null) {
+            boolean provablyReadOnly;
+            try {
+                provablyReadOnly = readOnlyClassifier.isProvablyReadOnly(context);
+            } catch (Exception e) {
+                log.warn("只读分类器异常，按需审批处理（fail-closed）: tool={}, error={}",
+                        context.getToolName(), e.getMessage());
+                provablyReadOnly = false;
+            }
+            if (provablyReadOnly) {
+                log.info("只读工具自动放行（豁免审批）: tool={}, 原始审批理由: {}",
+                        context.getToolName(), String.join("; ", askReasons));
+                askReasons.clear();
+            }
+        }
+
+        // 3. 审批（fail-closed：无端口/异常/超时/拒绝都视为未批准）
         if (!askReasons.isEmpty()) {
             String reason = String.join("; ", askReasons);
             boolean approved = false;
@@ -98,7 +128,7 @@ public class ToolSecurityPipeline {
             log.info("工具调用获人工批准（allow-once）: tool={}", context.getToolName());
         }
 
-        // 3. 单调守卫（最后说话，无 allow 臂）
+        // 4. 单调守卫（最后说话，无 allow 臂）
         for (ToolGuard guard : guards) {
             String reason;
             try {

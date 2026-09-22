@@ -1,5 +1,6 @@
 package io.lumina.agent.config;
 
+import io.lumina.agent.tool.security.ReadOnlyToolClassifier;
 import io.lumina.agent.tool.security.ToolApprovalPort;
 import io.lumina.agent.tool.security.ToolExecutionInterceptor;
 import io.lumina.agent.tool.security.ToolGuard;
@@ -15,7 +16,8 @@ import java.util.List;
  *
  * <p>收集所有 {@link ToolExecutionInterceptor} / {@link ToolGuard} Bean 组装管线。
  * {@link ToolApprovalPort} 可选——由业务模块提供（如通知审批），
- * 缺席时 ASK 决策按 fail-closed 拒绝。
+ * 缺席时 ASK 决策按 fail-closed 拒绝。{@link ReadOnlyToolClassifier}
+ * 可选——缺席时不做只读豁免（行为与 3.12 一致）。
  *
  * @author Lumina Team
  * @since 3.11.0
@@ -26,7 +28,9 @@ public class ToolSecurityPipelineConfig {
     @Bean
     public ToolSecurityPipeline toolSecurityPipeline(List<ToolExecutionInterceptor> interceptors,
                                                      List<ToolGuard> guards,
-                                                     ObjectProvider<ToolApprovalPort> approvalPort) {
-        return new ToolSecurityPipeline(interceptors, guards, approvalPort.getIfAvailable());
+                                                     ObjectProvider<ToolApprovalPort> approvalPort,
+                                                     ObjectProvider<ReadOnlyToolClassifier> readOnlyClassifier) {
+        return new ToolSecurityPipeline(interceptors, guards,
+                approvalPort.getIfAvailable(), readOnlyClassifier.getIfAvailable());
     }
 }

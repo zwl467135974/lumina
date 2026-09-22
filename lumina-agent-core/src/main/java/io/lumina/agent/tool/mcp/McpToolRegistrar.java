@@ -135,6 +135,7 @@ public class McpToolRegistrar {
         ToolDefinition definition = ToolDefinition.create(registeredName, description, category, params ->
                 invokeTool(client, originalName, registeredName, params));
         definition.setParameters(parameters);
+        definition.setReadOnlyHint(extractReadOnlyHint(mcpTool));
 
         try {
             enhancedToolManager.registerToolDefinition(definition);
@@ -142,6 +143,21 @@ public class McpToolRegistrar {
         } catch (Throwable e) {
             log.warn("注册 MCP 工具 [{}] 失败: {}", registeredName, e.getMessage(), e);
             return false;
+        }
+    }
+
+    /**
+     * 提取 MCP Tool Annotations 的只读提示（null 容忍）
+     *
+     * <p>readOnlyHint 是 server 的自报声明（协议非强制），仅作只读分级的
+     * 判定输入之一，不单独构成放行依据之外的安全保证。
+     */
+    private Boolean extractReadOnlyHint(McpSchema.Tool mcpTool) {
+        try {
+            McpSchema.ToolAnnotations annotations = mcpTool.annotations();
+            return annotations == null ? null : annotations.readOnlyHint();
+        } catch (Throwable e) {
+            return null;
         }
     }
 

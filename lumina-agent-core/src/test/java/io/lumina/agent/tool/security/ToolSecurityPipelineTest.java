@@ -176,4 +176,82 @@ class ToolSecurityPipelineTest {
         assertThat(interceptor.beforeExecute(ctx("util.calculate")).type())
                 .isEqualTo(ToolDecision.Type.CONTINUE);
     }
+
+    // ==================== 只读豁免（v3.13） ====================
+
+    @Test
+    void readonlyExemptionSkipsApprovalWithoutPort() {
+        // ASK + 可证明只读：无审批端口也放行（豁免生效）
+        ReadOnlyToolClassifier readonly = context -> true;
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))), List.of(denying(null)), null, readonly);
+
+        assertThat(pipeline.check(ctx("util.search"))).isNull();
+    }
+
+    @Test
+    void readonlyExemptionDoesNotTouchApprovalPort() {
+        java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+        ToolApprovalPort countingPort = (context, reason) -> {
+            calls.incrementAndGet();
+            return false;
+        };
+        ReadOnlyToolClassifier readonly = context -> true;
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))), List.of(denying(null)), countingPort, readonly);
+
+        assertThat(pipeline.check(ctx("util.search"))).isNull();
+        assertThat(calls.get()).isZero();
+    }
+
+    @Test
+    void readonlyExemptionStillRespectsGuardVeto() {
+        // 单调性：只读豁免不能翻转守卫否决
+        ReadOnlyToolClassifier readonly = context -> true;
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))),
+                List.of(denying("租户黑名单工具")), null, readonly);
+
+        assertThat(pipeline.check(ctx("code.execute"))).isEqualTo("租户黑名单工具");
+    }
+
+    @Test
+    void readonlyExemptionDoesNotOverrideDeny() {
+        // DENY 在拦截器链立即返回，豁免层根本不会执行
+        ReadOnlyToolClassifier readonly = context -> true;
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.deny("平台禁用"))), List.of(denying(null)), null, readonly);
+
+        assertThat(pipeline.check(ctx("code.execute"))).isEqualTo("平台禁用");
+    }
+
+    @Test
+    void classifierNotReadOnlyStillRequiresApproval() {
+        ReadOnlyToolClassifier readonly = context -> false;
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))), List.of(denying(null)), null, readonly);
+
+        assertThat(pipeline.check(ctx("code.execute"))).contains("未获批准");
+    }
+
+    @Test
+    void classifierExceptionFailsClosedToApproval() {
+        ReadOnlyToolClassifier throwing = context -> {
+            throw new IllegalStateException("分类器内部错误");
+        };
+        // 无审批端口 → 拒绝（绝不因分类器故障放行）
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))), List.of(denying(null)), null, throwing);
+
+        assertThat(pipeline.check(ctx("code.execute"))).contains("未获批准");
+    }
+
+    @Test
+    void noClassifierKeepsLegacyBehavior() {
+        // 未注入分类器（旧装配路径）：ASK 仍走审批
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))), List.of(denying(null)), null);
+
+        assertThat(pipeline.check(ctx("util.search"))).contains("未获批准");
+    }
 }

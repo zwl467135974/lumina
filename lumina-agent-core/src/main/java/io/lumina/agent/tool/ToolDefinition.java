@@ -48,6 +48,15 @@ public class ToolDefinition implements Serializable {
     private boolean enabled;
 
     /**
+     * 只读提示（来自 MCP Tool Annotations 的 {@code readOnlyHint}，可空 = 未知）
+     *
+     * <p>仅作为只读分级（v3.13）的判定输入之一：{@code true} 时可作为
+     * "可证明只读"证据豁免审批；{@code null}/{@code false} 不参与判定。
+     * 注意这是 server 自报的提示而非证明，名单与启发式之外的最后一块拼图。
+     */
+    private Boolean readOnlyHint;
+
+    /**
      * 工具执行器接口
      */
     @FunctionalInterface

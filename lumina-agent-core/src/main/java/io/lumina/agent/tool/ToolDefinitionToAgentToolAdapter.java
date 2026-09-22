@@ -131,7 +131,8 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                 if (securityPipeline != null) {
                     String denial = securityPipeline.check(new ToolExecutionContext(
                             toolName, toolDefinition.getCategory(), paramsJson,
-                            BaseContext.getConversationId(), BaseContext.getTenantId(), BaseContext.getUserId()));
+                            BaseContext.getConversationId(), BaseContext.getTenantId(),
+                            BaseContext.getUserId(), toolDefinition.getReadOnlyHint()));
                     if (denial != null) {
                         String msg = "工具调用被安全策略拒绝: " + denial;
                         doRecord(toolName, paramsJson, null, msg, System.currentTimeMillis() - start, false);

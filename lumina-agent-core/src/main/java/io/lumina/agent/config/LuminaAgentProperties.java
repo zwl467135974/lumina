@@ -490,6 +490,16 @@ public class LuminaAgentProperties {
         private long approvalTimeoutSeconds = 30;
         /** 审批人用户 ID（空则通知发起调用的用户） */
         private java.util.List<Long> approverUserIds = new java.util.ArrayList<>();
+        /**
+         * 只读自动放行总开关（默认 false）：启用后"可证明只读"的工具调用
+         * 豁免人工审批直接执行（仅豁免 ASK；DENY 与单调守卫不受影响）
+         */
+        private boolean readonlyAutoApprove = false;
+        /**
+         * 只读工具名单（精确名或 {@code 前缀*} 通配），命中即视为可证明只读
+         */
+        private java.util.List<String> readonlyTools = new java.util.ArrayList<>(
+                java.util.List.of("util.search", "util.time", "util.math"));
     }
 }
 
