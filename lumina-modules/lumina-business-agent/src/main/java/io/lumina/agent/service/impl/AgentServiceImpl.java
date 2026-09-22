@@ -584,7 +584,7 @@ public class AgentServiceImpl implements AgentService {
             String filename = fileDO.getOriginalName() != null ? fileDO.getOriginalName() : uuid;
 
             if (contentType.startsWith("image/")) {
-                // 图片：Base64 直接投递
+                // 图片：Base64 直接投递（带文件元数据供历史引用标记使用）
                 byte[] bytes;
                 try (java.io.InputStream is = fileService.download(uuid)) {
                     bytes = is.readAllBytes();
@@ -592,7 +592,7 @@ public class AgentServiceImpl implements AgentService {
                     throw new BusinessException(ErrorCode.FILE_READ_FAILED, "读取图片失败: " + uuid, e);
                 }
                 contents.add(new MultimodalImage(contentType,
-                        java.util.Base64.getEncoder().encodeToString(bytes)));
+                        java.util.Base64.getEncoder().encodeToString(bytes), uuid, filename));
             } else {
                 // 文档（PDF/Word/文本）：解析提取文本
                 String text = extractDocumentText(uuid, filename, contentType);

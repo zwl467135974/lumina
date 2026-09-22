@@ -6,6 +6,20 @@
 
 ## [3.13.0] - 未发布
 
+### Playwright 浏览器接入（v3.13 路线图批次 1.2，DSH/ZCode 双源收敛机制）
+
+- 官方 `@playwright/mcp` 经现有 MCP stdio 通道接入，**引擎零改动**：`nacos-config/lumina-agent-service.yaml` 注释区新增配置模板（`--headless --isolated --blocked-origins` 安全基线，文件系统默认限工作区根且禁 `file://`）
+- 配套技能资产 `docs/skills/browser-control/SKILL.md`：快照→ref 定位→操作→截图仅留证的核心工作流纪律与排障顺序；走 V53 标准导入通道（强制体检→渐进披露目录），不做绕过体检的种子注入
+- 新增《浏览器控制接入指南》：前置条件、两种启用方式（yml / 运行时 `POST /api/v1/mcp/servers` 动态注册）、验收链路、安全边界表（浏览器子进程同主机、`--blocked-origins` 非安全边界、`util.http` SSRF 防护不覆盖浏览器流量、部署层网络隔离建议）、`--image-responses=omit` token 开关
+- 本地实测 `npx @playwright/mcp@latest` 可用（node v22.14.0 验证 CLI 参数面）
+
+### 图片历史卸载（v3.13 路线图批次 1.3）
+
+- `MultimodalImage` 新增 `fileUuid`/`originalName` 元数据（双参构造保留，旧调用方零破坏）；business 层加载文件时填入
+- **引用标记代替失忆**：引擎同步/流式共四个记忆落点，user 消息落库时追加 `buildReferenceNote` 轻量标记（文件名 + fileUuid，几十 token）——历史轮次模型可感知"当时有图"，Base64 本体绝不进历史（Lumina 记忆本为纯文本，此改动把多轮图片会话从"完全失忆"升级为"引用可感知"；模型侧按需取回需工具结果携带图片的引擎面改造，记入批次 3 候选）
+- **尺寸感知 token 估算**：`TokenEstimator.estimateImageTokens` 解析 PNG/JPEG/GIF 文件头取宽高，按 `像素数/750` 估算并夹在 [85, 4000]，解析失败回退固定 `IMAGE_TOKEN_COST`（宁可高估不误判 0）；`estimateMultimodalTokenCost` 切换至该估算
+- 新增 11 个单测（PNG/JPEG/GIF 头解析与夹取、非法数据回退、引用标记构建/降级/多图）；agent-core 全量 / business-agent 353 全绿
+
 ### 自主编排 phase(title) 阶段声明（v3.13 路线图批次 1.1，DSH/ZCode 双源收敛机制）
 
 - 自主编排脚本沙箱新增第 5 个桥接函数 `phase(title)`：纯展示性阶段声明——不改变控制流、不等待、不携带数据；模型生成的编排脚本由此可标注"当前阶段在做什么"，为批次 3.3 审批投影与执行面板提供数据源

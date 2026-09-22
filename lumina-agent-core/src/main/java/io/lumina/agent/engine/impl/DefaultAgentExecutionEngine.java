@@ -263,9 +263,10 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 提取 Token 使用量
             ExecuteResult.TokenUsage tokenUsage = extractTokenUsage(agentResponse);
 
-            // 保存对话记忆（Redis 热记忆）
+            // 保存对话记忆（Redis 热记忆）——图片历史卸载：只留引用标记，Base64 本体不进历史
             if (conversationId != null) {
-                memoryManager.addMemory(conversationId, "user", task);
+                memoryManager.addMemory(conversationId, "user",
+                        task + MultimodalImage.buildReferenceNote(contents));
                 memoryManager.addMemory(conversationId, "assistant", result);
             }
 
@@ -393,7 +394,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task, agentConfig);
 
             // 按 agentType 分发（PlanAndExecute 走组合流，其他走 ReAct）
-            Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task, conversationId);
+            Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task,
+                    conversationId, null);
 
             // 注入 TraceContext 到 Reactor Context，供 Tracer 的 callModel/callTool 读取
             final io.lumina.agent.tracing.TraceContext finalTraceCtx = traceCtx;
@@ -464,7 +466,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             Flux<StreamChunk> ragSourcesFlux = buildRagSourcesFlux(task, agentConfig);
 
             // 按 agentType 分发（PlanAndExecute 走组合流，其他走 ReAct）
-            Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task, conversationId);
+            Flux<StreamChunk> agentFlux = buildAgentStreamFlux(agentConfig, contextMessages, prompt, task,
+                    conversationId, contents);
 
             return Flux.concat(ragSourcesFlux, agentFlux)
                     .doFinally(signal -> BaseContext.clearConversationId());
@@ -737,7 +740,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     /**
-     * 估算多模态内容的 token 成本（图片按固定成本，文档按提取文本估算）
+     * 估算多模态内容的 token 成本（图片按尺寸感知估算，文档按提取文本估算）
      */
     private int estimateMultimodalTokenCost(List<MultimodalContent> contents) {
         if (contents == null || contents.isEmpty()) {
@@ -745,8 +748,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         }
         int cost = 0;
         for (MultimodalContent content : contents) {
-            if (content instanceof MultimodalImage) {
-                cost += TokenEstimator.IMAGE_TOKEN_COST;
+            if (content instanceof MultimodalImage image) {
+                cost += TokenEstimator.estimateImageTokens(image.getData());
             } else if (content instanceof MultimodalDocument doc) {
                 cost += TokenEstimator.estimateTokens(doc.text());
             }
@@ -1183,8 +1186,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * @since 3.3.1
      */
     private Flux<StreamChunk> buildAgentStreamFlux(AgentConfig agentConfig, List<Msg> contextMessages,
-                                                    String userPrompt, String task, String conversationId) {
+                                                    String userPrompt, String task, String conversationId,
+                                                    List<MultimodalContent> contents) {
         StringBuilder finalResponse = new StringBuilder();
+        // 图片历史卸载：记忆落点只留引用标记（一次构建，三种流式终态共用）
+        String imageNote = MultimodalImage.buildReferenceNote(contents);
 
         Flux<StreamChunk> agentFlux;
         String agentType = agentConfig.getAgentType();
@@ -1222,20 +1228,20 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     }
                 })
                 .doOnComplete(() -> {
-                    saveStreamMemory(conversationId, task, finalResponse.toString(), false);
+                    saveStreamMemory(conversationId, task + imageNote, finalResponse.toString(), false);
                     publishTurn(io.lumina.agent.event.AgentTurnEvent.completed(
                             agentConfig.getAgentType(), agentConfig.getAgentId(),
                             agentConfig.getAgentName(), conversationId, true, 0, null));
                 })
                 .doOnCancel(() -> {
-                    saveStreamMemory(conversationId, task, finalResponse.toString(), true);
+                    saveStreamMemory(conversationId, task + imageNote, finalResponse.toString(), true);
                     publishTurn(io.lumina.agent.event.AgentTurnEvent.interrupted(
                             agentConfig.getAgentType(), agentConfig.getAgentId(),
                             agentConfig.getAgentName(), conversationId, true, "客户端断开，流式取消"));
                 })
                 .onErrorResume(e -> {
                     log.error("流式执行失败: agentType={}", agentType, e);
-                    saveStreamMemory(conversationId, task, finalResponse.toString(), true);
+                    saveStreamMemory(conversationId, task + imageNote, finalResponse.toString(), true);
                     publishTurn(io.lumina.agent.event.AgentTurnEvent.failed(
                             agentConfig.getAgentType(), agentConfig.getAgentId(),
                             agentConfig.getAgentName(), conversationId, true, 0, e.getMessage()));

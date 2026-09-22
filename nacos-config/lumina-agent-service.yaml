@@ -180,6 +180,21 @@ lumina:
       enabled: ${MCP_HEALTH_CHECK_ENABLED:true}
       interval-seconds: ${MCP_HEALTH_CHECK_INTERVAL:60}
     servers:
+      # Playwright 浏览器控制（v3.13 批次 1.2）：官方 @playwright/mcp，复用 stdio 传输
+      # 前置：Node >= 18 与 npx 可用；首次部署执行 npx playwright install chromium
+      # 技能：技能页导入 docs/skills/browser-control/SKILL.md（走体检后启用）
+      # 安全：--isolated 内存态 profile 不落盘；--blocked-origins 拦截内网/环回（非安全边界，
+      #       部署层仍需网络隔离）；文件系统默认限定工作区根且禁 file:// 导航
+      # - name: playwright
+      #   transport: stdio
+      #   command: npx
+      #   args:
+      #     - "-y"
+      #     - "@playwright/mcp@latest"
+      #     - "--browser=chromium"
+      #     - "--headless"
+      #     - "--isolated"
+      #     - "--blocked-origins=http://127.0.0.1;http://localhost;http://10.*;http://192.168.*"
       # stdio 示例：通过子进程启动 MCP Server
       # - name: filesystem
       #   transport: stdio
