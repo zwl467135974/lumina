@@ -43,9 +43,6 @@ public class DefaultReadOnlyToolClassifier implements ReadOnlyToolClassifier {
             return false;
         }
         LuminaAgentProperties.SecurityConfig security = agentProperties.getTool().getSecurity();
-        if (!security.isReadonlyAutoApprove()) {
-            return false;
-        }
         if (matchesReadonlyList(security, context.getToolName())) {
             log.debug("只读分级命中名单: tool={}", context.getToolName());
             return true;
@@ -60,6 +57,19 @@ public class DefaultReadOnlyToolClassifier implements ReadOnlyToolClassifier {
             return true;
         }
         return false;
+    }
+
+    /**
+     * 豁免用途：叠加 {@code readonly-auto-approve} 总开关（默认关闭，
+     * 关闭时行为与 3.12 完全一致）。PLAN 会话模式的只读约束走
+     * {@link #isProvablyReadOnly}（无此开关——用户显式选 plan 即是开关）。
+     */
+    @Override
+    public boolean allowsExemption(ToolExecutionContext context) {
+        if (!agentProperties.getTool().getSecurity().isReadonlyAutoApprove()) {
+            return false;
+        }
+        return isProvablyReadOnly(context);
     }
 
     /** 名单匹配：精确名，或以 {@code *} 结尾的前缀通配（如 {@code mcp__playwright__browser_get*}） */

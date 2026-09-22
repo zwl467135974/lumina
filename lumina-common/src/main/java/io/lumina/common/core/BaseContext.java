@@ -224,6 +224,46 @@ public class BaseContext {
         TASK_UUID.remove();
     }
 
+    // ==================== 会话模式（v3.13 plan/build/yolo） ====================
+
+    /**
+     * 会话 ID 绑定的执行模式（PLAN/BUILD/YOLO），未设置时为 null（等价 BUILD 行为）
+     */
+    private static final ThreadLocal<String> SESSION_MODE = new ThreadLocal<>();
+
+    /**
+     * 设置会话执行模式（Agent 执行入口调用，工具安全管线通过 {@link #getSessionMode()} 读取）
+     *
+     * <p>取值：{@code PLAN}（只读约束：非可证明只读的工具调用被构造性阻断）、
+     * {@code BUILD}（默认：审批管线语义不变）、{@code YOLO}（跳过人工审批，
+     * 但平台 DENY 与单调守卫仍然生效）。
+     *
+     * @param sessionMode 会话模式（null 等同未设置）
+     */
+    public static void setSessionMode(String sessionMode) {
+        if (sessionMode == null || sessionMode.isBlank()) {
+            SESSION_MODE.remove();
+        } else {
+            SESSION_MODE.set(sessionMode.trim().toUpperCase());
+        }
+    }
+
+    /**
+     * 获取会话执行模式
+     *
+     * @return 当前线程绑定的模式（PLAN/BUILD/YOLO），未设置返回 null
+     */
+    public static String getSessionMode() {
+        return SESSION_MODE.get();
+    }
+
+    /**
+     * 清除会话执行模式
+     */
+    public static void clearSessionMode() {
+        SESSION_MODE.remove();
+    }
+
     // ==================== 角色与权限判定 ====================
 
     /**
@@ -310,6 +350,7 @@ public class BaseContext {
         CONTEXT.remove();
         CONVERSATION_ID.remove();
         TASK_UUID.remove();
+        SESSION_MODE.remove();
         log.debug("清除 Base 上下文");
     }
 

@@ -319,13 +319,15 @@ public class AgentController {
             @RequestBody java.util.Map<String, String> body) {
         String task = body.get("task");
         String conversationId = body.get("conversationId");
-        log.info("执行 Agent: id={}, task={}, conversationId={}", id, task, conversationId);
+        String sessionMode = body.get("sessionMode");
+        log.info("执行 Agent: id={}, task={}, conversationId={}, sessionMode={}",
+                id, task, conversationId, sessionMode);
 
         if (task == null || task.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
         }
 
-        String result = agentService.executeAgent(id, task, conversationId);
+        String result = agentService.executeAgentForResult(id, task, conversationId, sessionMode).getResult();
 
         return R.success(result);
     }
@@ -481,14 +483,16 @@ public class AgentController {
     public Flux<ServerSentEvent<StreamChunk>> executeAgentStream(
             @PathVariable("id") Long id,
             @RequestParam String task,
-            @RequestParam(required = false) String conversationId) {
-        log.info("流式执行 Agent: id={}, task={}, conversationId={}", id, task, conversationId);
+            @RequestParam(required = false) String conversationId,
+            @RequestParam(required = false, name = "sessionMode") String sessionMode) {
+        log.info("流式执行 Agent: id={}, task={}, conversationId={}, sessionMode={}",
+                id, task, conversationId, sessionMode);
 
         if (task == null || task.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
         }
 
-        return agentService.executeAgentStream(id, task, conversationId)
+        return agentService.executeAgentStream(id, task, conversationId, sessionMode)
                 .map(chunk -> ServerSentEvent.<StreamChunk>builder()
                         .id(String.valueOf(System.nanoTime()))
                         .event(chunk.type())
@@ -512,7 +516,8 @@ public class AgentController {
         log.info("流式多模态执行 Agent: id={}, task={}, fileCount={}, conversationId={}",
                 id, dto.getTask(), dto.getFileUuids() != null ? dto.getFileUuids().size() : 0, dto.getConversationId());
 
-        return agentService.executeAgentMultimodalStream(id, dto.getTask(), dto.getFileUuids(), dto.getConversationId())
+        return agentService.executeAgentMultimodalStream(id, dto.getTask(), dto.getFileUuids(),
+                dto.getConversationId(), dto.getSessionMode())
                 .map(chunk -> ServerSentEvent.<StreamChunk>builder()
                         .id(String.valueOf(System.nanoTime()))
                         .event(chunk.type())
@@ -541,6 +546,7 @@ public class AgentController {
             @RequestBody java.util.Map<String, String> body) {
         String message = body.get("message");
         String conversationId = body.get("conversationId");
+        String sessionMode = body.get("sessionMode");
 
         if (message == null || message.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
@@ -553,10 +559,10 @@ public class AgentController {
             log.info("自动创建会话: agentId={}, conversationId={}", id, conversationId);
         }
 
-        log.info("对话: agentId={}, conversationId={}, message={}", id, conversationId, message);
+        log.info("对话: agentId={}, conversationId={}, sessionMode={}", id, conversationId, sessionMode);
 
         // 执行 Agent
-        String reply = agentService.executeAgent(id, message, conversationId);
+        String reply = agentService.executeAgentForResult(id, message, conversationId, sessionMode).getResult();
 
         return R.success(java.util.Map.of(
                 "conversationId", conversationId,

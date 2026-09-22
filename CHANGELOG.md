@@ -6,6 +6,24 @@
 
 ## [3.13.0] - 未发布
 
+### 会话模式 PLAN / BUILD / YOLO（v3.13 路线图批次 2.2，ZCode 机制）
+
+- 运行时级策略强制（管线层而非提示词层，模型无法经提示注入绕过）：
+  - **PLAN**：非"可证明只读"的工具调用被构造性阻断，拒绝理由对模型可见并指引"先产出计划、批准后切 BUILD 执行"——只读判定走分类器纯判定（`isProvablyReadOnly`），**不受 readonly-auto-approve 豁免开关影响**（用户显式选 plan 即是开关）
+  - **BUILD**：默认审批管线语义（不传模式即此行为，与 3.12 完全一致）
+  - **YOLO**：跳过人工审批（ASK 放行），平台 DENY 名单与单调守卫仍然生效
+- 传递链路：请求参数（`sessionMode`）→ `AgentConfig.sessionMode` → 引擎入口写入 BaseContext（与 conversationId 同生命周期设置/清理，含并行流 doFinally）→ `SessionModeInterceptor`（order 在平台 DENY 名单之后）
+- 分类器职责拆分：`isProvablyReadOnly` 纯判定（PLAN 用）/ `allowsExemption` 带豁免开关（管线审批豁免用）
+- 入口接线：`/execute`、`/chat`（body 键）、`/execute/stream`（query 参数）、`/execute/multimodal/stream`（DTO 字段）；Service 四方法加带模式重载（旧签名 default 委托零破坏）；`normalizeSessionMode` 归一化仅接受三个值，未知值忽略并告警（审计入口日志）
+- 新增 12 个用例（PLAN 阻断/放行、BUILD/YOLO 不介入、大小写归一化、分类器故障 fail-closed 阻断、管线 YOLO 跳审批不触端口/守卫否决不翻回/DENY 不受影响）
+
+### 工具只读分级与审批豁免（v3.13 路线图批次 2.1，ZCode bash-readonly-policy 分层方法论）
+
+- 只读分级三层证据（`DefaultReadOnlyToolClassifier`）：① `readonly-tools` 名单（精确/前缀 `*` 通配，默认 util.search/time/math）；② MCP Tool Annotations `readOnlyHint`（注册器提取→ToolDefinition→ToolExecutionContext 透传）；③ `code.execute` 静态启发式（Python 导入根模块白名单 + open/eval/exec/__import__ 逃逸口词元黑名单双约束；JS 危险词元黑名单；词边界正则防误伤；from-import 整段消耗不误判）
+- 管线新增审批豁免步（第 2 步）：ASK 汇总非空且"可证明只读"时跳过审批——只降级 ASK，DENY 立即返回与单调守卫否决不受影响；分类器异常 fail-closed 走审批
+- 开关 `readonly-auto-approve` 默认关闭（关闭时行为与 3.12 完全一致）
+- 新增 18 个用例（三层证据/通配/启发式约束/管线豁免语义）
+
 ### Playwright 浏览器接入（v3.13 路线图批次 1.2，DSH/ZCode 双源收敛机制）
 
 - 官方 `@playwright/mcp` 经现有 MCP stdio 通道接入，**引擎零改动**：`nacos-config/lumina-agent-service.yaml` 注释区新增配置模板（`--headless --isolated --blocked-origins` 安全基线，文件系统默认限工作区根且禁 `file://`）

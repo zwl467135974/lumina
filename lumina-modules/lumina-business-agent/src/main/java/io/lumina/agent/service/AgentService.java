@@ -80,7 +80,13 @@ public interface AgentService {
      * @param conversationUuid 会话 UUID（null 表示无会话上下文）
      * @return 完整执行结果（result 字段为脱敏后文本）
      */
-    io.lumina.agent.model.ExecuteResult executeAgentForResult(Long agentId, String task, String conversationUuid);
+    io.lumina.agent.model.ExecuteResult executeAgentForResult(
+            Long agentId, String task, String conversationUuid, String sessionMode);
+
+    /** 执行 Agent 任务并返回完整执行结果（默认 BUILD 会话模式） */
+    default io.lumina.agent.model.ExecuteResult executeAgentForResult(Long agentId, String task, String conversationUuid) {
+        return executeAgentForResult(agentId, task, conversationUuid, null);
+    }
 
     /**
      * 执行多模态 Agent 任务（文本 + 图片，带会话上下文）
@@ -106,14 +112,26 @@ public interface AgentService {
      * @return 完整执行结果（result 字段为脱敏后文本）
      */
     io.lumina.agent.model.ExecuteResult executeAgentMultimodalForResult(
-            Long agentId, String task, List<String> fileUuids, String conversationUuid);
+            Long agentId, String task, List<String> fileUuids, String conversationUuid, String sessionMode);
+
+    /** 执行多模态 Agent 任务并返回完整执行结果（默认 BUILD 会话模式） */
+    default io.lumina.agent.model.ExecuteResult executeAgentMultimodalForResult(
+            Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        return executeAgentMultimodalForResult(agentId, task, fileUuids, conversationUuid, null);
+    }
 
     /**
      * 流式执行 Agent 任务（带会话上下文）
      *
      * @param conversationUuid 会话 UUID（null 表示无会话上下文）
      */
-    Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid);
+    /** 流式执行 Agent 任务（带会话模式，v3.13） */
+    Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid, String sessionMode);
+
+    /** 流式执行 Agent 任务（默认 BUILD 会话模式） */
+    default Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid) {
+        return executeAgentStream(agentId, task, conversationUuid, null);
+    }
 
     /**
      * 流式执行多模态 Agent 任务（文本 + 图片，SSE 流式返回）
@@ -123,7 +141,14 @@ public interface AgentService {
      * @param fileUuids       图片文件 UUID 列表
      * @param conversationUuid 会话 UUID（null 表示无会话上下文）
      */
-    Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid);
+    /** 流式执行多模态 Agent 任务（带会话模式，v3.13） */
+    Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids,
+                                                   String conversationUuid, String sessionMode);
+
+    /** 流式执行多模态 Agent 任务（默认 BUILD 会话模式） */
+    default Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        return executeAgentMultimodalStream(agentId, task, fileUuids, conversationUuid, null);
+    }
 
     /** 兼容重载：执行 Agent（无会话上下文） */
     default String executeAgent(Long agentId, String task) {

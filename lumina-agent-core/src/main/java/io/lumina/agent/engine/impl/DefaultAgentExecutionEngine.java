@@ -201,6 +201,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                                              AgentConfig config, String conversationId) {
         long startTime = System.currentTimeMillis();
         BaseContext.setConversationId(conversationId);
+        BaseContext.setSessionMode(config != null ? config.getSessionMode() : null);
 
         // 启动 Trace（引擎层管理生命周期，Tracer 通过 Reactor Context 复用）
         io.lumina.agent.tracing.TraceContext traceCtx = null;
@@ -316,6 +317,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 traceCollector.finishTrace(traceCtx);
             }
             BaseContext.clearConversationId();
+            BaseContext.clearSessionMode();
         }
     }
 
@@ -361,6 +363,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId) {
         log.info("开始流式执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
         BaseContext.setConversationId(conversationId);
+        BaseContext.setSessionMode(config != null ? config.getSessionMode() : null);
 
         // 启动 Trace（同步部分设置，Flux 完成时落库）
         io.lumina.agent.tracing.TraceContext traceCtx = null;
@@ -421,6 +424,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                             traceCollector.finishTrace(finalTraceCtx);
                         }
                         BaseContext.clearConversationId();
+                        BaseContext.clearSessionMode();
                     });
         } catch (Exception e) {
             log.error("构建流式 Agent 失败: businessType={}", businessType, e);
@@ -429,6 +433,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 traceCollector.finishTrace(traceCtx);
             }
             BaseContext.clearConversationId();
+            BaseContext.clearSessionMode();
             return Flux.just(new StreamChunk(StreamEventType.ERROR, e.getMessage() != null ? e.getMessage() : "构建 Agent 失败", true));
         }
     }
@@ -452,6 +457,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         log.info("开始流式多模态执行 Agent: businessType={}, task={}, contentCount={}, conversationId={}",
                 businessType, task, contentCount, conversationId);
         BaseContext.setConversationId(conversationId);
+        BaseContext.setSessionMode(config != null ? config.getSessionMode() : null);
         try {
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
 
@@ -470,10 +476,14 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     conversationId, contents);
 
             return Flux.concat(ragSourcesFlux, agentFlux)
-                    .doFinally(signal -> BaseContext.clearConversationId());
+                    .doFinally(signal -> {
+                        BaseContext.clearConversationId();
+                        BaseContext.clearSessionMode();
+                    });
         } catch (Exception e) {
             log.error("构建流式多模态 Agent 失败: businessType={}", businessType, e);
             BaseContext.clearConversationId();
+            BaseContext.clearSessionMode();
             return Flux.just(new StreamChunk(StreamEventType.ERROR,
                     e.getMessage() != null ? e.getMessage() : "构建多模态 Agent 失败", true));
         }

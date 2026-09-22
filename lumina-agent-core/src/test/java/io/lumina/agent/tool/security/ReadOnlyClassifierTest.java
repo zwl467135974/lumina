@@ -34,11 +34,19 @@ class ReadOnlyClassifierTest {
     // ==================== 开关与名单 ====================
 
     @Test
-    void disabledSwitchNeverClassifiesReadOnly() {
+    void disabledSwitchBlocksExemptionButNotPureClassification() {
         properties.getTool().getSecurity().setReadonlyAutoApprove(false);
-        assertThat(classifier.isProvablyReadOnly(ctx("util.search", "{}", null))).isFalse();
-        assertThat(classifier.isProvablyReadOnly(ctx("code.execute", pyCode("print(1)"), null))).isFalse();
-        assertThat(classifier.isProvablyReadOnly(ctx("any", "{}", true))).isFalse();
+        // 豁免用途受总开关门控
+        assertThat(classifier.allowsExemption(ctx("util.search", "{}", null))).isFalse();
+        assertThat(classifier.allowsExemption(ctx("code.execute", pyCode("print(1)"), null))).isFalse();
+        // 纯判定不受开关影响（PLAN 会话模式依赖：用户显式选 plan 即是开关）
+        assertThat(classifier.isProvablyReadOnly(ctx("util.search", "{}", null))).isTrue();
+    }
+
+    @Test
+    void enabledSwitchMakesExemptionFollowClassification() {
+        assertThat(classifier.allowsExemption(ctx("util.search", "{}", null))).isTrue();
+        assertThat(classifier.allowsExemption(ctx("util.http", "{}", null))).isFalse();
     }
 
     @Test

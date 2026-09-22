@@ -280,6 +280,11 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public ExecuteResult executeAgentForResult(Long agentId, String task, String conversationUuid) {
+        return executeAgentForResult(agentId, task, conversationUuid, null);
+    }
+
+    @Override
+    public ExecuteResult executeAgentForResult(Long agentId, String task, String conversationUuid, String sessionMode) {
         log.info("执行 Agent: id={}, task={}, conversation={}", agentId, task, conversationUuid);
 
         // 先查询 Agent（用于读取 per-agent 限流配置与状态检查）
@@ -305,7 +310,7 @@ public class AgentServiceImpl implements AgentService {
             String sessionId = resolveConversation(conversationUuid, agentId);
 
             // 构建配置（传入 sessionId 用于 A/B 变体粘滞分配）
-            AgentConfig config = buildExecutionConfig(agent, sessionId);
+            AgentConfig config = buildExecutionConfig(agent, sessionId, sessionMode);
 
             // 保存用户消息到数据库
             if (sessionId != null) {
@@ -374,7 +379,13 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public ExecuteResult executeAgentMultimodalForResult(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
-        MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
+        return executeAgentMultimodalForResult(agentId, task, fileUuids, conversationUuid, null);
+    }
+
+    @Override
+    public ExecuteResult executeAgentMultimodalForResult(Long agentId, String task, List<String> fileUuids,
+                                                          String conversationUuid, String sessionMode) {
+        MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid, sessionMode);
         boolean concurrencyAcquired = concurrencyLimiter.acquire(agentId, ctx.agent().getMaxConcurrent());
         try {
             ExecuteResult result = agentExecutionEngine.executeMultimodalSync(
@@ -409,7 +420,13 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid) {
-        log.info("流式执行 Agent: id={}, task={}, conversation={}", agentId, task, conversationUuid);
+        return executeAgentStream(agentId, task, conversationUuid, null);
+    }
+
+    @Override
+    public Flux<StreamChunk> executeAgentStream(Long agentId, String task, String conversationUuid, String sessionMode) {
+        log.info("流式执行 Agent: id={}, task={}, conversation={}, sessionMode={}",
+                agentId, task, conversationUuid, sessionMode);
 
         if (task == null || task.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.AGENT_TASK_EMPTY);
@@ -433,8 +450,8 @@ public class AgentServiceImpl implements AgentService {
         // 会话上下文校验
         String sessionId = resolveConversation(conversationUuid, agentId);
 
-        // 构建配置（含 A/B 变体分配）
-        AgentConfig config = buildExecutionConfig(agent, sessionId);
+        // 构建配置（含 A/B 变体分配 + 会话模式）
+        AgentConfig config = buildExecutionConfig(agent, sessionId, sessionMode);
 
         // 保存用户消息
         if (sessionId != null) {
@@ -486,7 +503,13 @@ public class AgentServiceImpl implements AgentService {
 
     @Override
     public Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
-        MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid);
+        return executeAgentMultimodalStream(agentId, task, fileUuids, conversationUuid, null);
+    }
+
+    @Override
+    public Flux<StreamChunk> executeAgentMultimodalStream(Long agentId, String task, List<String> fileUuids,
+                                                           String conversationUuid, String sessionMode) {
+        MultimodalContext ctx = prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid, sessionMode);
 
         final String sid = ctx.sessionId();
         final StringBuffer fullResponse = new StringBuffer();
@@ -531,7 +554,25 @@ public class AgentServiceImpl implements AgentService {
         });
     }
 
+    /** 会话模式归一化：仅接受 PLAN/BUILD/YOLO，未知值忽略并告警（默认 BUILD 行为） */
+    private String normalizeSessionMode(String mode) {
+        if (mode == null || mode.isBlank()) {
+            return null;
+        }
+        String upper = mode.trim().toUpperCase();
+        if (!"PLAN".equals(upper) && !"BUILD".equals(upper) && !"YOLO".equals(upper)) {
+            log.warn("未知会话模式已忽略（仅支持 PLAN/BUILD/YOLO）: {}", mode);
+            return null;
+        }
+        return upper;
+    }
+
     private MultimodalContext prepareMultimodalExecution(Long agentId, String task, List<String> fileUuids, String conversationUuid) {
+        return prepareMultimodalExecution(agentId, task, fileUuids, conversationUuid, null);
+    }
+
+    private MultimodalContext prepareMultimodalExecution(Long agentId, String task, List<String> fileUuids,
+                                                         String conversationUuid, String sessionMode) {
         log.info("多模态执行 Agent: id={}, task={}, fileCount={}, conversation={}",
                 agentId, task, fileUuids != null ? fileUuids.size() : 0, conversationUuid);
 
@@ -549,7 +590,7 @@ public class AgentServiceImpl implements AgentService {
         }
 
         String sessionId = resolveConversation(conversationUuid, agentId);
-        AgentConfig config = buildExecutionConfig(agent, sessionId);
+        AgentConfig config = buildExecutionConfig(agent, sessionId, sessionMode);
 
         List<MultimodalContent> contents = loadFiles(fileUuids);
         String fileIdsJson = serializeFileIds(fileUuids);
@@ -774,10 +815,22 @@ public class AgentServiceImpl implements AgentService {
     }
 
     private AgentConfig buildExecutionConfig(Agent agent, String conversationId) {
+        return buildExecutionConfig(agent, conversationId, null);
+    }
+
+    private AgentConfig buildExecutionConfig(Agent agent, String conversationId, String sessionMode) {
         AgentConfig config = new AgentConfig();
         config.setAgentId(agent.getAgentId());
         config.setAgentName(agent.getAgentName());
         config.setAgentType(agent.getAgentType());
+
+        // 会话模式（v3.13 PLAN/BUILD/YOLO）：归一化后装入，引擎入口写入 BaseContext
+        String normalizedMode = normalizeSessionMode(sessionMode);
+        if (normalizedMode != null) {
+            config.setSessionMode(normalizedMode);
+            log.info("会话模式生效: agentId={}, conversationId={}, mode={}",
+                    agent.getAgentId(), conversationId, normalizedMode);
+        }
 
         String agentType = agent.getAgentType();
         if (StringUtils.hasText(agentType)) {

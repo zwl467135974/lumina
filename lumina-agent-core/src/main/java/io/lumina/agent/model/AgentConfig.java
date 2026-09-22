@@ -25,6 +25,20 @@ public class AgentConfig implements Serializable {
     private Long agentId;
 
     /**
+     * 会话执行模式（v3.13，可空 = 默认 BUILD 行为）
+     *
+     * <p>取值 PLAN / BUILD / YOLO。引擎入口把它写入 BaseContext（与
+     * conversationId 同生命周期），工具安全管线据此执行运行时级约束：
+     * <ul>
+     *   <li>{@code PLAN}：非"可证明只读"的工具调用被构造性阻断（拒绝理由
+     *       对模型可见，指引先产出计划）</li>
+     *   <li>{@code BUILD}：默认审批管线语义</li>
+     *   <li>{@code YOLO}：跳过人工审批（ASK 放行），但平台 DENY 与单调守卫仍生效</li>
+     * </ul>
+     */
+    private String sessionMode;
+
+    /**
      * Agent 名称
      */
     private String agentName;

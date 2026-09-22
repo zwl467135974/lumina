@@ -12,9 +12,10 @@ import java.util.List;
  *
  * <p>执行顺序（借鉴 DeepSeek Harness 工具执行管线的分层）：
  * <ol>
- *   <li>拦截器链（有序，DENY 立即拒绝；ASK 汇总）</li>
- *   <li>只读豁免（v3.13）：ASK 汇总非空且分类器判定"可证明只读"时跳过审批
- *       直接放行——只降级 ASK，DENY 与守卫不受影响，单调性不破坏</li>
+ *   <li>拦截器链（有序，DENY 立即拒绝；ASK 汇总）——含会话模式拦截器
+ *       （v3.13：PLAN 模式构造性阻断非只读调用）</li>
+ *   <li>审批豁免（v3.13）：YOLO 会话模式跳过审批；或分类器判定"可证明只读"
+ *       时豁免——只降级 ASK，DENY 与守卫不受影响，单调性不破坏</li>
  *   <li>审批（ASK 时经 {@link ToolApprovalPort} 请求 allow-once，fail-closed）</li>
  *   <li>单调守卫（最后说话：任何非 null 即否决，无法被前面任何层翻回）</li>
  * </ol>
@@ -91,20 +92,27 @@ public class ToolSecurityPipeline {
             }
         }
 
-        // 2. 只读豁免（v3.13）：可证明只读的调用跳过审批（仅降级 ASK，DENY 已在上面立即返回）
-        if (!askReasons.isEmpty() && readOnlyClassifier != null) {
-            boolean provablyReadOnly;
-            try {
-                provablyReadOnly = readOnlyClassifier.isProvablyReadOnly(context);
-            } catch (Exception e) {
-                log.warn("只读分类器异常，按需审批处理（fail-closed）: tool={}, error={}",
-                        context.getToolName(), e.getMessage());
-                provablyReadOnly = false;
-            }
-            if (provablyReadOnly) {
-                log.info("只读工具自动放行（豁免审批）: tool={}, 原始审批理由: {}",
+        // 2. 审批豁免（v3.13）：YOLO 模式跳过人工审批；或"可证明只读"豁免——
+        //    两者都只降级 ASK（DENY 已在上面立即返回，守卫在其后仍然生效）
+        if (!askReasons.isEmpty()) {
+            if ("YOLO".equals(io.lumina.common.core.BaseContext.getSessionMode())) {
+                log.info("YOLO 模式跳过人工审批: tool={}, 被跳过的审批理由: {}",
                         context.getToolName(), String.join("; ", askReasons));
                 askReasons.clear();
+            } else if (readOnlyClassifier != null) {
+                boolean exempt;
+                try {
+                    exempt = readOnlyClassifier.allowsExemption(context);
+                } catch (Exception e) {
+                    log.warn("只读分类器异常，按需审批处理（fail-closed）: tool={}, error={}",
+                            context.getToolName(), e.getMessage());
+                    exempt = false;
+                }
+                if (exempt) {
+                    log.info("只读工具自动放行（豁免审批）: tool={}, 原始审批理由: {}",
+                            context.getToolName(), String.join("; ", askReasons));
+                    askReasons.clear();
+                }
             }
         }
 

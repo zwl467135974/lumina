@@ -254,4 +254,66 @@ class ToolSecurityPipelineTest {
 
         assertThat(pipeline.check(ctx("util.search"))).contains("未获批准");
     }
+
+    // ==================== YOLO 会话模式（v3.13） ====================
+
+    @org.junit.jupiter.api.Test
+    void yoloModeSkipsHumanApproval() {
+        java.util.concurrent.atomic.AtomicInteger approvalCalls = new java.util.concurrent.atomic.AtomicInteger();
+        ToolApprovalPort countingPort = (context, reason) -> {
+            approvalCalls.incrementAndGet();
+            return false;
+        };
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))), List.of(denying(null)), countingPort);
+
+        try {
+            io.lumina.common.core.BaseContext.setSessionMode("YOLO");
+            assertThat(pipeline.check(ctx("code.execute"))).isNull();
+            assertThat(approvalCalls.get()).isZero();
+        } finally {
+            io.lumina.common.core.BaseContext.clearSessionMode();
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void yoloModeStillRespectsGuardVeto() {
+        // YOLO 只跳过审批：单调守卫否决无法被模式翻回
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))),
+                List.of(denying("租户黑名单工具")), null);
+
+        try {
+            io.lumina.common.core.BaseContext.setSessionMode("YOLO");
+            assertThat(pipeline.check(ctx("code.execute"))).isEqualTo("租户黑名单工具");
+        } finally {
+            io.lumina.common.core.BaseContext.clearSessionMode();
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void yoloModeDoesNotTouchDeny() {
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.deny("平台禁用"))), List.of(denying(null)), null);
+
+        try {
+            io.lumina.common.core.BaseContext.setSessionMode("YOLO");
+            assertThat(pipeline.check(ctx("code.execute"))).isEqualTo("平台禁用");
+        } finally {
+            io.lumina.common.core.BaseContext.clearSessionMode();
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void nonYoloModeStillRequiresApproval() {
+        ToolSecurityPipeline pipeline = new ToolSecurityPipeline(
+                List.of(returning(ToolDecision.ask("高危工具"))), List.of(denying(null)), null);
+
+        try {
+            io.lumina.common.core.BaseContext.setSessionMode("BUILD");
+            assertThat(pipeline.check(ctx("code.execute"))).contains("未获批准");
+        } finally {
+            io.lumina.common.core.BaseContext.clearSessionMode();
+        }
+    }
 }

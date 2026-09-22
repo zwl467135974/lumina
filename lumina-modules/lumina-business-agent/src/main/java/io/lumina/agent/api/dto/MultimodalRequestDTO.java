@@ -26,4 +26,10 @@ public class MultimodalRequestDTO {
 
     /** 会话 UUID（可选） */
     private String conversationId;
+
+    /**
+     * 会话模式（v3.13，可选）：PLAN（只读规划）/ BUILD（默认）/ YOLO（跳过人工审批）
+     */
+    @Size(max = 10, message = "会话模式不合法")
+    private String sessionMode;
 }

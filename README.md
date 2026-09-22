@@ -886,8 +886,8 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 
 合并消化 DeepSeek Harness 与 ZCode 两个上游的机制设计（[v3.13 路线图](docs/zh/roadmap/v3.13路线图.md)）：
 
-- 🚦 **工具只读分级与自动放行** — 可证明只读的调用免审批（MCP 注解映射 + `code.execute` 静态启发式），判不定 fail-closed 走既有审批；映射 ZCode argv 分层方法论
-- 🎚 **会话模式 plan / build / yolo** — 运行时级策略：plan 模式写操作构造性阻断、计划批准后解锁，映射企业「方案→审批→执行」
+- 🚦 **工具只读分级与自动放行** ✅ — 可证明只读的调用免审批（MCP 注解映射 + `code.execute` 静态启发式 + 名单通配），判不定 fail-closed 走既有审批；映射 ZCode argv 分层方法论
+- 🎚 **会话模式 plan / build / yolo** ✅ — 运行时级策略（管线层强制，非提示词约定）：PLAN 模式写操作构造性阻断且理由对模型可见，YOLO 跳过审批但 DENY/守卫仍生效，映射企业「方案→审批→执行」
 - 📄 **输入侧上下文外存** — 历史工具输入（文件快照/图片）外存化留引用、按需水合，A5 spill 的输入侧镜像（双上游验证）
 - 🪝 **`phase(title)` 进度钩子** ✅ — 自主编排节点第 5 个桥接函数：纯展示性阶段声明，SSE 推送 `AUTONOMY_PHASE` 事件、执行日志落 `PHASE` 进度行，为审批投影与执行面板提供数据源（双上游验证）
 - 🌐 **Playwright 浏览器接入** ✅ — 官方 `@playwright/mcp` 复用 MCP stdio 通道（引擎零改动）：配置模板 + `browser-control` 技能资产（走导入体检）+ 接入指南（安全边界/动态注册/验收链路），本地实测可用（双上游验证）
