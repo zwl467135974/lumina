@@ -92,6 +92,18 @@ lumina:
         max-facts-per-turn: ${REFLECTIVE_MAX_FACTS:5} # 每次提取最大条数
         max-context-memories: ${REFLECTIVE_MAX_CONTEXT:20} # 上下文注入最大条数
         max-fact-length: ${REFLECTIVE_MAX_LENGTH:500} # 单条最大长度
+      # 记忆整理代理（v3.14 批次 4.1）：后台对已归档长会话做 LLM 提炼 + 召回打分。
+      # 三闸门：默认关闭（Bean 不装配）+ 租户白名单（空 = 无租户生效）+ 每轮会话数即 LLM 调用数上限
+      # compaction:
+      #   enabled: ${MEMORY_COMPACTION_ENABLED:false}
+      #   tenant-whitelist: []                  # 租户级费用授权必须显式列举
+      #   interval-ms: 3600000
+      #   initial-delay-ms: 300000
+      #   max-conversations-per-run: 10         # 计量硬上限
+      #   min-messages: 20
+      #   idle-days: 7
+      #   max-facts-per-conversation: 5
+      #   max-prompt-chars: 12000
     # 决策型生命周期 Hook（v3.14 批次 3.1）：企业合规门实现 AgentLifecycleHook Bean 后开启。
     # 决策点：SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PostToolUseFailure/Stop
     # hooks:

@@ -882,7 +882,7 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 📦 **模板与分享中心（V58）** — Agent 模板中心 + 技能市场拉取 + 角色包三合一：**角色包 zip**（manifest + agent.json + skills/*/SKILL.md）一键分享整套编排产物（ECC 式角色包）；导出**自动剥离 LLM 密钥**，导入全走安全体检，模板重名版本自增、实例化名称去重；技能支持 **URL/Git 拉取**（单文件直链 / GitHub、Gitee 仓库自动遍历 SKILL.md，直连 95K stars 的 agent-skills 生态）；`/share` 分享中心页 + Agent 列表一键导出
 - ✅ 新增 40 单测（解析/体检/导入导出/A2A 映射/SSRF 防护），前端技能页支持导入对话框、体检标签与导出操作
 
-### v3.13 上游双源借鉴：只读分级、输入侧外存与执行可视化（v3.13.0 已发布）
+### v3.13/v3.14 上游双源借鉴：只读分级、输入侧外存与执行可视化（v3.13.0 + v3.14.0 已发布）
 
 合并消化 DeepSeek Harness 与 ZCode 两个上游的机制设计（[v3.13 路线图](docs/zh/roadmap/v3.13路线图.md)）：
 
@@ -892,9 +892,11 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 🪝 **`phase(title)` 进度钩子** ✅ — 自主编排节点第 5 个桥接函数：纯展示性阶段声明，SSE 推送 `AUTONOMY_PHASE` 事件、执行日志落 `PHASE` 进度行，为审批投影与执行面板提供数据源（双上游验证）
 - 🌐 **Playwright 浏览器接入** ✅ — 官方 `@playwright/mcp` 复用 MCP stdio 通道（引擎零改动）：配置模板 + `browser-control` 技能资产（走导入体检）+ 接入指南（安全边界/动态注册/验收链路），本地实测可用（双上游验证）
 - 🖼 **图片历史卸载** ✅ — 多轮图片会话从"完全失忆"升级为"引用可感知"：记忆落点留文件名+fileUuid 轻量标记（Base64 本体绝不进历史）+ PNG/JPEG/GIF 头解析的尺寸感知 token 估算（替代 flat 1000）
-- 🔌 **决策型生命周期 Hook**（→ v3.14.0）✅ — AgentTurnEvent 总线扩展决策点（SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/Stop，标准决策 allow/deny/replace-input/add-context/continue），企业合规门不改引擎；超时/异常中立放行不崩回合，Stop 续跑有防循环上限
-- 🔍 **只读探索子代理 + 运行中转向**（→ v3.14.0）✅ — Explore 型 agentType 双重防线（工具面 = 只读集 ∩ 白名单 + 强制 PLAN 模式）；steering API 三消费点（工具结果搭车即时生效/段边界 USER 注入/执行入口），与 Stop continue 共享续跑预算
-- 📊 **审批投影 + artifact 面板**（→ v3.14.0）✅ — autonomy 节点启动即出计划图（phase/agent 字面量静态投影，先成图再执行）；`artifact.report()` 桥接发布 chart/table/metrics 报告（SSE + 执行日志行，数据不进模型上下文）；执行页新增仪表盘视图
+- 🔌 **决策型生命周期 Hook**✅ — AgentTurnEvent 总线扩展决策点（SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/Stop，标准决策 allow/deny/replace-input/add-context/continue），企业合规门不改引擎；超时/异常中立放行不崩回合，Stop 续跑有防循环上限
+- 🔍 **只读探索子代理 + 运行中转向**✅ — Explore 型 agentType 双重防线（工具面 = 只读集 ∩ 白名单 + 强制 PLAN 模式）；steering API 三消费点（工具结果搭车即时生效/段边界 USER 注入/执行入口），与 Stop continue 共享续跑预算
+- 📊 **审批投影 + artifact 面板**✅ — autonomy 节点启动即出计划图（phase/agent 字面量静态投影，先成图再执行）；`artifact.report()` 桥接发布 chart/table/metrics 报告（SSE + 执行日志行，数据不进模型上下文）；执行页新增仪表盘视图
+- 🧠 **记忆整理代理**（v3.14.0）✅ — 已归档长会话后台 LLM 提炼 + 召回打分注入长期记忆；默认关闭 + 租户白名单 + 每轮 LLM 调用数硬上限三闸门
+- 🛡 **确定性防线清单 + Flyway 变更说明书制度**（v3.14.0）✅ — 代码强制 vs 提示词约定的完整分类（注入可绕过性判定标准）+ A6 真取消边界语义；每个迁移必附变更/回滚/影响三行说明书
 
 ---
 

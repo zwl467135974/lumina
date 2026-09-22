@@ -258,6 +258,13 @@ public class LuminaAgentProperties {
         private ReflectiveConfig reflective = new ReflectiveConfig();
 
         /**
+         * 记忆整理代理配置（v3.14 批次 4.1：后台对已归档长会话做提炼 + 召回打分）
+         *
+         * @since 3.14.0
+         */
+        private MemoryCompactionConfig compaction = new MemoryCompactionConfig();
+
+        /**
          * 上下文压缩配置（长对话滚动摘要）
          *
          * @since 3.8.0
@@ -290,6 +297,40 @@ public class LuminaAgentProperties {
          * @since 3.11.0
          */
         private int historyWindowSize = 20;
+    }
+
+    /**
+     * 记忆整理代理配置（v3.14 批次 4.1）
+     *
+     * <p>后台作业对已归档长会话做 LLM 提炼 + 召回打分，产出
+     * {@code memory_type = compaction} 的长期记忆。<b>产生后台模型调用费用</b>：
+     * 默认关闭 + 租户白名单双闸门，每轮会话数硬上限即计量上限。
+     *
+     * @since 3.14.0
+     */
+    @Data
+    public static class MemoryCompactionConfig {
+        /** 是否启用（默认 false） */
+        private boolean enabled = false;
+        /**
+         * 租户白名单：开启后仍只对列入的租户整理（空 = 无租户生效——
+         * 双闸门设计，租户级费用授权必须显式列举）
+         */
+        private java.util.Set<Long> tenantWhitelist = new java.util.HashSet<>();
+        /** 扫描间隔（毫秒，默认 1 小时） */
+        private long intervalMs = 3_600_000;
+        /** 启动初始延迟（毫秒，默认 5 分钟——避开启动高峰） */
+        private long initialDelayMs = 300_000;
+        /** 每轮最多整理会话数（计量硬上限：每会话一次 LLM 调用） */
+        private int maxConversationsPerRun = 10;
+        /** 会话消息数下限（低于此不整理） */
+        private int minMessages = 20;
+        /** 闲置天数（更新时间早于 N 天的会话才整理——活跃会话不打扰） */
+        private int idleDays = 7;
+        /** 每会话最多提炼记忆条数 */
+        private int maxFactsPerConversation = 5;
+        /** 送入 LLM 的对话摘录上限（字符） */
+        private int maxPromptChars = 12000;
     }
 
     /**

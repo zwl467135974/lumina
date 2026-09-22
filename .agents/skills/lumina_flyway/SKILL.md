@@ -77,6 +77,28 @@ WHERE `permission_code` IN (...);
 - 用 `INSERT IGNORE` 防重复执行报错
 - 外键引用用子查询：`SET @parentId = LAST_INSERT_ID()` 或 `SELECT permission_id FROM ...`
 
+## 持久化变更说明书（v3.14 批次 4.2 起，每个迁移必须附带）
+
+Flyway 社区版没有 down migration——**回滚语义必须在写迁移时就设计好并写成文字**，
+而不是失败后现场想。每个迁移文件头部注释块必须包含三行说明书：
+
+```sql
+-- 持久化变更说明书
+-- 变更: <新增表 lumina_xxx | 新增列 xxx.yyy | 种子: N 条权限/字典/...>
+-- 回滚: DROP TABLE lumina_xxx; | ALTER TABLE xxx DROP COLUMN yyy; | DELETE FROM xxx WHERE ...;
+-- 影响: < ALWAYS_IGNORE 是否需加表 | 存量行默认值语义 | 是否锁表（大表 ALTER 需评估）>
+```
+
+规则：
+
+1. **不可逆变更显式声明**：`DROP COLUMN`/`DROP TABLE`/改列类型的迁移，说明书必须写
+   "不可逆——数据需先备份到 xxx"并给出备份语句
+2. **种子数据的回滚以条件为准**：`DELETE ... WHERE permission_code IN (...)` 而非按自增 ID
+3. **多表关联变更**：一个迁移动多张表时逐表列变更与回滚
+4. **提交信息联动**：含迁移的 commit 描述中复述说明书摘要（评审者第一眼看到持久化影响）
+5. **存量行语义**：新增 NOT NULL 列必须给 DEFAULT，说明书注明存量行的该列语义
+   （如 instance_id NULL = 旧实例任务，见 ADR-002）
+
 ## 迁移失败的处理
 
 如果迁移执行失败（Flyway 留下 `success = 0` 记录）：
