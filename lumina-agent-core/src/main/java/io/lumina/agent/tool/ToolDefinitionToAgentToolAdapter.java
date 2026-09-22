@@ -51,6 +51,7 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
     private final ToolSecurityPipeline securityPipeline;
     private final ToolResultSpiller resultSpiller;
     private final AgentHookInvoker hookInvoker;
+    private final io.lumina.agent.steering.SteeringMessageStore steeringStore;
     private Map<String, Object> parametersSchema;
 
     public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition) {
@@ -94,6 +95,19 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                                             ToolSecurityPipeline securityPipeline,
                                             ToolResultSpiller resultSpiller,
                                             AgentHookInvoker hookInvoker) {
+        this(toolDefinition, recorder, circuitBreaker, meterRegistry, executionTimeoutMs,
+                securityPipeline, resultSpiller, hookInvoker, null);
+    }
+
+    public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition,
+                                            ToolInvocationRecorder recorder,
+                                            ToolCircuitBreaker circuitBreaker,
+                                            io.micrometer.core.instrument.MeterRegistry meterRegistry,
+                                            long executionTimeoutMs,
+                                            ToolSecurityPipeline securityPipeline,
+                                            ToolResultSpiller resultSpiller,
+                                            AgentHookInvoker hookInvoker,
+                                            io.lumina.agent.steering.SteeringMessageStore steeringStore) {
         this.toolDefinition = toolDefinition;
         this.recorder = recorder;
         this.circuitBreaker = circuitBreaker;
@@ -102,6 +116,7 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
         this.securityPipeline = securityPipeline;
         this.resultSpiller = resultSpiller;
         this.hookInvoker = hookInvoker;
+        this.steeringStore = steeringStore;
         this.objectMapper = JsonUtils.OBJECT_MAPPER;
         this.parametersSchema = parseParametersSchema(toolDefinition);
     }
@@ -184,6 +199,20 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                 if (resultSpiller != null) {
                     resultString = resultSpiller.spillIfNeeded(toolName,
                             BaseContext.getConversationId(), resultString);
+                }
+
+                // 运行中转向（v3.14 批次 3.2）：工具结果搭车转达——ReAct 循环内即时生效，
+                // 每个结果至多搭一条（一次性消费）；位于 PostToolUse 钩子之前，钩子看到最终可见内容
+                if (steeringStore != null) {
+                    String conversationId = BaseContext.getConversationId();
+                    if (conversationId != null) {
+                        java.util.List<String> steering = steeringStore.drain(conversationId, 1);
+                        if (!steering.isEmpty()) {
+                            resultString = resultString
+                                    + "\n\n[用户运行中转向指令] " + steering.get(0)
+                                    + "\n（此指令由平台在工具结果中转达，优先级高于原任务描述，请据此调整后续行动）";
+                        }
+                    }
                 }
 
                 long duration = System.currentTimeMillis() - start;

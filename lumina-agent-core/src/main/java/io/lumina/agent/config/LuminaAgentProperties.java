@@ -231,6 +231,16 @@ public class LuminaAgentProperties {
     private HooksConfig hooks = new HooksConfig();
 
     /**
+     * 运行中转向配置（v3.14 批次 3.2）
+     *
+     * <p>调用方向执行中的会话投递调整指令（steering），引擎在工具轮间
+     * （结果搭车）与段边界（USER 消息注入）消费。
+     *
+     * @since 3.14.0
+     */
+    private SteeringConfig steering = new SteeringConfig();
+
+    /**
      * 工具配置
      */
     private ToolConfig tool = new ToolConfig();
@@ -377,6 +387,24 @@ public class LuminaAgentProperties {
         private int maxReasonChars = 500;
         /** replace-input 替换文本大小上限（字符），超出截断 */
         private int maxReplacementChars = 20000;
+    }
+
+    /**
+     * 运行中转向配置（v3.14 批次 3.2）
+     *
+     * @since 3.14.0
+     */
+    @Data
+    public static class SteeringConfig {
+        /** 是否启用（默认 false） */
+        private boolean enabled = false;
+        /** 单条转向消息大小上限（字符），超出截断 */
+        private int maxMessageChars = 4000;
+        /**
+         * 段边界续跑预算（每回合，转向与 Stop 钩子 continue 共享）；
+         * steering 启用时该预算同时覆盖 Stop continue，未启用时 Stop 用 hooks.max-stop-continues
+         */
+        private int maxSegmentContinues = 3;
     }
 
     /**

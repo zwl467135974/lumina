@@ -1,6 +1,7 @@
 package io.lumina.agent.api.controller;
 
 import io.lumina.common.annotation.RequirePermission;
+import io.lumina.agent.api.dto.SteeringMessageDTO;
 import io.lumina.agent.api.vo.ConversationVO;
 import io.lumina.agent.api.vo.MessageVO;
 import io.lumina.agent.infrastructure.entity.ConversationDO;
@@ -39,6 +40,10 @@ public class ConversationController {
 
     private final ConversationService conversationService;
 
+    private final io.lumina.agent.steering.SteeringMessageStore steeringMessageStore;
+
+    private final io.lumina.agent.config.LuminaAgentProperties agentProperties;
+
     /**
      * 创建会话
      *
@@ -54,6 +59,28 @@ public class ConversationController {
         log.info("创建会话: agentId={}, title={}", agentId, title);
         ConversationDO conv = conversationService.createConversation(agentId, title);
         return R.success(toVO(conv));
+    }
+
+    /**
+     * 投递运行中转向消息（steering，v3.14 批次 3.2）
+     *
+     * <p>向执行中的会话注入调整指令：工具轮间经工具结果搭车转达（即时生效），
+     * 段边界经 USER 消息正规注入。消息一次性消费。
+     *
+     * @param conversationId 目标会话 ID
+     * @param dto            转向消息
+     */
+    @Audit(module = "conversation", action = "CREATE", description = "投递运行中转向消息")
+    @Operation(summary = "投递运行中转向消息（steering）")
+    @PostMapping("/{conversationId}/steering")
+    public R<Void> steer(@PathVariable String conversationId,
+                         @jakarta.validation.Valid @RequestBody SteeringMessageDTO dto) {
+        if (!agentProperties.getSteering().isEnabled()) {
+            return R.fail("运行中转向功能未启用（lumina.agent.steering.enabled）");
+        }
+        log.info("投递运行中转向消息: conversationId={}, 长度={}", conversationId, dto.getMessage().length());
+        steeringMessageStore.offer(conversationId, dto.getMessage());
+        return R.success();
     }
 
     /**

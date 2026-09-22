@@ -149,4 +149,59 @@ class ToolDefinitionToAgentToolAdapterHookTest {
         assertThat(textOf(result)).contains("执行结果");
         assertThat(executions.get()).isEqualTo(1);
     }
+
+    // ==================== 运行中转向搭车（v3.14 批次 3.2） ====================
+
+    /**
+     * 启用 Reactor 自动上下文传播（镜像生产 ContextPropagationAutoConfiguration）——
+     * 适配器在 boundedElastic 线程执行，conversationId ThreadLocal 需经传播机制重放
+     */
+    @org.junit.jupiter.api.BeforeAll
+    static void enableContextPropagation() {
+        try {
+            io.micrometer.context.ContextRegistry.getInstance()
+                    .registerThreadLocalAccessor(
+                            new io.lumina.framework.context.ConversationIdThreadLocalAccessor());
+        } catch (IllegalStateException alreadyRegistered) {
+            // 同 JVM 重复注册忽略
+        }
+        reactor.core.publisher.Hooks.enableAutomaticContextPropagation();
+    }
+
+    private ToolResultBlock callWithSteering(io.lumina.agent.steering.SteeringMessageStore store) {
+        ToolDefinitionToAgentToolAdapter adapter = new ToolDefinitionToAgentToolAdapter(
+                toolDefinition, null, null, null, 60000, securityPipeline, null, null, store);
+        return adapter.callAsync(ToolCallParam.builder().input(Map.of("text", "hi")).build()).block();
+    }
+
+    @Test
+    void steeringPiggybacksOnToolResultOnce() {
+        io.lumina.common.core.BaseContext.setConversationId("c-steer");
+        try {
+            io.lumina.agent.steering.InMemorySteeringMessageStore store =
+                    new io.lumina.agent.steering.InMemorySteeringMessageStore(props);
+            store.offer("c-steer", "改看支付模块");
+
+            ToolResultBlock first = callWithSteering(store);
+            assertThat(textOf(first)).contains("执行结果", "用户运行中转向指令", "改看支付模块");
+
+            // 一次性消费：第二次调用不再搭车
+            ToolResultBlock second = callWithSteering(store);
+            assertThat(textOf(second)).contains("执行结果").doesNotContain("改看支付模块");
+        } finally {
+            io.lumina.common.core.BaseContext.clearConversationId();
+        }
+    }
+
+    @Test
+    void steeringWithoutConversationContextSkipped() {
+        // 未设置 conversationId（BaseContext 为空）：不消费、不注入
+        io.lumina.agent.steering.InMemorySteeringMessageStore store =
+                new io.lumina.agent.steering.InMemorySteeringMessageStore(props);
+        store.offer("c-other", "别的会话");
+
+        ToolResultBlock result = callWithSteering(store);
+
+        assertThat(textOf(result)).contains("执行结果").doesNotContain("别的会话");
+    }
 }

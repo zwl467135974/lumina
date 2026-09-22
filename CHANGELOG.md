@@ -6,6 +6,16 @@
 
 ## [3.14.0] - 未发布
 
+### 只读探索子代理 + 运行中转向（v3.14 路线图批次 3.2，ZCode 子代理/steering × DSH B2）
+
+- **Explore 型只读探索子代理**：`agentType = "Explore"` 约定即能力（零新字段）——双重防线：① 工具注册面过滤（白名单 ∩ 可证明只读集，复用 v3.13 只读分级三层证据；配置误加写工具也不注册）；② `effectiveSessionMode` 强制 PLAN（即使显式 YOLO，运行期非只读调用仍被构造性阻断）——探索类任务不触发任何写路径
+- **运行中转向（steering）**：`POST /api/v1/conversations/{id}/steering` 投递调整指令，三个消费点一次性消费——工具结果搭车（ReAct 循环内即时生效，每结果至多一条，位于 spill 后/PostToolUse 钩子前保证各观测方看到一致内容）、段边界 USER 消息正规注入（流式段循环 + 同步续跑点）、执行入口并入任务
+- 转向续段与 Stop 钩子 continue **共享每回合预算**（`max-segment-continues` 默认 3，达上限强制结束并告警）；转向优先于 Stop 决策消费
+- `SteeringMessageStore` 端口 + 默认内存实现（单实例语义，多实例需网关会话粘滞或业务侧提供 Redis `@Primary` 实现覆盖）；消息上限 4000 字符截断
+- 工具适配器构造器增至第 9 参（steering store，可空，引擎按开关注入）；引擎工具注册链穿参 agentConfig（buildToolkit/registerToolsToToolkit）
+- 开关 `lumina.agent.steering.enabled` 默认关闭；nacos 模板注释 + 《探索子代理与运行中转向指南》
+- 新增 22 个用例（存储一次性消费/截断/隔离；Explore 模式强制/工具面过滤四态/分类器异常 fail-closed；入口消费/禁用跳过/续跑消息构建/共享预算；搭车注入一次性/无会话跳过——搭车测试经 ThreadLocalAccessor 复现生产上下文传播）；agent-core 492 / business-agent 353 全绿
+
 ### 决策型生命周期 Hook（v3.14 路线图批次 3.1，ZCode hooks × DSH B1）
 
 - 企业合规门（脱敏/外发审计/输入风控/完成标准校验）实现 `AgentLifecycleHook` 接口注册为 Bean 即可介入轮次决策点，**不改引擎**；与观测事件总线（`AgentTurnEvent` 单向通知）职责划分：钩子是同步决策（可拒绝/可改写/可注入）

@@ -144,6 +144,12 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private io.lumina.agent.hook.AgentHookInvoker hookInvoker;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.steering.SteeringMessageStore steeringMessageStore;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.tool.security.ReadOnlyToolClassifier readOnlyClassifier;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.tool.spill.HistorySpiller historySpiller;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -209,7 +215,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                                              AgentConfig config, String conversationId) {
         long startTime = System.currentTimeMillis();
         BaseContext.setConversationId(conversationId);
-        BaseContext.setSessionMode(config != null ? config.getSessionMode() : null);
+        BaseContext.setSessionMode(effectiveSessionMode(config));
 
         // 启动 Trace（引擎层管理生命周期，Tracer 通过 Reactor Context 复用）
         io.lumina.agent.tracing.TraceContext traceCtx = null;
@@ -240,6 +246,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 附加上下文，在模型路由前生效——替换后的输入参与复杂度路由）+ SessionStart（首轮注入会话级上下文）
             task = applyUserPromptHook(businessType, task, agentConfig, conversationId, false);
             task = applySessionStartHook(businessType, task, agentConfig, conversationId);
+            task = appendPendingSteering(task, conversationId);
 
             // 动态模型路由（可选）：根据复杂度选择模型
             if (modelRouter != null) {
@@ -269,14 +276,32 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents, agentConfig);
 
             // 执行 Agent（上下文溢出时紧急压缩后重试）；
-            // Stop 钩子：产出最终回答后咨询，CONTINUE 则把回答 + 继续指令并入上下文再执行
-            //（防循环上限内；达上限强制结束并告警——展示"未达完成标准"判定不无限烧 Token）
+            // 续跑段循环（v3.14 批次 3.1 Stop continue + 3.2 转向消息共享预算）：
+            // 优先消费运行中转向（不经 Stop 决策），其次 Stop 钩子判定继续；
+            // 防循环上限内；达上限强制结束并告警——展示"未达完成标准"判定不无限烧 Token
             List<Msg> workingMessages = contextMessages;
             Msg agentResponse = executeWithOverflowRecovery(agentConfig, workingMessages);
             String result = responseTextOf(agentResponse);
             int usedContinues = 0;
-            int maxContinues = agentProperties.getHooks().getMaxStopContinues();
-            while (hookInvoker != null && hookInvoker.isEnabled() && usedContinues < maxContinues) {
+            boolean hooksActive = hookInvoker != null && hookInvoker.isEnabled();
+            boolean steeringActive = isSteeringEnabled() && conversationId != null;
+            int maxContinues = segmentContinuesBudget(hooksActive);
+            while (usedContinues < maxContinues && (hooksActive || steeringActive)) {
+                if (steeringActive) {
+                    List<String> steering = steeringMessageStore.drain(conversationId);
+                    if (!steering.isEmpty()) {
+                        usedContinues++;
+                        log.info("转向消息触发续跑（第 {}/{} 段）: conversationId={}, 条数={}",
+                                usedContinues, maxContinues, conversationId, steering.size());
+                        workingMessages = buildSteeringContinuationMessages(workingMessages, result, steering);
+                        agentResponse = executeWithOverflowRecovery(agentConfig, workingMessages);
+                        result = responseTextOf(agentResponse);
+                        continue;
+                    }
+                }
+                if (!hooksActive) {
+                    break;
+                }
                 HookDecision stopDecision;
                 try {
                     stopDecision = hookInvoker.onStop(new AgentLifecycleHook.StopInput(
@@ -297,7 +322,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 result = responseTextOf(agentResponse);
             }
             if (usedContinues > 0 && usedContinues == maxContinues) {
-                log.warn("Stop 钩子持续要求继续，已达防循环上限（{} 次），强制结束回合", maxContinues);
+                log.warn("续跑达防循环上限（{} 段：转向消息与 Stop continue 共享预算），强制结束回合", maxContinues);
             }
 
             // 提取 Token 使用量
@@ -404,7 +429,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     public reactor.core.publisher.Flux<StreamChunk> executeStream(String businessType, String task, AgentConfig config, String conversationId) {
         log.info("开始流式执行 Agent: businessType={}, task={}, conversationId={}", businessType, task, conversationId);
         BaseContext.setConversationId(conversationId);
-        BaseContext.setSessionMode(config != null ? config.getSessionMode() : null);
+        BaseContext.setSessionMode(effectiveSessionMode(config));
 
         // 启动 Trace（同步部分设置，Flux 完成时落库）
         io.lumina.agent.tracing.TraceContext traceCtx = null;
@@ -433,6 +458,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 决策型生命周期 Hook：UserPromptSubmit / SessionStart（拒绝经 catch 转 ERROR 流）
             task = applyUserPromptHook(businessType, task, agentConfig, conversationId, true);
             task = applySessionStartHook(businessType, task, agentConfig, conversationId);
+            task = appendPendingSteering(task, conversationId);
 
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
@@ -502,7 +528,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         log.info("开始流式多模态执行 Agent: businessType={}, task={}, contentCount={}, conversationId={}",
                 businessType, task, contentCount, conversationId);
         BaseContext.setConversationId(conversationId);
-        BaseContext.setSessionMode(config != null ? config.getSessionMode() : null);
+        BaseContext.setSessionMode(effectiveSessionMode(config));
         try {
             AgentConfig agentConfig = config != null ? config : configLoader.loadConfig(businessType);
 
@@ -513,6 +539,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 决策型生命周期 Hook：UserPromptSubmit / SessionStart（拒绝经 catch 转 ERROR 流）
             task = applyUserPromptHook(businessType, task, agentConfig, conversationId, true);
             task = applySessionStartHook(businessType, task, agentConfig, conversationId);
+            task = appendPendingSteering(task, conversationId);
 
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
@@ -1208,7 +1235,7 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 AgentConfig toolConfig = new AgentConfig();
                 toolConfig.setToolConfig(subToolConfig);
                 toolConfig.setAgentId(null);
-                subToolkit = buildToolkit(toolConfig.getToolConfig());
+                subToolkit = buildToolkit(toolConfig);
             } else {
                 subToolkit = resolveToolkit(config);
             }
@@ -1283,13 +1310,19 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             };
         }
 
-        // Stop 钩子感知段循环：段完成后咨询，CONTINUE 则并入产出与继续指令再跑一段；
-        // 未启用钩子时退化为单段（与既有行为完全一致）
-        int maxStopContinues = agentProperties.getHooks().getMaxStopContinues();
-        Flux<StreamChunk> agentFlux = (hookInvoker != null && hookInvoker.isEnabled() && maxStopContinues > 0)
+        // 续跑段循环（v3.14 批次 3.1 Stop continue + 3.2 转向消息共享预算）：
+        // 段完成后优先消费转向、其次咨询 Stop 钩子，CONTINUE 则并入产出与指令再跑一段；
+        // 两者都未启用时退化为单段（与既有行为完全一致）
+        boolean hooksActive = hookInvoker != null && hookInvoker.isEnabled();
+        boolean steeringActive = isSteeringEnabled() && conversationId != null;
+        int segmentBudget = segmentContinuesBudget(hooksActive);
+        boolean loopActive = segmentBudget > 0
+                && ((hooksActive && agentProperties.getHooks().getMaxStopContinues() > 0)
+                        || (steeringActive && agentProperties.getSteering().getMaxSegmentContinues() > 0));
+        Flux<StreamChunk> agentFlux = loopActive
                 ? stopAwareSegmentStream(segmentBuilder, contextMessages, finalResponse,
-                        new java.util.concurrent.atomic.AtomicInteger(), maxStopContinues,
-                        agentConfig, conversationId)
+                        new java.util.concurrent.atomic.AtomicInteger(), segmentBudget,
+                        hooksActive, steeringActive, agentConfig, conversationId)
                 : segmentBuilder.apply(contextMessages);
 
         return agentFlux
@@ -1433,26 +1466,45 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     }
 
     /**
-     * Stop 钩子感知的流式段循环（递归 defer：每段完成后再决定是否续段）
+     * 续跑段循环（递归 defer：每段完成后再决定是否续段）
      *
-     * <p>段间以段内增量产出（ASSISTANT）+ 继续指令（USER）并入上下文——累积器含前段
-     * 产出，取段起点偏移切增量避免上下文重复。防循环上限内递归，达上限返回空流放行
-     * 结束。终态处理（记忆闭合/轮次事件）在外层组合流统一实施，继续段对终端透明。
+     * <p>段间优先消费运行中转向消息（不经 Stop 决策），其次咨询 Stop 钩子；
+     * 两者共享每回合续跑预算（转向/Stop continue 均计入）。段间以段内增量产出
+     *（ASSISTANT）+ 指令（USER）并入上下文——累积器含前段产出，取段起点偏移切
+     * 增量避免上下文重复。达预算上限返回空流放行结束。终态处理（记忆闭合/轮次
+     * 事件）在外层组合流统一实施，续段对终端透明。
      */
     private Flux<StreamChunk> stopAwareSegmentStream(
             java.util.function.Function<List<Msg>, Flux<StreamChunk>> segmentBuilder,
             List<Msg> contextMessages, StringBuilder finalResponse,
             java.util.concurrent.atomic.AtomicInteger usedContinues, int maxContinues,
+            boolean hooksActive, boolean steeringActive,
             AgentConfig agentConfig, String conversationId) {
         int segmentStart = finalResponse.length();
         return segmentBuilder.apply(contextMessages)
                 .concatWith(Flux.defer(() -> {
                     if (usedContinues.get() >= maxContinues) {
-                        log.warn("Stop 钩子持续要求继续，已达防循环上限（{} 次），强制结束回合", maxContinues);
+                        log.warn("续跑达防循环上限（{} 段：转向消息与 Stop continue 共享预算），强制结束回合", maxContinues);
                         return Flux.empty();
                     }
                     String segmentText = finalResponse.length() > segmentStart
                             ? finalResponse.substring(segmentStart) : "";
+                    if (steeringActive) {
+                        List<String> steering = steeringMessageStore.drain(conversationId);
+                        if (!steering.isEmpty()) {
+                            usedContinues.incrementAndGet();
+                            log.info("转向消息触发续段（第 {}/{} 段）: conversationId={}, 条数={}",
+                                    usedContinues.get(), maxContinues, conversationId, steering.size());
+                            List<Msg> steered = buildSteeringContinuationMessages(
+                                    contextMessages, segmentText, steering);
+                            return stopAwareSegmentStream(segmentBuilder, steered, finalResponse,
+                                    usedContinues, maxContinues, hooksActive, steeringActive,
+                                    agentConfig, conversationId);
+                        }
+                    }
+                    if (!hooksActive) {
+                        return Flux.empty();
+                    }
                     HookDecision decision = hookInvoker.onStop(new AgentLifecycleHook.StopInput(
                             agentConfig.getAgentType(), agentConfig.getAgentId(),
                             agentConfig.getAgentName(), conversationId, segmentText,
@@ -1461,12 +1513,108 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                         return Flux.empty();
                     }
                     usedContinues.incrementAndGet();
-                    log.info("Stop 钩子判定继续执行（第 {}/{} 次）: reason={}",
+                    log.info("Stop 钩子判定继续执行（第 {}/{} 段）: reason={}",
                             usedContinues.get(), maxContinues, decision.reason());
                     List<Msg> next = buildStopContinuationMessages(contextMessages, segmentText, decision.reason());
                     return stopAwareSegmentStream(segmentBuilder, next, finalResponse,
-                            usedContinues, maxContinues, agentConfig, conversationId);
+                            usedContinues, maxContinues, hooksActive, steeringActive,
+                            agentConfig, conversationId);
                 }));
+    }
+
+    // ==================== 只读探索子代理 + 运行中转向（v3.14 批次 3.2） ====================
+
+    /** Explore 型 Agent 约定：agentType = "Explore"（走 ReAct 执行流 + 只读工具面 + 强制 PLAN） */
+    static boolean isExploreProfile(AgentConfig config) {
+        return config != null && "Explore".equalsIgnoreCase(config.getAgentType());
+    }
+
+    /**
+     * Explore 工具面过滤决策：仅 Explore 型且分类器可用时阻断不可证明只读的工具；
+     * 分类器缺失时退化放行注册（运行时 PLAN 模式仍逐调用拦截，fail-closed 职责在运行期）
+     */
+    boolean isToolBlockedByExploreProfile(AgentConfig agentConfig, ToolDefinition toolDef) {
+        if (!isExploreProfile(agentConfig) || readOnlyClassifier == null) {
+            return false;
+        }
+        return !isProvablyReadOnlyTool(toolDef);
+    }
+
+    /**
+     * 生效会话模式：Explore 型强制 PLAN——构造性只读的第二道防线
+     *（第一道为工具面过滤），即使配置显式 YOLO 也不放行写路径
+     */
+    static String effectiveSessionMode(AgentConfig config) {
+        if (config == null) {
+            return null;
+        }
+        if (isExploreProfile(config)) {
+            return "PLAN";
+        }
+        return config.getSessionMode();
+    }
+
+    /**
+     * 注册期只读判定：分类证据（名单/readOnlyHint/空参数启发式）。
+     * code.execute 的启发式在注册期以空参数评估（宽松），运行期由 PLAN 模式
+     * 以真实代码逐调用权威判定
+     */
+    private boolean isProvablyReadOnlyTool(ToolDefinition toolDef) {
+        try {
+            return readOnlyClassifier.isProvablyReadOnly(new io.lumina.agent.tool.security.ToolExecutionContext(
+                    toolDef.getName(), toolDef.getCategory(), "{}",
+                    null, null, null, toolDef.getReadOnlyHint()));
+        } catch (Exception e) {
+            log.warn("注册期只读判定异常，按不可证明处理: tool={}, error={}", toolDef.getName(), e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean isSteeringEnabled() {
+        return steeringMessageStore != null && agentProperties.getSteering().isEnabled();
+    }
+
+    /**
+     * 执行入口消费积压转向消息（并入任务描述；一次性消费）
+     */
+    private String appendPendingSteering(String task, String conversationId) {
+        if (!isSteeringEnabled() || conversationId == null) {
+            return task;
+        }
+        List<String> messages = steeringMessageStore.drain(conversationId);
+        if (messages.isEmpty()) {
+            return task;
+        }
+        log.info("执行入口消费转向消息: conversationId={}, 条数={}", conversationId, messages.size());
+        return (task != null ? task : "") + "\n\n[用户运行中转向指令]\n" + String.join("\n", messages);
+    }
+
+    /**
+     * 转向续跑的上下文追加：上一段回答（ASSISTANT）+ 转向指令（USER，正规注入）
+     */
+    private List<Msg> buildSteeringContinuationMessages(List<Msg> current, String assistantText,
+                                                        List<String> steeringMessages) {
+        List<Msg> next = new ArrayList<>(current);
+        if (assistantText != null && !assistantText.isBlank()) {
+            next.add(Msg.builder().role(MsgRole.ASSISTANT).textContent(assistantText).build());
+        }
+        next.add(Msg.builder().role(MsgRole.USER).textContent(
+                "[用户运行中转向指令] " + String.join("\n", steeringMessages)
+                        + "\n（请据此调整后续行动方向）").build());
+        return next;
+    }
+
+    /**
+     * 每回合额外执行段预算：steering 启用时取两配置较大值并统一覆盖
+     *（转向续跑与 Stop 钩子 continue 共享同一预算，防无限续跑）
+     */
+    int segmentContinuesBudget(boolean hooksActive) {
+        boolean steeringActive = isSteeringEnabled();
+        if (steeringActive) {
+            return Math.max(agentProperties.getSteering().getMaxSegmentContinues(),
+                    hooksActive ? agentProperties.getHooks().getMaxStopContinues() : 0);
+        }
+        return agentProperties.getHooks().getMaxStopContinues();
     }
 
     /**
@@ -1663,17 +1811,17 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private Toolkit resolveToolkit(AgentConfig config) {
         Long agentId = config.getAgentId();
         if (agentId == null) {
-            return buildToolkit(config.getToolConfig());
+            return buildToolkit(config);
         }
         return toolkitCache.get(agentId, k -> {
             log.info("Toolkit 缓存未命中，构建工具集: agentId={}", agentId);
-            return buildToolkit(config.getToolConfig());
+            return buildToolkit(config);
         });
     }
 
-    private Toolkit buildToolkit(AgentConfig.ToolConfig toolConfig) {
+    private Toolkit buildToolkit(AgentConfig agentConfig) {
         Toolkit toolkit = new Toolkit();
-        registerToolsToToolkit(toolkit, toolConfig);
+        registerToolsToToolkit(toolkit, agentConfig != null ? agentConfig.getToolConfig() : null, agentConfig);
         return toolkit;
     }
 
@@ -1874,7 +2022,8 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
      * <p>将 EnhancedToolManager 管理的工具动态适配为 AgentTool 并注册到 Toolkit。
      * 支持从 @AgentTool 注解扫描的工具自动注册。
      */
-    private void registerToolsToToolkit(Toolkit toolkit, AgentConfig.ToolConfig toolConfig) {
+    private void registerToolsToToolkit(Toolkit toolkit, AgentConfig.ToolConfig toolConfig,
+                                        AgentConfig agentConfig) {
         if (enhancedToolManager == null) {
             log.debug("EnhancedToolManager 未配置，跳过工具注册");
             return;
@@ -1884,6 +2033,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         if (tools == null || tools.isEmpty()) {
             log.info("未发现可注册的工具");
             return;
+        }
+
+        boolean exploreProfile = isExploreProfile(agentConfig);
+        if (exploreProfile && readOnlyClassifier == null) {
+            log.warn("Explore 型 Agent 缺少只读分类器，工具面退化为白名单（运行时 PLAN 模式仍强制拦截写调用）");
         }
 
         // 如果 Agent 配置了指定工具列表，只注册这些工具
@@ -1909,14 +2063,24 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                     continue;
                 }
 
+                // Explore 型只读探索子代理（v3.14 批次 3.2）：工具面 = 可证明只读集
+                //（构造性只读——配置误加写工具也不注册；双保险见 effectiveSessionMode 强制 PLAN）
+                if (isToolBlockedByExploreProfile(agentConfig, toolDef)) {
+                    log.info("Explore 型 Agent 跳过非只读工具: {}（只读证据不足）", toolDef.getName());
+                    continue;
+                }
+
                 // 安全管线启用时传入适配器（拦截器→审批→单调守卫，fail-closed）；
-                // 结果外存化器与生命周期钩子调用器一并传入（各自独立开关，互不联动）
+                // 结果外存化器/生命周期钩子调用器/转向消息存储一并传入（各自独立开关，互不联动——
+                // 引擎侧按开关注入，适配器只判空）
                 io.lumina.agent.tool.security.ToolSecurityPipeline securityPipeline =
                         agentProperties.getTool().getSecurity().isEnabled() ? toolSecurityPipeline : null;
+                io.lumina.agent.steering.SteeringMessageStore steeringStore =
+                        agentProperties.getSteering().isEnabled() ? steeringMessageStore : null;
                 ToolDefinitionToAgentToolAdapter adapter =
                         new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker, meterRegistry,
                                 agentProperties.getTool().getExecutionTimeoutMs(), securityPipeline, toolResultSpiller,
-                                hookInvoker);
+                                hookInvoker, steeringStore);
                 toolkit.registerAgentTool(adapter);
                 registeredCount++;
                 log.info("工具已注册: {} (分类: {})", toolDef.getName(),

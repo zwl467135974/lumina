@@ -101,6 +101,13 @@ lumina:
     #   max-context-chars: 8000                        # add-context 输出上限
     #   max-reason-chars: 500                          # deny/continue 理由上限
     #   max-replacement-chars: 20000                   # replace-input 替换文本上限
+    # 运行中转向（v3.14 批次 3.2）：调用方经 POST /api/v1/conversations/{id}/steering 投递调整指令，
+    # 工具轮间搭车转达（即时）+ 段边界 USER 注入；消息一次性消费。
+    # 注意：默认内存实现为单实例语义——多实例部署需网关会话粘滞或提供 Redis 实现 Bean 覆盖
+    # steering:
+    #   enabled: ${AGENT_STEERING_ENABLED:false}
+    #   max-message-chars: 4000
+    #   max-segment-continues: 3                       # 转向/Stop continue 共享的每回合续段预算
     code-interpreter:
       enabled: ${CODE_INTERPRETER_ENABLED:false}          # 是否启用代码解释器
       mode: ${CODE_INTERPRETER_MODE:process}              # 执行模式：process 或 docker
