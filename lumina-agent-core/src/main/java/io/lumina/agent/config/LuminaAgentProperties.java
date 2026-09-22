@@ -468,6 +468,16 @@ public class LuminaAgentProperties {
         private int headChars = 3000;
         /** 预览保留尾部字符数 */
         private int tailChars = 1000;
+        /** 历史消息外存化开关（v3.13 批次 2.3，默认 false）：超阈值的
+         * 历史 user/assistant 消息全文存档、记忆只留预览 + artifactId，
+         * 模型可经 util.getArtifact 按需水合取回 */
+        private boolean historyEnabled = false;
+        /** 历史消息外存化阈值（字符数，独立于工具结果阈值） */
+        private int historyThresholdChars = 4000;
+        /** 历史消息预览保留的头部字符数 */
+        private int historyHeadChars = 1500;
+        /** 历史消息预览保留的尾部字符数 */
+        private int historyTailChars = 500;
     }
 
     /**

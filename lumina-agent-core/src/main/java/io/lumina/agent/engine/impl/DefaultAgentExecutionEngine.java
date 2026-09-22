@@ -139,6 +139,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private io.lumina.agent.tool.spill.ToolResultSpiller toolResultSpiller;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.tool.spill.HistorySpiller historySpiller;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.service.SkillCatalogProvider skillCatalogProvider;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -264,11 +267,13 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 提取 Token 使用量
             ExecuteResult.TokenUsage tokenUsage = extractTokenUsage(agentResponse);
 
-            // 保存对话记忆（Redis 热记忆）——图片历史卸载：只留引用标记，Base64 本体不进历史
+            // 保存对话记忆（Redis 热记忆）——图片历史卸载：只留引用标记，Base64 本体不进历史；
+            // 大消息外存化（v3.13 批次 2.3）：超阈值全文存档、记忆留预览 + artifactId
             if (conversationId != null) {
                 memoryManager.addMemory(conversationId, "user",
-                        task + MultimodalImage.buildReferenceNote(contents));
-                memoryManager.addMemory(conversationId, "assistant", result);
+                        spillHistory("user", conversationId, task + MultimodalImage.buildReferenceNote(contents)));
+                memoryManager.addMemory(conversationId, "assistant",
+                        spillHistory("assistant", conversationId, result));
             }
 
             long duration = System.currentTimeMillis() - startTime;
@@ -1273,12 +1278,23 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             return;
         }
         try {
-            memoryManager.addMemory(conversationId, "user", task);
+            memoryManager.addMemory(conversationId, "user", spillHistory("user", conversationId, task));
             memoryManager.addMemory(conversationId, "assistant",
-                    interrupted ? response + INTERRUPTED_RESPONSE_MARKER : response);
+                    spillHistory("assistant", conversationId,
+                            interrupted ? response + INTERRUPTED_RESPONSE_MARKER : response));
         } catch (Exception e) {
             log.warn("保存流式记忆失败（不影响主流程）: conversationId={}, error={}", conversationId, e.getMessage());
         }
+    }
+
+    /**
+     * 大消息外存化（v3.13 批次 2.3）：委托 {@link io.lumina.agent.tool.spill.HistorySpiller}，
+     * 未装配/未启用/未超阈值时原样返回
+     */
+    private String spillHistory(String role, String conversationId, String content) {
+        return historySpiller != null
+                ? historySpiller.spillIfNeeded(role, conversationId, content)
+                : content;
     }
 
     /**

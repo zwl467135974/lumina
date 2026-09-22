@@ -6,6 +6,14 @@
 
 ## [3.13.0] - 未发布
 
+### 大消息外存化与按需水合（v3.13 路线图批次 2.3，ZCode read-file-state 的 Lumina 化）
+
+- 实施时按 Lumina 架构收窄：记忆本为纯文本（无独立工具输入历史），输入侧真实痛点是**大消息逐轮回放**（粘贴的代码块、长文档、大结果每轮重复计费）——落地为历史消息级外存化
+- 新增 `HistorySpiller`：超阈值的历史 user/assistant 消息全文存入 A5 的 `ToolArtifactStore`（复用存档表与租户隔离，来源标记 `history.user/assistant`），记忆只留 head/tail 预览 + artifactId 取回标记，模型经 `util.getArtifact` 按需水合
+- **与工具结果 spill 的语义差异（独立成类）**：工具结果存档失败降级硬截断（best-effort），历史消息**宁可贵不失真**——存档失败/无存档实现/无会话上下文一律保留原文
+- 引擎四个记忆落点（同步/流式 × user/assistant）统一接入；开关 `lumina.agent.tool.spill.history-enabled` 默认关闭，独立阈值 `history-threshold-chars`（默认 4000）与预览 head/tail 配置
+- 新增 7 个用例（预览/标记、存档失败保原文、双开关、无会话、无存档实现、来源标记审计）
+
 ### 会话模式 PLAN / BUILD / YOLO（v3.13 路线图批次 2.2，ZCode 机制）
 
 - 运行时级策略强制（管线层而非提示词层，模型无法经提示注入绕过）：
