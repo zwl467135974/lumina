@@ -92,6 +92,15 @@ lumina:
         max-facts-per-turn: ${REFLECTIVE_MAX_FACTS:5} # 每次提取最大条数
         max-context-memories: ${REFLECTIVE_MAX_CONTEXT:20} # 上下文注入最大条数
         max-fact-length: ${REFLECTIVE_MAX_LENGTH:500} # 单条最大长度
+    # 决策型生命周期 Hook（v3.14 批次 3.1）：企业合规门实现 AgentLifecycleHook Bean 后开启。
+    # 决策点：SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PostToolUseFailure/Stop
+    # hooks:
+    #   enabled: ${AGENT_HOOKS_ENABLED:false}          # 默认关闭——零钩子时本就空转，开关是合规介入的显式授权
+    #   timeout-ms: 5000                               # 单钩子超时：超时按中立放行，绝不崩回合
+    #   max-stop-continues: 3                          # Stop 钩子 continue 防循环上限（每回合）
+    #   max-context-chars: 8000                        # add-context 输出上限
+    #   max-reason-chars: 500                          # deny/continue 理由上限
+    #   max-replacement-chars: 20000                   # replace-input 替换文本上限
     code-interpreter:
       enabled: ${CODE_INTERPRETER_ENABLED:false}          # 是否启用代码解释器
       mode: ${CODE_INTERPRETER_MODE:process}              # 执行模式：process 或 docker

@@ -22,6 +22,8 @@ import io.lumina.agent.engine.AgentExecutionEngine;
 import io.lumina.agent.engine.PlanExecuteAgent;
 import io.lumina.agent.engine.ProviderFailover;
 import io.lumina.agent.event.AgentTurnEvent;
+import io.lumina.agent.hook.AgentLifecycleHook;
+import io.lumina.agent.hook.HookDecision;
 import io.lumina.common.core.ErrorCode;
 import io.lumina.common.exception.BusinessException;
 import io.lumina.agent.loader.ConfigLoader;
@@ -139,6 +141,9 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
     private io.lumina.agent.tool.spill.ToolResultSpiller toolResultSpiller;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private io.lumina.agent.hook.AgentHookInvoker hookInvoker;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
     private io.lumina.agent.tool.spill.HistorySpiller historySpiller;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -231,6 +236,11 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             publishTurn(AgentTurnEvent.started(businessType, agentConfig.getAgentId(),
                     agentConfig.getAgentName(), conversationId, false));
 
+            // 决策型生命周期 Hook（v3.14 批次 3.1）：UserPromptSubmit（拒绝终止回合/替换输入/
+            // 附加上下文，在模型路由前生效——替换后的输入参与复杂度路由）+ SessionStart（首轮注入会话级上下文）
+            task = applyUserPromptHook(businessType, task, agentConfig, conversationId, false);
+            task = applySessionStartHook(businessType, task, agentConfig, conversationId);
+
             // 动态模型路由（可选）：根据复杂度选择模型
             if (modelRouter != null) {
                 AgentConfig.LLMConfig routed = modelRouter.route(task, agentConfig);
@@ -258,11 +268,37 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             // 构建上下文消息（含历史记忆 + 长期记忆）
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents, agentConfig);
 
-            // 执行 Agent（上下文溢出时紧急压缩后重试）
-            Msg agentResponse = executeWithOverflowRecovery(agentConfig, contextMessages);
-            String result = agentResponse.getTextContent() != null
-                    ? agentResponse.getTextContent()
-                    : "Agent 执行完成，但未返回有效响应";
+            // 执行 Agent（上下文溢出时紧急压缩后重试）；
+            // Stop 钩子：产出最终回答后咨询，CONTINUE 则把回答 + 继续指令并入上下文再执行
+            //（防循环上限内；达上限强制结束并告警——展示"未达完成标准"判定不无限烧 Token）
+            List<Msg> workingMessages = contextMessages;
+            Msg agentResponse = executeWithOverflowRecovery(agentConfig, workingMessages);
+            String result = responseTextOf(agentResponse);
+            int usedContinues = 0;
+            int maxContinues = agentProperties.getHooks().getMaxStopContinues();
+            while (hookInvoker != null && hookInvoker.isEnabled() && usedContinues < maxContinues) {
+                HookDecision stopDecision;
+                try {
+                    stopDecision = hookInvoker.onStop(new AgentLifecycleHook.StopInput(
+                            businessType, agentConfig.getAgentId(), agentConfig.getAgentName(),
+                            conversationId, result, usedContinues, maxContinues));
+                } catch (Exception e) {
+                    log.warn("Stop 钩子咨询异常，按允许结束处理: {}", e.getMessage());
+                    break;
+                }
+                if (stopDecision == null || stopDecision.action() != HookDecision.Action.CONTINUE) {
+                    break;
+                }
+                usedContinues++;
+                log.info("Stop 钩子判定继续执行（第 {}/{} 次）: reason={}",
+                        usedContinues, maxContinues, stopDecision.reason());
+                workingMessages = buildStopContinuationMessages(workingMessages, result, stopDecision.reason());
+                agentResponse = executeWithOverflowRecovery(agentConfig, workingMessages);
+                result = responseTextOf(agentResponse);
+            }
+            if (usedContinues > 0 && usedContinues == maxContinues) {
+                log.warn("Stop 钩子持续要求继续，已达防循环上限（{} 次），强制结束回合", maxContinues);
+            }
 
             // 提取 Token 使用量
             ExecuteResult.TokenUsage tokenUsage = extractTokenUsage(agentResponse);
@@ -394,6 +430,10 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             if (promptTemplate == null || promptTemplate.isEmpty()) {
                 promptTemplate = promptLoader.loadPrompt(businessType);
             }
+            // 决策型生命周期 Hook：UserPromptSubmit / SessionStart（拒绝经 catch 转 ERROR 流）
+            task = applyUserPromptHook(businessType, task, agentConfig, conversationId, true);
+            task = applySessionStartHook(businessType, task, agentConfig, conversationId);
+
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
             // 构建上下文消息（含历史记忆 + 长期记忆）
@@ -470,6 +510,10 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
             if (promptTemplate == null || promptTemplate.isEmpty()) {
                 promptTemplate = promptLoader.loadPrompt(businessType);
             }
+            // 决策型生命周期 Hook：UserPromptSubmit / SessionStart（拒绝经 catch 转 ERROR 流）
+            task = applyUserPromptHook(businessType, task, agentConfig, conversationId, true);
+            task = applySessionStartHook(businessType, task, agentConfig, conversationId);
+
             String prompt = promptLoader.fillTemplate(promptTemplate, task);
 
             List<Msg> contextMessages = buildContextMessages(conversationId, prompt, contents, agentConfig);
@@ -1207,33 +1251,46 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         // 图片历史卸载：记忆落点只留引用标记（一次构建，三种流式终态共用）
         String imageNote = MultimodalImage.buildReferenceNote(contents);
 
-        Flux<StreamChunk> agentFlux;
         String agentType = agentConfig.getAgentType();
+        // 段构造器：消息列表 → 单段流（ReAct 含溢出重试 / PlanAndExecute 组合流），
+        // 为 Stop 钩子继续执行提供可重入的段工厂
+        java.util.function.Function<List<Msg>, Flux<StreamChunk>> segmentBuilder;
         if ("PlanAndExecute".equalsIgnoreCase(agentType)) {
             // Plan-Execute 流式
-            agentFlux = buildPlanExecuteStreamFlux(agentConfig, userPrompt, contextMessages);
+            segmentBuilder = msgs -> buildPlanExecuteStreamFlux(agentConfig, userPrompt, msgs);
         } else {
             // ReAct 流式（上下文溢出时紧急压缩后重试一次）
-            ReActAgent agent = createReActAgent(agentConfig);
-            StreamOptions options = StreamOptions.builder()
-                    .incremental(true)
-                    .includeReasoningChunk(true)
-                    .includeActingChunk(true)
-                    .build();
             boolean overflowRetryEnabled = agentProperties.getMemory().getCompression()
                     .getMaxOverflowRetries() > 0;
-            agentFlux = agent.stream(contextMessages, options)
-                    .map(this::toStreamChunk)
-                    .onErrorResume(e -> {
-                        if (overflowRetryEnabled && isContextOverflow(e) && contextMessages.size() > 3) {
-                            log.warn("流式上下文溢出（{}），紧急压缩后重试", e.getMessage());
-                            ReActAgent retryAgent = createReActAgent(agentConfig);
-                            return retryAgent.stream(emergencyCompact(contextMessages), options)
-                                    .map(this::toStreamChunk);
-                        }
-                        return Flux.error(e);
-                    });
+            segmentBuilder = msgs -> {
+                ReActAgent agent = createReActAgent(agentConfig);
+                StreamOptions options = StreamOptions.builder()
+                        .incremental(true)
+                        .includeReasoningChunk(true)
+                        .includeActingChunk(true)
+                        .build();
+                return agent.stream(msgs, options)
+                        .map(this::toStreamChunk)
+                        .onErrorResume(e -> {
+                            if (overflowRetryEnabled && isContextOverflow(e) && msgs.size() > 3) {
+                                log.warn("流式上下文溢出（{}），紧急压缩后重试", e.getMessage());
+                                ReActAgent retryAgent = createReActAgent(agentConfig);
+                                return retryAgent.stream(emergencyCompact(msgs), options)
+                                        .map(this::toStreamChunk);
+                            }
+                            return Flux.error(e);
+                        });
+            };
         }
+
+        // Stop 钩子感知段循环：段完成后咨询，CONTINUE 则并入产出与继续指令再跑一段；
+        // 未启用钩子时退化为单段（与既有行为完全一致）
+        int maxStopContinues = agentProperties.getHooks().getMaxStopContinues();
+        Flux<StreamChunk> agentFlux = (hookInvoker != null && hookInvoker.isEnabled() && maxStopContinues > 0)
+                ? stopAwareSegmentStream(segmentBuilder, contextMessages, finalResponse,
+                        new java.util.concurrent.atomic.AtomicInteger(), maxStopContinues,
+                        agentConfig, conversationId)
+                : segmentBuilder.apply(contextMessages);
 
         return agentFlux
                 .doOnNext(chunk -> {
@@ -1295,6 +1352,121 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
         return historySpiller != null
                 ? historySpiller.spillIfNeeded(role, conversationId, content)
                 : content;
+    }
+
+    /**
+     * 决策型生命周期 Hook（v3.14 批次 3.1）：UserPromptSubmit——拒绝抛
+     * {@link BusinessException} 终止回合（同步路径转失败结果/流式路径转 ERROR 流，理由对调用方可见）；
+     * 可替换输入（替换后的输入参与模型路由与记忆落库）、追加附加上下文
+     */
+    private String applyUserPromptHook(String businessType, String task, AgentConfig agentConfig,
+                                       String conversationId, boolean streaming) {
+        if (hookInvoker == null || !hookInvoker.isEnabled()) {
+            return task;
+        }
+        HookDecision decision = hookInvoker.onUserPromptSubmit(new AgentLifecycleHook.PromptSubmitInput(
+                businessType, agentConfig.getAgentId(), agentConfig.getAgentName(),
+                conversationId, BaseContext.getSessionMode(), task, streaming));
+        if (decision.denied()) {
+            throw new BusinessException(ErrorCode.AGENT_INPUT_DENIED,
+                    "用户输入被生命周期钩子拒绝: " + decision.reason());
+        }
+        if (decision.action() == HookDecision.Action.REPLACE_INPUT && decision.replacementInput() != null) {
+            log.info("UserPromptSubmit 钩子替换输入: 原长 {} -> 新长 {} 字符",
+                    task != null ? task.length() : 0, decision.replacementInput().length());
+            task = decision.replacementInput();
+        }
+        if (decision.additionalContext() != null && !decision.additionalContext().isBlank()) {
+            task = (task != null ? task : "") + "\n\n[钩子注入的附加上下文]\n" + decision.additionalContext();
+        }
+        return task;
+    }
+
+    /**
+     * SessionStart 钩子：会话首轮（历史记忆为空）注入会话级上下文。
+     * 首轮检测只在钩子启用时多读一次记忆（非首轮与未启用路径零开销）；
+     * 记忆读取故障不影响回合
+     */
+    private String applySessionStartHook(String businessType, String task, AgentConfig agentConfig,
+                                         String conversationId) {
+        if (hookInvoker == null || !hookInvoker.isEnabled() || conversationId == null) {
+            return task;
+        }
+        List<MemoryManager.Memory> recent;
+        try {
+            recent = memoryManager.getRecentMemories(conversationId, 1);
+        } catch (Exception e) {
+            log.warn("SessionStart 首轮检测读取记忆失败（不影响回合）: {}", e.getMessage());
+            return task;
+        }
+        if (recent != null && !recent.isEmpty()) {
+            return task;
+        }
+        HookDecision decision = hookInvoker.onSessionStart(new AgentLifecycleHook.SessionStartInput(
+                businessType, agentConfig.getAgentId(), agentConfig.getAgentName(), conversationId));
+        if (decision.additionalContext() != null && !decision.additionalContext().isBlank()) {
+            log.info("SessionStart 钩子注入会话级上下文: {} 字符", decision.additionalContext().length());
+            return (task != null ? task : "") + "\n\n[会话开始上下文]\n" + decision.additionalContext();
+        }
+        return task;
+    }
+
+    /**
+     * Stop 钩子继续执行时的上下文追加：上一段回答（ASSISTANT）+ 继续指令（USER）
+     */
+    private List<Msg> buildStopContinuationMessages(List<Msg> current, String assistantText, String reason) {
+        List<Msg> next = new ArrayList<>(current);
+        if (assistantText != null && !assistantText.isBlank()) {
+            next.add(Msg.builder().role(MsgRole.ASSISTANT).textContent(assistantText).build());
+        }
+        next.add(Msg.builder().role(MsgRole.USER).textContent(
+                "[系统继续指令] 生命周期 Stop 钩子判定本轮尚未达到完成标准，请继续执行。理由: " + reason
+        ).build());
+        return next;
+    }
+
+    /** Agent 回复文本（空回复给占位语义，与既有行为一致） */
+    private String responseTextOf(Msg agentResponse) {
+        return agentResponse.getTextContent() != null
+                ? agentResponse.getTextContent()
+                : "Agent 执行完成，但未返回有效响应";
+    }
+
+    /**
+     * Stop 钩子感知的流式段循环（递归 defer：每段完成后再决定是否续段）
+     *
+     * <p>段间以段内增量产出（ASSISTANT）+ 继续指令（USER）并入上下文——累积器含前段
+     * 产出，取段起点偏移切增量避免上下文重复。防循环上限内递归，达上限返回空流放行
+     * 结束。终态处理（记忆闭合/轮次事件）在外层组合流统一实施，继续段对终端透明。
+     */
+    private Flux<StreamChunk> stopAwareSegmentStream(
+            java.util.function.Function<List<Msg>, Flux<StreamChunk>> segmentBuilder,
+            List<Msg> contextMessages, StringBuilder finalResponse,
+            java.util.concurrent.atomic.AtomicInteger usedContinues, int maxContinues,
+            AgentConfig agentConfig, String conversationId) {
+        int segmentStart = finalResponse.length();
+        return segmentBuilder.apply(contextMessages)
+                .concatWith(Flux.defer(() -> {
+                    if (usedContinues.get() >= maxContinues) {
+                        log.warn("Stop 钩子持续要求继续，已达防循环上限（{} 次），强制结束回合", maxContinues);
+                        return Flux.empty();
+                    }
+                    String segmentText = finalResponse.length() > segmentStart
+                            ? finalResponse.substring(segmentStart) : "";
+                    HookDecision decision = hookInvoker.onStop(new AgentLifecycleHook.StopInput(
+                            agentConfig.getAgentType(), agentConfig.getAgentId(),
+                            agentConfig.getAgentName(), conversationId, segmentText,
+                            usedContinues.get(), maxContinues));
+                    if (decision == null || decision.action() != HookDecision.Action.CONTINUE) {
+                        return Flux.empty();
+                    }
+                    usedContinues.incrementAndGet();
+                    log.info("Stop 钩子判定继续执行（第 {}/{} 次）: reason={}",
+                            usedContinues.get(), maxContinues, decision.reason());
+                    List<Msg> next = buildStopContinuationMessages(contextMessages, segmentText, decision.reason());
+                    return stopAwareSegmentStream(segmentBuilder, next, finalResponse,
+                            usedContinues, maxContinues, agentConfig, conversationId);
+                }));
     }
 
     /**
@@ -1738,12 +1910,13 @@ public class DefaultAgentExecutionEngine implements AgentExecutionEngine {
                 }
 
                 // 安全管线启用时传入适配器（拦截器→审批→单调守卫，fail-closed）；
-                // 结果外存化器一并传入（超大工具结果 spill 为预览 + 存档 ID）
+                // 结果外存化器与生命周期钩子调用器一并传入（各自独立开关，互不联动）
                 io.lumina.agent.tool.security.ToolSecurityPipeline securityPipeline =
                         agentProperties.getTool().getSecurity().isEnabled() ? toolSecurityPipeline : null;
                 ToolDefinitionToAgentToolAdapter adapter =
                         new ToolDefinitionToAgentToolAdapter(toolDef, toolInvocationRecorder, toolCircuitBreaker, meterRegistry,
-                                agentProperties.getTool().getExecutionTimeoutMs(), securityPipeline, toolResultSpiller);
+                                agentProperties.getTool().getExecutionTimeoutMs(), securityPipeline, toolResultSpiller,
+                                hookInvoker);
                 toolkit.registerAgentTool(adapter);
                 registeredCount++;
                 log.info("工具已注册: {} (分类: {})", toolDef.getName(),

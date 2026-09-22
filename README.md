@@ -892,7 +892,7 @@ Agent 核心能力代际升级，机制移植自 [DeepSeek Harness](https://gith
 - 🪝 **`phase(title)` 进度钩子** ✅ — 自主编排节点第 5 个桥接函数：纯展示性阶段声明，SSE 推送 `AUTONOMY_PHASE` 事件、执行日志落 `PHASE` 进度行，为审批投影与执行面板提供数据源（双上游验证）
 - 🌐 **Playwright 浏览器接入** ✅ — 官方 `@playwright/mcp` 复用 MCP stdio 通道（引擎零改动）：配置模板 + `browser-control` 技能资产（走导入体检）+ 接入指南（安全边界/动态注册/验收链路），本地实测可用（双上游验证）
 - 🖼 **图片历史卸载** ✅ — 多轮图片会话从"完全失忆"升级为"引用可感知"：记忆落点留文件名+fileUuid 轻量标记（Base64 本体绝不进历史）+ PNG/JPEG/GIF 头解析的尺寸感知 token 估算（替代 flat 1000）
-- 🔌 **决策型生命周期 Hook**（→ v3.14.0）— AgentTurnEvent 总线扩展决策点（allow/deny/replace-input/add-context），企业合规门不改引擎
+- 🔌 **决策型生命周期 Hook**（→ v3.14.0）✅ — AgentTurnEvent 总线扩展决策点（SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/Stop，标准决策 allow/deny/replace-input/add-context/continue），企业合规门不改引擎；超时/异常中立放行不崩回合，Stop 续跑有防循环上限
 - 🔍 **只读探索子代理 + 运行中转向**（→ v3.14.0）— Explore profile 工具白名单 = 只读集
 - 📊 **审批投影 + artifact 面板**（→ v3.14.0）— 计划先成图再审批，执行中 chart/table/metrics 实时面板（工作流执行页升级）
 

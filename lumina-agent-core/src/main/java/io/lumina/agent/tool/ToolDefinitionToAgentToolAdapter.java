@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.agentscope.core.message.ToolResultBlock;
 import io.agentscope.core.tool.AgentTool;
 import io.agentscope.core.tool.ToolCallParam;
+import io.lumina.agent.hook.AgentHookInvoker;
+import io.lumina.agent.hook.AgentLifecycleHook;
+import io.lumina.agent.hook.HookDecision;
 import io.lumina.agent.monitor.ToolCircuitBreaker;
 import io.lumina.agent.monitor.ToolInvocationRecord;
 import io.lumina.agent.monitor.ToolInvocationRecorder;
@@ -29,6 +32,10 @@ import java.util.concurrent.TimeoutException;
  * → 工具体 → 超时。安全拒绝不计入熔断（策略否决不是工具故障），
  * 拒绝理由对模型可见以便自纠。
  *
+ * <p>决策型生命周期 Hook（3.14.0 起）：PreToolUse 在安全管线之前（企业合规门
+ * 便宜检查先行，避免先进人工审批再被拒）；PostToolUse / PostToolUseFailure
+ * 在结果外存化之后（钩子看到的是模型可见的最终结果）。
+ *
  * @author Lumina Team
  * @since 1.0.0
  */
@@ -43,6 +50,7 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
     private final long executionTimeoutMs;
     private final ToolSecurityPipeline securityPipeline;
     private final ToolResultSpiller resultSpiller;
+    private final AgentHookInvoker hookInvoker;
     private Map<String, Object> parametersSchema;
 
     public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition) {
@@ -74,6 +82,18 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                                             long executionTimeoutMs,
                                             ToolSecurityPipeline securityPipeline,
                                             ToolResultSpiller resultSpiller) {
+        this(toolDefinition, recorder, circuitBreaker, meterRegistry, executionTimeoutMs,
+                securityPipeline, resultSpiller, null);
+    }
+
+    public ToolDefinitionToAgentToolAdapter(ToolDefinition toolDefinition,
+                                            ToolInvocationRecorder recorder,
+                                            ToolCircuitBreaker circuitBreaker,
+                                            io.micrometer.core.instrument.MeterRegistry meterRegistry,
+                                            long executionTimeoutMs,
+                                            ToolSecurityPipeline securityPipeline,
+                                            ToolResultSpiller resultSpiller,
+                                            AgentHookInvoker hookInvoker) {
         this.toolDefinition = toolDefinition;
         this.recorder = recorder;
         this.circuitBreaker = circuitBreaker;
@@ -81,6 +101,7 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
         this.executionTimeoutMs = executionTimeoutMs;
         this.securityPipeline = securityPipeline;
         this.resultSpiller = resultSpiller;
+        this.hookInvoker = hookInvoker;
         this.objectMapper = JsonUtils.OBJECT_MAPPER;
         this.parametersSchema = parseParametersSchema(toolDefinition);
     }
@@ -127,6 +148,19 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                     paramsJson = objectMapper.writeValueAsString(input);
                 }
 
+                // 决策型生命周期 Hook（v3.14 批次 3.1）：PreToolUse 在安全管线之前——
+                // 便宜的企业合规检查先行，避免先进入人工审批再被钩子拒绝；拒绝理由对模型可见
+                if (hookInvoker != null && hookInvoker.isEnabled()) {
+                    HookDecision hookDecision = hookInvoker.onPreToolUse(new AgentLifecycleHook.ToolUseInput(
+                            toolName, toolDefinition.getCategory(), paramsJson,
+                            BaseContext.getConversationId()));
+                    if (hookDecision.denied()) {
+                        String msg = "工具调用被生命周期钩子拒绝: " + hookDecision.reason();
+                        doRecord(toolName, paramsJson, null, msg, System.currentTimeMillis() - start, false);
+                        return buildErrorResult(msg, paramsJson);
+                    }
+                }
+
                 // 安全管线（拦截器 → 审批 → 单调守卫）；拒绝不计入熔断（策略否决不是工具故障）
                 if (securityPipeline != null) {
                     String denial = securityPipeline.check(new ToolExecutionContext(
@@ -155,6 +189,13 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                 long duration = System.currentTimeMillis() - start;
                 log.debug("工具执行完成: {}, 耗时: {}ms", toolName, duration);
 
+                // PostToolUse 观测：看到的是模型可见的最终结果（含 spill 预览替换）
+                if (hookInvoker != null && hookInvoker.isEnabled()) {
+                    hookInvoker.onPostToolUse(new AgentLifecycleHook.ToolResultInput(
+                            toolName, toolDefinition.getCategory(), paramsJson, resultString,
+                            null, duration, BaseContext.getConversationId()));
+                }
+
                 // 记录成功 + 熔断反馈
                 doRecord(toolName, paramsJson, resultString, null, duration, true);
                 if (circuitBreaker != null) {
@@ -169,6 +210,13 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
                 String errorMessage = e.getMessage() != null
                         ? e.getMessage()
                         : "工具执行失败: " + e.getClass().getSimpleName();
+
+                // PostToolUseFailure 观测（策略拒绝不走此处——被拒的调用没有"执行"）
+                if (hookInvoker != null && hookInvoker.isEnabled()) {
+                    hookInvoker.onPostToolUseFailure(new AgentLifecycleHook.ToolResultInput(
+                            toolName, toolDefinition.getCategory(), paramsJson, null,
+                            errorMessage, duration, BaseContext.getConversationId()));
+                }
 
                 // 记录失败 + 熔断反馈
                 doRecord(toolName, paramsJson, null, errorMessage, duration, false);
@@ -188,6 +236,11 @@ public class ToolDefinitionToAgentToolAdapter implements AgentTool {
             long duration = executionTimeoutMs;
             String msg = "工具执行超时（" + (executionTimeoutMs / 1000) + "s）: " + toolName;
             log.warn(msg);
+            if (hookInvoker != null && hookInvoker.isEnabled()) {
+                hookInvoker.onPostToolUseFailure(new AgentLifecycleHook.ToolResultInput(
+                        toolName, toolDefinition.getCategory(), "{}", null,
+                        msg, duration, BaseContext.getConversationId()));
+            }
             doRecord(toolName, "{}", null, msg, duration, false);
             if (circuitBreaker != null) {
                 circuitBreaker.recordFailure(toolName);

@@ -224,6 +224,13 @@ public class LuminaAgentProperties {
     private SkillConfig skill = new SkillConfig();
 
     /**
+     * 决策型生命周期 Hook 配置（企业合规门介入轮次决策点）
+     *
+     * @since 3.14.0
+     */
+    private HooksConfig hooks = new HooksConfig();
+
+    /**
      * 工具配置
      */
     private ToolConfig tool = new ToolConfig();
@@ -346,6 +353,30 @@ public class LuminaAgentProperties {
         private int maxCatalogEntries = 50;
         /** 目录中描述的截断长度（字符） */
         private int descriptionMaxLength = 200;
+    }
+
+    /**
+     * 决策型生命周期 Hook 配置（v3.14 批次 3.1）
+     *
+     * <p>企业合规门实现 {@code AgentLifecycleHook} 并注册 Bean，开启本开关即介入
+     * 轮次决策点（不改引擎）。零钩子时本就空转，开关是合规介入的显式授权动作。
+     *
+     * @since 3.14.0
+     */
+    @Data
+    public static class HooksConfig {
+        /** 是否启用（默认 false） */
+        private boolean enabled = false;
+        /** 单钩子调用超时（毫秒）：超时按中立放行处理，绝不崩回合 */
+        private long timeoutMs = 5000;
+        /** Stop 钩子 continue 防循环上限（每回合），达上限强制结束 */
+        private int maxStopContinues = 3;
+        /** add-context 输出大小上限（字符），超出截断 */
+        private int maxContextChars = 8000;
+        /** deny 理由大小上限（字符），超出截断 */
+        private int maxReasonChars = 500;
+        /** replace-input 替换文本大小上限（字符），超出截断 */
+        private int maxReplacementChars = 20000;
     }
 
     /**

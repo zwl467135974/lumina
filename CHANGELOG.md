@@ -4,6 +4,19 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.14.0] - 未发布
+
+### 决策型生命周期 Hook（v3.14 路线图批次 3.1，ZCode hooks × DSH B1）
+
+- 企业合规门（脱敏/外发审计/输入风控/完成标准校验）实现 `AgentLifecycleHook` 接口注册为 Bean 即可介入轮次决策点，**不改引擎**；与观测事件总线（`AgentTurnEvent` 单向通知）职责划分：钩子是同步决策（可拒绝/可改写/可注入）
+- 六个决策点：`SessionStart`（会话首轮注入会话级上下文，首轮检测只在钩子启用时多读一次记忆）、`UserPromptSubmit`（拒绝/替换输入/附加上下文，替换后输入参与模型路由与记忆落库）、`PreToolUse`（在安全管线**之前**——企业检查先行，避免先进人工审批再被拒）、`PostToolUse`/`PostToolUseFailure`（观测模型可见结果）、`Stop`（判定未达完成标准注入理由续跑，同步/流式两路径均支持）
+- 标准决策词汇 `HookDecision`（ALLOW/DENY/REPLACE_INPUT/ADD_CONTEXT/CONTINUE）；组合语义：DENY 支配短路、REPLACE 首个生效、CONTEXT 累积、CONTINUE 首个生效；各点只认指定动作，其余按中立告警忽略
+- 工程契约（`AgentHookInvoker`）：单钩子限时执行（守护线程池 + timeout-ms，默认 5s），超时/异常按**中立放行**绝不崩回合（强一致合规门在实现内自行降级 deny）；输出大小上限截断（reason 500/replacement 20000/context 8000）；Stop 续跑防循环上限（默认 3 次，达上限强制结束并告警）；阻断路径带钩子名+理由审计日志与 `agent.hook.invocation` 指标
+- 流式 Stop 续跑实现为递归 defer 段循环（段间以段内增量产出 + 继续指令并入上下文，累积器取段起点偏移防重复）；终态处理（记忆闭合/轮次事件）在外层统一实施，继续段对终端透明；未启用钩子时退化为单段（与既有行为完全一致）
+- UserPromptSubmit 拒绝走新增 `ErrorCode.AGENT_INPUT_DENIED`（403/20011）；同步路径转失败结果、流式路径转 ERROR chunk，理由对调用方与模型可见
+- 开关 `lumina.agent.hooks.enabled` 默认关闭（延续默认开关原则）；新增《生命周期 Hook 接入指南》（决策点表/PII 脱敏门示例/组合语义/工程契约/流式差异/边界）
+- 新增 27 个用例（组合语义/超时中立/异常中立/限额截断/无效动作/Order 排序/引擎 deny-replace-sessionStart 接线/适配器 pre-post 接线/Stop 续跑消息构建）；agent-core 470 / business-agent 353 全绿
+
 ## [3.13.0] - 2026-09-22
 
 ### 大消息外存化与按需水合（v3.13 路线图批次 2.3，ZCode read-file-state 的 Lumina 化）
