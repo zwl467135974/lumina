@@ -1,9 +1,22 @@
 # S03 — 从一次 DNS Rebinding 攻击学会 SSRF 防护
 
-> **前置要求**：知道 HTTP 请求的大致过程（域名会先解析成 IP）
-> **预计阅读**：25 分钟
-> **难度**：⭐⭐⭐⭐☆
+> **前置要求**：知道 HTTP 请求的大致过程。读正文前先过一遍下面的"补课盒"，够用了：
+>
+> > 📦 **补课盒（30 秒×3）**
+> > - **DNS 解析**：域名（`evil.com`）和服务器 IP（`1.2.3.4`）是两个东西，访问域名前要先"查电话本"把它翻译成 IP——这次翻译叫一次解析。
+> > - **TTL**：DNS 查询结果有保质期（秒数），过期就得重新查。TTL=0 意味着"每次都重新查电话本"。
+> > - **HTTPS 证书**：TLS 加密用的证书是**签发给域名**的，不是签给 IP 的——这会影响 S03 修复方案的选型，到时再展开。
+>
+> **预计阅读**：35 分钟
+> **难度**：⭐⭐⭐⭐
 > **对应真实代码**：`A2aClientToolProvider` / `InetAddresses`（v3.12.1 修复，[ADR-001](../../docs/zh/design/adr/ADR-001-SSRF-连接时校验.md)）
+
+> 🧭 **本篇主线概念**：
+> ① **SSRF** —— 骗服务器替你访问它够得着、而你够不着的内网
+> ② **TOCTOU** —— 检查的时刻和使用的时刻之间，世界变了
+> ③ **连接时校验** —— 把检查和使用收敛到同一次解析，缝隙就没了
+>
+> 路过概念（别停，混个脸熟）：DNS rebinding、重定向跟随、IPv6 唯一本地地址（fc00::/7）、运营商级 NAT（100.64/10）
 
 ---
 
@@ -12,6 +25,24 @@
 这是一个真实故事：Lumina 的 A2A 功能让 Agent 能调用任意外部 Agent，上线时明明配了"禁止访问内网"的检查——代码 review 没发现问题，测试也过了。但攻击者可以用一次 DNS 把整个检查变成摆设。
 
 这节课讲清楚这个攻击（DNS rebinding），以及为什么正确的修复不是"再仔细检查一遍"，而是**把检查搬到攻击发生的位置**。这是安全工程最重要的思维方式：防线要放在和攻击同一个时空。
+
+## 最小示例：缝隙在哪，一眼看穿
+
+把漏洞剥到最 bare 的 6 行伪代码——注意"检查"和"使用"读的是**两次**解析：
+
+```java
+// 有缝版（v3.12.0 的骨架）
+InetAddress[] seen = resolve(host);   // 第①次解析：此刻查到的 IP
+if (isPrivate(seen)) reject;          // 检查的是①的结果
+connect(host);                        // 使用时又解析了一次（第②次）——①和②之间世界可以变！
+
+// 无缝版（v3.12.1 的骨架）
+InetAddress[] addr = resolve(host);   // 唯一一次解析
+if (isPrivate(addr)) reject;
+connect(addr);                        // 用的就是刚检查过的同一个结果——无缝
+```
+
+本篇的一切展开，都是在回答两个问题：①②之间能发生什么，以及怎么消灭①②。
 
 ---
 
@@ -113,10 +144,27 @@ TOCTOU 是个家族，认脸比记名字有用：
 ## 面试官会怎么追问
 
 **Q：为什么不用"校验后把 IP 钉住、连接时直连 IP"的方案？**
-A：那是另一条正确路线（校验后拿 IP 建连，Host 头/SNI 用原域名），但对 HTTPS 会碰到证书校验问题（证书是签给域名的，直连 IP 时端点校验会失败，需要自定义 TrustManager——自己写 TLS 校验代码本身就是风险）。挂 DnsResolver 是"不碰 TLS 语义"的等价方案。
+A：那是另一条正确路线（校验后拿 IP 建连，Host 头/SNI 用原域名），但对 HTTPS 会碰到证书校验问题——还记得补课盒里说的吗，证书是**签给域名**的，直连 IP 时 TLS 校验找不到可比对的域名，会失败；补救要自定义 TrustManager（亲手实现证书校验逻辑的组件），而自己写 TLS 校验代码本身就是风险。挂 DnsResolver 是"不碰 TLS 语义"的等价方案。
 
 **Q：你这套防护就无懈可击了吗？**
 A：不是。`allow-private-hosts=true` 是全局放行（内网联调用），粒度是实例级不是目标级；SSRF 只是 A2A 外连风险之一，还有响应内容进上下文的注入面（见 S06）。诚实的说法：这套防护消除了 rebinding 这一类绕过，不是消灭 SSRF 这个风险类。
+
+## 动手试试
+
+```bash
+# 1. 亲眼看"两次解析结果可以不同"：同一个域名，换 DNS 服务器查，结果可能不一样
+#    （dig 在 Linux/macOS 自带；Windows 可用 PowerShell 的 Resolve-DnsName，或装 BIND 工具）
+dig +short github.com
+dig +short github.com @8.8.8.8
+
+# 2. 观察 TTL：第二列就是保质期（秒），想想 TTL=0 意味着什么
+dig github.com | grep -A1 "ANSWER SECTION"
+
+# 3. 跑本篇修复对应的单测，注意用例名里的 "AtConnectTime"——校验发生在连接时
+mvn test -pl lumina-agent-core -Dtest=ValidatingDnsResolverTest
+```
+
+再打开 `ValidatingDnsResolverTest`（同目录）读 `resolveRejectsPrivateAddressAtConnectTime`：解析器在返回地址前逐个检查，私有地址直接抛异常——这就是"无缝版"骨架的真身。
 
 ## 自测题
 

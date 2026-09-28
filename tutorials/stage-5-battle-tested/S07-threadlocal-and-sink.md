@@ -1,9 +1,16 @@
 # S07 — 异步线程里的幽灵：ThreadLocal 怎么丢了
 
-> **前置要求**：[06 ThreadLocal 上下文](../stage-3-mastery/06-threadlocal-context.md)、[07 线程池与异步](../stage-3-mastery/07-thread-pool-async.md)
-> **预计阅读**：20 分钟
-> **难度**：⭐⭐⭐⭐☆
+> **前置要求**：[06 ThreadLocal 上下文](../stage-3-mastery/06-threadlocal-context.md)、[07 线程池与异步](../stage-3-mastery/07-thread-pool-async.md)——这两篇读完本篇是顺流而下，没读请先补（本篇所有"工牌"比喻的解释都建立在那两篇之上）
+> **预计阅读**：30 分钟
+> **难度**：⭐⭐⭐⭐
 > **对应真实代码**：`BaseContext` / `ToolUsageSink` / `DbToolUsageSink`
+
+> 🧭 **本篇主线概念**：
+> ① **工牌模型** —— ThreadLocal 是每线程私有的储物柜：进公司领牌，安检门看牌
+> ② **换线程 = 丢工牌** —— 提交到线程池的那一刻，上下文留在了旧线程身上
+> ③ **Sink 接缝** —— 接口定义在使用方、实现在提供方：依赖方向不破，观测不伤主路径
+>
+> 路过概念（别停，混个脸熟）：`@PreDestroy`、依赖倒置、ApplicationEvent、TransmittableThreadLocal
 
 ---
 
@@ -12,6 +19,27 @@
 一个经典悬案：多租户系统里，某张表的查询条件 `tenant_id = 3` 突然变成 `tenant_id = NULL`——A 租户的数据对 B 租户可见了。代码 review 完全正常：每个查询都走了租户插件。幽灵在哪？
 
 答案是 ThreadLocal 在异步边界的丢失。这节课讲透它的机制，然后讲一个架构模式（Sink 接缝）——它既解决了"跨层依赖"问题，也顺手解决了幽灵问题的另一半。
+
+## 最小示例：13 行代码，亲眼看见幽灵
+
+不需要任何框架，一段能直接运行的 Java：
+
+```java
+public class GhostDemo {
+    static final ThreadLocal<String> TENANT = new ThreadLocal<>();
+
+    public static void main(String[] args) {
+        TENANT.set("tenant-3");                 // 当前线程领了工牌
+        Runnable task = () ->
+            System.out.println("看到: " + TENANT.get());
+
+        task.run();                             // 同一线程执行 → 看到: tenant-3
+        new Thread(task).start();               // 换个线程执行 → 看到: null（幽灵！）
+    }
+}
+```
+
+把这段存成 `GhostDemo.java`，`java GhostDemo.java` 就能跑。两行输出，一行有值一行是 null——**代码一模一样，唯一的区别是"在哪个线程上执行"**。Lumina 那桩悬案的全部机制，就在这两行输出里。
 
 ---
 
@@ -97,13 +125,30 @@ public class DbToolUsageSink implements ToolUsageSink {
 ## 面试官会怎么追问
 
 **Q：为什么不用 InheritableThreadLocal 或 TransmittableThreadLocal 一劳永逸？**
-A：它们解决"创建子线程时复制上下文"，但线程池的线程是**复用**的，不是每次新建——第一次的上下文会"钉"在线程上，下个任务读到上个任务的租户（更隐蔽的串号）。TTL 需要包装 Runnable 且仍要显式传递。显式传值虽然啰嗦，但**数据流在代码里看得见**——分布式系统的铁律是显式优于隐式。
+A：它们解决"创建子线程时复制上下文"，但线程池的线程是**复用**的，不是每次新建——第一次的上下文会"钉"在线程上，下个任务读到上个任务的租户（更隐蔽的串号）。TransmittableThreadLocal（阿里开源的上下文传递库，为避免与前面两篇的 TTL"过期时间"混淆，这里就叫它全名）需要包装 Runnable 且仍要显式传递。显式传值虽然啰嗦，但**数据流在代码里看得见**——分布式系统的铁律是显式优于隐式。
 
 **Q：async 方法上标 @Async 不就行了？**
 A：@Async 的线程同样没有 ThreadLocal（Spring 只帮你切线程，不搬上下文；需要额外配 TaskDecorator）。所有"异步"的本质都一样：**换线程 = 丢工牌**，无论语法糖多甜。
 
 **Q：Sink 模式和 Spring 的 ApplicationEvent 有什么区别？什么时候选哪个？**
 A：事件是广播（不关心谁听、可以多听），Sink 是定向消费语义（通常单实现、有明确契约）。 Lumina 里 AgentTurnEvent 用事件（观测者天然多个），ToolUsageSink 用接缝（一对一、强契约）。选型看消费关系的形状，不是看哪个更新。
+
+## 动手试试
+
+```bash
+# 1. 跑开头那段 GhostDemo（JDK 11+ 单文件直接运行，无需任何依赖）
+#    把正文"最小示例"的代码存为 GhostDemo.java，然后：
+java GhostDemo.java
+
+# 2. 在项目里搜一遍"豁免表"的真实使用——每一条都应该有书面理由
+grep -rn "@InterceptorIgnore" --include="*.java" .
+
+# 3. 看接缝的真身：接口在 core，实现在 business，两边各打开一个文件对照
+#    lumina-agent-core/src/main/java/io/lumina/agent/tracing/ToolUsageSink.java
+#    lumina-modules/lumina-business-agent/src/main/java/io/lumina/agent/tracing/DbToolUsageSink.java
+```
+
+第 2 步如果搜出了结果，逐条问自己：这张表是"系统级全局表"吗？它不该被租户隔离的理由写在哪里？——这正是正文第三层说的"@InterceptorIgnore 的每一次使用都应该有书面理由"。
 
 ## 自测题
 

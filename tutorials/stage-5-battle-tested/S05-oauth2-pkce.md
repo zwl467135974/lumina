@@ -1,9 +1,16 @@
 # S05 — OAuth2 登录里的三个攻击者
 
-> **前置要求**：用过"用 GitHub 登录"这类第三方登录（作为用户就行）
-> **预计阅读**：25 分钟
-> **难度**：⭐⭐⭐⭐☆
+> **前置要求**：用过"用 GitHub 登录"这类第三方登录（作为用户就行）。不需要任何密码学基础
+> **预计阅读**：35 分钟
+> **难度**：⭐⭐⭐
 > **对应真实代码**：`OAuth2LoginServiceImpl`（v3.12.0 实现，v3.12.1 补 PKCE，[ADR-003](../../docs/zh/design/adr/ADR-003-OAuth2-PKCE.md)）
+
+> 🧭 **本篇主线概念**（三个攻击者，三道防线，一一对应）：
+> ① **state** —— 防"伪造的回程"：我出发时埋的暗号，单次有效
+> ② **PKCE** —— 防"真券被截获"：兑奖口令永远不上路
+> ③ **client_secret** —— 防"假商户"：兑换必须服务器私下进行
+>
+> 路过概念（别停，混个脸熟）：CSRF、S256、RFC 7636、开放重定向、XSS
 
 ---
 
@@ -43,6 +50,23 @@ https://your-site.com/oauth2/github/callback?code=xyz&state=abc
 ```
 
 这张券是**明晃晃地在浏览器地址栏里旅行**的。谁都能看见。这是三个攻击者共同的舞台。
+
+## 最小示例：PKCE 的全部数学，只有三行
+
+后面第三层会讲 PKCE 的故事，先把它的数学骨架单独拎出来——总共三行：
+
+```
+出发前：   challenge = BASE64URL( SHA256( verifier ) )   ← verifier 是随机密语，谁也不给
+出发时：   URL 上只带 challenge（哈希）                    ← 全程公开也无所谓
+兑换时：   出示 verifier 原文，服务器重算 SHA256 对得上才给 token  ← 口令从未上过路
+```
+
+- **verifier**（密语原文）：只存在你的服务器（Lumina 里是 Redis），不进 URL、不进日志；
+- **challenge**（密语的哈希）：贴在出发的 URL 上，被截获也还原不出密语——SHA256 是单向的。
+
+记住"**哈希上路、原文留守**"这八个字，第三层的故事就不用记参数名了。
+
+---
 
 ## 第二层：攻击者一号与 state——防"伪造的回程"
 
@@ -115,6 +139,24 @@ A：因为 code 是**一次性、短时效、兑换还需口令**的中间凭证
 
 **Q：redirect_uri 要不要校验？**
 A：要，且必须是**精确白名单**（配置里的回调地址），不能前缀匹配——否则攻击者把回调指到自己的页面截 code。Lumina 的 redirect_uri 从服务端配置构造，不接受回调参数里的外来值，这是防开放重定向的正确姿势。
+
+## 动手试试
+
+亲手演一遍 PKCE 的"哈希上路、原文留守"——不需要任何项目代码，两条命令：
+
+```bash
+# 1. 生成密语（verifier）：这就是"谁也不给"的随机数
+verifier=$(openssl rand -hex 32)
+echo "$verifier"
+
+# 2. 算出挑战值（challenge）：这就是"敢贴在 URL 上"的那串
+challenge=$(printf %s "$verifier" | openssl dgst -sha256 -binary | openssl base64 | tr '+/' '-_' | tr -d '=')
+echo "$challenge"
+
+# 3. 事后验证：拿着 challenge 反推 verifier？试试就知道为什么"单向"——推不回去
+```
+
+换个 verifier 再算一次，challenge 完全不同——这就是为什么每张券的口令都是独立的。然后如果想看工程实现，打开 `OAuth2LoginServiceImpl` 搜 `code_verifier`，对照正文第三层。
 
 ## 自测题
 
